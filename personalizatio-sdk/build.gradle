@@ -62,7 +62,7 @@ bintray {
 		vcsUrl = 'https://github.com/rees46/rees46-android-sdk'
 		licenses = ['GPL-2.0']
 		githubRepo = 'rees46/rees46-android-sdk'
-//		githubReleaseNotesFile = 'README.md'
+		githubReleaseNotesFile = 'README.md'
 		publish = true
 	}
 

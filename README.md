@@ -98,7 +98,7 @@ new AsyncTask<String, Void, Bitmap>() {
 
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT);
 
-		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), getString(R.string.rees46_notification_channel_id))
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), getString(R.string.notification_channel_id))
 				.setSmallIcon(R.mipmap.ic_launcher)
 				.setLargeIcon(result)
 				.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
