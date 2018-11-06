@@ -1,15 +1,19 @@
+
+#Personalisatio Android SDK
+
 ##Download
 
 Add to `dependencies`:
 
-```groovy
+```
 implementation 'com.personalizatio:personalizatio-sdk:1.0.0'
 ```
 
 ##Configure
+
 Append to your project `build.gradle`
 
-```groovy
+```
 buildscript {
 	dependencies {
 		...
@@ -20,13 +24,14 @@ buildscript {
 
 Append to your app module `build.gradle` after line `apply plugin: 'com.android.application'`
 
-```groovy
+```
 apply plugin: 'com.google.gms.google-services'
 ```
 
 Create your app in the [Firebase console](https://console.firebase.google.com/u/0/) and copy file `google-services.json` to your app root path. Sync gradle now.
 
 ##Initialize
+
 Add code to your application:
 
 ```
@@ -35,7 +40,7 @@ public class SampleApplication extends Application {
 		super.onCreate();
 		
 		//Initialize
-		REES46.initialize(getApplicationContext(), "cb0516af5da25b1b41490072e679bc");
+		REES46.initialize(getApplicationContext(), SHOP_ID);
 		
 		//Notification callback
 		REES46.setOnMessageListener(new MessagingService.OnMessageListener() {
@@ -55,9 +60,9 @@ public class SampleApplication extends Application {
 Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to application item.
 
 ```
-	<application
-			...
-			android:name=".SampleApplication"
+<application
+		...
+		android:name=".SampleApplication"
 ```
 
 ##Notification data structure
@@ -71,7 +76,9 @@ Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to appli
 }
 ```
 ##How use
+
 Example show notification with download icon:
+
 ```
 new AsyncTask<String, Void, Bitmap>() {
 
@@ -118,6 +125,7 @@ new AsyncTask<String, Void, Bitmap>() {
 ```
 
 Use to Activity:
+
 ```
 //User data
 REES46.setEmail("EMAIL");

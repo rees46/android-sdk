@@ -183,6 +183,7 @@ abstract class SDK {
 			public void onSuccess(String msg) {
 				if( msg != null && msg.length() > 0 ) {
 					ssid = msg;
+					SDK.debug("SSID: " + msg);
 					SharedPreferences.Editor edit = prefs().edit();
 					edit.putString(SSID_FIELD, ssid);
 					edit.apply();
@@ -190,6 +191,8 @@ abstract class SDK {
 						thread.start();
 					}
 					queue.clear();
+				} else {
+					SDK.error("generateSSID return empty body");
 				}
 			}
 		});

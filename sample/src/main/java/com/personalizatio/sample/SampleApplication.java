@@ -29,7 +29,9 @@ public class SampleApplication extends Application {
 
 	public void onCreate() {
 		super.onCreate();
-		REES46.initialize(getApplicationContext(), "cb0516af5da25b1b41490072e679bc");
+
+		//Demo shop
+		REES46.initialize(getApplicationContext(), "357382bf66ac0ce2f1722677c59511");
 		REES46.setOnMessageListener(new OnMessageListener() {
 			@SuppressLint("StaticFieldLeak")
 			@Override
