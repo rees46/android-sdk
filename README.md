@@ -1,7 +1,7 @@
 
-#Personalisatio Android SDK
+# Personalisatio Android SDK
 
-##Download
+## Download
 
 Add to `dependencies`:
 
@@ -9,7 +9,7 @@ Add to `dependencies`:
 implementation 'com.personalizatio:personalizatio-sdk:1.0.0'
 ```
 
-##Configure
+## Configure
 
 Append to your project `build.gradle`
 
@@ -30,7 +30,7 @@ apply plugin: 'com.google.gms.google-services'
 
 Create your app in the [Firebase console](https://console.firebase.google.com/u/0/) and copy file `google-services.json` to your app root path. Sync gradle now.
 
-##Initialize
+## Initialize
 
 Add code to your application:
 
@@ -65,7 +65,7 @@ Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to appli
 		android:name=".SampleApplication"
 ```
 
-##Notification data structure
+## Notification data structure
 
 ```json
 {
@@ -75,7 +75,7 @@ Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to appli
 	"url" : "Url for open and tracking events"
 }
 ```
-##How use
+## How use
 
 Example show notification with download icon:
 
