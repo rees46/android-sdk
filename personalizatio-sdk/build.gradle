@@ -1,17 +1,20 @@
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
 apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
 
-version='1.0.0'
+version='1.1.0'
 
 android {
-	compileSdkVersion 28
+	compileSdkVersion 29
+	flavorDimensions 'default'
+//	publishNonDefault true
 
 	defaultConfig {
 		minSdkVersion 21
-		targetSdkVersion 28
+		targetSdkVersion 29
 		versionCode 1
 		versionName version
-
-		testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 	}
 
 	buildTypes {
@@ -25,49 +28,70 @@ android {
 		sourceCompatibility JavaVersion.VERSION_1_8
 		targetCompatibility JavaVersion.VERSION_1_8
 	}
+
+	defaultPublishConfig "rees46Release"
+	productFlavors {
+		rees46 {
+			dimension = 'default'
+			project.ext.set("group", "com.rees46")
+			project.ext.set("libraryName", "com.rees46.sdk")
+			project.ext.set("webSite", "https://rees46.com")
+			project.ext.set("vcsUrl", "https://github.com/rees46/rees46-android-sdk")
+		}
+		personaclick {
+			dimension = 'default'
+			project.ext.set("group", "com.personaclick")
+			project.ext.set("libraryName", "com.personaclick.sdk")
+			project.ext.set("webSite", "https://personaclick.com")
+			project.ext.set("vcsUrl", "https://personaclick.com")
+		}
+	}
+
+	defaultPublishConfig 'rees46' //expects a release variant
+
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_1_8
+		targetCompatibility JavaVersion.VERSION_1_8
+	}
 }
 
-
+configurations {
+	rees46Debug
+	rees46Release
+	personaclickDebug
+	personaclickRelease
+}
 
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-	testImplementation 'junit:junit:4.12'
-	androidTestImplementation 'com.android.support.test:runner:1.0.2'
-	androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
-	implementation 'com.google.firebase:firebase-core:16.0.4'
-	implementation 'com.google.firebase:firebase-messaging:17.3.4'
+	api 'com.google.firebase:firebase-core:17.2.1'
+	api 'com.google.firebase:firebase-messaging:20.0.0'
+	api 'androidx.recyclerview:recyclerview:1.0.0'
 }
-
-
-
-
-
-
-apply plugin: 'com.github.dcendents.android-maven'
-apply plugin: 'com.jfrog.bintray'
-
 
 group='com.personalizatio'
+apply from: '../publish.gradle' // M
 
-bintray {
-	user = bintray_user //this usually comes from gradle.properties file in ~/.gradle
-	key = bintray_api_key //this usually comes from gradle.properties file in ~/.gradle
-
-	configurations = ['archives']
-	pkg {
-		repo = 'maven'
-		name = 'com.personalizatio.sdk'
-		websiteUrl = 'https://rees46.com'
-		vcsUrl = 'https://github.com/rees46/rees46-android-sdk'
-		licenses = ['GPL-2.0']
-		githubRepo = 'rees46/rees46-android-sdk'
-		githubReleaseNotesFile = 'README.md'
-		publish = true
-	}
-
-}
-
+//bintray {
+//	user = bintray_user //this usually comes from gradle.properties file in ~/.gradle
+//	key = bintray_api_key //this usually comes from gradle.properties file in ~/.gradle
+//	publications = ['MyPublication']
+//
+////	override = true
+//	configurations = ['archives']
+//	pkg {
+//		repo = 'maven'
+//		name = group
+//		websiteUrl = project.ext.webSite
+//		vcsUrl = project.ext.vcsUrl
+//		licenses = ['GPL-2.0']
+//		githubRepo = 'rees46/rees46-android-sdk'
+//		githubReleaseNotesFile = 'README.md'
+//		publish = true
+//	}
+//}
+//
 task sourcesJar(type: Jar) {
 	from android.sourceSets.main.java.srcDirs
 	classifier = 'sources'

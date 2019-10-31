@@ -1,4 +1,4 @@
-package com.personalizatio.sdk;
+package com.personalizatio;
 
 import java.util.Map;
 

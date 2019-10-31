@@ -9,11 +9,11 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
-import com.personalizatio.sdk.OnMessageListener;
-import com.personalizatio.sdk.REES46;
+import com.personalizatio.OnMessageListener;
+import com.personalizatio.SDK;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,14 +25,18 @@ import java.util.Map;
  *
  * @author nixx.dj@gmail.com
  */
-public class SampleApplication extends Application {
+public abstract class AbstractSampleApplication<T extends SDK> extends Application {
+
+	protected abstract String getShopId();
+
+	protected abstract void initialize();
 
 	public void onCreate() {
 		super.onCreate();
 
 		//Demo shop
-		REES46.initialize(getApplicationContext(), "357382bf66ac0ce2f1722677c59511");
-		REES46.setOnMessageListener(new OnMessageListener() {
+		initialize();
+		T.setOnMessageListener(new OnMessageListener() {
 			@SuppressLint("StaticFieldLeak")
 			@Override
 			public void onMessage(final Map<String, String> data) {
@@ -53,11 +57,11 @@ public class SampleApplication extends Application {
 					protected void onPostExecute(Bitmap result) {
 						super.onPostExecute(result);
 
-						Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+						Intent intent = new Intent(getApplicationContext(), AbstractMainActivity.class);
 						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 						//REQUIRED! For tracking click notification
-						intent.putExtra(REES46.NOTIFICATION_URL, data.get("url"));
+						intent.putExtra(T.NOTIFICATION_URL, data.get("url"));
 
 						PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT);
 
@@ -74,7 +78,7 @@ public class SampleApplication extends Application {
 						if( notificationManager != null ) {
 							notificationManager.notify(0, notificationBuilder.build());
 						} else {
-							Log.e(REES46.TAG, "NotificationManager not allowed");
+							Log.e(T.TAG, "NotificationManager not allowed");
 						}
 					}
 				}.execute(data.get("icon"));

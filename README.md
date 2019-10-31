@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:personalizatio-sdk:1.0.0'
+implementation 'com.personalizatio:rees46-sdk:1.1.0'
 ```
 
 ## Configure
@@ -134,4 +134,26 @@ REES46.setEmail("EMAIL");
 if( getIntent().getExtras() != null && getIntent().getExtras().getString(REES46.NOTIFICATION_URL, null) != null ) {
 	REES46.notificationClicked(getIntent().getExtras().getString(REES46.NOTIFICATION_URL, null));
 }
+```
+
+## Recommendation
+
+```
+REES46.recommend("RECOMMENDER_CODE", new Api.OnApiCallbackListener() {
+    @Override
+    public void onSuccess(JSONObject response) {
+        Log.i(TAG, "Recommender response: " + response.toString());
+    }
+});
+```
+
+## Search
+
+```
+REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackListener() {
+    @Override
+    public void onSuccess(JSONObject response) {
+        Log.i(TAG, "Search response: " + response.toString());
+    }
+});
 ```

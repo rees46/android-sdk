@@ -1,6 +1,9 @@
-package com.personalizatio.sdk;
+package com.personaclick.sdk;
 
 import android.content.Context;
+
+import com.personalizatio.SDK;
+import com.personalizatio.BuildConfig;
 
 /**
  * Created by Sergey Odintsov
@@ -10,25 +13,15 @@ import android.content.Context;
 final public class Personaclick extends SDK {
 
 	public static final String TAG = "PERSONACLICK";
-	private static final String PREFERENCES_KEY = "personaclick.sdk";
 	public static final String NOTIFICATION_URL = "PERSONACLICK_NOTIFICATION_URL";
-
+	protected static final String PREFERENCES_KEY = "personaclick.sdk";
+	protected static final String API_URL = BuildConfig.DEBUG ? "http://192.168.1.8:8080/" : "https://api.personaclick.com/";
 	/**
 	 * @param context application context
 	 * @param shop_id Shop key
 	 */
-	protected Personaclick(Context context, String shop_id) {
-		super(context, shop_id, Api.PC.class);
-	}
-
-	@Override
-	protected String getPreferencesKey() {
-		return PREFERENCES_KEY;
-	}
-
-	@Override
-	public String getTag() {
-		return TAG;
+	private Personaclick(Context context, String shop_id) {
+		super(context, shop_id, API_URL, TAG, PREFERENCES_KEY);
 	}
 
 	/**

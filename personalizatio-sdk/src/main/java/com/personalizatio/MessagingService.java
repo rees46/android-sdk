@@ -1,4 +1,4 @@
-package com.personalizatio.sdk;
+package com.personalizatio;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;

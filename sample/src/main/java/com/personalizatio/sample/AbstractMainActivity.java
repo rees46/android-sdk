@@ -1,0 +1,65 @@
+package com.personalizatio.sample;
+
+import android.os.Bundle;
+import android.util.Log;
+import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.personalizatio.Api;
+import com.personalizatio.Params;
+import com.personalizatio.SDK;
+
+import org.json.JSONObject;
+
+public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActivity {
+
+	private EditText text;
+	private Button button;
+
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
+
+		if( getIntent().getExtras() != null && getIntent().getExtras().getString(T.NOTIFICATION_URL, null) != null ) {
+			T.notificationClicked(getIntent().getExtras().getString(T.NOTIFICATION_URL, null));
+		}
+
+		button = findViewById(R.id.button);
+		text = findViewById(R.id.email);
+		text.setOnEditorActionListener((v, actionId, event) -> {
+			if( actionId == EditorInfo.IME_ACTION_DONE ) {
+				button.callOnClick();
+			}
+			return false;
+		});
+
+		button.setOnClickListener(v -> {
+			if( !text.getText().toString().isEmpty() ) {
+				T.setEmail(text.getText().toString());
+				Toast.makeText(getApplicationContext(), "Email sent", Toast.LENGTH_LONG).show();
+			}
+		});
+
+		//Запрашиваем поиск
+		T.search("coats", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackListener() {
+			@Override
+			public void onSuccess(JSONObject response) {
+				Log.i(T.TAG, "Search response: " + response.toString());
+			}
+		});
+
+		//Запрашиваем блок рекомендаций
+		T.recommend("e9ddb9cdc66285fac40c7a897760582a", new Api.OnApiCallbackListener() {
+			@Override
+			public void onSuccess(JSONObject response) {
+				Log.i(T.TAG, "Recommender response: " + response.toString());
+			}
+		});
+
+	}
+}

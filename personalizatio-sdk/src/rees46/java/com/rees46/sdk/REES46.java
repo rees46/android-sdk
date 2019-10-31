@@ -1,6 +1,9 @@
-package com.personalizatio.sdk;
+package com.rees46.sdk;
 
 import android.content.Context;
+
+import com.personalizatio.SDK;
+import com.personalizatio.BuildConfig;
 
 /**
  * Created by Sergey Odintsov
@@ -10,25 +13,16 @@ import android.content.Context;
 final public class REES46 extends SDK {
 
 	public static final String TAG = "REES46";
-	private static final String PREFERENCES_KEY = "rees46.sdk";
 	public static final String NOTIFICATION_URL = "REES46_NOTIFICATION_URL";
+	protected static final String PREFERENCES_KEY = "rees46.sdk";
+	protected static final String API_URL = BuildConfig.DEBUG ? "http://dev.api.rees46.com:8080/" : "https://api.rees46.com/";
 
 	/**
 	 * @param context application context
 	 * @param shop_id Shop key
 	 */
-	protected REES46(Context context, String shop_id) {
-		super(context, shop_id, Api.R46.class);
-	}
-
-	@Override
-	protected String getPreferencesKey() {
-		return PREFERENCES_KEY;
-	}
-
-	@Override
-	public String getTag() {
-		return TAG;
+	private REES46(Context context, String shop_id) {
+		super(context, shop_id, API_URL, TAG, PREFERENCES_KEY);
 	}
 
 	/**
