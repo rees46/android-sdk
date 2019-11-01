@@ -102,13 +102,7 @@ final public class Params {
 	public static class Item {
 		public enum COLUMN {
 			ID("item_id"),
-			STOCK("is_available"),
-			CATEGORIES("categories"),
-			PRICE("price"),
-			URL("url"),
-			IMAGE("image_url"),
 			AMOUNT("amount"),
-			NAME("name"),
 			FASHION_SIZE("fashion_size"),
 			;
 			String value;

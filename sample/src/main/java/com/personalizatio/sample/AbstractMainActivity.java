@@ -64,16 +64,6 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		//Просмотр товара (простой)
 		T.track(Params.TrackEvent.VIEW, "37");
 
-		//Просмотр товара (расширенный)
-		Params view = new Params();
-		view
-				.put(new Params.Item("37")
-						.set(Params.Item.COLUMN.STOCK, "1")
-						.set(Params.Item.COLUMN.PRICE, "100")
-				)
-				.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
-		T.track(Params.TrackEvent.VIEW, view);
-
 		//Добавление в корзину (простое)
 		T.track(Params.TrackEvent.CART, "37");
 
@@ -81,9 +71,8 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		Params cart = new Params();
 		cart
 			.put(new Params.Item("37")
-				.set(Params.Item.COLUMN.STOCK, true)
-				.set(Params.Item.COLUMN.PRICE, 100)
 				.set(Params.Item.COLUMN.AMOUNT, 2)
+				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
 			)
 			.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
 		T.track(Params.TrackEvent.CART, cart);

@@ -161,18 +161,8 @@ REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackL
 ## Tracking
 
 ```
-//Product view (simple)
+//Product view
 REES46.track(Params.TrackEvent.VIEW, "37");
-
-//Product view (extended)
-Params view = new Params();
-view
-        .put(new Params.Item("37")
-                .set(Params.Item.COLUMN.STOCK, 1)
-                .set(Params.Item.COLUMN.PRICE, 100)
-        )
-        .put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
-REES46.track(Params.TrackEvent.VIEW, view);
 
 //Add to cart (simple)
 REES46.track(Params.TrackEvent.CART, "37");
@@ -181,8 +171,7 @@ REES46.track(Params.TrackEvent.CART, "37");
 Params cart = new Params();
 cart
 	.put(new Params.Item("37")
-		.set(Params.Item.COLUMN.STOCK, true)
-		.set(Params.Item.COLUMN.PRICE, 100)
+		.set(Params.Item.COLUMN.FASHION_SIZE, "M")
 		.set(Params.Item.COLUMN.AMOUNT, 2)
 	)
 	.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
