@@ -58,6 +58,7 @@ public final class Api {
 				}
 
 				HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+				conn.setRequestProperty("User-Agent", "Personalizatio SDK " + BuildConfig.FLAVOR.toUpperCase() + ", v" + BuildConfig.VERSION_NAME);
 				conn.setRequestMethod(request_type.toUpperCase());
 				conn.setConnectTimeout(5000);
 

@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import android.os.Handler;
@@ -14,8 +15,8 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.personalizatio.Params.InternalParameter;
 import com.personalizatio.Params.Parameter;
-import com.personalizatio.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -50,7 +51,7 @@ public class SDK {
 	private volatile int attempt = 0;
 	private ArrayList<Thread> queue = new ArrayList<>();
 	private Search search;
-	private boolean recommendations = false;
+	private final String segment;
 
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
@@ -92,8 +93,9 @@ public class SDK {
 
 	/**
 	 * Быстрый поиск
-	 * @param query Поисковая фраза
-	 * @param type Тип поиска
+	 *
+	 * @param query    Поисковая фраза
+	 * @param type     Тип поиска
 	 * @param listener Колбек
 	 */
 	public static void search(String query, Params.SEARCH_TYPE type, Api.OnApiCallbackListener listener) {
@@ -102,24 +104,26 @@ public class SDK {
 
 	/**
 	 * Быстрый поиск
-	 * @param query Поисковая фраза
-	 * @param type Тип поиска
-	 * @param params Дополнительные параметры к запросу
+	 *
+	 * @param query    Поисковая фраза
+	 * @param type     Тип поиска
+	 * @param params   Дополнительные параметры к запросу
 	 * @param listener v
 	 */
 	public static void search(String query, Params.SEARCH_TYPE type, Params params, Api.OnApiCallbackListener listener) {
 		if( instance.search != null ) {
 			params
-					.put(Parameter.SEARCH_TYPE, type.getValue())
-					.put(Parameter.SEARCH_QUERY, query);
+					.put(InternalParameter.SEARCH_TYPE, type.getValue())
+					.put(InternalParameter.SEARCH_QUERY, query);
 			instance.getAsync("search", params.build(), listener);
 		}
 	}
 
 	/**
 	 * Запрос динамического блока рекомендаций
+	 *
 	 * @param recommender_code Код блока рекомендаций
-	 * @param listener Колбек
+	 * @param listener         Колбек
 	 */
 	public static void recommend(String recommender_code, Api.OnApiCallbackListener listener) {
 		recommend(recommender_code, new Params(), listener);
@@ -127,15 +131,48 @@ public class SDK {
 
 	/**
 	 * Запрос динамического блока рекомендаций
-	 * @param recommender_code Код блока рекомендаций
-	 * @param params Параметры для запроса
+	 *
+	 * @param code     Код динамического блока рекомендаций
+	 * @param params   Параметры для запроса
 	 * @param listener Колбек
 	 */
-	public static void recommend(String recommender_code, Params params, Api.OnApiCallbackListener listener) {
+	public static void recommend(String code, Params params, Api.OnApiCallbackListener listener) {
 		params
-				.put(Parameter.RECOMMENDER_TYPE, "dynamic")
-				.put(Parameter.RECOMMENDER_CODE, recommender_code);
+				.put(InternalParameter.RECOMMENDER_TYPE, "dynamic")
+				.put(InternalParameter.RECOMMENDER_CODE, code);
 		instance.getAsync("recommend", params.build(), listener);
+	}
+
+	/**
+	 * Трекинг события
+	 *
+	 * @param event   Тип события
+	 * @param item_id ID товара
+	 */
+	public static void track(Params.TrackEvent event, String item_id) {
+		track(event, (new Params()).put(new Params.Item(item_id)), null);
+	}
+
+	/**
+	 * Трекинг события
+	 *
+	 * @param event  Тип события
+	 * @param params Параметры
+	 */
+	public static void track(Params.TrackEvent event, @NonNull Params params) {
+		track(event, params, null);
+	}
+
+	/**
+	 * Трекинг события
+	 *
+	 * @param event    Тип события
+	 * @param params   Параметры для запроса
+	 * @param listener Колбек
+	 */
+	public static void track(Params.TrackEvent event, @NonNull Params params, @Nullable Api.OnApiCallbackListener listener) {
+		params.put(InternalParameter.EVENT, event.value);
+		instance.sendAsync("push", params.build(), listener);
 	}
 
 	//----------Private--------------->
@@ -178,9 +215,12 @@ public class SDK {
 		PREFERENCES_KEY = prefs_key;
 		Api.initialize(api_url);
 
-		if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+		//Инициализируем сегмент
+		segment = prefs().getString(PREFERENCES_KEY + ".segment", new String[]{"A", "B"}[(int) Math.round(Math.random())]);
+
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ) {
 			// Create channel to show notifications.
-			String channelId  = context.getString(R.string.notification_channel_id);
+			String channelId = context.getString(R.string.notification_channel_id);
 			String channelName = context.getString(R.string.notification_channel_name);
 			NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
 			if( notificationManager != null ) {
@@ -217,7 +257,7 @@ public class SDK {
 	private void init() {
 		HashMap<String, String> params = new HashMap<>();
 		params.put("v", "3");
-		send("get","init_script", params, new Api.OnApiCallbackListener() {
+		send("get", "init_script", params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				try {
@@ -235,7 +275,6 @@ public class SDK {
 					} catch(JSONException e) {
 						SDK.debug(e.getMessage());
 					}
-					recommendations = response.getBoolean("recommendations");
 
 					// Сохраняем данные в память
 					SharedPreferences.Editor edit = prefs().edit();
@@ -251,6 +290,7 @@ public class SDK {
 					SDK.error(e.getMessage(), e);
 				}
 			}
+
 			@Override
 			public void onError(int code, String msg) {
 				if( attempt < 5 ) {
@@ -267,7 +307,7 @@ public class SDK {
 	 */
 	private void getToken() {
 		FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(task -> {
-			if (!task.isSuccessful()) {
+			if( !task.isSuccessful() ) {
 				SDK.error("getInstanceId failed", task.getException());
 				return;
 			}
@@ -306,9 +346,13 @@ public class SDK {
 	 */
 	private void send(String request_type, String method, Map<String, String> params, @Nullable Api.OnApiCallbackListener listener) {
 		params.put("shop_id", shop_id);
-		if( ssid != null ){
+		if( ssid != null ) {
 			params.put("ssid", ssid);
 		}
+		if( seance != null ) {
+			params.put("seance", seance);
+		}
+		params.put("segment", segment);
 		Api.send(request_type, method, params, listener);
 	}
 

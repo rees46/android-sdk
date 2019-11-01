@@ -129,8 +129,8 @@ afterEvaluate {
 		pkg {
 			repo = 'maven'
 			name = group
-			websiteUrl = project.ext.webSite
-			vcsUrl = project.ext.vcsUrl
+			websiteUrl = 'https://rees46.com'
+			vcsUrl = 'https://github.com/rees46/rees46-android-sdk'
 			licenses = ['GPL-2.0']
 			labels = ['android', 'personalization']
 			githubRepo = 'rees46/rees46-android-sdk'
