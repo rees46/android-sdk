@@ -53,6 +53,14 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 			}
 		});
 
+		//Запрашиваем поиск при клике на пустое поле
+		T.search_blank(new Api.OnApiCallbackListener() {
+			@Override
+			public void onSuccess(JSONObject response) {
+				Log.i(T.TAG, "Search response: " + response.toString());
+			}
+		});
+
 		//Запрашиваем блок рекомендаций
 		T.recommend("e9ddb9cdc66285fac40c7a897760582a", new Api.OnApiCallbackListener() {
 			@Override

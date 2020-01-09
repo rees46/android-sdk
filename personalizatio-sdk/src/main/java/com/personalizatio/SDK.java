@@ -120,6 +120,32 @@ public class SDK {
 	}
 
 	/**
+	 * Пустой поиск
+	 *
+	 * @param listener v
+	 */
+	public static void search_blank(Api.OnApiCallbackListener listener) {
+		if( instance.search != null ) {
+			if( instance.search.blank == null ) {
+				instance.getAsync("search/blank", (new Params()).build(), new Api.OnApiCallbackListener() {
+					@Override
+					public void onSuccess(JSONObject response) {
+						instance.search.blank = response;
+						listener.onSuccess(response);
+					}
+
+					@Override
+					public void onError(int code, String msg) {
+						listener.onError(code, msg);
+					}
+				});
+			} else {
+				listener.onSuccess(instance.search.blank);
+			}
+		}
+	}
+
+	/**
 	 * Запрос динамического блока рекомендаций
 	 *
 	 * @param recommender_code Код блока рекомендаций

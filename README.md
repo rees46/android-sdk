@@ -156,6 +156,14 @@ REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackL
         Log.i(TAG, "Search response: " + response.toString());
     }
 });
+
+//Search blank request
+REES46.search_blank(new Api.OnApiCallbackListener() {
+    @Override
+    public void onSuccess(JSONObject response) {
+        Log.i(T.TAG, "Search response: " + response.toString());
+    }
+});
 ```
 
 ## Tracking
