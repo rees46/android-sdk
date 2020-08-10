@@ -11,6 +11,16 @@ implementation 'com.personalizatio:rees46-sdk:1.1.1'
 
 ## Configure
 
+Append to repositories
+
+```
+repositories {
+    maven {
+        url  "https://dl.bintray.com/pnixx/maven" 
+    }
+}
+```
+
 Append to your project `build.gradle`
 
 ```
