@@ -12,7 +12,7 @@ final public class Params {
 	private final HashMap<String, String> params = new HashMap<>();
 	private int item_count = 0;
 
-	interface ParamInterface {
+	public interface ParamInterface {
 		String getValue();
 	}
 

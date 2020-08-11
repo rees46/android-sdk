@@ -46,7 +46,9 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		});
 
 		//Запрашиваем поиск
-		T.search("coats", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackListener() {
+		Params params = new Params();
+		params.put(Params.Parameter.LOCATIONS, "location");
+		T.search("coats", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.i(T.TAG, "Search response: " + response.toString());

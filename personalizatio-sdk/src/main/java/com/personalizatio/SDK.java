@@ -116,6 +116,8 @@ public class SDK {
 					.put(InternalParameter.SEARCH_TYPE, type.getValue())
 					.put(InternalParameter.SEARCH_QUERY, query);
 			instance.getAsync("search", params.build(), listener);
+		} else {
+			SDK.warn("Search not initialized");
 		}
 	}
 
@@ -142,6 +144,8 @@ public class SDK {
 			} else {
 				listener.onSuccess(instance.search.blank);
 			}
+		} else {
+			SDK.warn("Search not initialized");
 		}
 	}
 
@@ -297,6 +301,8 @@ public class SDK {
 						JSONObject s = response.getJSONObject("search");
 						if( s.getBoolean("enabled") ) {
 							search = new Search(s);
+						} else {
+							SDK.debug("Search disabled");
 						}
 					} catch(JSONException e) {
 						SDK.debug(e.getMessage());

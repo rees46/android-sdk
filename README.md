@@ -160,7 +160,9 @@ REES46.recommend("RECOMMENDER_CODE", new Api.OnApiCallbackListener() {
 ## Search
 
 ```
-REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, new Api.OnApiCallbackListener() {
+Params params = new Params();
+params.put(Params.Parameter.LOCATIONS, "location");
+REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {
         Log.i(TAG, "Search response: " + response.toString());
