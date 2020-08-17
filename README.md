@@ -149,7 +149,9 @@ if( getIntent().getExtras() != null && getIntent().getExtras().getString(REES46.
 ## Recommendation
 
 ```
-REES46.recommend("RECOMMENDER_CODE", new Api.OnApiCallbackListener() {
+Params params = new Params();
+params.put(Params.Parameter.EXTENDED, true);
+REES46.recommend("RECOMMENDER_CODE", params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {
         Log.i(TAG, "Recommender response: " + response.toString());
@@ -160,9 +162,24 @@ REES46.recommend("RECOMMENDER_CODE", new Api.OnApiCallbackListener() {
 ## Search
 
 ```
+//Instant search
 Params params = new Params();
 params.put(Params.Parameter.LOCATIONS, "location");
 REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
+    @Override
+    public void onSuccess(JSONObject response) {
+        Log.i(TAG, "Search response: " + response.toString());
+    }
+});
+
+//Full search
+Params params = new Params();
+params.put(Params.Parameter.LOCATIONS, "location");
+//Additional filters
+Params.SearchFilters filters = new Params.SearchFilters();
+filters.put("voltage", new String[] {"11.1", "14.8"});
+params.put(Params.Parameter.SEARCH_FILTERS, filters);
+REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.FULL, params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {
         Log.i(TAG, "Search response: " + response.toString());

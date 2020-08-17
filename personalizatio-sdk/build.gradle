@@ -3,7 +3,7 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 
-version='1.1.4'
+version='1.1.5'
 
 android {
 	compileSdkVersion 29
@@ -65,9 +65,9 @@ configurations {
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-	api 'com.google.firebase:firebase-core:17.2.1'
-	api 'com.google.firebase:firebase-messaging:20.0.0'
-	api 'androidx.recyclerview:recyclerview:1.0.0'
+	api 'com.google.firebase:firebase-core:17.4.4'
+	api 'com.google.firebase:firebase-messaging:20.2.4'
+	api 'androidx.recyclerview:recyclerview:1.1.0'
 }
 
 group='com.personalizatio'

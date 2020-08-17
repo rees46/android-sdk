@@ -4,6 +4,10 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +37,8 @@ final public class Params {
 		ORDER_PRICE("order_price"),
 		CATEGORY_ID("category_id"),
 		SEARCH_QUERY("search_query"),
+		SEARCH_FILTERS("filters"),
+		EXTENDED("extended"),
 		;
 
 		protected String value;
@@ -61,9 +67,33 @@ final public class Params {
 	}
 
 	/**
+	 * Структура для фильтров
+	 */
+	final public static class SearchFilters {
+		private final HashMap<String, String[]> filters = new HashMap<>();
+
+		public void put(String key, String[] values) {
+			filters.put(key, values);
+		}
+
+		public String toString() {
+			JSONObject json = new JSONObject();
+			for( Map.Entry<String, String[]> entry : filters.entrySet() ) {
+				String key = entry.getKey();
+				try {
+					json.put(key, new JSONArray(entry.getValue()));
+				} catch(JSONException e) {
+					SDK.warn(e.getMessage());
+				}
+			}
+			return json.toString();
+		}
+	}
+
+	/**
 	 * Типы рекомендаций
 	 */
-	public static class RecommendedBy {
+	final public static class RecommendedBy {
 		public enum TYPE {
 			RECOMMENDATION("dynamic"),
 			@Deprecated
@@ -99,7 +129,7 @@ final public class Params {
 	/**
 	 * Товар
 	 */
-	public static class Item {
+	final public static class Item {
 		public enum COLUMN {
 			ID("item_id"),
 			AMOUNT("amount"),
@@ -153,6 +183,9 @@ final public class Params {
 	}
 	public Params put(ParamInterface param, boolean value) {
 		return put(param, value ? "1" : "0");
+	}
+	public Params put(ParamInterface param, SearchFilters value) {
+		return put(param, value.toString());
 	}
 
 	/**

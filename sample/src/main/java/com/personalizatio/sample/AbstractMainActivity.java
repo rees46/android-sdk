@@ -48,7 +48,10 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		//Запрашиваем поиск
 		Params params = new Params();
 		params.put(Params.Parameter.LOCATIONS, "location");
-		T.search("coats", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
+		Params.SearchFilters filters = new Params.SearchFilters();
+		filters.put("voltage", new String[] {"11.1", "14.8"});
+		params.put(Params.Parameter.SEARCH_FILTERS, filters);
+		T.search("coats", Params.SEARCH_TYPE.FULL, params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.i(T.TAG, "Search response: " + response.toString());
@@ -64,7 +67,9 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		});
 
 		//Запрашиваем блок рекомендаций
-		T.recommend("e9ddb9cdc66285fac40c7a897760582a", new Api.OnApiCallbackListener() {
+		Params recommender_params = new Params();
+		recommender_params.put(Params.Parameter.EXTENDED, true);
+		T.recommend("e9ddb9cdc66285fac40c7a897760582a", recommender_params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.i(T.TAG, "Recommender response: " + response.toString());
