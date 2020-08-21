@@ -69,6 +69,7 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		//Запрашиваем блок рекомендаций
 		Params recommender_params = new Params();
 		recommender_params.put(Params.Parameter.EXTENDED, true);
+		recommender_params.put(Params.Parameter.ITEM, "37");
 		T.recommend("e9ddb9cdc66285fac40c7a897760582a", recommender_params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {

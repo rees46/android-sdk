@@ -151,6 +151,7 @@ if( getIntent().getExtras() != null && getIntent().getExtras().getString(REES46.
 ```
 Params params = new Params();
 params.put(Params.Parameter.EXTENDED, true);
+recommender_params.put(Params.Parameter.ITEM, "37");
 REES46.recommend("RECOMMENDER_CODE", params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {

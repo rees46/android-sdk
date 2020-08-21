@@ -26,7 +26,7 @@ final public class Params {
 	public enum Parameter implements ParamInterface {
 		PAGE("page"),
 		LIMIT("limit"),
-		ITEM("item"),
+		ITEM("item_id"),
 		LOCATIONS("locations"),
 		BRANDS("brands"),
 		EXCLUDE_BRANDS("exclude_brands"),
