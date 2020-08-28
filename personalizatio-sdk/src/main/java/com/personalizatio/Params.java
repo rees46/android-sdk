@@ -28,6 +28,10 @@ final public class Params {
 		LIMIT("limit"),
 		ITEM("item_id"),
 		LOCATIONS("locations"),
+		/**
+		 * Available sizes: 120, 140, 160, 180, 200, 220, 310, 520
+		 */
+		IMAGE_SIZE("resize_image"),
 		BRANDS("brands"),
 		EXCLUDE_BRANDS("exclude_brands"),
 		CATEGORIES("categories"),
@@ -99,7 +103,7 @@ final public class Params {
 			@Deprecated
 			TRIGGER_MAIL("trigger_mail"),
 			DIGEST_MAIL("digest_mail"),
-			WEB_PUSH_DIGETST("web_push_digest"),
+			WEB_PUSH_DIGEST("web_push_digest"),
 			@Deprecated
 			WEB_PUSH_TRIGGER("web_push_trigger"),
 			INSTANT_SEARCH("instant_search"),

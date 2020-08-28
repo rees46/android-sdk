@@ -1,6 +1,7 @@
 package com.personalizatio.sample;
 
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -15,6 +16,8 @@ import com.personalizatio.SDK;
 
 import org.json.JSONObject;
 
+import java.security.Security;
+
 public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActivity {
 
 	private EditText text;
@@ -24,6 +27,7 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+//		Log.e("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
 
 		if( getIntent().getExtras() != null && getIntent().getExtras().getString(T.NOTIFICATION_URL, null) != null ) {
 			T.notificationClicked(getIntent().getExtras().getString(T.NOTIFICATION_URL, null));
