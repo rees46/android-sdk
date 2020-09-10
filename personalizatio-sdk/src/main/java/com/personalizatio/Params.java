@@ -1,30 +1,18 @@
 package com.personalizatio;
 
-import android.text.TextUtils;
-
 import androidx.annotation.NonNull;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
 
-final public class Params {
+final public class Params extends AbstractParams<Params> {
 
-	private final HashMap<String, String> params = new HashMap<>();
 	private int item_count = 0;
-
-	public interface ParamInterface {
-		String getValue();
-	}
 
 	/**
 	 * Основные параметры
 	 */
 	public enum Parameter implements ParamInterface {
-		PAGE("page"),
 		LIMIT("limit"),
 		ITEM("item_id"),
 		LOCATIONS("locations"),
@@ -41,7 +29,6 @@ final public class Params {
 		ORDER_PRICE("order_price"),
 		CATEGORY_ID("category_id"),
 		SEARCH_QUERY("search_query"),
-		SEARCH_FILTERS("filters"),
 		EXTENDED("extended"),
 		;
 
@@ -56,56 +43,14 @@ final public class Params {
 	}
 
 	/**
-	 * Типы поиска
-	 */
-	public enum SEARCH_TYPE {
-		INSTANT("instant_search"),
-		FULL("full_search");
-		protected String value;
-		SEARCH_TYPE(String v) {
-			value = v;
-		}
-		public String getValue() {
-			return value;
-		}
-	}
-
-	/**
-	 * Структура для фильтров
-	 */
-	final public static class SearchFilters {
-		private final HashMap<String, String[]> filters = new HashMap<>();
-
-		public void put(String key, String[] values) {
-			filters.put(key, values);
-		}
-
-		public String toString() {
-			JSONObject json = new JSONObject();
-			for( Map.Entry<String, String[]> entry : filters.entrySet() ) {
-				String key = entry.getKey();
-				try {
-					json.put(key, new JSONArray(entry.getValue()));
-				} catch(JSONException e) {
-					SDK.warn(e.getMessage());
-				}
-			}
-			return json.toString();
-		}
-	}
-
-	/**
 	 * Типы рекомендаций
 	 */
 	final public static class RecommendedBy {
 		public enum TYPE {
 			RECOMMENDATION("dynamic"),
-			@Deprecated
-			TRIGGER_MAIL("trigger_mail"),
+			TRIGGER("chain"),
 			DIGEST_MAIL("digest_mail"),
 			WEB_PUSH_DIGEST("web_push_digest"),
-			@Deprecated
-			WEB_PUSH_TRIGGER("web_push_trigger"),
 			INSTANT_SEARCH("instant_search"),
 			FULL_SEARCH("full_search"),
 			;
@@ -176,31 +121,6 @@ final public class Params {
 	}
 
 	/**
-	 * Вставка строковых параметров
-	 */
-	public Params put(ParamInterface param, String value) {
-		params.put(param.getValue(), value);
-		return this;
-	}
-	public Params put(ParamInterface param, int value) {
-		return put(param, String.valueOf(value));
-	}
-	public Params put(ParamInterface param, boolean value) {
-		return put(param, value ? "1" : "0");
-	}
-	public Params put(ParamInterface param, SearchFilters value) {
-		return put(param, value.toString());
-	}
-
-	/**
-	 * Вставка параметров с массивом
-	 */
-	public Params put(Parameter param, String[] value) {
-		params.put(param.getValue(), TextUtils.join(",", value));
-		return this;
-	}
-
-	/**
 	 * Вставка параметров рекомендаций
 	 */
 	public Params put(RecommendedBy recommended_by) {
@@ -245,7 +165,4 @@ final public class Params {
 		}
 	}
 
-	HashMap<String, String> build() {
-		return params;
-	}
 }

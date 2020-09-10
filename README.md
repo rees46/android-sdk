@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.1.5'
+implementation 'com.personalizatio:rees46-sdk:1.2.0'
 ```
 
 ## Configure
@@ -164,9 +164,9 @@ REES46.recommend("RECOMMENDER_CODE", params, new Api.OnApiCallbackListener() {
 
 ```
 //Instant search
-Params params = new Params();
-params.put(Params.Parameter.LOCATIONS, "location");
-REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
+SearchParams params = new SearchParams();
+params.put(SearchParams.Parameter.LOCATIONS, "location");
+REES46.search("SEARCH_QUERY", SearchParams.TYPE.INSTANT, params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {
         Log.i(TAG, "Search response: " + response.toString());
@@ -174,13 +174,13 @@ REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.INSTANT, params, new Api.OnApiC
 });
 
 //Full search
-Params params = new Params();
-params.put(Params.Parameter.LOCATIONS, "location");
+SearchParams params = new SearchParams();
+params.put(SearchParams.Parameter.LOCATIONS, "location");
 //Additional filters
-Params.SearchFilters filters = new Params.SearchFilters();
+SearchParams.SearchFilters filters = new SearchParams.SearchFilters();
 filters.put("voltage", new String[] {"11.1", "14.8"});
-params.put(Params.Parameter.SEARCH_FILTERS, filters);
-REES46.search("SEARCH_QUERY", Params.SEARCH_TYPE.FULL, params, new Api.OnApiCallbackListener() {
+params.put(SearchParams.Parameter.FILTERS, filters);
+REES46.search("SEARCH_QUERY", SearchParams.TYPE.FULL, params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {
         Log.i(TAG, "Search response: " + response.toString());

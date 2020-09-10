@@ -3,12 +3,18 @@ package com.personalizatio;
 import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -21,6 +27,9 @@ import com.personalizatio.Params.Parameter;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -98,8 +107,8 @@ public class SDK {
 	 * @param type     Тип поиска
 	 * @param listener Колбек
 	 */
-	public static void search(String query, Params.SEARCH_TYPE type, Api.OnApiCallbackListener listener) {
-		search(query, type, new Params(), listener);
+	public static void search(String query, SearchParams.TYPE type, Api.OnApiCallbackListener listener) {
+		search(query, type, new SearchParams(), listener);
 	}
 
 	/**
@@ -110,7 +119,7 @@ public class SDK {
 	 * @param params   Дополнительные параметры к запросу
 	 * @param listener v
 	 */
-	public static void search(String query, Params.SEARCH_TYPE type, Params params, Api.OnApiCallbackListener listener) {
+	public static void search(String query, SearchParams.TYPE type, SearchParams params, Api.OnApiCallbackListener listener) {
 		if( instance.search != null ) {
 			params
 					.put(InternalParameter.SEARCH_TYPE, type.getValue())
@@ -352,23 +361,17 @@ public class SDK {
 			if( prefs().getString(TOKEN_FIELD, null) == null || !Objects.equals(prefs().getString(TOKEN_FIELD, null), token) ) {
 
 				//Send token
-				try {
-					HashMap<String, String> params = new HashMap<>();
-					params.put("mobile", "true");
-					JSONObject t = new JSONObject();
-					t.put("endpoint", token);
-					params.put("token", t.toString());
-					send("post", "web_push_subscriptions", params, new Api.OnApiCallbackListener() {
-						@Override
-						public void onSuccess(JSONObject msg) {
-							SharedPreferences.Editor edit = prefs().edit();
-							edit.putString(TOKEN_FIELD, token);
-							edit.apply();
-						}
-					});
-				} catch(JSONException e) {
-					e.printStackTrace();
-				}
+				HashMap<String, String> params = new HashMap<>();
+				params.put("platform", "android");
+				params.put("token", token);
+				send("post", "mobile_push_tokens", params, new Api.OnApiCallbackListener() {
+					@Override
+					public void onSuccess(JSONObject msg) {
+						SharedPreferences.Editor edit = prefs().edit();
+						edit.putString(TOKEN_FIELD, token);
+						edit.apply();
+					}
+				});
 			}
 		});
 	}

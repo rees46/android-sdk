@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.personalizatio.Api;
 import com.personalizatio.Params;
 import com.personalizatio.SDK;
+import com.personalizatio.SearchParams;
 
 import org.json.JSONObject;
 
@@ -50,12 +51,12 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		});
 
 		//Запрашиваем поиск
-		Params params = new Params();
-		params.put(Params.Parameter.LOCATIONS, "location");
-		Params.SearchFilters filters = new Params.SearchFilters();
+		SearchParams params = new SearchParams();
+		params.put(SearchParams.Parameter.LOCATIONS, "location");
+		SearchParams.SearchFilters filters = new SearchParams.SearchFilters();
 		filters.put("voltage", new String[] {"11.1", "14.8"});
-		params.put(Params.Parameter.SEARCH_FILTERS, filters);
-		T.search("coats", Params.SEARCH_TYPE.FULL, params, new Api.OnApiCallbackListener() {
+		params.put(SearchParams.Parameter.FILTERS, filters);
+		T.search("coats", SearchParams.TYPE.FULL, params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.i(T.TAG, "Search response: " + response.toString());
