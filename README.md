@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.2.0'
+implementation 'com.personalizatio:rees46-sdk:1.2.1'
 ```
 
 ## Configure
@@ -65,6 +65,12 @@ public class SampleApplication extends Application {
 		});
 	}
 }
+```
+
+For On-Premise integration need use initialize with custom api domain:
+
+```
+REES46.initialize(getApplicationContext(), SHOP_ID, API_DOMAIN);
 ```
 
 Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to application item.

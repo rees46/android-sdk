@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
@@ -45,11 +46,13 @@ public class SDK {
 	public static String TAG;
 	public static String NOTIFICATION_URL = "";
 	private final String PREFERENCES_KEY;
+	private static final String DID_FIELD = "did";
 	private static final String SSID_FIELD = "ssid";
 	private static final String TOKEN_FIELD = "token";
 
 	private Context context;
 	private String shop_id;
+	private String did;
 	private String ssid;
 	private String seance;
 	private OnMessageListener onMessageListener;
@@ -281,10 +284,16 @@ public class SDK {
 	/**
 	 * Get ssid from properties or generate a new ssid
 	 */
+	@SuppressLint("HardwareIds")
 	private void ssid() {
 		if( ssid == null ) {
 			SharedPreferences preferences = prefs();
 			ssid = preferences.getString(SSID_FIELD, null);
+			did = preferences.getString(DID_FIELD, null);
+			if( did == null ) {
+				//get unique device id
+				did = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+			}
 			init();
 			queue.add(new Thread(this::getToken));
 		}
@@ -295,15 +304,14 @@ public class SDK {
 	 */
 	private void init() {
 		HashMap<String, String> params = new HashMap<>();
-		params.put("v", "3");
-		send("get", "init_script", params, new Api.OnApiCallbackListener() {
+		send("get", "init", params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				try {
 					initialized = true;
 					ssid = response.getString("ssid");
 					seance = response.getString("seance");
-					SDK.debug("SSID: " + ssid + ", seance: " + seance);
+					SDK.debug("SSID: " + ssid + ", Device ID: " + did + ", seance: " + seance);
 
 					//Seach
 					try {
@@ -320,6 +328,9 @@ public class SDK {
 					// Сохраняем данные в память
 					SharedPreferences.Editor edit = prefs().edit();
 					edit.putString(SSID_FIELD, ssid);
+					if( !response.getString("did").contains(did) ) {
+						edit.putString(DID_FIELD, did);
+					}
 					edit.apply();
 
 					// Выполняем таски из очереди
@@ -383,6 +394,9 @@ public class SDK {
 		params.put("shop_id", shop_id);
 		if( ssid != null ) {
 			params.put("ssid", ssid);
+		}
+		if( did != null ) {
+			params.put("did", did);
 		}
 		if( seance != null ) {
 			params.put("seance", seance);

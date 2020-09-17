@@ -12,10 +12,9 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import com.personalizatio.OnMessageListener;
-import com.personalizatio.R;
-import com.personalizatio.SDK;
 import com.personalizatio.BuildConfig;
+import com.personalizatio.OnMessageListener;
+import com.personalizatio.SDK;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,8 +37,8 @@ final public class REES46 extends SDK {
 	 * @param context application context
 	 * @param shop_id Shop key
 	 */
-	private REES46(Context context, String shop_id) {
-		super(context, shop_id, API_URL, TAG, PREFERENCES_KEY);
+	private REES46(Context context, String shop_id, String api_host) {
+		super(context, shop_id, api_host == null ? API_URL : "https://".concat(api_host).concat("/"), TAG, PREFERENCES_KEY);
 	}
 
 	/**
@@ -47,7 +46,14 @@ final public class REES46 extends SDK {
 	 * @param shop_id Shop key
 	 */
 	public static void initialize(final Context context, String shop_id) {
-		instance = new REES46(context, shop_id);
+		initialize(context, shop_id, null);
+	}
+	/**
+	 * Initialize api
+	 * @param shop_id Shop key
+	 */
+	public static void initialize(final Context context, String shop_id, String api_host) {
+		instance = new REES46(context, shop_id, api_host);
 		//Дефолтное отображение сообщения без кастомизации
 		REES46.setOnMessageListener(new OnMessageListener() {
 			@SuppressLint("StaticFieldLeak")
