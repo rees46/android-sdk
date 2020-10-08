@@ -3,18 +3,12 @@ package com.personalizatio;
 import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.AsyncTask;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -23,14 +17,10 @@ import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.personalizatio.Params.InternalParameter;
-import com.personalizatio.Params.Parameter;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,13 +37,11 @@ public class SDK {
 	public static String NOTIFICATION_URL = "";
 	private final String PREFERENCES_KEY;
 	private static final String DID_FIELD = "did";
-	private static final String SSID_FIELD = "ssid";
 	private static final String TOKEN_FIELD = "token";
 
 	private Context context;
 	private String shop_id;
 	private String did;
-	private String ssid;
 	private String seance;
 	private OnMessageListener onMessageListener;
 	@SuppressLint("StaticFieldLeak")
@@ -271,7 +259,7 @@ public class SDK {
 				SDK.error("NotificationManager not allowed");
 			}
 		}
-		ssid();
+		did();
 	}
 
 	/**
@@ -282,13 +270,12 @@ public class SDK {
 	}
 
 	/**
-	 * Get ssid from properties or generate a new ssid
+	 * Get did from properties or generate a new did
 	 */
 	@SuppressLint("HardwareIds")
-	private void ssid() {
-		if( ssid == null ) {
+	private void did() {
+		if( did == null ) {
 			SharedPreferences preferences = prefs();
-			ssid = preferences.getString(SSID_FIELD, null);
 			did = preferences.getString(DID_FIELD, null);
 			if( did == null ) {
 				//get unique device id
@@ -309,9 +296,8 @@ public class SDK {
 			public void onSuccess(JSONObject response) {
 				try {
 					initialized = true;
-					ssid = response.getString("ssid");
 					seance = response.getString("seance");
-					SDK.debug("SSID: " + ssid + ", Device ID: " + did + ", seance: " + seance);
+					SDK.debug("Device ID: " + did + ", seance: " + seance);
 
 					//Seach
 					try {
@@ -327,7 +313,6 @@ public class SDK {
 
 					// Сохраняем данные в память
 					SharedPreferences.Editor edit = prefs().edit();
-					edit.putString(SSID_FIELD, ssid);
 					if( !response.getString("did").contains(did) ) {
 						edit.putString(DID_FIELD, did);
 					}
@@ -392,9 +377,6 @@ public class SDK {
 	 */
 	private void send(String request_type, String method, Map<String, String> params, @Nullable Api.OnApiCallbackListener listener) {
 		params.put("shop_id", shop_id);
-		if( ssid != null ) {
-			params.put("ssid", ssid);
-		}
 		if( did != null ) {
 			params.put("did", did);
 		}
@@ -410,11 +392,11 @@ public class SDK {
 	}
 
 	/**
-	 * Асинхронное выполенение запросе, если ssid не указан и не выполнена инициализация
+	 * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
 	 */
 	void sendAsync(final String method, final HashMap<String, String> params, final @Nullable Api.OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> send("post", method, params, listener));
-		if( ssid != null && initialized ) {
+		if( did != null && initialized ) {
 			thread.start();
 		} else {
 			queue.add(thread);
@@ -422,11 +404,11 @@ public class SDK {
 	}
 
 	/**
-	 * Асинхронное выполенение запросе, если ssid не указан и не выполнена инициализация
+	 * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
 	 */
 	void getAsync(final String method, final HashMap<String, String> params, final @Nullable Api.OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> send("get", method, params, listener));
-		if( ssid != null && initialized ) {
+		if( did != null && initialized ) {
 			thread.start();
 		} else {
 			queue.add(thread);
