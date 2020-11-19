@@ -67,12 +67,19 @@ public class SDK {
 	}
 
 	/**
-	 * @param url from data notification
+	 * @param data from data notification
 	 */
-	public static void notificationReceived(String url) {
+	public static void notificationReceived(Map<String, String> data) {
 		HashMap<String, String> params = new HashMap<>();
-		params.put("url", url);
-		instance.sendAsync("web_push_subscriptions/received", params);
+		if( data.get("type") != null ) {
+			params.put("type", data.get("type"));
+		}
+		if( data.get("id") != null ) {
+			params.put("code", data.get("id"));
+		}
+		if( params.size() > 0 ) {
+			instance.sendAsync("web_push_subscriptions/received", params);
+		}
 	}
 
 	/**
@@ -417,7 +424,8 @@ public class SDK {
 
 	//-------------Методы------------>
 
-	static void onMessage(Map<String, String> data) {
+	public static void onMessage(Map<String, String> data) {
+		notificationReceived(data);
 		if( instance.onMessageListener != null ) {
 			instance.onMessageListener.onMessage(data);
 		}

@@ -43,7 +43,7 @@ configurations {
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	implementation 'androidx.appcompat:appcompat:1.2.0'
-	implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
+	implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
 
 //	rees46DebugImplementation project(path: ':personalizatio-sdk', configuration: 'rees46Debug')
 //	personaclickDebugImplementation project(path: ':personalizatio-sdk', configuration: 'personaclickDebug')
