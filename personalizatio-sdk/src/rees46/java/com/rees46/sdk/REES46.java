@@ -29,7 +29,8 @@ import java.util.Map;
 final public class REES46 extends SDK {
 
 	public static final String TAG = "REES46";
-	public static final String NOTIFICATION_URL = "REES46_NOTIFICATION_URL";
+	public static final String NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE";
+	public static final String NOTIFICATION_ID = "REES46_NOTIFICATION_ID";
 	protected static final String PREFERENCES_KEY = "rees46.sdk";
 	protected static final String API_URL = BuildConfig.DEBUG ? "http://dev.api.rees46.com:8080/" : "https://api.rees46.com/";
 
@@ -80,7 +81,8 @@ final public class REES46 extends SDK {
 						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 						//REQUIRED! For tracking click notification
-						intent.putExtra(REES46.NOTIFICATION_URL, data.get("url"));
+						intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
+						intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
 
 						PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
 
@@ -89,6 +91,7 @@ final public class REES46 extends SDK {
 								.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
 								.setContentTitle(data.get("title"))
 								.setContentText(data.get("body"))
+								.setSmallIcon(android.R.drawable.stat_notify_chat)
 								.setAutoCancel(true)
 								.setContentIntent(pendingIntent);
 

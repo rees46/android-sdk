@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.2.4'
+implementation 'com.personalizatio:rees46-sdk:1.2.5'
 ```
 
 ## Configure
@@ -147,8 +147,8 @@ Use to Activity:
 REES46.setEmail("EMAIL");
 
 //For tracking notification opened
-if( getIntent().getExtras() != null && getIntent().getExtras().getString(REES46.NOTIFICATION_URL, null) != null ) {
-	REES46.notificationClicked(getIntent().getExtras().getString(REES46.NOTIFICATION_URL, null));
+if( getIntent().getExtras() != null ) {
+	REES46.notificationClicked(getIntent().getExtras());
 }
 ```
 

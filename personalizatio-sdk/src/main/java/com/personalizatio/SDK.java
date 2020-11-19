@@ -10,6 +10,7 @@ import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -35,7 +36,8 @@ import java.util.Objects;
 public class SDK {
 
 	public static String TAG;
-	public static String NOTIFICATION_URL = "";
+	public static String NOTIFICATION_TYPE = "NOTIFICATION_TYPE";
+	public static String NOTIFICATION_ID = "NOTIFICATION_ID";
 	private final String PREFERENCES_KEY;
 	private static final String DID_FIELD = "did";
 	private static final String TOKEN_FIELD = "token";
@@ -84,12 +86,15 @@ public class SDK {
 	}
 
 	/**
-	 * @param url from data notification
+	 * @param extras from data notification
 	 */
-	public static void notificationClicked(String url) {
-		HashMap<String, String> params = new HashMap<>();
-		params.put("url", url);
-		instance.sendAsync("web_push_subscriptions/clicked", params);
+	public static void notificationClicked(Bundle extras) {
+		if( extras.getString(NOTIFICATION_TYPE, null) != null && extras.getString(NOTIFICATION_ID, null) != null ) {
+			HashMap<String, String> params = new HashMap<>();
+			params.put("type", extras.getString(NOTIFICATION_TYPE));
+			params.put("code", extras.getString(NOTIFICATION_ID));
+			instance.sendAsync("web_push_subscriptions/clicked", params);
+		}
 	}
 
 	/**

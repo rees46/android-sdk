@@ -30,8 +30,8 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		setContentView(R.layout.activity_main);
 //		Log.e("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
 
-		if( getIntent().getExtras() != null && getIntent().getExtras().getString(T.NOTIFICATION_URL, null) != null ) {
-			T.notificationClicked(getIntent().getExtras().getString(T.NOTIFICATION_URL, null));
+		if( getIntent().getExtras() != null ) {
+			T.notificationClicked(getIntent().getExtras());
 		}
 
 		button = findViewById(R.id.button);
