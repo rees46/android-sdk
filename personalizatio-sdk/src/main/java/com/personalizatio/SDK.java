@@ -16,6 +16,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
 
 import org.json.JSONException;
@@ -424,10 +425,10 @@ public class SDK {
 
 	//-------------Методы------------>
 
-	public static void onMessage(Map<String, String> data) {
-		notificationReceived(data);
+	public static void onMessage(RemoteMessage remoteMessage) {
+		notificationReceived(remoteMessage.getData());
 		if( instance.onMessageListener != null ) {
-			instance.onMessageListener.onMessage(data);
+			instance.onMessageListener.onMessage(remoteMessage.getData());
 		}
 	}
 }
