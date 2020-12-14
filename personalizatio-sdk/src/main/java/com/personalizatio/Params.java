@@ -113,6 +113,8 @@ final public class Params extends AbstractParams<Params> {
 		REMOVE_FROM_CART("remove_from_cart"),
 		PURCHASE("purchase"),
 		SEARCH("search"),
+		WISH("wish"),
+		REMOVE_FROM_WISH("remove_wish"),
 		;
 		String value;
 		TrackEvent(String v) {

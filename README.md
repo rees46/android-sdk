@@ -230,6 +230,10 @@ purchase
 	.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
 REES46.track(Params.TrackEvent.PURCHASE, purchase);
 
-//Просмотр категории
+//Category view
 REES46.track(Params.TrackEvent.CATEGORY, (new Params()).put(Params.Parameter.CATEGORY_ID, "100"));
+
+//Wish
+REES46.track(Params.TrackEvent.WISH, "37");
+REES46.track(Params.TrackEvent.REMOVE_FROM_WISH, "37");
 ```
