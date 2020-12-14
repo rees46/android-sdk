@@ -299,10 +299,21 @@ public class SDK {
 		}
 	}
 
+	private boolean isTestDevice() {
+		return "true".equals(Settings.System.getString(context.getContentResolver(), "firebase.test.lab"));
+	}
+
 	/**
 	 * Connect to init script
 	 */
 	private void init() {
+
+		//Disable working Google Play Pre-Launch report devices
+		if( isTestDevice() ) {
+			Log.w(TAG, "Disable working Google Play Pre-Launch report devices");
+			return;
+		}
+
 		HashMap<String, String> params = new HashMap<>();
 		send("get", "init", params, new Api.OnApiCallbackListener() {
 			@Override
