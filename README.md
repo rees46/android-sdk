@@ -144,7 +144,9 @@ Use to Activity:
 
 ```
 //User data
-REES46.setEmail("EMAIL");
+HashMap<String, String> params = new HashMap<>();
+params.put("email", "email@example.com");
+REES46.profile(params);
 
 //For tracking notification opened
 if( getIntent().getExtras() != null ) {

@@ -10,7 +10,7 @@ import java.util.Map;
 public final class SearchParams extends AbstractParams<SearchParams> {
 
 	/**
-	 * @link https://reference.api.rees46.com/#full-search
+	 * https://reference.api.rees46.com/#full-search
 	 */
 	public enum Parameter implements AbstractParams.ParamInterface {
 		PAGE("page"),

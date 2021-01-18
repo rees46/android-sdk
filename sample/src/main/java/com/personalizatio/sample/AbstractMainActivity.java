@@ -18,6 +18,7 @@ import com.personalizatio.SearchParams;
 import org.json.JSONObject;
 
 import java.security.Security;
+import java.util.HashMap;
 
 public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActivity {
 
@@ -45,7 +46,9 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 
 		button.setOnClickListener(v -> {
 			if( !text.getText().toString().isEmpty() ) {
-				T.setEmail(text.getText().toString());
+				HashMap<String, String> params = new HashMap<>();
+				params.put("email", text.getText().toString());
+				T.profile(params);
 				Toast.makeText(getApplicationContext(), "Email sent", Toast.LENGTH_LONG).show();
 			}
 		});
