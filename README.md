@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.2.7'
+implementation 'com.personalizatio:rees46-sdk:1.2.8'
 ```
 
 ## Configure
