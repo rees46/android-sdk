@@ -24,9 +24,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TimeZone;
 
 /**
  * Created by Sergey Odintsov
@@ -325,6 +327,7 @@ public class SDK {
 		}
 
 		HashMap<String, String> params = new HashMap<>();
+		params.put("tz", String.valueOf((int) (TimeZone.getDefault().getRawOffset() / 3600000.0)));
 		send("get", "init", params, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
@@ -416,6 +419,7 @@ public class SDK {
 		}
 		if( seance != null ) {
 			params.put("seance", seance);
+			params.put("sid", seance);
 		}
 		params.put("segment", segment);
 		Api.send(request_type, method, params, listener);

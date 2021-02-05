@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.2.8'
+implementation 'com.personalizatio:rees46-sdk:1.2.9'
 ```
 
 ## Configure
@@ -27,7 +27,7 @@ Append to your project `build.gradle`
 buildscript {
 	dependencies {
 		...
-		classpath 'com.google.gms:google-services:4.3.2'
+		classpath 'com.google.gms:google-services:4.3.5'
 	}
 }
 ```
