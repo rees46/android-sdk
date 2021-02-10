@@ -230,6 +230,22 @@ public class SDK {
 		instance.sendAsync("push", params.build(), listener);
 	}
 
+	/**
+	 * Возвращает идентификатор устройства
+	 * @return String
+	 */
+	public static String getDid() {
+		return instance.did;
+	}
+
+	/**
+	 * Возвращает идентификатор сессии
+	 * @return String
+	 */
+	public static String getSid() {
+		return instance.seance;
+	}
+
 	//----------Private--------------->
 
 	/**
