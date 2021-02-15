@@ -117,7 +117,8 @@ new AsyncTask<String, Void, Bitmap>() {
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 		//REQUIRED! For tracking click notification
-		intent.putExtra(REES46.NOTIFICATION_URL, data.get("url"));
+        intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
+        intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
 
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT);
 
