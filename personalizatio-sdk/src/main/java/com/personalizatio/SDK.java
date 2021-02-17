@@ -192,10 +192,7 @@ public class SDK {
 	 * @param listener Колбек
 	 */
 	public static void recommend(String code, Params params, Api.OnApiCallbackListener listener) {
-		params
-				.put(InternalParameter.RECOMMENDER_TYPE, "dynamic")
-				.put(InternalParameter.RECOMMENDER_CODE, code);
-		instance.getAsync("recommend", params.build(), listener);
+		instance.getAsync("recommend/" + code, params.build(), listener);
 	}
 
 	/**
