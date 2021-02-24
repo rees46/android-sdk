@@ -6,13 +6,15 @@ import androidx.annotation.Nullable;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
@@ -65,8 +67,8 @@ public final class Api {
 				if( request_type.toUpperCase().equals("POST") ) {
 					conn.setDoOutput(true);
 					conn.setDoInput(true);
-					DataOutputStream os = new DataOutputStream(conn.getOutputStream());
-					os.writeBytes(builder.build().getQuery());
+					BufferedWriter os = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), StandardCharsets.UTF_8));
+					os.write(builder.build().getQuery());
 					os.flush();
 					os.close();
 				}

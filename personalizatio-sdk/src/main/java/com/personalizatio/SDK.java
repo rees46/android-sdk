@@ -380,10 +380,14 @@ public class SDK {
 
 			@Override
 			public void onError(int code, String msg) {
-				if( attempt < 5 ) {
-					attempt++;
-					Handler handler = new Handler(Looper.getMainLooper());
-					handler.postDelayed(() -> init(), 1000 * attempt);
+				if( code >= 500 ) {
+					if( attempt < 5 ) {
+						attempt++;
+						Handler handler = new Handler(Looper.getMainLooper());
+						handler.postDelayed(() -> init(), 1000 * attempt);
+					}
+				} else {
+					SDK.error("Init error: " + msg);
 				}
 			}
 		});
