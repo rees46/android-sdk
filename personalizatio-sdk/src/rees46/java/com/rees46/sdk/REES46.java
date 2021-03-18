@@ -39,7 +39,7 @@ final public class REES46 extends SDK {
 	 * @param shop_id Shop key
 	 */
 	private REES46(Context context, String shop_id, String api_host) {
-		super(context, shop_id, api_host == null ? API_URL : "https://".concat(api_host).concat("/"), TAG, PREFERENCES_KEY);
+		super(context, shop_id, api_host == null ? API_URL : "https://".concat(api_host).concat("/"), TAG, PREFERENCES_KEY, "android");
 	}
 
 	/**

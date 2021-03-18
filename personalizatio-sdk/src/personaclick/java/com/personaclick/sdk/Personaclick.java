@@ -22,7 +22,7 @@ final public class Personaclick extends SDK {
 	 * @param shop_id Shop key
 	 */
 	private Personaclick(Context context, String shop_id) {
-		super(context, shop_id, API_URL, TAG, PREFERENCES_KEY);
+		super(context, shop_id, API_URL, TAG, PREFERENCES_KEY, "android");
 	}
 
 	/**

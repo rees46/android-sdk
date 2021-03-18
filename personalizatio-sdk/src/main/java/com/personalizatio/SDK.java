@@ -57,8 +57,12 @@ public class SDK {
 	private ArrayList<Thread> queue = new ArrayList<>();
 	private Search search;
 	private final String segment;
+	private final String stream;
 
 	public static void initialize(Context context, String shop_id) {
+		throw new IllegalStateException("You need make static initialize method!");
+	}
+	public static void initialize(Context context, String shop_id, String stream) {
 		throw new IllegalStateException("You need make static initialize method!");
 	}
 
@@ -276,9 +280,10 @@ public class SDK {
 	/**
 	 * @param shop_id Shop key
 	 */
-	protected SDK(Context context, String shop_id, String api_url, String tag, String prefs_key) {
+	protected SDK(Context context, String shop_id, String api_url, String tag, String prefs_key, String stream) {
 		this.shop_id = shop_id;
 		this.context = context;
+		this.stream = stream;
 		TAG = tag;
 		PREFERENCES_KEY = prefs_key;
 		Api.initialize(api_url);
@@ -439,6 +444,7 @@ public class SDK {
 			params.put("sid", seance);
 		}
 		params.put("segment", segment);
+		params.put("stream", stream);
 		Api.send(request_type, method, params, listener);
 	}
 
