@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.3.2'
+implementation 'com.personalizatio:rees46-sdk:1.3.3'
 ```
 
 ## Configure
@@ -189,6 +189,8 @@ params.put(SearchParams.Parameter.LOCATIONS, "location");
 SearchParams.SearchFilters filters = new SearchParams.SearchFilters();
 filters.put("voltage", new String[] {"11.1", "14.8"});
 params.put(SearchParams.Parameter.FILTERS, filters);
+//Disable clarification search
+params.put(SearchParams.Parameter.NO_CLARIFICATION, true);
 REES46.search("SEARCH_QUERY", SearchParams.TYPE.FULL, params, new Api.OnApiCallbackListener() {
     @Override
     public void onSuccess(JSONObject response) {

@@ -27,6 +27,8 @@ public final class SearchParams extends AbstractParams<SearchParams> {
 		PRICE_MAX("price_max"),
 		COLORS("colors"),
 		EXCLUDE("exclude"),
+		//params.put(SearchParams.Parameter.NO_CLARIFICATION, true);
+		NO_CLARIFICATION("no_clarification"),
 		;
 
 		protected String value;
@@ -83,6 +85,6 @@ public final class SearchParams extends AbstractParams<SearchParams> {
 	}
 
 	public SearchParams put(Parameter param, SearchFilters value) {
-		return (SearchParams) put(param, value.toString());
+		return put(param, value.toString());
 	}
 }
