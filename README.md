@@ -241,4 +241,10 @@ REES46.track(Params.TrackEvent.CATEGORY, (new Params()).put(Params.Parameter.CAT
 //Wish
 REES46.track(Params.TrackEvent.WISH, "37");
 REES46.track(Params.TrackEvent.REMOVE_FROM_WISH, "37");
+
+//Custom events simple
+REES46.track("my_event");
+
+//Tracking with custom parameters
+REES46.track("my_event", "event category", "event label", 100);
 ```

@@ -153,6 +153,9 @@ final public class Params extends AbstractParams<Params> {
 		RECOMMENDER_TYPE("recommender_type"),
 		RECOMMENDER_CODE("recommender_code"),
 		EVENT("event"),
+		CATEGORY("category"),
+		LABEL("label"),
+		VALUE("value"),
 		RECOMMENDED_BY("recommended_by"),
 		RECOMMENDED_CODE("recommended_code"),
 		;

@@ -232,6 +232,48 @@ public class SDK {
 	}
 
 	/**
+	 * Трекинг кастомных событий
+	 * @param event Ключ события
+	 */
+	public static void track(String event) {
+		track(event, null, null, null, null);
+	}
+
+	/**
+	 * Трекинг кастомных событий
+	 * @param event Ключ события
+	 * @param category Event category
+	 * @param label    Event label
+	 * @param value    Event value
+	 */
+	public static void track(String event, @Nullable String category, @Nullable String label, @Nullable Integer value) {
+		track(event, category, label, value, null);
+	}
+
+	/**
+	 * Трекинг кастомных событий
+	 * @param event    Ключ события
+	 * @param category Event category
+	 * @param label    Event label
+	 * @param value    Event value
+	 * @param listener Колбек
+	 */
+	public static void track(String event, @Nullable String category, @Nullable String label, @Nullable Integer value, @Nullable Api.OnApiCallbackListener listener) {
+		Params params = new Params();
+		params.put(InternalParameter.EVENT, event);
+		if( category != null ) {
+			params.put(InternalParameter.CATEGORY, category);
+		}
+		if( label != null ) {
+			params.put(InternalParameter.LABEL, label);
+		}
+		if( value != null ) {
+			params.put(InternalParameter.VALUE, value);
+		}
+		instance.sendAsync("push/custom", params.build(), listener);
+	}
+
+	/**
 	 * Возвращает идентификатор устройства
 	 * @return String
 	 */
