@@ -47,9 +47,13 @@ public final class Api {
 	public static void send(final String request_type, final String method, final Map<String, String> params, @Nullable final OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> {
 			try {
+				JSONObject body = new JSONObject();
 				Uri.Builder builder = Uri.parse(instance.url + method).buildUpon();
 				for( Map.Entry<String, String> entry : params.entrySet() ) {
 					builder.appendQueryParameter(entry.getKey(), entry.getValue());
+					if( request_type.toUpperCase().equals("POST") ) {
+						body.put(entry.getKey(), entry.getValue());
+					}
 				}
 
 				URL url;
@@ -65,17 +69,22 @@ public final class Api {
 				conn.setConnectTimeout(5000);
 
 				if( request_type.toUpperCase().equals("POST") ) {
+					conn.setRequestProperty("Content-Type", "application/json");
 					conn.setDoOutput(true);
 					conn.setDoInput(true);
 					BufferedWriter os = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), StandardCharsets.UTF_8));
-					os.write(builder.build().getQuery());
+					os.write(body.toString());
 					os.flush();
 					os.close();
 				}
 
 				conn.connect();
 
-				SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + builder.build().toString());
+				if( request_type.toUpperCase().equals("POST") ) {
+					SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + url + " with body: " + body);
+				} else {
+					SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + builder.build().toString());
+				}
 
 				if( listener != null && conn.getResponseCode() == HttpURLConnection.HTTP_OK ) {
 					listener.onSuccess(new JSONObject(readStream(conn.getInputStream())));
