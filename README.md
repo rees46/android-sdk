@@ -6,20 +6,10 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.personalizatio:rees46-sdk:1.3.5'
+implementation 'com.rees46:rees46-sdk:1.3.5'
 ```
 
 ## Configure
-
-Append to repositories
-
-```
-repositories {
-    maven {
-        url  "https://dl.bintray.com/pnixx/maven" 
-    }
-}
-```
 
 Append to your project `build.gradle`
 

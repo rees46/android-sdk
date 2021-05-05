@@ -1,4 +1,6 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+//https://medium.com/mobile-app-development-publication/upload-to-mavencentral-made-easy-for-android-library-30d2b83af0c7
+//https://blog.autsoft.hu/publishing-an-android-library-to-mavencentral-in-2019/
 
 buildscript {
 
@@ -9,13 +11,12 @@ buildscript {
 	dependencies {
 		classpath 'com.android.tools.build:gradle:4.0.2'
 		classpath 'com.google.gms:google-services:4.3.5'
-
-		classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.4'
-		classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
-
-		// NOTE: Do not place your application dependencies here; they belong
-		// in the individual module build.gradle files
 	}
+}
+
+plugins {
+	id 'ru.vyarus.pom' version '2.1.0'
+	id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
 allprojects {

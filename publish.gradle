@@ -15,127 +15,163 @@ def pomConfig = {
 	}
 
 	scm {
-		url "https://github.com/pnixx"
+		connection "scm:git:github.com:rees46/rees46-android-sdk.git"
+		developerConnection "scm:git:ssh://github.com:rees46/rees46-android-sdk.git"
+		url "https://github.com:rees46/rees46-android-sdk/tree/master"
+	}
+}
+def urls = [rees46: "https://github.com/rees46/rees46-android-sdk", personaclick: "https://personaclick.com"]
+
+def publicationNames = []
+publishing {
+	publications {
+		android.libraryVariants.all { variant ->
+			if (variant.buildType.name == "debug") return // Prevents publishing debug library
+
+			def flavored = !variant.flavorName.isEmpty()
+
+			/**
+			 * Translates "_" in flavor names to "-" for artifactIds, because "-" in flavor name is an
+			 * illegal character, but is well used in artifactId names.
+			 */
+			def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
+
+			/**
+			 * If the javadoc destinationDir wasn't changed per flavor, the libraryVariants would
+			 * overwrite the javaDoc as all variants would write in the same directory
+			 * before the last javadoc jar would have been built, which would cause the last javadoc
+			 * jar to include classes from other flavors that it doesn't include.
+			 *
+			 * Yes, tricky.
+			 *
+			 * Note that "${buildDir}/docs/javadoc" is the default javadoc destinationDir.
+			 */
+			def javaDocDestDir = file("${buildDir}/docs/javadoc ${flavored ? variantArtifactId : ""}")
+
+			/**
+			 * Includes
+			 */
+			def sourceDirs = variant.sourceSets.collect {
+				it.javaDirectories // Also includes kotlin sources if any.
+			}
+			def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
+				description "Generates Javadoc for ${variant.name}."
+				source = variant.javaCompile.source // Yes, javaCompile is deprecated,
+				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
+				destinationDir = javaDocDestDir
+				classpath += files(android.getBootClasspath().join(File.pathSeparator))
+				classpath += files(configurations.compile)
+				options.links("http://docs.oracle.com/javase/7/docs/api/");
+				options.links("http://d.android.com/reference/");
+				exclude '**/BuildConfig.java'
+				exclude '**/R.java'
+				failOnError false
+			}
+			def javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
+				description "Puts Javadoc for ${variant.name} in a jar."
+				archiveClassifier.set('javadoc')
+				from javadoc.destinationDir
+			}
+			def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
+				description "Puts sources for ${variant.name} in a jar."
+				archiveClassifier.set('sources')
+				from sourceDirs
+			}
+
+			def publicationName = "${variant.name.capitalize()}Library"
+			publicationNames.add(publicationName)
+
+			"$publicationName"(MavenPublication) {
+				artifactId variantArtifactId
+				groupId "com.${variant.flavorName}"
+				version version
+
+				artifact variant.outputs[0].packageLibrary // This is the aar library
+				artifact sourcesJar
+				artifact javadocJar
+
+				pom {
+					packaging 'aar'
+					withXml {
+						def root = asNode()
+						root.appendNode("name", variantArtifactId)
+						root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
+						root.appendNode("url", urls[variant.flavorName])
+						root.children().last() + pomConfig
+						def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
+
+						def addDep = {
+							if (it.group == null) return // Avoid empty dependency nodes
+							def dependencyNode = depsNode.appendNode('dependency')
+							dependencyNode.appendNode('groupId', it.group)
+							dependencyNode.appendNode('artifactId', it.name)
+							dependencyNode.appendNode('version', it.version)
+							if (it.hasProperty('optional') && it.optional) {
+								dependencyNode.appendNode('optional', 'true')
+							}
+						}
+
+						// Add deps that everyone has
+						configurations.compile.allDependencies.each addDep
+						// Add flavor specific deps
+						if (flavored) {
+							configurations["${variant.flavorName}Compile"].allDependencies.each addDep
+						}
+						// NOTE: This library doesn't use builtTypes specific dependencies, so no need to add them.
+					}
+				}
+			}
+		}
+	}
+	repositories {
+		// The repository to publish to, Sonatype/MavenCentral
+		maven {
+			// This is an arbitrary name, you may also use "mavencentral" or
+			// any other name that's descriptive for you
+			name = "sonatype"
+
+			def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+			// You only need this if you want to publish snapshots, otherwise just set the URL
+			// to the release repo directly
+			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+
+			// The username and password we've fetched earlier
+			credentials {
+				username ossrhUsername
+				password ossrhPassword
+			}
+		}
 	}
 }
 
-def publicationNames = []
-publishing.publications {
-	android.libraryVariants.all { variant ->
-		if (variant.buildType.name == "debug") return // Prevents publishing debug library
+// Set up Sonatype repository
+def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
-		def flavored = !variant.flavorName.isEmpty()
+afterEvaluate {
+	nexusPublishing {
+		repositories {
+			android.libraryVariants.all { variant ->
+				if (variant.buildType.name == "debug") return // Prevents publishing debug library
 
-		/**
-		 * Translates "_" in flavor names to "-" for artifactIds, because "-" in flavor name is an
-		 * illegal character, but is well used in artifactId names.
-		 */
-		def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
-
-		/**
-		 * If the javadoc destinationDir wasn't changed per flavor, the libraryVariants would
-		 * overwrite the javaDoc as all variants would write in the same directory
-		 * before the last javadoc jar would have been built, which would cause the last javadoc
-		 * jar to include classes from other flavors that it doesn't include.
-		 *
-		 * Yes, tricky.
-		 *
-		 * Note that "${buildDir}/docs/javadoc" is the default javadoc destinationDir.
-		 */
-		def javaDocDestDir = file("${buildDir}/docs/javadoc ${flavored ? variantArtifactId : ""}")
-
-		/**
-		 * Includes
-		 */
-		def sourceDirs = variant.sourceSets.collect {
-			it.javaDirectories // Also includes kotlin sources if any.
-		}
-		def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
-			description "Generates Javadoc for ${variant.name}."
-			source = variant.javaCompile.source // Yes, javaCompile is deprecated,
-			// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
-			destinationDir = javaDocDestDir
-			classpath += files(android.getBootClasspath().join(File.pathSeparator))
-			classpath += files(configurations.compile)
-			options.links("http://docs.oracle.com/javase/7/docs/api/");
-			options.links("http://d.android.com/reference/");
-			exclude '**/BuildConfig.java'
-			exclude '**/R.java'
-			failOnError false
-		}
-		def javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
-			description "Puts Javadoc for ${variant.name} in a jar."
-			classifier = 'javadoc'
-			from javadoc.destinationDir
-		}
-		def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
-			description "Puts sources for ${variant.name} in a jar."
-			from sourceDirs
-			classifier = 'sources'
-		}
-
-		def publicationName = "splitties${variant.name.capitalize()}Library"
-		publicationNames.add(publicationName)
-
-		"$publicationName"(MavenPublication) {
-			artifactId variantArtifactId
-			group groupId
-			version version
-
-			artifact variant.outputs[0].packageLibrary // This is the aar library
-			artifact sourcesJar
-			artifact javadocJar
-
-			pom {
-				packaging 'aar'
-				withXml {
-					def root = asNode()
-					root.appendNode("name", 'Maven')
-//					root.appendNode("url", siteUrl)
-					root.children().last() + pomConfig
-					def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
-
-					def addDep = {
-						if (it.group == null) return // Avoid empty dependency nodes
-						def dependencyNode = depsNode.appendNode('dependency')
-						dependencyNode.appendNode('groupId', it.group)
-						dependencyNode.appendNode('artifactId', it.name)
-						dependencyNode.appendNode('version', it.version)
-						if (it.hasProperty('optional') && it.optional) {
-							dependencyNode.appendNode('optional', 'true')
-						}
-					}
-
-					// Add deps that everyone has
-					configurations.compile.allDependencies.each addDep
-					// Add flavor specific deps
-					if (flavored) {
-						configurations["${variant.flavorName}Compile"].allDependencies.each addDep
-					}
-					// NOTE: This library doesn't use builtTypes specific dependencies, so no need to add them.
+				"${variant.flavorName}Sonatype" {
+					stagingProfileId = sonatypeIds[variant.flavorName]
+					username = ossrhUsername
+					password = ossrhPassword
+					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 				}
 			}
 		}
 	}
 }
 
-afterEvaluate {
-	bintray {
-		user = bintray_user
-		key = bintray_api_key
-		publications = publicationNames
+ext["signing.keyId"] = signing_keyId
+ext["signing.password"] = signing_password
+ext["signing.secretKeyRingFile"] = signing_secretKeyRingFile
+ext["ossrhUsername"] = ossrhUsername
+ext["ossrhPassword"] = ossrhPassword
 
-		override = true
-		pkg {
-			repo = 'maven'
-			name = group
-			websiteUrl = 'https://rees46.com'
-			vcsUrl = 'https://github.com/rees46/rees46-android-sdk'
-			licenses = ['GPL-2.0']
-			labels = ['android', 'personalization']
-			githubRepo = 'rees46/rees46-android-sdk'
-			githubReleaseNotesFile = 'README.md'
-			publish = true
-		}
-	}
+signing {
+	sign publishing.publications
 }
