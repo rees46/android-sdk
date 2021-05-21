@@ -30,6 +30,8 @@ final public class Personaclick extends SDK {
 	 * @param shop_id Shop key
 	 */
 	public static void initialize(Context context, String shop_id) {
-		instance = new Personaclick(context, shop_id);
+		if( instance == null ) {
+			instance = new Personaclick(context, shop_id);
+		}
 	}
 }

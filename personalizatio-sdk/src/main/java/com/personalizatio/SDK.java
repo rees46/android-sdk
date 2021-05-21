@@ -67,16 +67,6 @@ public class SDK {
 	}
 
 	/**
-	 * @param email user email
-	 * @deprecated Please, use profile method
-	 */
-	public static void setEmail(String email) {
-		HashMap<String, String> params = new HashMap<>();
-		params.put("attributes[email]", email);
-		instance.sendAsync("push_attributes", params);
-	}
-
-	/**
 	 * Update profile data
 	 * https://reference.api.rees46.com/#save-profile-settings
 	 * @param data profile data

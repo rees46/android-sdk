@@ -54,57 +54,59 @@ final public class REES46 extends SDK {
 	 * @param shop_id Shop key
 	 */
 	public static void initialize(final Context context, String shop_id, String api_host) {
-		instance = new REES46(context, shop_id, api_host);
-		//Дефолтное отображение сообщения без кастомизации
-		REES46.setOnMessageListener(new OnMessageListener() {
-			@SuppressLint("StaticFieldLeak")
-			@Override
-			public void onMessage(Map<String, String> data) {
-				new AsyncTask<String, Void, Bitmap>() {
+		if( instance == null ) {
+			instance = new REES46(context, shop_id, api_host);
+			//Дефолтное отображение сообщения без кастомизации
+			REES46.setOnMessageListener(new OnMessageListener() {
+				@SuppressLint("StaticFieldLeak")
+				@Override
+				public void onMessage(Map<String, String> data) {
+					new AsyncTask<String, Void, Bitmap>() {
 
-					@Override
-					protected Bitmap doInBackground(String... params) {
-						try {
-							InputStream in = new URL(params[0]).openStream();
-							return BitmapFactory.decodeStream(in);
-						} catch (IOException e) {
-							e.printStackTrace();
+						@Override
+						protected Bitmap doInBackground(String... params) {
+							try {
+								InputStream in = new URL(params[0]).openStream();
+								return BitmapFactory.decodeStream(in);
+							} catch(IOException e) {
+								e.printStackTrace();
+							}
+							return null;
 						}
-						return null;
-					}
 
-					@Override
-					protected void onPostExecute(Bitmap result) {
-						super.onPostExecute(result);
+						@Override
+						protected void onPostExecute(Bitmap result) {
+							super.onPostExecute(result);
 
-						Intent intent = new Intent(context, context.getClass());
-						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+							Intent intent = new Intent(context, context.getClass());
+							intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-						//REQUIRED! For tracking click notification
-						intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
-						intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
+							//REQUIRED! For tracking click notification
+							intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
+							intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
 
-						PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
+							PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT);
 
-						NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, "notification_channel")
-								.setLargeIcon(result)
-								.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
-								.setContentTitle(data.get("title"))
-								.setContentText(data.get("body"))
-								.setSmallIcon(android.R.drawable.stat_notify_chat)
-								.setAutoCancel(true)
-								.setContentIntent(pendingIntent);
+							NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, "notification_channel")
+									.setLargeIcon(result)
+									.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
+									.setContentTitle(data.get("title"))
+									.setContentText(data.get("body"))
+									.setSmallIcon(android.R.drawable.stat_notify_chat)
+									.setAutoCancel(true)
+									.setContentIntent(pendingIntent);
 
-						NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-						if( notificationManager != null ) {
-							notificationManager.notify(0, notificationBuilder.build());
-						} else {
-							Log.e(REES46.TAG, "NotificationManager not allowed");
+							NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+							if( notificationManager != null ) {
+								notificationManager.notify(0, notificationBuilder.build());
+							} else {
+								Log.e(REES46.TAG, "NotificationManager not allowed");
+							}
 						}
-					}
-				}.execute(data.get("icon"));
-			}
-		});
+					}.execute(data.get("icon"));
+				}
+			});
+		}
 	}
 
 }

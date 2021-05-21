@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.rees46:rees46-sdk:1.3.5'
+implementation 'com.rees46:rees46-sdk:1.3.6'
 ```
 
 ## Configure
