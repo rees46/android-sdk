@@ -12,6 +12,7 @@ import android.os.AsyncTask;
 import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
+import com.personalizatio.Api;
 import com.personalizatio.OnMessageListener;
 import com.personalizatio.SDK;
 import com.rees46.sdk.REES46;
@@ -37,6 +38,7 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 
 		//Demo shop
 		initialize();
+		T.getSid(sid -> Log.d("APP", "sid: " + sid));
 		T.setOnMessageListener(new OnMessageListener() {
 			@SuppressLint("StaticFieldLeak")
 			@Override

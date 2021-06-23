@@ -6,17 +6,18 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.util.Consumer;
+
 import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.installations.FirebaseInstallations;
 import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
 
@@ -24,7 +25,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -273,10 +273,14 @@ public class SDK {
 
 	/**
 	 * Возвращает идентификатор сессии
-	 * @return String
 	 */
-	public static String getSid() {
-		return instance.seance;
+	public static void getSid(Consumer<String> listener) {
+		Thread thread = new Thread(() -> listener.accept(instance.seance));
+		if( instance.initialized ) {
+			thread.start();
+		} else {
+			instance.queue.add(thread);
+		}
 	}
 
 	//----------Private--------------->
@@ -437,6 +441,10 @@ public class SDK {
 		FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(task -> {
 			if( !task.isSuccessful() ) {
 				SDK.error("getInstanceId failed", task.getException());
+				return;
+			}
+			if( task.getResult() == null ) {
+				SDK.error("Firebase result is null");
 				return;
 			}
 
