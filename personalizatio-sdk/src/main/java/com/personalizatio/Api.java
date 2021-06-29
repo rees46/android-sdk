@@ -15,6 +15,7 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -44,16 +45,13 @@ public final class Api {
 	 * @param params   request
 	 * @param listener callback
 	 */
-	public static void send(final String request_type, final String method, final Map<String, String> params, @Nullable final OnApiCallbackListener listener) {
+	public static void send(final String request_type, final String method, final JSONObject params, @Nullable final OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> {
 			try {
-				JSONObject body = new JSONObject();
 				Uri.Builder builder = Uri.parse(instance.url + method).buildUpon();
-				for( Map.Entry<String, String> entry : params.entrySet() ) {
-					builder.appendQueryParameter(entry.getKey(), entry.getValue());
-					if( request_type.toUpperCase().equals("POST") ) {
-						body.put(entry.getKey(), entry.getValue());
-					}
+				for( Iterator<String> it = params.keys(); it.hasNext(); ) {
+					String key = it.next();
+					builder.appendQueryParameter(key, params.getString(key));
 				}
 
 				URL url;
@@ -73,7 +71,7 @@ public final class Api {
 					conn.setDoOutput(true);
 					conn.setDoInput(true);
 					BufferedWriter os = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream(), StandardCharsets.UTF_8));
-					os.write(body.toString());
+					os.write(params.toString());
 					os.flush();
 					os.close();
 				}
@@ -81,7 +79,7 @@ public final class Api {
 				conn.connect();
 
 				if( request_type.toUpperCase().equals("POST") ) {
-					SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + url + " with body: " + body);
+					SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + url + " with body: " + params);
 				} else {
 					SDK.debug(conn.getResponseCode() + ": " + request_type.toUpperCase() + " " + builder.build().toString());
 				}

@@ -1,11 +1,13 @@
 package com.personalizatio;
 
 import android.text.TextUtils;
+import android.util.Log;
 
-import java.util.HashMap;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 abstract class AbstractParams<P extends AbstractParams<P>> {
-	protected final HashMap<String, String> params = new HashMap<>();
+	protected final JSONObject params = new JSONObject();
 
 	public interface ParamInterface {
 		String getValue();
@@ -15,7 +17,11 @@ abstract class AbstractParams<P extends AbstractParams<P>> {
 	 * Вставка строковых параметров
 	 */
 	public P put(P.ParamInterface param, String value) {
-		params.put(param.getValue(), value);
+		try {
+			params.put(param.getValue(), value);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
 		return (P) this;
 	}
 	public P put(P.ParamInterface param, int value) {
@@ -30,11 +36,15 @@ abstract class AbstractParams<P extends AbstractParams<P>> {
 	 * Вставка параметров с массивом
 	 */
 	public P put(P.ParamInterface param, String[] value) {
-		params.put(param.getValue(), TextUtils.join(",", value));
+		try {
+			params.put(param.getValue(), TextUtils.join(",", value));
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
 		return (P) this;
 	}
 
-	HashMap<String, String> build() {
+	JSONObject build() {
 		return params;
 	}
 }

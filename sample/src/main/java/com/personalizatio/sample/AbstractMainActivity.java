@@ -53,6 +53,8 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 			}
 		});
 
+		T.notificationClicked(getIntent().getExtras());
+
 		//Запрашиваем поиск
 		SearchParams params = new SearchParams();
 		params.put(SearchParams.Parameter.LOCATIONS, "location");

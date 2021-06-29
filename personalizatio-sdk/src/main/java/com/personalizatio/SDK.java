@@ -16,8 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
 
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.installations.FirebaseInstallations;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
 
@@ -58,6 +57,9 @@ public class SDK {
 	private Search search;
 	private final String segment;
 	private final String stream;
+	private String source_type;
+	private String source_id;
+	private long source_time = 0;
 
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
@@ -72,22 +74,26 @@ public class SDK {
 	 * @param data profile data
 	 */
 	public static void profile(HashMap<String, String> data) {
-		instance.sendAsync("profile/set", data);
+		instance.sendAsync("profile/set", new JSONObject(data));
 	}
 
 	/**
 	 * @param data from data notification
 	 */
 	public static void notificationReceived(Map<String, String> data) {
-		HashMap<String, String> params = new HashMap<>();
-		if( data.get("type") != null ) {
-			params.put("type", data.get("type"));
-		}
-		if( data.get("id") != null ) {
-			params.put("code", data.get("id"));
-		}
-		if( params.size() > 0 ) {
-			instance.sendAsync("web_push_subscriptions/received", params);
+		JSONObject params = new JSONObject();
+		try {
+			if( data.get("type") != null ) {
+				params.put("type", data.get("type"));
+			}
+			if( data.get("id") != null ) {
+				params.put("code", data.get("id"));
+			}
+			if( params.length() > 0 ) {
+				instance.sendAsync("web_push_subscriptions/received", params);
+			}
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
 		}
 	}
 
@@ -95,12 +101,35 @@ public class SDK {
 	 * @param extras from data notification
 	 */
 	public static void notificationClicked(Bundle extras) {
-		if( extras.getString(NOTIFICATION_TYPE, null) != null && extras.getString(NOTIFICATION_ID, null) != null ) {
-			HashMap<String, String> params = new HashMap<>();
-			params.put("type", extras.getString(NOTIFICATION_TYPE));
-			params.put("code", extras.getString(NOTIFICATION_ID));
-			instance.sendAsync("web_push_subscriptions/clicked", params);
+		if( extras != null && extras.getString(NOTIFICATION_TYPE, null) != null && extras.getString(NOTIFICATION_ID, null) != null ) {
+			JSONObject params = new JSONObject();
+			try {
+				params.put("type", extras.getString(NOTIFICATION_TYPE));
+				params.put("code", extras.getString(NOTIFICATION_ID));
+				instance.sendAsync("web_push_subscriptions/clicked", params);
+
+				//Сохраняем источник
+				setSource(extras.getString(NOTIFICATION_TYPE), extras.getString(NOTIFICATION_ID));
+			} catch(JSONException e) {
+				Log.e(SDK.TAG, e.getMessage(), e);
+			}
 		}
+	}
+
+	/**
+	 * Сохраняет данные источника
+	 * @param type
+	 * @param id
+	 */
+	protected static void setSource(String type, String id) {
+		instance.source_type = type;
+		instance.source_id = id;
+		instance.source_time = System.currentTimeMillis();
+		instance.prefs().edit()
+				.putString("source_type", type)
+				.putString("source_id", id)
+				.putLong("source_time", instance.source_time)
+				.apply();
 	}
 
 	/**
@@ -326,6 +355,9 @@ public class SDK {
 
 		//Инициализируем сегмент
 		segment = prefs().getString(PREFERENCES_KEY + ".segment", new String[]{"A", "B"}[(int) Math.round(Math.random())]);
+		source_type = prefs().getString("source_type", null);
+		source_id = prefs().getString("source_id", null);
+		source_time = prefs().getLong("source_time", 0);
 
 		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ) {
 			// Create channel to show notifications.
@@ -380,65 +412,69 @@ public class SDK {
 			return;
 		}
 
-		HashMap<String, String> params = new HashMap<>();
-		params.put("tz", String.valueOf((int) (TimeZone.getDefault().getRawOffset() / 3600000.0)));
-		send("get", "init", params, new Api.OnApiCallbackListener() {
-			@Override
-			public void onSuccess(JSONObject response) {
-				try {
-					initialized = true;
-					seance = response.getString("seance");
-					SDK.debug("Device ID: " + did + ", seance: " + seance);
-
-					//Seach
+		try {
+			JSONObject params = new JSONObject();
+			params.put("tz", String.valueOf((int) (TimeZone.getDefault().getRawOffset() / 3600000.0)));
+			send("get", "init", params, new Api.OnApiCallbackListener() {
+				@Override
+				public void onSuccess(JSONObject response) {
 					try {
-						JSONObject s = response.getJSONObject("search");
-						if( s.getBoolean("enabled") ) {
-							search = new Search(s);
-						} else {
-							SDK.debug("Search disabled");
+						initialized = true;
+						seance = response.getString("seance");
+						SDK.debug("Device ID: " + did + ", seance: " + seance);
+
+						//Seach
+						try {
+							JSONObject s = response.getJSONObject("search");
+							if( s.getBoolean("enabled") ) {
+								search = new Search(s);
+							} else {
+								SDK.debug("Search disabled");
+							}
+						} catch(JSONException e) {
+							SDK.debug(e.getMessage());
 						}
+
+						// Сохраняем данные в память
+						SharedPreferences.Editor edit = prefs().edit();
+						if( !response.getString("did").contains(did) ) {
+							edit.putString(DID_FIELD, did);
+						}
+						edit.apply();
+
+						// Выполняем таски из очереди
+						for( Thread thread : queue ) {
+							thread.start();
+						}
+						queue.clear();
 					} catch(JSONException e) {
-						SDK.debug(e.getMessage());
+						SDK.error(e.getMessage(), e);
 					}
-
-					// Сохраняем данные в память
-					SharedPreferences.Editor edit = prefs().edit();
-					if( !response.getString("did").contains(did) ) {
-						edit.putString(DID_FIELD, did);
-					}
-					edit.apply();
-
-					// Выполняем таски из очереди
-					for( Thread thread : queue ) {
-						thread.start();
-					}
-					queue.clear();
-				} catch(JSONException e) {
-					SDK.error(e.getMessage(), e);
 				}
-			}
 
-			@Override
-			public void onError(int code, String msg) {
-				if( code >= 500 ) {
-					if( attempt < 5 ) {
-						attempt++;
-						Handler handler = new Handler(Looper.getMainLooper());
-						handler.postDelayed(() -> init(), 1000 * attempt);
+				@Override
+				public void onError(int code, String msg) {
+					if( code >= 500 ) {
+						if( attempt < 5 ) {
+							attempt++;
+							Handler handler = new Handler(Looper.getMainLooper());
+							handler.postDelayed(() -> init(), 1000 * attempt);
+						}
+					} else {
+						SDK.error("Init error: " + msg);
 					}
-				} else {
-					SDK.error("Init error: " + msg);
 				}
-			}
-		});
+			});
+		} catch(JSONException e) {
+			SDK.error(e.getMessage(), e);
+		}
 	}
 
 	/**
 	 * Get device token
 	 */
 	private void getToken() {
-		FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(task -> {
+		FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
 			if( !task.isSuccessful() ) {
 				SDK.error("getInstanceId failed", task.getException());
 				return;
@@ -449,7 +485,7 @@ public class SDK {
 			}
 
 			// Get new Instance ID token
-			final String token = task.getResult().getToken();
+			final String token = task.getResult();
 			SDK.debug("token: " + token);
 
 			//Check send token
@@ -459,7 +495,7 @@ public class SDK {
 				HashMap<String, String> params = new HashMap<>();
 				params.put("platform", "android");
 				params.put("token", token);
-				send("post", "mobile_push_tokens", params, new Api.OnApiCallbackListener() {
+				send("post", "mobile_push_tokens", new JSONObject(params), new Api.OnApiCallbackListener() {
 					@Override
 					public void onSuccess(JSONObject msg) {
 						SharedPreferences.Editor edit = prefs().edit();
@@ -474,28 +510,41 @@ public class SDK {
 	/**
 	 * Прямое выполенение запроса
 	 */
-	private void send(String request_type, String method, Map<String, String> params, @Nullable Api.OnApiCallbackListener listener) {
-		params.put("shop_id", shop_id);
-		if( did != null ) {
-			params.put("did", did);
+	private void send(String request_type, String method, JSONObject params, @Nullable Api.OnApiCallbackListener listener) {
+		try {
+			params.put("shop_id", shop_id);
+			if( did != null ) {
+				params.put("did", did);
+			}
+			if( seance != null ) {
+				params.put("seance", seance);
+				params.put("sid", seance);
+			}
+			params.put("segment", segment);
+			params.put("stream", stream);
+
+			//Добавляем источник к запросу, проверяем время действия 2 дня
+			if( source_type != null && source_time > 0 && source_time + 172800 * 1000 > System.currentTimeMillis() ) {
+				JSONObject source = new JSONObject();
+				source.put("from", source_type);
+				source.put("code", source_id);
+				params.put("source", source);
+			}
+
+			Api.send(request_type, method, params, listener);
+		} catch(JSONException e) {
+			SDK.error(e.getMessage(), e);
 		}
-		if( seance != null ) {
-			params.put("seance", seance);
-			params.put("sid", seance);
-		}
-		params.put("segment", segment);
-		params.put("stream", stream);
-		Api.send(request_type, method, params, listener);
 	}
 
-	private void sendAsync(final String method, final HashMap<String, String> params) {
+	private void sendAsync(final String method, final JSONObject params) {
 		sendAsync(method, params, null);
 	}
 
 	/**
 	 * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
 	 */
-	void sendAsync(final String method, final HashMap<String, String> params, final @Nullable Api.OnApiCallbackListener listener) {
+	void sendAsync(final String method, final JSONObject params, final @Nullable Api.OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> send("post", method, params, listener));
 		if( did != null && initialized ) {
 			thread.start();
@@ -507,7 +556,7 @@ public class SDK {
 	/**
 	 * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
 	 */
-	void getAsync(final String method, final HashMap<String, String> params, final @Nullable Api.OnApiCallbackListener listener) {
+	void getAsync(final String method, final JSONObject params, final @Nullable Api.OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> send("get", method, params, listener));
 		if( did != null && initialized ) {
 			thread.start();

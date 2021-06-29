@@ -1,13 +1,16 @@
 package com.personalizatio;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import java.util.HashMap;
 import java.util.Map;
 
 final public class Params extends AbstractParams<Params> {
-
-	private int item_count = 0;
 
 	/**
 	 * Основные параметры
@@ -126,9 +129,13 @@ final public class Params extends AbstractParams<Params> {
 	 * Вставка параметров рекомендаций
 	 */
 	public Params put(RecommendedBy recommended_by) {
-		params.put(InternalParameter.RECOMMENDED_BY.getValue(), recommended_by.type);
-		if( recommended_by.code != null ) {
-			params.put(InternalParameter.RECOMMENDED_CODE.getValue(), recommended_by.code);
+		try {
+			params.put(InternalParameter.RECOMMENDED_BY.getValue(), recommended_by.type);
+			if( recommended_by.code != null ) {
+				params.put(InternalParameter.RECOMMENDED_CODE.getValue(), recommended_by.code);
+			}
+		} catch( JSONException e ) {
+			Log.e(SDK.TAG, e.getMessage(), e);
 		}
 		return this;
 	}
@@ -138,9 +145,15 @@ final public class Params extends AbstractParams<Params> {
 	 */
 	public Params put(Item item) {
 		for( Map.Entry<String, String> entry : item.columns.entrySet() ) {
-			params.put(entry.getKey() + "[" + item_count + "]", entry.getValue());
+			try {
+				JSONArray array;
+				array = params.has(entry.getKey()) ? params.getJSONArray(entry.getKey()) : new JSONArray();
+				array.put(entry.getValue());
+				params.put(entry.getKey(), array);
+			} catch(JSONException e) {
+				Log.e(SDK.TAG, e.getMessage(), e);
+			}
 		}
-		item_count++;
 
 		return this;
 	}

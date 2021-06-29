@@ -12,10 +12,8 @@ import android.os.AsyncTask;
 import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
-import com.personalizatio.Api;
 import com.personalizatio.OnMessageListener;
 import com.personalizatio.SDK;
-import com.rees46.sdk.REES46;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,8 +62,8 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
 						//REQUIRED! For tracking click notification
-						intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
-						intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
+						intent.putExtra(T.NOTIFICATION_TYPE, data.get("type"));
+						intent.putExtra(T.NOTIFICATION_ID, data.get("id"));
 
 						PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT);
 

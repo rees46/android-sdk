@@ -2,16 +2,16 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-version='1.3.7'
+version='1.4.0'
 
 android {
-	compileSdkVersion 29
+	compileSdkVersion 30
 	flavorDimensions 'default'
 //	publishNonDefault true
 
 	defaultConfig {
 		minSdkVersion 19
-		targetSdkVersion 29
+		targetSdkVersion 30
 		versionCode 1
 		versionName version
 		buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
@@ -65,8 +65,8 @@ configurations {
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-	api 'com.google.firebase:firebase-core:18.0.3'
-	api 'com.google.firebase:firebase-messaging:21.1.0'
+	api 'com.google.firebase:firebase-bom:28.2.0'
+	api 'com.google.firebase:firebase-messaging:22.0.0'
 }
 
 group='com.personalizatio'

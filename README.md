@@ -6,7 +6,9 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.rees46:rees46-sdk:1.3.6'
+implementation 'com.rees46:rees46-sdk:1.4.0'
+implementation 'com.google.firebase:firebase-bom:28.2.0'
+implementation 'com.google.firebase:firebase-messaging:22.0.0'
 ```
 
 ## Configure
@@ -17,7 +19,7 @@ Append to your project `build.gradle`
 buildscript {
 	dependencies {
 		...
-		classpath 'com.google.gms:google-services:4.3.5'
+		classpath 'com.google.gms:google-services:4.3.8'
 	}
 }
 ```
