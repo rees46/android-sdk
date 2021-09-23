@@ -312,6 +312,17 @@ public class SDK {
 		}
 	}
 
+	/**
+	 * Возвращает текущий сегмент для А/В тестирования
+	 */
+	public static String getSegment() {
+		if( instance == null ) {
+			throw new RuntimeException("You need initialize SDK before request segment");
+		} else {
+			return instance.segment;
+		}
+	}
+
 	//----------Private--------------->
 
 	/**
