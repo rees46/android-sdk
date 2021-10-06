@@ -24,7 +24,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -53,7 +55,7 @@ public class SDK {
 
 	private volatile boolean initialized = false;
 	private volatile int attempt = 0;
-	private ArrayList<Thread> queue = new ArrayList<>();
+	final private List<Thread> queue = Collections.synchronizedList(new ArrayList<>());
 	private Search search;
 	private final String segment;
 	private final String stream;
