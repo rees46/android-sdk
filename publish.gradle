@@ -60,7 +60,8 @@ publishing {
 				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
 				destinationDir = javaDocDestDir
 				classpath += files(android.getBootClasspath().join(File.pathSeparator))
-				classpath += files(configurations.compile)
+				configurations.implementation.setCanBeResolved(true)
+				classpath += files(configurations.implementation)
 				options.links("http://docs.oracle.com/javase/7/docs/api/");
 				options.links("http://d.android.com/reference/");
 				exclude '**/BuildConfig.java'
@@ -112,10 +113,10 @@ publishing {
 						}
 
 						// Add deps that everyone has
-						configurations.compile.allDependencies.each addDep
+						configurations.implementation.allDependencies.each addDep
 						// Add flavor specific deps
 						if (flavored) {
-							configurations["${variant.flavorName}Compile"].allDependencies.each addDep
+							configurations["${variant.flavorName}Implementation"].allDependencies.each addDep
 						}
 						// NOTE: This library doesn't use builtTypes specific dependencies, so no need to add them.
 					}

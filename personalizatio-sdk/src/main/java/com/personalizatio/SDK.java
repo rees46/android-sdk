@@ -45,8 +45,8 @@ public class SDK {
 	private static final String DID_FIELD = "did";
 	private static final String TOKEN_FIELD = "token";
 
-	private Context context;
-	private String shop_id;
+	private final Context context;
+	private final String shop_id;
 	private String did;
 	private String seance;
 	private OnMessageListener onMessageListener;
@@ -76,7 +76,10 @@ public class SDK {
 	 * @param data profile data
 	 */
 	public static void profile(HashMap<String, String> data) {
-		instance.sendAsync("profile/set", new JSONObject(data));
+		profile(data, null);
+	}
+	public static void profile(HashMap<String, String> data, Api.OnApiCallbackListener listener) {
+		instance.sendAsync("profile/set", new JSONObject(data), listener);
 	}
 
 	/**
@@ -120,8 +123,8 @@ public class SDK {
 
 	/**
 	 * Сохраняет данные источника
-	 * @param type
-	 * @param id
+	 * @param type тип источника: bulk, chain, transactional
+	 * @param id идентификатор сообщения
 	 */
 	protected static void setSource(String type, String id) {
 		instance.source_type = type;
@@ -331,28 +334,28 @@ public class SDK {
 	 * @param message Сообщение
 	 */
 	static void debug(String message) {
-		Log.d(instance.TAG, message);
+		Log.d(TAG, message);
 	}
 
 	/**
 	 * @param message Сообщение
 	 */
 	static void warn(String message) {
-		Log.w(instance.TAG, message);
+		Log.w(TAG, message);
 	}
 
 	/**
 	 * @param message Сообщение об ошибке
 	 */
 	static void error(String message) {
-		Log.e(instance.TAG, message);
+		Log.e(TAG, message);
 	}
 
 	/**
 	 * @param message Сообщение об ошибке
 	 */
 	static void error(String message, Throwable e) {
-		Log.e(instance.TAG, message, e);
+		Log.e(TAG, message, e);
 	}
 
 	/**
@@ -471,7 +474,7 @@ public class SDK {
 						if( attempt < 5 ) {
 							attempt++;
 							Handler handler = new Handler(Looper.getMainLooper());
-							handler.postDelayed(() -> init(), 1000 * attempt);
+							handler.postDelayed(() -> init(), 1000L * attempt);
 						}
 					} else {
 						SDK.error("Init error: " + msg);
