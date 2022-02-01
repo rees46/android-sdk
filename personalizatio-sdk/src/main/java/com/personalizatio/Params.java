@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +18,7 @@ final public class Params extends AbstractParams<Params> {
 	 */
 	public enum Parameter implements ParamInterface {
 		LIMIT("limit"),
-		ITEM("item_id"),
+		ITEM("items"),
 		LOCATIONS("locations"),
 		/**
 		 * Available sizes: 120, 140, 160, 180, 200, 220, 310, 520
@@ -83,7 +84,7 @@ final public class Params extends AbstractParams<Params> {
 	 */
 	final public static class Item {
 		public enum COLUMN {
-			ID("item_id"),
+			ID("id"),
 			AMOUNT("amount"),
 			FASHION_SIZE("fashion_size"),
 			;
@@ -144,15 +145,21 @@ final public class Params extends AbstractParams<Params> {
 	 * Вставка товара
 	 */
 	public Params put(Item item) {
-		for( Map.Entry<String, String> entry : item.columns.entrySet() ) {
-			try {
-				JSONArray array;
-				array = params.has(entry.getKey()) ? params.getJSONArray(entry.getKey()) : new JSONArray();
-				array.put(entry.getValue());
-				params.put(entry.getKey(), array);
-			} catch(JSONException e) {
-				Log.e(SDK.TAG, e.getMessage(), e);
+		try {
+			JSONArray array;
+			if( params.has(Parameter.ITEM.value) ) {
+				array = params.getJSONArray(Parameter.ITEM.value);
+			} else {
+				array = new JSONArray();
+				params.put(Parameter.ITEM.value, array);
 			}
+			JSONObject object = new JSONObject();
+			for( Map.Entry<String, String> entry : item.columns.entrySet() ) {
+				object.put(entry.getKey(), entry.getValue());
+			}
+			array.put(object);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
 		}
 
 		return this;
