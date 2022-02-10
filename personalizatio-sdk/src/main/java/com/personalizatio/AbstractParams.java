@@ -28,7 +28,12 @@ abstract class AbstractParams<P extends AbstractParams<P>> {
 		return put(param, String.valueOf(value));
 	}
 	public P put(P.ParamInterface param, boolean value) {
-		return put(param, value ? "1" : "0");
+		try {
+			params.put(param.getValue(), value);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+		return (P) this;
 	}
 
 

@@ -103,6 +103,20 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 			.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
 		T.track(Params.TrackEvent.CART, cart);
 
+		//Трекинг полной корзины
+		Params full_cart = new Params();
+		full_cart
+			.put(Params.Parameter.FULL_CART, true)
+			.put(new Params.Item("37")
+				.set(Params.Item.COLUMN.AMOUNT, 2)
+				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
+			)
+			.put(new Params.Item("40")
+				.set(Params.Item.COLUMN.AMOUNT, 1)
+				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
+			);
+		T.track(Params.TrackEvent.CART, full_cart);
+
 		//Покупка
 		Params purchase = new Params();
 		purchase
