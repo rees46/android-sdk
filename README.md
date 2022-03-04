@@ -6,7 +6,7 @@
 Add to `dependencies`:
 
 ```
-implementation 'com.rees46:rees46-sdk:1.5.0'
+implementation 'com.rees46:rees46-sdk:+'
 implementation 'com.google.firebase:firebase-bom:29.0.3'
 implementation 'com.google.firebase:firebase-messaging:23.0.0'
 ```
