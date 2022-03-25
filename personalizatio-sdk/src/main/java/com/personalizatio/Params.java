@@ -18,7 +18,7 @@ final public class Params extends AbstractParams<Params> {
 	 */
 	public enum Parameter implements ParamInterface {
 		LIMIT("limit"),
-		ITEM("items"),
+		ITEM("item"),
 		LOCATIONS("locations"),
 		/**
 		 * Available sizes: 120, 140, 160, 180, 200, 220, 310, 520
@@ -147,11 +147,11 @@ final public class Params extends AbstractParams<Params> {
 	public Params put(Item item) {
 		try {
 			JSONArray array;
-			if( params.has(Parameter.ITEM.value) ) {
-				array = params.getJSONArray(Parameter.ITEM.value);
+			if( params.has("items") ) {
+				array = params.getJSONArray("items");
 			} else {
 				array = new JSONArray();
-				params.put(Parameter.ITEM.value, array);
+				params.put("items", array);
 			}
 			JSONObject object = new JSONObject();
 			for( Map.Entry<String, String> entry : item.columns.entrySet() ) {
