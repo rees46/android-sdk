@@ -95,7 +95,7 @@ public class SDK {
 				params.put("code", data.get("id"));
 			}
 			if( params.length() > 0 ) {
-				instance.sendAsync("web_push_subscriptions/received", params);
+				instance.sendAsync("track/received", params);
 			}
 		} catch(JSONException e) {
 			Log.e(SDK.TAG, e.getMessage(), e);
@@ -111,7 +111,7 @@ public class SDK {
 			try {
 				params.put("type", extras.getString(NOTIFICATION_TYPE));
 				params.put("code", extras.getString(NOTIFICATION_ID));
-				instance.sendAsync("web_push_subscriptions/clicked", params);
+				instance.sendAsync("track/clicked", params);
 
 				//Сохраняем источник
 				setSource(extras.getString(NOTIFICATION_TYPE), extras.getString(NOTIFICATION_ID));
