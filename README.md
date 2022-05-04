@@ -260,4 +260,14 @@ REES46.track("my_event");
 
 //Tracking with custom parameters
 REES46.track("my_event", "event category", "event label", 100);
+
+//Price drop
+REES46.subscribeForPriceDrop("37", 100);
+REES46.subscribeForPriceDrop("37", 100, "mail@example.com");
+REES46.subscribeForPriceDrop("37", 100, null, "+19999999999");
+
+//Back in Stock
+REES46.subscribeForBackInStock("37");
+REES46.subscribeForBackInStock("37", "mail@example.com");
+REES46.subscribeForBackInStock("37", null, "+19999999999");
 ```
