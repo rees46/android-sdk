@@ -35,6 +35,14 @@ abstract class AbstractParams<P extends AbstractParams<P>> {
 		}
 		return (P) this;
 	}
+	public P put(P.ParamInterface param, JSONObject value) {
+		try {
+			params.put(param.getValue(), value);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+		return (P) this;
+	}
 
 
 	/**

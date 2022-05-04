@@ -178,8 +178,15 @@ public class SDK {
 	 * Пустой поиск
 	 *
 	 * @param listener v
+	 * @deprecated
+	 * This method is no longer acceptable to compute time between versions.
+	 * <p> Use {@link SDK#searchBlank(Api.OnApiCallbackListener)} instead.
 	 */
+	@Deprecated
 	public static void search_blank(Api.OnApiCallbackListener listener) {
+		searchBlank(listener);
+	}
+	public static void searchBlank(Api.OnApiCallbackListener listener) {
 		if( instance.search != null ) {
 			if( instance.search.blank == null ) {
 				instance.getAsync("search/blank", (new Params()).build(), new Api.OnApiCallbackListener() {
@@ -315,6 +322,58 @@ public class SDK {
 		} else {
 			instance.queue.add(thread);
 		}
+	}
+
+	/**
+	 * Подписывает на снижение цены
+	 * @param id            Идентификатор товара
+	 * @param current_price Текущая цена
+	 * @param email         Email, если есть
+	 * @param phone         Телефон, если есть
+	 */
+	public static void subscribeForPriceDrop(String id, double current_price, @Nullable String email, @Nullable String phone) {
+		Params params = new Params();
+		params.put(Params.Parameter.ITEM, id);
+		params.put(Params.Parameter.PRICE, String.valueOf(current_price));
+		if( email != null ) {
+			params.put(InternalParameter.EMAIL, email);
+		}
+		if( phone != null ) {
+			params.put(InternalParameter.PHONE, phone);
+		}
+		instance.sendAsync("subscriptions/subscribe_for_product_price", params.build());
+	}
+
+	/**
+	 * Подписывает на наличие товара
+	 * @param id    Идентификатор товара
+	 * @param email Email, если есть
+	 * @param phone Телефон, если есть
+	 */
+	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone) {
+		subscribeForBackInStock(id, null, email, phone);
+	}
+
+	/**
+	 * Подписывает на наличие товара
+	 * @param id         Идентификатор товара
+	 * @param properties Дополнительные параметры
+	 * @param email      Email, если есть
+	 * @param phone      Телефон, если есть
+	 */
+	public static void subscribeForBackInStock(String id, @Nullable JSONObject properties, @Nullable String email, @Nullable String phone) {
+		Params params = new Params();
+		params.put(Params.Parameter.ITEM, id);
+		if( properties != null ) {
+			params.put(InternalParameter.PROPERTIES, properties);
+		}
+		if( email != null ) {
+			params.put(InternalParameter.EMAIL, email);
+		}
+		if( phone != null ) {
+			params.put(InternalParameter.PHONE, phone);
+		}
+		instance.sendAsync("subscriptions/subscribe_for_product_available", params.build());
 	}
 
 	/**

@@ -19,6 +19,7 @@ final public class Params extends AbstractParams<Params> {
 	public enum Parameter implements ParamInterface {
 		LIMIT("limit"),
 		ITEM("item"),
+		PRICE("price"),
 		LOCATIONS("locations"),
 		/**
 		 * Available sizes: 120, 140, 160, 180, 200, 220, 310, 520
@@ -178,6 +179,9 @@ final public class Params extends AbstractParams<Params> {
 		VALUE("value"),
 		RECOMMENDED_BY("recommended_by"),
 		RECOMMENDED_CODE("recommended_code"),
+		EMAIL("email"),
+		PHONE("phone"),
+		PROPERTIES("properties"),
 		;
 
 		protected String value;
