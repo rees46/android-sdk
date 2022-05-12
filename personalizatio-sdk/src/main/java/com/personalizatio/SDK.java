@@ -332,6 +332,9 @@ public class SDK {
 	 * @param phone         Телефон, если есть
 	 */
 	public static void subscribeForPriceDrop(String id, double current_price, @Nullable String email, @Nullable String phone) {
+		subscribeForPriceDrop(id, current_price, email, phone, null);
+	}
+	public static void subscribeForPriceDrop(String id, double current_price, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		Params params = new Params();
 		params.put(Params.Parameter.ITEM, id);
 		params.put(Params.Parameter.PRICE, String.valueOf(current_price));
@@ -341,7 +344,7 @@ public class SDK {
 		if( phone != null ) {
 			params.put(InternalParameter.PHONE, phone);
 		}
-		instance.sendAsync("subscriptions/subscribe_for_product_price", params.build());
+		instance.sendAsync("subscriptions/subscribe_for_product_price", params.build(), listener);
 	}
 
 	/**
@@ -351,7 +354,10 @@ public class SDK {
 	 * @param phone Телефон, если есть
 	 */
 	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone) {
-		subscribeForBackInStock(id, null, email, phone);
+		subscribeForBackInStock(id, null, email, phone, null);
+	}
+	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
+		subscribeForBackInStock(id, null, email, phone, listener);
 	}
 
 	/**
@@ -361,7 +367,7 @@ public class SDK {
 	 * @param email      Email, если есть
 	 * @param phone      Телефон, если есть
 	 */
-	public static void subscribeForBackInStock(String id, @Nullable JSONObject properties, @Nullable String email, @Nullable String phone) {
+	public static void subscribeForBackInStock(String id, @Nullable JSONObject properties, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		Params params = new Params();
 		params.put(Params.Parameter.ITEM, id);
 		if( properties != null ) {
@@ -373,7 +379,7 @@ public class SDK {
 		if( phone != null ) {
 			params.put(InternalParameter.PHONE, phone);
 		}
-		instance.sendAsync("subscriptions/subscribe_for_product_available", params.build());
+		instance.sendAsync("subscriptions/subscribe_for_product_available", params.build(), listener);
 	}
 
 	/**
