@@ -2,10 +2,19 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
 
 android {
+	signingConfigs {
+		release {
+			storeFile file('../test.key')
+			storePassword '123456'
+			keyAlias 'test'
+			keyPassword '123456'
+		}
+	}
 	compileSdkVersion 32
 	flavorDimensions 'default'
 	defaultConfig {
 		minSdkVersion 19
+		multiDexEnabled true
 		applicationId 'com.personalizatio.sample'
 		targetSdkVersion 32
 		versionCode 1
@@ -19,6 +28,7 @@ android {
 			minifyEnabled false
 			debuggable true
 			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+			signingConfig signingConfigs.release
 		}
 	}
 	productFlavors {
@@ -34,6 +44,7 @@ android {
 		sourceCompatibility JavaVersion.VERSION_1_8
 		targetCompatibility JavaVersion.VERSION_1_8
 	}
+	namespace 'com.personalizatio.sample'
 }
 
 configurations {

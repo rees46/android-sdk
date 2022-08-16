@@ -96,7 +96,7 @@ public final class Api {
 					}
 				}
 
-				if( conn.getResponseCode() != HttpURLConnection.HTTP_OK ) {
+				if( conn.getResponseCode() >= 400 ) {
 					String error = readStream(conn.getErrorStream());
 					SDK.error(error);
 					if( listener != null ) {

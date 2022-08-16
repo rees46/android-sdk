@@ -270,4 +270,18 @@ REES46.subscribeForPriceDrop("37", 100, null, "+19999999999");
 REES46.subscribeForBackInStock("37");
 REES46.subscribeForBackInStock("37", "mail@example.com");
 REES46.subscribeForBackInStock("37", null, "+19999999999");
+JSONObject properties = new JSONObject();
+properties.put("fashion_size", "XL");
+REES46.subscribeForBackInStock("PRODUCT_ID", properties, "mail@example.com", null, null);
+```
+
+## Stories
+
+Add code to your layout:
+
+```xml
+<com.personalizatio.stories.StoriesView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:code="STORY BLOCK CODE" />
 ```

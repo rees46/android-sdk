@@ -1,4 +1,8 @@
 <resources>
 	<string name="notification_channel_id" translatable="false">notification_channel</string>
 	<string name="notification_channel_name" translatable="false">notification_channel</string>
+
+	<item name="stories" type="id" />
+	<item name="avatar" type="id" />
+	<item name="avatar_border" type="id" />
 </resources>

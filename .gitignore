@@ -7,3 +7,4 @@
 .externalNativeBuild
 sample/google-services.json
 .idea/
+test.key

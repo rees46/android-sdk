@@ -66,6 +66,7 @@ public class SDK {
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
 	}
+
 	public static void initialize(Context context, String shop_id, String stream) {
 		throw new IllegalStateException("You need make static initialize method!");
 	}
@@ -73,11 +74,13 @@ public class SDK {
 	/**
 	 * Update profile data
 	 * https://reference.api.rees46.com/#save-profile-settings
+	 *
 	 * @param data profile data
 	 */
 	public static void profile(HashMap<String, String> data) {
 		profile(data, null);
 	}
+
 	public static void profile(HashMap<String, String> data, Api.OnApiCallbackListener listener) {
 		instance.sendAsync("profile/set", new JSONObject(data), listener);
 	}
@@ -123,8 +126,9 @@ public class SDK {
 
 	/**
 	 * Сохраняет данные источника
+	 *
 	 * @param type тип источника: bulk, chain, transactional
-	 * @param id идентификатор сообщения
+	 * @param id   идентификатор сообщения
 	 */
 	protected static void setSource(String type, String id) {
 		instance.source_type = type;
@@ -178,14 +182,14 @@ public class SDK {
 	 * Пустой поиск
 	 *
 	 * @param listener v
-	 * @deprecated
-	 * This method is no longer acceptable to compute time between versions.
+	 * @deprecated This method is no longer acceptable to compute time between versions.
 	 * <p> Use {@link SDK#searchBlank(Api.OnApiCallbackListener)} instead.
 	 */
 	@Deprecated
 	public static void search_blank(Api.OnApiCallbackListener listener) {
 		searchBlank(listener);
 	}
+
 	public static void searchBlank(Api.OnApiCallbackListener listener) {
 		if( instance.search != null ) {
 			if( instance.search.blank == null ) {
@@ -264,6 +268,7 @@ public class SDK {
 
 	/**
 	 * Трекинг кастомных событий
+	 *
 	 * @param event Ключ события
 	 */
 	public static void track(String event) {
@@ -272,7 +277,8 @@ public class SDK {
 
 	/**
 	 * Трекинг кастомных событий
-	 * @param event Ключ события
+	 *
+	 * @param event    Ключ события
 	 * @param category Event category
 	 * @param label    Event label
 	 * @param value    Event value
@@ -283,6 +289,7 @@ public class SDK {
 
 	/**
 	 * Трекинг кастомных событий
+	 *
 	 * @param event    Ключ события
 	 * @param category Event category
 	 * @param label    Event label
@@ -305,7 +312,40 @@ public class SDK {
 	}
 
 	/**
+	 * @param listener
+	 */
+	public static void stories(String code, Api.OnApiCallbackListener listener) {
+		if( instance != null ) {
+			instance.getAsync("stories/" + code, new JSONObject(), listener);
+		}
+	}
+
+	/**
+	 * Вызывает событие сторисов
+	 * @param event Событие
+	 * @param code Код блока сторисов
+	 * @param story_id Идентификатор сториса
+	 * @param slide_id Идентификатор слайда
+	 */
+	public static void track_story(String event, String code, int story_id, int slide_id) {
+		if( instance != null ) {
+			try {
+				JSONObject params = new JSONObject();
+				params.put("event", event);
+				params.put("story_id", story_id);
+				params.put("slide_id", slide_id);
+				params.put("code", code);
+
+				instance.sendAsync("stories/track", params, null);
+			} catch(JSONException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
 	 * Возвращает идентификатор устройства
+	 *
 	 * @return String
 	 */
 	public static String getDid() {
@@ -335,6 +375,7 @@ public class SDK {
 	public static void subscribeForPriceDrop(String id, double current_price, @Nullable String email, @Nullable String phone) {
 		subscribeForPriceDrop(id, current_price, email, phone, null);
 	}
+
 	public static void subscribeForPriceDrop(String id, double current_price, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		Params params = new Params();
 		params.put(Params.Parameter.ITEM, id);
@@ -384,6 +425,7 @@ public class SDK {
 	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone) {
 		subscribeForBackInStock(id, null, email, phone, null);
 	}
+
 	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		subscribeForBackInStock(id, null, email, phone, listener);
 	}

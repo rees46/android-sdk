@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="roundedImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <declare-styleable name="StoriesProgressView">
+        <attr name="progressCount" format="integer|reference" />
+    </declare-styleable>
+
+    <declare-styleable name="StoriesView">
+        <attr name="code" format="string" />
+    </declare-styleable>
+
+    <dimen name="story_avatar_size">76dp</dimen>
+    <dimen name="story_avatar_height">86dp</dimen>
+    <dimen name="story_avatar_padding">5dp</dimen>
+    <dimen name="story_avatar_border">2dp</dimen>
+
+    <dimen name="progress_bar_height">2dp</dimen>
+
+    <color name="primary">#35c25e</color>
+
+    <color name="progress_primary">@color/white</color>
+    <color name="progress_secondary">@color/gray_scale</color>
+    <color name="progress_max_active">@color/white</color>
+
+    <color name="gray_scale">#8affffff</color>
+    <color name="white">#fff</color>
+    <color name="shadow">#90000000</color>
+</resources>

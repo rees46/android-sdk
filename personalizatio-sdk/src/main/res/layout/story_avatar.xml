@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="@dimen/story_avatar_size"
+    android:layout_height="@dimen/story_avatar_height">
+
+    <FrameLayout
+        android:layout_width="@dimen/story_avatar_size"
+        android:layout_height="@dimen/story_avatar_size"
+        android:padding="@dimen/story_avatar_padding"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@id/avatar_border"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/story_avatar_border"
+            app:shapeAppearanceOverlay="@style/roundedImageView"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="@dimen/story_avatar_border" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@id/avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/story_avatar_padding"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/roundedImageView"
+            app:strokeColor="@color/primary" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@android:id/text1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="Text"
+        android:textSize="12sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        app:layout_constraintBottom_toBottomOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
