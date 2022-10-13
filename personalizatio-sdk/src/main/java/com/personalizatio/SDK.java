@@ -326,6 +326,7 @@ public class SDK {
 
 	/**
 	 * Подписывает на снижение цены
+	 * https://reference.api.rees46.com/?shell#price-drop
 	 * @param id            Идентификатор товара
 	 * @param current_price Текущая цена
 	 * @param email         Email, если есть
@@ -348,7 +349,34 @@ public class SDK {
 	}
 
 	/**
+	 * Отписывает на снижение цены
+	 * https://reference.api.rees46.com/?shell#price-drop
+	 * @param item_ids Идентификаторы товара
+	 * @param email    Email, если есть
+	 * @param phone    Телефон, если есть
+	 */
+	public static void unsubscribeForPriceDrop(String[] item_ids, @Nullable String email, @Nullable String phone) {
+		unsubscribeForPriceDrop(item_ids, email, phone, null);
+	}
+	public static void unsubscribeForPriceDrop(String[] item_ids, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
+		JSONObject params = new JSONObject();
+		try {
+			params.put("item_ids", String.join(", ", item_ids));
+			if( email != null ) {
+				params.put(InternalParameter.EMAIL.value, email);
+			}
+			if( phone != null ) {
+				params.put(InternalParameter.PHONE.value, phone);
+			}
+			instance.sendAsync("subscriptions/unsubscribe_from_product_price", params, listener);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+	}
+
+	/**
 	 * Подписывает на наличие товара
+	 * https://reference.api.rees46.com/?shell#back-in-stock
 	 * @param id    Идентификатор товара
 	 * @param email Email, если есть
 	 * @param phone Телефон, если есть
@@ -359,14 +387,6 @@ public class SDK {
 	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		subscribeForBackInStock(id, null, email, phone, listener);
 	}
-
-	/**
-	 * Подписывает на наличие товара
-	 * @param id         Идентификатор товара
-	 * @param properties Дополнительные параметры
-	 * @param email      Email, если есть
-	 * @param phone      Телефон, если есть
-	 */
 	public static void subscribeForBackInStock(String id, @Nullable JSONObject properties, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		Params params = new Params();
 		params.put(Params.Parameter.ITEM, id);
@@ -383,6 +403,60 @@ public class SDK {
 	}
 
 	/**
+	 * Отписывает на наличие товара
+	 * https://reference.api.rees46.com/?shell#back-in-stock
+	 * @param item_ids    Идентификатор товара
+	 * @param email Email, если есть
+	 * @param phone Телефон, если есть
+	 */
+	public static void unsubscribeForBackInStock(String[] item_ids, @Nullable String email, @Nullable String phone) {
+		unsubscribeForBackInStock(item_ids, email, phone, null);
+	}
+	public static void unsubscribeForBackInStock(String[] item_ids, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
+		JSONObject params = new JSONObject();
+		try {
+			params.put("item_ids", String.join(", ", item_ids));
+			if( email != null ) {
+				params.put(InternalParameter.EMAIL.value, email);
+			}
+			if( phone != null ) {
+				params.put(InternalParameter.PHONE.value, phone);
+			}
+			instance.sendAsync("subscriptions/unsubscribe_from_product_available", params, listener);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Manage subscriptions
+	 * https://reference.api.rees46.com/?swift#manage-subscriptions
+	 * @param email
+	 * @param phone
+	 * @param subscriptions
+	 */
+	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions) {
+		manageSubscription(email, phone, subscriptions, null);
+	}
+	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
+		try {
+			JSONObject params = new JSONObject();
+			for( Map.Entry<String, Boolean> entry : subscriptions.entrySet() ) {
+				params.put(entry.getKey(), entry.getValue());
+			}
+			if( email != null ) {
+				params.put(InternalParameter.EMAIL.value, email);
+			}
+			if( phone != null ) {
+				params.put(InternalParameter.PHONE.value, phone);
+			}
+			instance.sendAsync("subscriptions/manage", params, listener);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+	}
+
+	/**
 	 * Возвращает текущий сегмент для А/В тестирования
 	 */
 	public static String getSegment() {
@@ -390,6 +464,61 @@ public class SDK {
 			throw new RuntimeException("You need initialize SDK before request segment");
 		} else {
 			return instance.segment;
+		}
+	}
+
+	/**
+	 * Add user to a segment
+	 * https://reference.api.rees46.com/?java#add-user-to-a-segment
+	 * @param segment_id
+	 * @param email
+	 * @param phone
+	 */
+	public static void addToSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone) {
+		segmentMethod("add", segment_id, email, phone, null);
+	}
+	public static void addToSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone, Api.OnApiCallbackListener listener) {
+		segmentMethod("add", segment_id, email, phone, listener);
+	}
+
+	/**
+	 * Remove user from a segment
+	 * https://reference.api.rees46.com/?swift#remove-user-from-a-segment
+	 * @param segment_id
+	 * @param email
+	 * @param phone
+	 */
+	public static void removeFromSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone) {
+		segmentMethod("remove", segment_id, email, phone, null);
+	}
+	public static void removeFromSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone, Api.OnApiCallbackListener listener) {
+		segmentMethod("remove", segment_id, email, phone, listener);
+	}
+
+	/**
+	 * Get user segments
+	 * https://reference.api.rees46.com/?swift#get-user-segments
+	 * @param listener
+	 */
+	public static void getCurrentSegment(@NonNull Api.OnApiCallbackListener listener) {
+		instance.getAsync("segments/get", new JSONObject(), listener);
+	}
+
+	private static void segmentMethod(String method, @Nullable String segment_id, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
+		try {
+			JSONObject params = new JSONObject();
+			if( segment_id != null ) {
+				params.put("segment_id", segment_id);
+			}
+			if( email != null ) {
+				params.put("email", email);
+			}
+			if( phone != null ) {
+				params.put("phone", phone);
+			}
+			instance.sendAsync("segments/" + method, params, listener);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
 		}
 	}
 

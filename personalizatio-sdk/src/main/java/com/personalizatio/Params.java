@@ -32,7 +32,13 @@ final public class Params extends AbstractParams<Params> {
 		FULL_CART("full_cart"),
 		ORDER_ID("order_id"),
 		ORDER_PRICE("order_price"),
+		DELIVERY_ADDRESS("delivery_address"),
+		DELIVERY_TYPE("delivery_type"),
+		PROMOCODE("promocode"),
+		PAYMENT_TYPE("payment_type"),
+		TAX_FREE("tax_free"),
 		CATEGORY_ID("category_id"),
+		CATEGORY("category"),
 		SEARCH_QUERY("search_query"),
 		EXTENDED("extended"),
 		;

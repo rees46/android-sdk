@@ -3,7 +3,9 @@ package com.personalizatio;
 import android.net.Uri;
 import androidx.annotation.Nullable;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -28,7 +30,8 @@ public final class Api {
 	private String url;
 
 	public abstract static class OnApiCallbackListener {
-		public abstract void onSuccess(JSONObject response);
+		public void onSuccess(JSONObject response) {}
+		public void onSuccess(JSONArray response) {}
 		public void onError(int code, String msg) {}
 	}
 
@@ -85,7 +88,12 @@ public final class Api {
 				}
 
 				if( listener != null && conn.getResponseCode() == HttpURLConnection.HTTP_OK ) {
-					listener.onSuccess(new JSONObject(readStream(conn.getInputStream())));
+					Object json = new JSONTokener(readStream(conn.getInputStream())).nextValue();
+					if( json instanceof JSONObject ) {
+						listener.onSuccess((JSONObject) json);
+					} else if( json instanceof JSONArray ) {
+						listener.onSuccess((JSONArray) json);
+					}
 				}
 
 				if( conn.getResponseCode() != HttpURLConnection.HTTP_OK ) {
