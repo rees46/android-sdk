@@ -93,6 +93,7 @@ final public class Params extends AbstractParams<Params> {
 		public enum COLUMN {
 			ID("id"),
 			AMOUNT("amount"),
+			PRICE("price"),
 			FASHION_SIZE("fashion_size"),
 			;
 			String value;
@@ -109,10 +110,13 @@ final public class Params extends AbstractParams<Params> {
 			columns.put(column.value, value);
 			return this;
 		}
-		public Item set(COLUMN column, @NonNull int value) {
+		public Item set(COLUMN column, int value) {
 			return set(column, String.valueOf(value));
 		}
-		public Item set(COLUMN column, @NonNull boolean value) {
+		public Item set(COLUMN column, double value) {
+			return set(column, String.valueOf(value));
+		}
+		public Item set(COLUMN column, boolean value) {
 			return set(column, value ? "1" : "0");
 		}
 	}

@@ -118,14 +118,14 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 //		T.track(Params.TrackEvent.CART, full_cart);
 //
 //		//Покупка
-//		Params purchase = new Params();
-//		purchase
-//				.put(new Params.Item("37").set(Params.Item.COLUMN.AMOUNT, 2))
-//				.put(new Params.Item("38").set(Params.Item.COLUMN.AMOUNT, 2))
-//				.put(Params.Parameter.ORDER_ID, "100234")
-//				.put(Params.Parameter.ORDER_PRICE, 100500)
-//				.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
-//		T.track(Params.TrackEvent.PURCHASE, purchase);
+		Params purchase = new Params();
+		purchase
+				.put(new Params.Item("37").set(Params.Item.COLUMN.AMOUNT, 2).set(Params.Item.COLUMN.PRICE, 10.5))
+				.put(new Params.Item("38").set(Params.Item.COLUMN.AMOUNT, 2))
+				.put(Params.Parameter.ORDER_ID, "100234")
+				.put(Params.Parameter.ORDER_PRICE, 100500)
+				.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
+		T.track(Params.TrackEvent.PURCHASE, purchase);
 //
 //		//Просмотр категории
 //		T.track(Params.TrackEvent.CATEGORY, new Params().put(Params.Parameter.CATEGORY_ID, "100"));
