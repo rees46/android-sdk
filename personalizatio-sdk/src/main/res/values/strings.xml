@@ -5,4 +5,7 @@
 	<item name="stories" type="id" />
 	<item name="avatar" type="id" />
 	<item name="avatar_border" type="id" />
+	<item name="avatar_size" type="id" />
+
+	<dimen name="viewpager_current_item_horizontal_margin">32dp</dimen>
 </resources>

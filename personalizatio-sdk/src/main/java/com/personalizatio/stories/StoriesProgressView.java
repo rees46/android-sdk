@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 
@@ -12,13 +13,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.personalizatio.R;
+import com.personalizatio.SDK;
 
 import java.util.ArrayList;
 import java.util.List;
 
-class StoriesProgressView extends LinearLayout {
-
-	private static final String TAG = StoriesProgressView.class.getSimpleName();
+final class StoriesProgressView extends LinearLayout {
 
 	private final LayoutParams PROGRESS_BAR_LAYOUT_PARAM = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
 	private final LayoutParams SPACE_LAYOUT_PARAM = new LayoutParams(5, LayoutParams.WRAP_CONTENT);
@@ -26,6 +26,7 @@ class StoriesProgressView extends LinearLayout {
 	private final List<PausableProgressBar> progressBars = new ArrayList<>();
 
 	private int storiesCount = -1;
+	private int color;
 	/**
 	 * pointer of running animation
 	 */
@@ -89,6 +90,7 @@ class StoriesProgressView extends LinearLayout {
 
 	private PausableProgressBar createProgressBar() {
 		PausableProgressBar p = new PausableProgressBar(getContext());
+		p.setColor(color);
 		p.setLayoutParams(PROGRESS_BAR_LAYOUT_PARAM);
 		return p;
 	}
@@ -107,6 +109,10 @@ class StoriesProgressView extends LinearLayout {
 	public void setStoriesCount(int storiesCount) {
 		this.storiesCount = storiesCount;
 		bindViews();
+	}
+
+	public void setColor(int color) {
+		this.color = color;
 	}
 
 	/**

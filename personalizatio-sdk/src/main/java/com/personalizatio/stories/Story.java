@@ -9,11 +9,12 @@ import org.json.JSONObject;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-class Story {
+final class Story {
 	public int id;
 	public String avatar;
 	public String name;
 	public boolean viewed;
+	public boolean pinned;
 	public int start_position;
 	public ArrayList<Story.Slide> slides;
 
@@ -22,6 +23,7 @@ class Story {
 		avatar = json.getString("avatar");
 		name = json.getString("name");
 		viewed = json.getBoolean("viewed");
+		pinned = json.getBoolean("pinned");
 		start_position = json.getInt("start_position");
 		slides = new ArrayList<>();
 		JSONArray json_slides = json.getJSONArray("slides");
@@ -33,6 +35,7 @@ class Story {
 	static class Slide implements Serializable {
 		public int id;
 		public String background;
+		public String preview;
 		public String type;
 		public ArrayList<Story.Slide.Element> elements;
 		public long duration;
@@ -41,6 +44,9 @@ class Story {
 		public Slide(@NonNull JSONObject json) throws JSONException {
 			id = json.getInt("id");
 			background = json.getString("background");
+			if( json.has("preview") ) {
+				preview = json.getString("preview");
+			}
 			type = json.getString("type");
 			duration = json.optLong("duration", 5) * 1000L;
 			elements = new ArrayList<>();
@@ -59,10 +65,16 @@ class Story {
 			public String background;
 			public String color;
 			public Boolean text_bold = false;
+			public String label_hide;
+			public String label_show;
+			public ArrayList<Product> products = new ArrayList<>();
 
 			public Element(@NonNull JSONObject json) throws JSONException {
 				type = json.getString("type");
-				if( json.has("link") ) {
+				if( json.has("link_android") ) {
+					link = json.getString("link_android");
+				}
+				if( (link == null || link.length() == 0) && json.has("link") ) {
 					link = json.getString("link");
 				}
 				if( json.has("icon") ) {
@@ -82,6 +94,16 @@ class Story {
 				}
 				if( json.has("text_bold") ) {
 					text_bold = json.getBoolean("text_bold");
+				}
+				if( json.has("labels") ) {
+					label_hide = json.getJSONObject("labels").getString("hide_carousel");
+					label_show = json.getJSONObject("labels").getString("show_carousel");
+				}
+				if( json.has("products") ) {
+					JSONArray products = json.getJSONArray("products");
+					for( int i = 0; i < products.length(); i++ ) {
+						this.products.add(new Product(products.getJSONObject(i)));
+					}
 				}
 			}
 		}

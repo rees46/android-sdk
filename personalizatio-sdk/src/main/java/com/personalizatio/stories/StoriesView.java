@@ -3,6 +3,7 @@ package com.personalizatio.stories;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,16 +26,16 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
+final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
 
 	private StoriesAdapter adapter;
 	private final ArrayList<Story> list = new ArrayList<>();
-	private StoryView story_view;
 	private String code;
 
 	public StoriesView(Context context, String code) {
 		super(context);
 		this.code = code;
+		initialize();
 	}
 
 	public StoriesView(Context context, @Nullable AttributeSet attrs) {
@@ -76,6 +77,8 @@ public class StoriesView extends ConstraintLayout implements StoriesAdapter.Clic
 			@Override
 			public void handleMessage(Message msg) {
 				adapter.notifyDataSetChanged();
+				setBackgroundColor(Color.parseColor(adapter.settings.background));
+				getBackground().setAlpha(100 - adapter.settings.background_opacity);
 			}
 		};
 
@@ -85,6 +88,7 @@ public class StoriesView extends ConstraintLayout implements StoriesAdapter.Clic
 			public void onSuccess(JSONObject response) {
 				Log.d("stories", response.toString());
 				try {
+					adapter.settings = new Settings(response.getJSONObject("settings"));
 					JSONArray json_stories = response.getJSONArray("stories");
 					for( int i = 0; i < json_stories.length(); i++ ) {
 						list.add(new Story(json_stories.getJSONObject(i)));
@@ -106,16 +110,8 @@ public class StoriesView extends ConstraintLayout implements StoriesAdapter.Clic
 			story.start_position = 0;
 		}
 
-		StoryView dialog = new StoryView(getContext(), code, story, () -> {
+		StoryDialog dialog = new StoryDialog(getContext(), code, list, adapter.settings, index, () -> {
 			adapter.notifyDataSetChanged();
-			if( index + 1 < list.size() ) {
-				onStoryClick(index + 1);
-			}
-		}, () -> {
-			if( index - 1 >= 0 ) {
-				list.get(index - 1).start_position = list.get(index - 1).slides.size() - 1;
-				onStoryClick(index - 1);
-			}
 		});
 		dialog.show();
 	}

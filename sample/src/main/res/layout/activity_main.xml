@@ -9,7 +9,7 @@
     <com.personalizatio.stories.StoriesView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:code="71a072608e7694542a37e6101e53b813"
+        app:code="fcaa8d3168ab7d7346e4b4f1a1c92214"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout

@@ -10,13 +10,13 @@ android {
 			keyPassword '123456'
 		}
 	}
-	compileSdkVersion 32
+	compileSdkVersion 33
 	flavorDimensions 'default'
 	defaultConfig {
 		minSdkVersion 19
 		multiDexEnabled true
 		applicationId 'com.personalizatio.sample'
-		targetSdkVersion 32
+		targetSdkVersion 33
 		versionCode 1
 		versionName "1.0"
 	}
@@ -54,7 +54,7 @@ configurations {
 
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
-	implementation 'androidx.appcompat:appcompat:1.5.0'
+	implementation 'androidx.appcompat:appcompat:1.6.1'
 	implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
 //	rees46DebugImplementation project(path: ':personalizatio-sdk', configuration: 'rees46Debug')

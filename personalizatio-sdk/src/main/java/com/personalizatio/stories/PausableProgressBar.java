@@ -29,6 +29,7 @@ final class PausableProgressBar extends FrameLayout {
 
 	interface Callback {
 		void onStartProgress();
+
 		void onFinishProgress();
 	}
 
@@ -45,6 +46,11 @@ final class PausableProgressBar extends FrameLayout {
 		LayoutInflater.from(context).inflate(R.layout.pausable_progress, this);
 		frontProgressView = findViewById(R.id.front_progress);
 		maxProgressView = findViewById(R.id.max_progress); // work around
+	}
+
+	public void setColor(int color) {
+		frontProgressView.setBackgroundColor(color);
+		maxProgressView.setBackgroundColor(color);
 	}
 
 	public void setDuration(long duration) {
@@ -70,29 +76,29 @@ final class PausableProgressBar extends FrameLayout {
 		maxProgressView.setBackgroundResource(R.color.progress_secondary);
 
 		maxProgressView.setVisibility(VISIBLE);
-		if (animation != null) {
+		if( animation != null ) {
 			animation.setAnimationListener(null);
 			animation.cancel();
 		}
 	}
 
 	void setMaxWithoutCallback() {
-		maxProgressView.setBackgroundResource(R.color.progress_max_active);
+//		maxProgressView.setBackgroundResource(R.color.progress_max_active);
 
 		maxProgressView.setVisibility(VISIBLE);
-		if (animation != null) {
+		if( animation != null ) {
 			animation.setAnimationListener(null);
 			animation.cancel();
 		}
 	}
 
 	private void finishProgress(boolean isMax) {
-		if (isMax) maxProgressView.setBackgroundResource(R.color.progress_max_active);
+		if( isMax ) maxProgressView.setBackgroundResource(R.color.progress_max_active);
 		maxProgressView.setVisibility(isMax ? VISIBLE : GONE);
-		if (animation != null) {
+		if( animation != null ) {
 			animation.setAnimationListener(null);
 			animation.cancel();
-			if (callback != null) {
+			if( callback != null ) {
 				callback.onFinishProgress();
 			}
 		}
@@ -108,7 +114,7 @@ final class PausableProgressBar extends FrameLayout {
 			@Override
 			public void onAnimationStart(Animation animation) {
 				frontProgressView.setVisibility(View.VISIBLE);
-				if (callback != null) callback.onStartProgress();
+				if( callback != null ) callback.onStartProgress();
 			}
 
 			@Override
@@ -117,7 +123,9 @@ final class PausableProgressBar extends FrameLayout {
 
 			@Override
 			public void onAnimationEnd(Animation animation) {
-				if (callback != null) callback.onFinishProgress();
+				if( callback != null ) {
+					callback.onFinishProgress();
+				}
 			}
 		});
 		animation.setFillAfter(true);
@@ -125,19 +133,19 @@ final class PausableProgressBar extends FrameLayout {
 	}
 
 	public void pauseProgress() {
-		if (animation != null) {
+		if( animation != null ) {
 			animation.pause();
 		}
 	}
 
 	public void resumeProgress() {
-		if (animation != null) {
+		if( animation != null ) {
 			animation.resume();
 		}
 	}
 
 	void clear() {
-		if (animation != null) {
+		if( animation != null ) {
 			animation.setAnimationListener(null);
 			animation.cancel();
 			animation = null;
@@ -158,10 +166,10 @@ final class PausableProgressBar extends FrameLayout {
 
 		@Override
 		public boolean getTransformation(long currentTime, Transformation outTransformation, float scale) {
-			if (mPaused && mElapsedAtPause == 0) {
+			if( mPaused && mElapsedAtPause == 0 ) {
 				mElapsedAtPause = currentTime - getStartTime();
 			}
-			if (mPaused) {
+			if( mPaused ) {
 				setStartTime(currentTime - mElapsedAtPause);
 			}
 			return super.getTransformation(currentTime, outTransformation, scale);
@@ -171,7 +179,7 @@ final class PausableProgressBar extends FrameLayout {
 		 * pause animation
 		 */
 		void pause() {
-			if (mPaused) return;
+			if( mPaused ) return;
 			mElapsedAtPause = 0;
 			mPaused = true;
 		}

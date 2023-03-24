@@ -16,7 +16,7 @@ import androidx.core.view.MotionEventCompat;
 import androidx.core.view.ViewCompat;
 import androidx.customview.widget.ViewDragHelper;
 
-class PullDismissLayout extends FrameLayout {
+final class PullDismissLayout extends FrameLayout {
 	private PullDismissLayout.Listener listener;
 	private ViewDragHelper dragHelper;
 	private float minFlingVelocity;

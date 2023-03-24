@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="@dimen/story_avatar_size"
     android:layout_height="@dimen/story_avatar_height">
 
     <FrameLayout
+        android:id="@id/avatar_size"
         android:layout_width="@dimen/story_avatar_size"
         android:layout_height="@dimen/story_avatar_size"
         android:padding="@dimen/story_avatar_padding"
@@ -28,6 +30,16 @@
             android:scaleType="centerCrop"
             app:shapeAppearanceOverlay="@style/roundedImageView"
             app:strokeColor="@color/primary" />
+
+        <TextView
+            android:id="@android:id/text2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:textSize="10sp"
+            android:background="#fd7c50"
+            android:padding="4dp"
+            tools:text="📌" />
     </FrameLayout>
 
     <TextView
@@ -35,9 +47,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="Text"
-        android:textSize="12sp"
+        tools:text="Text"
+        android:textSize="@dimen/story_avatar_title_size"
         android:maxLines="1"
         android:ellipsize="end"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

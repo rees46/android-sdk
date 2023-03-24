@@ -285,3 +285,10 @@ Add code to your layout:
     android:layout_height="wrap_content"
     app:code="STORY BLOCK CODE" />
 ```
+
+Or programmatically:
+
+```
+StoriesView storiesView = new StoriesView(this, "STORY BLOCK CODE");
+((ViewGroup) findViewById(R.id.stories)).addView(storiesView);
+```
