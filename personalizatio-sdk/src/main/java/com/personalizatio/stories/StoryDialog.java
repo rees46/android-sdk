@@ -2,6 +2,7 @@ package com.personalizatio.stories;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Rect;
@@ -61,6 +62,16 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		adapter = new ViewPagerAdapter(running -> mViewPager.setUserInputEnabled(running));
 
 		this.completeListener = completeListener;
+
+		setOnCancelListener(dialog -> {
+			for(int i = 0; i < stories.size(); i++) {
+				PagerHolder holder = getHolder(i);
+				if( holder != null ) {
+					StoryView storyView = (StoryView) holder.itemView;
+					storyView.release();
+				}
+			}
+		});
 
 		setupViews();
 	}

@@ -78,6 +78,7 @@ final class StoryItemView extends ConstraintLayout {
 	public void loadVideo(String url, MediaPlayer.OnPreparedListener onPreparedListener, MediaPlayer.OnErrorListener onErrorListener) {
 		video.setVisibility(View.VISIBLE);
 		try {
+			release();
 			video.setDataSource(url);
 			video.setOnErrorListener(onErrorListener);
 			video.prepareAsync(mp -> {
@@ -93,6 +94,10 @@ final class StoryItemView extends ConstraintLayout {
 		} catch(IOException e) {
 			Log.w(SDK.TAG, e.getMessage());
 		}
+	}
+
+	public void release() {
+		video.release();
 	}
 
 	public void setOnReadyToStart(Runnable runnable) {

@@ -6,6 +6,7 @@ import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.media.MediaPlayer;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 
@@ -13,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.personalizatio.R;
+import com.personalizatio.SDK;
 
 import java.io.IOException;
 
@@ -172,9 +174,11 @@ final class ScalableVideoView extends TextureView implements TextureView.Surface
 	}
 
 	public void release() {
-		reset();
-		mMediaPlayer.release();
-		mMediaPlayer = null;
+		if( mMediaPlayer != null ) {
+			reset();
+			mMediaPlayer.release();
+			mMediaPlayer = null;
+		}
 	}
 
 	enum ScalableType {

@@ -7,7 +7,7 @@ import com.personalizatio.SDK;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class Product {
+final class Product {
 	public final String name;
 	public final String image;
 	public final String oldprice;

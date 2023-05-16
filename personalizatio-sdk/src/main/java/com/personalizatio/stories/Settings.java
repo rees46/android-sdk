@@ -3,7 +3,7 @@ package com.personalizatio.stories;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-class Settings {
+final class Settings {
 	public final String color;
 	public final int font_size;
 	public final String background;

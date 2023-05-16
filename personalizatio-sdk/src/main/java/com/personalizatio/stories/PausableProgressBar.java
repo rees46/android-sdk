@@ -2,6 +2,7 @@ package com.personalizatio.stories;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.animation.Animation;
@@ -15,17 +16,19 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.personalizatio.R;
+import com.personalizatio.SDK;
 
 final class PausableProgressBar extends FrameLayout {
 
 	private static final int DEFAULT_PROGRESS_DURATION = 2000;
 
-	private final View frontProgressView;
-	private final View maxProgressView;
+	public final View frontProgressView;
+	public final View maxProgressView;
 
-	private PausableScaleAnimation animation;
+	public PausableScaleAnimation animation;
 	private long duration = DEFAULT_PROGRESS_DURATION;
 	private Callback callback;
+	private boolean paused = false;
 
 	interface Callback {
 		void onStartProgress();
@@ -123,7 +126,8 @@ final class PausableProgressBar extends FrameLayout {
 
 			@Override
 			public void onAnimationEnd(Animation animation) {
-				if( callback != null ) {
+				if( callback != null && !paused ) {
+					Log.d(SDK.TAG, "onAnimationEnd");
 					callback.onFinishProgress();
 				}
 			}
@@ -134,12 +138,14 @@ final class PausableProgressBar extends FrameLayout {
 
 	public void pauseProgress() {
 		if( animation != null ) {
+			paused = true;
 			animation.pause();
 		}
 	}
 
 	public void resumeProgress() {
 		if( animation != null ) {
+			paused = false;
 			animation.resume();
 		}
 	}
@@ -152,7 +158,7 @@ final class PausableProgressBar extends FrameLayout {
 		}
 	}
 
-	private static class PausableScaleAnimation extends ScaleAnimation {
+	public static class PausableScaleAnimation extends ScaleAnimation {
 
 		private long mElapsedAtPause = 0;
 		private boolean mPaused = false;

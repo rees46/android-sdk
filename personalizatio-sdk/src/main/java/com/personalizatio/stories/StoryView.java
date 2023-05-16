@@ -41,6 +41,9 @@ import com.bumptech.glide.request.target.Target;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 final class StoryView extends ConstraintLayout implements StoriesProgressView.StoriesListener {
 
 	private Story story;
@@ -155,6 +158,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 	class PagerHolder extends RecyclerView.ViewHolder {
 		public StoryItemView story_item;
+		private Timer video_seek_timer;
 
 		public PagerHolder(@NonNull View view) {
 			super(view);
@@ -198,28 +202,65 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 				}
 
 				//Подготавливаем видео
+				int story_id = story.id;
 				story_item.loadVideo(slide.background, mediaPlayer -> {
-					slide.duration = mediaPlayer.getDuration();
+					slide.duration = mediaPlayer.getDuration() + 1;
 					slide.prepared = true;
-					updateDuration(position);
-					if( storiesStarted && position == story.start_position && !button_products.isActivated() ) {
-						mediaPlayer.start();
+					//Добавляем проверку, что объект story не изменился пока шла загрузка видео
+					if( story.id == story_id ) {
+						updateDuration(position);
+						mediaPlayer.setOnCompletionListener(mp -> {
+							if( video_seek_timer != null ) {
+								video_seek_timer.cancel();
+								video_seek_timer = null;
+							}
+							if( position == story.start_position && !button_products.isActivated() ) {
+								nextStory();
+							}
+						});
+						if( storiesStarted && position == story.start_position && !button_products.isActivated() ) {
+							mediaPlayer.start();
+						}
 					}
 				}, (mediaPlayer, i, i1) -> {
 					Log.w(SDK.TAG, "Video " + slide.background + " load failed: (" + i + ", " + i1 + ")");
-					nextStory();
+					if( position == story.start_position && !button_products.isActivated() ) {
+						nextStory();
+					}
 					return false;
 				});
 			}
 		}
 
 		public void playVideo() {
+			if( video_seek_timer != null ) {
+				video_seek_timer.cancel();
+				video_seek_timer = null;
+			}
 			Runnable runnable = () -> {
 				try {
 					if( story_item.mediaPlayer != null && storiesStarted && !button_products.isActivated() ) {
 						story_item.mediaPlayer.seekTo(0);
 						story_item.mediaPlayer.start();
 						storiesProgressView.startStories(story.start_position);
+						//Отключаем автоматическиц прогресс для видео
+						PausableProgressBar bar = storiesProgressView.progressBars.get(story.start_position);
+						bar.animation.setAnimationListener(null);
+						bar.animation.pause();
+						bar.frontProgressView.setScaleX(0f);
+						bar.frontProgressView.setPivotX(0);
+						video_seek_timer = new Timer();
+						video_seek_timer.schedule(new TimerTask() {
+							@Override
+							public void run() {
+								try {
+									if( story_item.mediaPlayer.isPlaying() && story_item.mediaPlayer.getDuration() > 0 ) {
+										bar.frontProgressView.setScaleX((float) story_item.mediaPlayer.getCurrentPosition() / story_item.mediaPlayer.getDuration());
+									}
+								} catch(IllegalStateException e) {
+								}
+							}
+						}, 0, 50);
 					}
 				} catch(IllegalStateException e) {
 				}
@@ -234,12 +275,20 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 		public void pauseVideo() {
 			story_item.setOnReadyToStart(null);
+			if( video_seek_timer != null ) {
+				video_seek_timer.cancel();
+				video_seek_timer = null;
+			}
 			try {
 				if( story_item.mediaPlayer != null && story_item.mediaPlayer.isPlaying() ) {
 					story_item.mediaPlayer.pause();
 				}
 			} catch(IllegalStateException e) {
 			}
+		}
+
+		public void release() {
+			story_item.release();
 		}
 	}
 
@@ -318,7 +367,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 							Log.d(SDK.TAG, "open link: " + element.link);
 							getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(element.link)));
 							SDK.track_story("click", code, story.id, slide.id);
-						} catch(ActivityNotFoundException|NullPointerException e) {
+						} catch(ActivityNotFoundException | NullPointerException e) {
 							Log.e(SDK.TAG, e.getMessage(), e);
 							Toast.makeText(getContext(), "Unknown error", Toast.LENGTH_SHORT).show();
 						}
@@ -412,17 +461,23 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		if( holder != null ) {
 			holder.story_item.setOnReadyToStart(null);
 			if( holder.story_item.mediaPlayer != null ) {
-				holder.story_item.mediaPlayer.pause();
+				try {
+					holder.story_item.mediaPlayer.pause();
+				} catch(IllegalStateException e) {
+				}
 			}
 		}
 	}
 
 	public void resume() {
-		if( !button_products.isActivated() ) {
+		if( !button_products.isActivated() && story.slides.get(mViewPager.getCurrentItem()).prepared ) {
 			storiesProgressView.resume();
 			PagerHolder holder = getCurrentHolder();
 			if( holder != null && holder.story_item.mediaPlayer != null ) {
-				holder.story_item.mediaPlayer.start();
+				try {
+					holder.story_item.mediaPlayer.start();
+				} catch(IllegalStateException e) {
+				}
 			}
 		}
 	}
@@ -503,6 +558,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		PagerHolder holder = getCurrentHolder();
 		if( holder != null ) {
 			holder.pauseVideo();
+			holder.release();
 		}
 	}
 
@@ -516,6 +572,15 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	public void nextStory() {
 		if( storiesStarted && !button_products.isActivated() ) {
 			onNext();
+		}
+	}
+
+	public void release() {
+		for( int i = 0; i < story.slides.size(); i++ ) {
+			PagerHolder holder = getHolder(i);
+			if( holder != null ) {
+				holder.release();
+			}
 		}
 	}
 }

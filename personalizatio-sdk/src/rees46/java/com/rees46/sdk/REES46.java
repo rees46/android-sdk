@@ -12,6 +12,7 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import com.personalizatio.BuildConfig;
 import com.personalizatio.OnMessageListener;
 import com.personalizatio.SDK;
 
@@ -31,7 +32,7 @@ final public class REES46 extends SDK {
 	public static final String NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE";
 	public static final String NOTIFICATION_ID = "REES46_NOTIFICATION_ID";
 	protected static final String PREFERENCES_KEY = "rees46.sdk";
-	protected static final String API_URL = "https://api.rees46.ru/";
+	protected static final String API_URL = BuildConfig.DEBUG ? "http://dev.api.rees46.com:8080/" : "https://api.rees46.ru/";
 
 	/**
 	 * @param context application context

@@ -23,14 +23,14 @@ final class StoriesProgressView extends LinearLayout {
 	private final LayoutParams PROGRESS_BAR_LAYOUT_PARAM = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
 	private final LayoutParams SPACE_LAYOUT_PARAM = new LayoutParams(5, LayoutParams.WRAP_CONTENT);
 
-	private final List<PausableProgressBar> progressBars = new ArrayList<>();
+	public final List<PausableProgressBar> progressBars = new ArrayList<>();
 
 	private int storiesCount = -1;
 	private int color;
 	/**
 	 * pointer of running animation
 	 */
-	private int current = -1;
+	public int current = -1;
 	private StoriesListener storiesListener;
 	boolean isComplete;
 
