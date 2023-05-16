@@ -153,6 +153,11 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 		storiesProgressView.setStoriesCount(story.slides.size());
 		mViewPager.setAdapter(new ViewPagerAdapter());
+		//Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
+		mViewPager.setCurrentItem(story.start_position == 0 ? story.slides.size() : 0, false);
+		//Устанавливаем позицию
+		mViewPager.setCurrentItem(story.start_position, false);
+
 		updateElements();
 	}
 
