@@ -66,8 +66,7 @@ final class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.ViewHolde
 			avatar_size.setLayoutParams(layoutParams);
 			//Размер основного фона
 			layoutParams = itemView.getLayoutParams();
-			layoutParams.width = (int) (settings.avatar_size * scale + 0.5f);
-			layoutParams.height = (int) (settings.avatar_size * scale + 0.5f + settings.font_size * scale);
+			layoutParams.width = (int) ((settings.avatar_size + 12) * scale + 0.5f);
 			itemView.setLayoutParams(layoutParams);
 			//Позиция
 			story_index = position;
