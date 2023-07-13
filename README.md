@@ -7,7 +7,7 @@ Add to `dependencies`:
 
 ```
 implementation 'com.rees46:rees46-sdk:+'
-implementation 'com.google.firebase:firebase-bom:31.4.0'
+implementation 'com.google.firebase:firebase-bom:32.1.1'
 implementation 'com.google.firebase:firebase-messaging:23.1.2'
 ```
 

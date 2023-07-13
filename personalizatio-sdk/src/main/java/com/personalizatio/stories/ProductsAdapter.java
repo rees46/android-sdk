@@ -84,7 +84,7 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 			}
 			price.setText(product.price);
 			itemView.setOnClickListener(view -> {
-				Log.d(SDK.TAG, "click: " + product.name);
+				Log.d(SDK.TAG, "click: " + product.name + ", " + product.url);
 				try {
 					itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(product.url)));
 					SDK.track_story("click", code, story_id, slide_id);
