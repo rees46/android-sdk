@@ -327,7 +327,7 @@ public class SDK {
 	 * @param story_id Идентификатор сториса
 	 * @param slide_id Идентификатор слайда
 	 */
-	public static void track_story(String event, String code, int story_id, int slide_id) {
+	public static void track_story(String event, String code, int story_id, String slide_id) {
 		if( instance != null ) {
 			try {
 				JSONObject params = new JSONObject();

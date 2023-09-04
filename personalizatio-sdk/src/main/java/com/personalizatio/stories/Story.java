@@ -33,7 +33,7 @@ final class Story {
 	}
 
 	static class Slide implements Serializable {
-		public int id;
+		public String id;
 		public String background;
 		public String preview;
 		public String type;
@@ -42,7 +42,7 @@ final class Story {
 		public boolean prepared = false;
 
 		public Slide(@NonNull JSONObject json) throws JSONException {
-			id = json.getInt("id");
+			id = json.getString("id");
 			background = json.getString("background");
 			if( json.has("preview") ) {
 				preview = json.getString("preview");

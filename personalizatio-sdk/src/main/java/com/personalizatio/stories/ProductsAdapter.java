@@ -26,9 +26,9 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 	private ArrayList<Product> products = new ArrayList<>();
 	private String code;
 	private int story_id;
-	private int slide_id;
+	private String slide_id;
 
-	public void setProducts(ArrayList<Product> products, String code, int story_id, int slide_id) {
+	public void setProducts(ArrayList<Product> products, String code, int story_id, String slide_id) {
 		this.products = products;
 		this.code = code;
 		this.story_id = story_id;

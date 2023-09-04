@@ -417,7 +417,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		}
 	}
 
-	private void updateHeader(Story.Slide.Element element, int slide_id) {
+	private void updateHeader(Story.Slide.Element element, String slide_id) {
 		if( element.type.equals("header") ) {
 			header.setVisibility(VISIBLE);
 			header.setOnTouchListener((View v, MotionEvent event) -> {
@@ -551,8 +551,8 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		mViewPager.setCurrentItem(story.start_position, false);
 		updateElements();
 		PagerHolder holder = getCurrentHolder();
+		SDK.track_story("view", code, story.id, story.slides.get(story.start_position).id);
 		if( holder != null ) {
-			SDK.track_story("view", code, story.id, story.slides.get(story.start_position).id);
 			holder.playVideo();
 		}
 	}
