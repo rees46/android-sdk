@@ -336,7 +336,7 @@ public class SDK {
 				params.put("slide_id", slide_id);
 				params.put("code", code);
 
-				instance.sendAsync("stories/track", params, null);
+				instance.sendAsync("track/stories", params, null);
 			} catch(JSONException e) {
 				e.printStackTrace();
 			}
@@ -818,6 +818,9 @@ public class SDK {
 
 	//-------------Методы------------>
 
+	/**
+	 * @param remoteMessage
+	 */
 	public static void onMessage(RemoteMessage remoteMessage) {
 		notificationReceived(remoteMessage.getData());
 		if( instance.onMessageListener != null ) {

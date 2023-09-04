@@ -77,8 +77,6 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 			@Override
 			public void handleMessage(Message msg) {
 				adapter.notifyDataSetChanged();
-				setBackgroundColor(Color.parseColor(adapter.settings.background));
-				getBackground().setAlpha(100 - adapter.settings.background_opacity);
 			}
 		};
 
