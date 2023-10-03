@@ -243,7 +243,7 @@ final class StoriesProgressView extends LinearLayout {
 	 * Pause story
 	 */
 	public void pause() {
-		if (current < 0) return;
+		if (current < 0 || current >= progressBars.size()) return;
 		progressBars.get(current).pauseProgress();
 	}
 
@@ -251,7 +251,7 @@ final class StoriesProgressView extends LinearLayout {
 	 * Resume story
 	 */
 	public void resume() {
-		if (current < 0) return;
+		if (current < 0 || current >= progressBars.size()) return;
 		progressBars.get(current).resumeProgress();
 	}
 }

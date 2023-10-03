@@ -10,13 +10,13 @@ android {
 			keyPassword '123456'
 		}
 	}
-	compileSdkVersion 33
-	flavorDimensions 'default'
+	compileSdk 34
+	flavorDimensions += 'default'
 	defaultConfig {
 		minSdkVersion 19
 		multiDexEnabled true
 		applicationId 'com.personalizatio.sample'
-		targetSdkVersion 33
+		targetSdkVersion 34
 		versionCode 1
 		versionName "1.0"
 	}

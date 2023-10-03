@@ -2,16 +2,16 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-version='1.7.0'
+version='1.8.0'
 
 android {
-	compileSdk 33
-	flavorDimensions 'default'
+	compileSdk 34
+	flavorDimensions += 'default'
 //	publishNonDefault true
 
 	defaultConfig {
 		minSdkVersion 19
-		targetSdkVersion 33
+		targetSdkVersion 34
 		buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
 	}
 
@@ -23,8 +23,8 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_11
-		targetCompatibility JavaVersion.VERSION_11
+		sourceCompatibility JavaVersion.VERSION_17
+		targetCompatibility JavaVersion.VERSION_17
 	}
 
 	defaultPublishConfig "rees46Release"
@@ -45,6 +45,16 @@ android {
 		}
 	}
 
+	testFixtures {
+		enable = false
+	}
+
+	publishing {
+		multipleVariants {
+			allVariants()
+		}
+	}
+
 	defaultPublishConfig 'rees46'
 	namespace 'com.personalizatio'//expects a release variant
 }
@@ -59,14 +69,15 @@ configurations {
 dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-	api platform('com.google.firebase:firebase-bom:32.2.3')
-	api 'com.google.firebase:firebase-messaging:23.2.1'
-	implementation 'androidx.recyclerview:recyclerview:1.3.1'
-	implementation 'com.google.android.material:material:1.9.0'
-	implementation 'org.jetbrains:annotations:15.0'
+	api platform('com.google.firebase:firebase-bom:32.3.1')
+	api 'com.google.firebase:firebase-messaging:23.3.0'
+	implementation 'androidx.recyclerview:recyclerview:1.3.2'
+	implementation 'com.google.android.material:material:1.10.0'
+	implementation 'org.jetbrains:annotations:24.0.1'
 	implementation 'com.github.bumptech.glide:glide:4.13.2'
-	implementation 'androidx.palette:palette:1.0.0'
-//	implementation 'com.github.OMARIHAMZA:StoryView:1.0.6-alpha'
+	implementation 'androidx.media3:media3-exoplayer:1.1.1'
+	implementation 'androidx.media3:media3-ui:1.1.1'
+//	implementation 'androidx.palette:palette:1.0.0'
 }
 
 group='com.personalizatio'

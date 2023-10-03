@@ -2,6 +2,8 @@ package com.personalizatio.stories;
 
 import androidx.annotation.NonNull;
 
+import com.personalizatio.Product;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,6 +37,7 @@ final class Story {
 	static class Slide implements Serializable {
 		public String id;
 		public String background;
+		public String background_color;
 		public String preview;
 		public String type;
 		public ArrayList<Story.Slide.Element> elements;
@@ -44,6 +47,9 @@ final class Story {
 		public Slide(@NonNull JSONObject json) throws JSONException {
 			id = json.getString("id");
 			background = json.getString("background");
+			if( json.has("background_color") ) {
+				background_color = json.getString("background_color");
+			}
 			if( json.has("preview") ) {
 				preview = json.getString("preview");
 			}
@@ -68,6 +74,7 @@ final class Story {
 			public String label_hide;
 			public String label_show;
 			public ArrayList<Product> products = new ArrayList<>();
+			public Product item;
 
 			public Element(@NonNull JSONObject json) throws JSONException {
 				type = json.getString("type");
@@ -104,6 +111,9 @@ final class Story {
 					for( int i = 0; i < products.length(); i++ ) {
 						this.products.add(new Product(products.getJSONObject(i)));
 					}
+				}
+				if( json.has("item") && type.equals("product") ) {
+					item = new Product(json.getJSONObject("item"));
 				}
 			}
 		}

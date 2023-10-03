@@ -36,7 +36,7 @@ Create your app in the [Firebase console](https://console.firebase.google.com/u/
 
 Add code to your application:
 
-```
+```java
 public class SampleApplication extends Application {
 	public void onCreate() {
 		super.onCreate();
@@ -61,7 +61,7 @@ public class SampleApplication extends Application {
 
 For On-Premise integration need use initialize with custom api domain:
 
-```
+```java
 REES46.initialize(getApplicationContext(), SHOP_ID, API_DOMAIN);
 ```
 
@@ -87,7 +87,7 @@ Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to appli
 
 Example show notification with download icon:
 
-```
+```java
 new AsyncTask<String, Void, Bitmap>() {
 
 	@Override
@@ -135,7 +135,7 @@ new AsyncTask<String, Void, Bitmap>() {
 
 Use to Activity:
 
-```
+```java
 //User data
 HashMap<String, String> params = new HashMap<>();
 params.put("email", "email@example.com");
@@ -156,7 +156,7 @@ if( getIntent().getExtras() != null ) {
 
 ## Recommendation
 
-```
+```java
 Params params = new Params();
 params.put(Params.Parameter.EXTENDED, true);
 params.put(Params.Parameter.ITEM, "37");
@@ -170,7 +170,7 @@ REES46.recommend("RECOMMENDER_CODE", params, new Api.OnApiCallbackListener() {
 
 ## Search
 
-```
+```java
 //Instant search
 SearchParams params = new SearchParams();
 params.put(SearchParams.Parameter.LOCATIONS, "location");
@@ -208,7 +208,7 @@ REES46.search_blank(new Api.OnApiCallbackListener() {
 
 ## Tracking
 
-```
+```java
 //Product view
 REES46.track(Params.TrackEvent.VIEW, "37");
 
@@ -288,7 +288,32 @@ Add code to your layout:
 
 Or programmatically:
 
-```
+```java
 StoriesView storiesView = new StoriesView(this, "STORY BLOCK CODE");
 ((ViewGroup) findViewById(R.id.stories)).addView(storiesView);
+```
+
+Customize story settings:
+
+```java
+StoriesView stories = findViewById(R.id.story_view);
+stories.settings.failed_load_text = "Failed";
+stories.settings.failed_load_color = "#ff0000";
+stories.settings.failed_load_size = 16;
+stories.settings.failed_load_font_family = Typeface.MONOSPACE;
+stories.settings.icon_size = 60;
+stories.settings.label_width = 120;
+stories.settings.icon_padding_x = 20;
+stories.settings.icon_padding_top = 20;
+stories.settings.icon_padding_bottom = 20;
+stories.settings.font_family = Typeface.MONOSPACE;
+stories.setBackgroundColor(Color.parseColor("#00ff00"));
+stories.settings.label_font_color = "#ff0000";
+stories.settings.visited_campaign_transparency = 0.1f;
+stories.settings.new_campaign_border_color = "#ff0000";
+stories.settings.visited_campaign_border_color = "#00ff00";
+stories.settings.background_pin = "#FD7C50";
+stories.settings.pin_symbol = "📌";
+stories.settings.close_color = "#FD7C50";
+stories.settings.icon_display_format = Settings.ICON_DISPLAY_FORMAT.RECTANGLE;
 ```

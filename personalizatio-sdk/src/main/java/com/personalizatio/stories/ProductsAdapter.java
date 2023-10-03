@@ -13,9 +13,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.personalizatio.OnLinkClickListener;
+import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
 
@@ -24,13 +27,16 @@ import java.util.ArrayList;
 final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHolder> {
 
 	private ArrayList<Product> products = new ArrayList<>();
-	private String code;
 	private int story_id;
 	private String slide_id;
+	private StoriesView stories_view;
 
-	public void setProducts(ArrayList<Product> products, String code, int story_id, String slide_id) {
+	public void setStoriesView(StoriesView view) {
+		stories_view = view;
+	}
+
+	public void setProducts(ArrayList<Product> products, int story_id, String slide_id) {
 		this.products = products;
-		this.code = code;
 		this.story_id = story_id;
 		this.slide_id = slide_id;
 		notifyDataSetChanged();
@@ -73,6 +79,10 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 		public void bind(Product product) {
 			Glide.with(image.getContext()).load(product.image).into(image);
 			name.setText(product.name);
+			name.setTypeface(stories_view.settings.font_family);
+			discount.setTypeface(stories_view.settings.font_family);
+			oldprice.setTypeface(stories_view.settings.font_family);
+			price.setTypeface(stories_view.settings.font_family);
 			if( product.oldprice == null ) {
 				discount.setVisibility(View.GONE);
 				oldprice.setVisibility(View.GONE);
@@ -86,8 +96,10 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 			itemView.setOnClickListener(view -> {
 				Log.d(SDK.TAG, "click: " + product.name + ", " + product.url);
 				try {
-					itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(product.url)));
-					SDK.track_story("click", code, story_id, slide_id);
+					if( stories_view.click_listener == null || stories_view.click_listener.onClick(product) ) {
+						itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(product.deeplink != null ? product.deeplink : product.url)));
+					}
+					SDK.track_story("click", stories_view.code, story_id, slide_id);
 				} catch(ActivityNotFoundException e) {
 					Log.e(SDK.TAG, e.getMessage(), e);
 					Toast.makeText(itemView.getContext(), "Unknown error", Toast.LENGTH_SHORT).show();

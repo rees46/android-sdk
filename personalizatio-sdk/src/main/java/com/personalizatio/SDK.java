@@ -23,10 +23,15 @@ import com.personalizatio.Params.InternalParameter;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.security.SecureRandom;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -42,8 +47,12 @@ public class SDK {
 	public static String NOTIFICATION_TYPE = "NOTIFICATION_TYPE";
 	public static String NOTIFICATION_ID = "NOTIFICATION_ID";
 	private final String PREFERENCES_KEY;
+	private static final String SID_FIELD = "sid";
+	private static final String SID_LAST_ACT_FIELD = "sid_last_act";
 	private static final String DID_FIELD = "did";
+	private static final String DID_LAST_ACT_FIELD = "did_last_act";
 	private static final String TOKEN_FIELD = "token";
+	private static final int SESSION_CODE_EXPIRE = 2;
 
 	private final Context context;
 	private final String shop_id;
@@ -63,12 +72,18 @@ public class SDK {
 	private String source_id;
 	private long source_time = 0;
 
+	private static Params.RecommendedBy last_recommended_by;
+
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
 	}
 
 	public static void initialize(Context context, String shop_id, String stream) {
 		throw new IllegalStateException("You need make static initialize method!");
+	}
+
+	public static String userAgent() {
+		return "Personalizatio SDK " + BuildConfig.FLAVOR.toUpperCase() + ", v" + BuildConfig.VERSION_NAME;
 	}
 
 	/**
@@ -263,6 +278,10 @@ public class SDK {
 	 */
 	public static void track(Params.TrackEvent event, @NonNull Params params, @Nullable Api.OnApiCallbackListener listener) {
 		params.put(InternalParameter.EVENT, event.value);
+		if( last_recommended_by != null ) {
+			params.put(last_recommended_by);
+			last_recommended_by = null;
+		}
 		instance.sendAsync("push", params.build(), listener);
 	}
 
@@ -322,8 +341,9 @@ public class SDK {
 
 	/**
 	 * Вызывает событие сторисов
-	 * @param event Событие
-	 * @param code Код блока сторисов
+	 *
+	 * @param event    Событие
+	 * @param code     Код блока сторисов
 	 * @param story_id Идентификатор сториса
 	 * @param slide_id Идентификатор слайда
 	 */
@@ -335,6 +355,9 @@ public class SDK {
 				params.put("story_id", story_id);
 				params.put("slide_id", slide_id);
 				params.put("code", code);
+
+				//Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
+				last_recommended_by = new Params.RecommendedBy(Params.RecommendedBy.TYPE.STORIES, code);
 
 				instance.sendAsync("track/stories", params, null);
 			} catch(JSONException e) {
@@ -367,6 +390,7 @@ public class SDK {
 	/**
 	 * Подписывает на снижение цены
 	 * https://reference.api.rees46.com/?shell#price-drop
+	 *
 	 * @param id            Идентификатор товара
 	 * @param current_price Текущая цена
 	 * @param email         Email, если есть
@@ -392,6 +416,7 @@ public class SDK {
 	/**
 	 * Отписывает на снижение цены
 	 * https://reference.api.rees46.com/?shell#price-drop
+	 *
 	 * @param item_ids Идентификаторы товара
 	 * @param email    Email, если есть
 	 * @param phone    Телефон, если есть
@@ -399,6 +424,7 @@ public class SDK {
 	public static void unsubscribeForPriceDrop(String[] item_ids, @Nullable String email, @Nullable String phone) {
 		unsubscribeForPriceDrop(item_ids, email, phone, null);
 	}
+
 	public static void unsubscribeForPriceDrop(String[] item_ids, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		JSONObject params = new JSONObject();
 		try {
@@ -418,6 +444,7 @@ public class SDK {
 	/**
 	 * Подписывает на наличие товара
 	 * https://reference.api.rees46.com/?shell#back-in-stock
+	 *
 	 * @param id    Идентификатор товара
 	 * @param email Email, если есть
 	 * @param phone Телефон, если есть
@@ -429,6 +456,7 @@ public class SDK {
 	public static void subscribeForBackInStock(String id, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		subscribeForBackInStock(id, null, email, phone, listener);
 	}
+
 	public static void subscribeForBackInStock(String id, @Nullable JSONObject properties, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		Params params = new Params();
 		params.put(Params.Parameter.ITEM, id);
@@ -447,13 +475,15 @@ public class SDK {
 	/**
 	 * Отписывает на наличие товара
 	 * https://reference.api.rees46.com/?shell#back-in-stock
-	 * @param item_ids    Идентификатор товара
-	 * @param email Email, если есть
-	 * @param phone Телефон, если есть
+	 *
+	 * @param item_ids Идентификатор товара
+	 * @param email    Email, если есть
+	 * @param phone    Телефон, если есть
 	 */
 	public static void unsubscribeForBackInStock(String[] item_ids, @Nullable String email, @Nullable String phone) {
 		unsubscribeForBackInStock(item_ids, email, phone, null);
 	}
+
 	public static void unsubscribeForBackInStock(String[] item_ids, @Nullable String email, @Nullable String phone, @Nullable Api.OnApiCallbackListener listener) {
 		JSONObject params = new JSONObject();
 		try {
@@ -473,6 +503,7 @@ public class SDK {
 	/**
 	 * Manage subscriptions
 	 * https://reference.api.rees46.com/?swift#manage-subscriptions
+	 *
 	 * @param email
 	 * @param phone
 	 * @param subscriptions
@@ -480,6 +511,7 @@ public class SDK {
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions) {
 		manageSubscription(email, phone, subscriptions, null);
 	}
+
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
 		try {
 			JSONObject params = new JSONObject();
@@ -512,6 +544,7 @@ public class SDK {
 	/**
 	 * Add user to a segment
 	 * https://reference.api.rees46.com/?java#add-user-to-a-segment
+	 *
 	 * @param segment_id
 	 * @param email
 	 * @param phone
@@ -519,6 +552,7 @@ public class SDK {
 	public static void addToSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone) {
 		segmentMethod("add", segment_id, email, phone, null);
 	}
+
 	public static void addToSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone, Api.OnApiCallbackListener listener) {
 		segmentMethod("add", segment_id, email, phone, listener);
 	}
@@ -526,6 +560,7 @@ public class SDK {
 	/**
 	 * Remove user from a segment
 	 * https://reference.api.rees46.com/?swift#remove-user-from-a-segment
+	 *
 	 * @param segment_id
 	 * @param email
 	 * @param phone
@@ -533,6 +568,7 @@ public class SDK {
 	public static void removeFromSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone) {
 		segmentMethod("remove", segment_id, email, phone, null);
 	}
+
 	public static void removeFromSegment(@NonNull String segment_id, @Nullable String email, @Nullable String phone, Api.OnApiCallbackListener listener) {
 		segmentMethod("remove", segment_id, email, phone, listener);
 	}
@@ -540,6 +576,7 @@ public class SDK {
 	/**
 	 * Get user segments
 	 * https://reference.api.rees46.com/?swift#get-user-segments
+	 *
 	 * @param listener
 	 */
 	public static void getCurrentSegment(@NonNull Api.OnApiCallbackListener listener) {
@@ -644,7 +681,15 @@ public class SDK {
 				//get unique device id
 				did = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 			}
-			init();
+
+			//Если еще ни разу не вызывали init
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+			String did_last_act = prefs().getString(DID_LAST_ACT_FIELD, null);
+			if( preferences.getString(DID_FIELD, null) == null || did_last_act == null || !did_last_act.contains(sdf.format(new Date())) ) {
+				init();
+			} else {
+				initialized(null);
+			}
 			queue.add(new Thread(this::getToken));
 		}
 	}
@@ -671,34 +716,16 @@ public class SDK {
 				@Override
 				public void onSuccess(JSONObject response) {
 					try {
-						initialized = true;
-						seance = response.getString("seance");
-						SDK.debug("Device ID: " + did + ", seance: " + seance);
-
-						//Seach
-						try {
-							JSONObject s = response.getJSONObject("search");
-							if( s.getBoolean("enabled") ) {
-								search = new Search(s);
-							} else {
-								SDK.debug("Search disabled");
-							}
-						} catch(JSONException e) {
-							SDK.debug(e.getMessage());
-						}
-
 						// Сохраняем данные в память
 						SharedPreferences.Editor edit = prefs().edit();
-						if( !response.getString("did").contains(did) ) {
-							edit.putString(DID_FIELD, did);
-						}
+						did = response.getString("did");
+						edit.putString(DID_FIELD, did);
+						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+						edit.putString(DID_LAST_ACT_FIELD, sdf.format(new Date()));
 						edit.apply();
 
 						// Выполняем таски из очереди
-						for( Thread thread : queue ) {
-							thread.start();
-						}
-						queue.clear();
+						initialized(response.getString("seance"));
 					} catch(JSONException e) {
 						SDK.error(e.getMessage(), e);
 					}
@@ -719,6 +746,60 @@ public class SDK {
 		} catch(JSONException e) {
 			SDK.error(e.getMessage(), e);
 		}
+	}
+
+	/**
+	 * Инициализация SDK
+	 *
+	 * @param sid String
+	 */
+	private void initialized(@Nullable String sid) {
+		initialized = true;
+		seance = sid;
+
+		//Если сеанса нет, пробуем найти в хранилище
+		//Нужно разделять сеансы по времени.
+		//Для этого достаточно отслеживать время последнего действия на сеанс и, если оно больше N часов, то создавать новый сеанс.
+		if( seance == null && prefs().getString(SID_FIELD, null) != null && prefs().getLong(SID_LAST_ACT_FIELD, 0) >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000 ) {
+			seance = prefs().getString(SID_FIELD, null);
+		}
+
+		//Если сеанса нет, генерируем новый
+		if( seance == null ) {
+			SDK.debug("Generate new seance");
+			seance = alphanumeric(10);
+		}
+		updateSidActivity();
+		SDK.debug("Device ID: " + did + ", seance: " + seance + ", last act: " + new Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0)));
+
+		//Seach
+		search = new Search(new JSONObject());
+
+		// Выполняем таски из очереди
+		for( Thread thread : queue ) {
+			thread.start();
+		}
+		queue.clear();
+	}
+
+	/**
+	 * Обновляем время последней активности
+	 */
+	private void updateSidActivity() {
+		SharedPreferences.Editor edit = prefs().edit();
+		edit.putString(SID_FIELD, seance);
+		edit.putLong(SID_LAST_ACT_FIELD, System.currentTimeMillis());
+		edit.apply();
+	}
+
+	private String alphanumeric(int length) {
+		final String SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz";
+		StringBuilder sb = new StringBuilder(length);
+		SecureRandom secureRandom = new SecureRandom();
+		for( int i = 0; i < length; i++ ) {
+			sb.append(SOURCE.charAt(secureRandom.nextInt(SOURCE.length())));
+		}
+		return sb.toString();
 	}
 
 	/**
@@ -762,6 +843,7 @@ public class SDK {
 	 * Прямое выполенение запроса
 	 */
 	private void send(String request_type, String method, JSONObject params, @Nullable Api.OnApiCallbackListener listener) {
+		updateSidActivity();
 		try {
 			params.put("shop_id", shop_id);
 			if( did != null ) {

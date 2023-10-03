@@ -2,49 +2,45 @@ package com.personalizatio.stories;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 
-import androidx.annotation.DimenRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.viewpager2.widget.CompositePageTransformer;
-import androidx.viewpager2.widget.MarginPageTransformer;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
-import com.personalizatio.SDK;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 
 	private final ArrayList<Story> stories;
+	private final HashMap<Integer, StoryView> storyViews = new HashMap<>();
 	private final ViewPagerAdapter adapter;
-	private final Settings settings;
 	private ViewPager2 mViewPager;
 
 	private final Runnable completeListener;
-	private final String code;
 	private final int start_position;
+	private final StoriesView stories_view;
 
 	public interface OnProgressState {
 		void onState(boolean running);
 	}
 
-	public StoryDialog(Context context, String code, ArrayList<Story> stories, Settings settings, int start_position, Runnable completeListener) {
-		super(context, android.R.style.Theme_Translucent_NoTitleBar);
+	public StoryDialog(StoriesView stories_view, ArrayList<Story> stories, int start_position, Runnable completeListener) {
+		super(stories_view.getContext(), android.R.style.Theme_Translucent_NoTitleBar);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.dialog_stories);
 		Window window = getWindow();
@@ -55,20 +51,18 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		window.setAttributes(wlp);
 		window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
-		this.code = code;
+		this.stories_view = stories_view;
 		this.stories = stories;
 		this.start_position = start_position;
-		this.settings = settings;
 		adapter = new ViewPagerAdapter(running -> mViewPager.setUserInputEnabled(running));
 
 		this.completeListener = completeListener;
 
 		setOnCancelListener(dialog -> {
 			for(int i = 0; i < stories.size(); i++) {
-				PagerHolder holder = getHolder(i);
+				StoryView holder = getHolder(i);
 				if( holder != null ) {
-					StoryView storyView = (StoryView) holder.itemView;
-					storyView.release();
+					holder.release();
 				}
 			}
 		});
@@ -82,7 +76,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		closeImageButton.setOnClickListener(v -> {
 			onDismissed();
 		});
-		closeImageButton.setColorFilter(Color.parseColor(settings.close_color));
+		closeImageButton.setColorFilter(Color.parseColor(stories_view.settings.close_color));
 		mViewPager = findViewById(R.id.view_pager);
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);
@@ -120,15 +114,16 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 			@Override
 			public void onPageSelected(int position) {
 				for(int i = 0; i < stories.size(); i++ ) {
-					PagerHolder holder = getHolder(i);
+					StoryView holder = getHolder(i);
 					if( holder != null ) {
-						StoryView storyView = (StoryView) holder.itemView;
-						if( i == position ) {
-							storyView.startStories();
-						} else {
-							storyView.stopStories();
+						if( i != position ) {
+							holder.stopStories();
 						}
 					}
+				}
+				StoryView holder = getHolder(position);
+				if( holder != null ) {
+					holder.startStories();
 				}
 			}
 
@@ -141,12 +136,12 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		});
 	}
 
-	private PagerHolder getCurrentHolder() {
+	private StoryView getCurrentHolder() {
 		return getHolder(mViewPager.getCurrentItem());
 	}
 
-	private PagerHolder getHolder(int position) {
-		return (PagerHolder) ((RecyclerView) mViewPager.getChildAt(0)).findViewHolderForAdapterPosition(position);
+	private StoryView getHolder(int position) {
+		return storyViews.get(position);
 	}
 
 	public void onDetachedFromWindow() {
@@ -165,11 +160,9 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 
 	@Override
 	public void onReleased() {
-		PagerHolder holder = getCurrentHolder();
+		StoryView holder = getCurrentHolder();
 		if( holder != null ) {
-			StoryView storyView = (StoryView) holder.itemView;
-			storyView.setHeadingVisibility(View.VISIBLE);
-			storyView.resume();
+			holder.resume();
 		}
 	}
 
@@ -195,7 +188,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		@NonNull
 		@Override
 		public PagerHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			return new PagerHolder(new StoryView(parent.getContext(), code, settings, state_listener));
+			return new PagerHolder(new StoryView(stories_view, state_listener));
 		}
 
 		@Override
@@ -203,14 +196,15 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 			if( holder.getLayoutPosition() == mViewPager.getCurrentItem() ) {
 				super.onViewAttachedToWindow(holder);
 				StoryView storyView = (StoryView) holder.itemView;
-				storyView.setHeadingVisibility(View.VISIBLE);
 				storyView.startStories();
 			}
 		}
 
 		@Override
 		public void onBindViewHolder(@NonNull PagerHolder holder, int position) {
-			((StoryView) holder.itemView).setStory(stories.get(position), () -> {
+			StoryView view = (StoryView) holder.itemView;
+			storyViews.put(position, view);
+			view.setStory(stories.get(position), () -> {
 				if( position >= stories.size() || position + 1 >= stories.size() ) {
 					cancel();
 				} else {

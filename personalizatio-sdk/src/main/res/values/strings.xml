@@ -8,4 +8,9 @@
 	<item name="avatar_size" type="id" />
 
 	<dimen name="viewpager_current_item_horizontal_margin">32dp</dimen>
+	<dimen name="product_price_box_radius">8dp</dimen>
+	<color name="product_discount_color">#F97316</color>
+	<color name="product_promocode_color">#17AADF</color>
+
+	<string name="failed_load_text">Failed to retrieve data. Please check your connection and try again.</string>
 </resources>

@@ -60,10 +60,11 @@ final public class Params extends AbstractParams<Params> {
 		public enum TYPE {
 			RECOMMENDATION("dynamic"),
 			TRIGGER("chain"),
-			DIGEST_MAIL("digest_mail"),
-			WEB_PUSH_DIGEST("web_push_digest"),
+			BULK("bulk"),
+			TRANSACTIONAL("transactional"),
 			INSTANT_SEARCH("instant_search"),
 			FULL_SEARCH("full_search"),
+			STORIES("stories"),
 			;
 
 			protected String value;

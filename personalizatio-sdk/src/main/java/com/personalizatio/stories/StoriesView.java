@@ -3,7 +3,9 @@ package com.personalizatio.stories;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.database.ContentObserver;
 import android.graphics.Color;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.personalizatio.Api;
+import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
 
@@ -30,7 +33,14 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 
 	private StoriesAdapter adapter;
 	private final ArrayList<Story> list = new ArrayList<>();
-	private String code;
+	private ContentObserver observer;
+	public final Settings settings = new Settings();
+	String code;
+	Player player;
+	@Nullable
+	OnLinkClickListener click_listener;
+	boolean mute = true;
+	Runnable mute_listener;
 
 	public StoriesView(Context context, String code) {
 		super(context);
@@ -55,6 +65,13 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	@Override
+	protected void onDetachedFromWindow() {
+		super.onDetachedFromWindow();
+		unregisterObserver();
+		player.release();
+	}
+
+	@Override
 	protected void onFinishInflate() {
 		super.onFinishInflate();
 		initialize();
@@ -70,15 +87,21 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		View view = inflate(getContext(), R.layout.stories, this);
 		RecyclerView stories = view.findViewById(R.id.stories);
 
-		adapter = new StoriesAdapter(list, this);
+		adapter = new StoriesAdapter(this, list, this);
 		stories.setAdapter(adapter);
 
 		Handler handler = new Handler(Looper.getMainLooper()) {
 			@Override
 			public void handleMessage(Message msg) {
+				registerObserver();
 				adapter.notifyDataSetChanged();
 			}
 		};
+
+		//Плеер для просмотра видео
+		player = new Player(getContext());
+
+		settings.failed_load_text = getResources().getString(R.string.failed_load_text);
 
 		//Запрашиваем сторисы
 		SDK.stories(code, new Api.OnApiCallbackListener() {
@@ -86,7 +109,6 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 			public void onSuccess(JSONObject response) {
 				Log.d("stories", response.toString());
 				try {
-					adapter.settings = new Settings(response.getJSONObject("settings"));
 					JSONArray json_stories = response.getJSONArray("stories");
 					for( int i = 0; i < json_stories.length(); i++ ) {
 						list.add(new Story(json_stories.getJSONObject(i)));
@@ -108,9 +130,46 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 			story.start_position = 0;
 		}
 
-		StoryDialog dialog = new StoryDialog(getContext(), code, list, adapter.settings, index, () -> {
+		StoryDialog dialog = new StoryDialog(this, list, index, () -> {
 			adapter.notifyDataSetChanged();
 		});
 		dialog.show();
+	}
+
+	/**
+	 * Устанавливает слушатель клика по элементам
+	 * @param listener OnLinkClickListener
+	 */
+	public void setOnLinkClickListener(@Nullable OnLinkClickListener listener) {
+		this.click_listener = listener;
+	}
+
+	public void muteVideo(boolean mute) {
+		this.mute = mute;
+	}
+
+	public boolean isMute() {
+		return mute;
+	}
+
+	public void registerObserver() {
+		observer = new ContentObserver(new Handler()) {
+			@Override
+			public void onChange(boolean selfChange) {
+				super.onChange(selfChange);
+				AudioManager manager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+				if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ) {
+					mute = manager.isStreamMute(AudioManager.STREAM_MUSIC);
+					if( mute_listener != null ) {
+						mute_listener.run();
+					}
+				}
+			}
+		};
+		getContext().getContentResolver().registerContentObserver(android.provider.Settings.System.CONTENT_URI, true, observer);
+	}
+
+	public void unregisterObserver() {
+		getContext().getContentResolver().unregisterContentObserver(observer);
 	}
 }

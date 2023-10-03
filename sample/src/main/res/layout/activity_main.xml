@@ -7,6 +7,7 @@
     tools:context=".AbstractMainActivity">
 
     <com.personalizatio.stories.StoriesView
+        android:id="@+id/story_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:code="fcaa8d3168ab7d7346e4b4f1a1c92214"
