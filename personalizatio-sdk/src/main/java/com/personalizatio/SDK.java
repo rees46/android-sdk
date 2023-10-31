@@ -50,7 +50,6 @@ public class SDK {
 	private static final String SID_FIELD = "sid";
 	private static final String SID_LAST_ACT_FIELD = "sid_last_act";
 	private static final String DID_FIELD = "did";
-	private static final String DID_LAST_ACT_FIELD = "did_last_act";
 	private static final String TOKEN_FIELD = "token";
 	private static final int SESSION_CODE_EXPIRE = 2;
 
@@ -683,9 +682,7 @@ public class SDK {
 			}
 
 			//Если еще ни разу не вызывали init
-			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-			String did_last_act = prefs().getString(DID_LAST_ACT_FIELD, null);
-			if( preferences.getString(DID_FIELD, null) == null || did_last_act == null || !did_last_act.contains(sdf.format(new Date())) ) {
+			if( preferences.getString(DID_FIELD, null) == null ) {
 				init();
 			} else {
 				initialized(null);
@@ -720,8 +717,6 @@ public class SDK {
 						SharedPreferences.Editor edit = prefs().edit();
 						did = response.getString("did");
 						edit.putString(DID_FIELD, did);
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-						edit.putString(DID_LAST_ACT_FIELD, sdf.format(new Date()));
 						edit.apply();
 
 						// Выполняем таски из очереди
