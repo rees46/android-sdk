@@ -170,6 +170,8 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	public void unregisterObserver() {
-		getContext().getContentResolver().unregisterContentObserver(observer);
+		if( observer != null ) {
+			getContext().getContentResolver().unregisterContentObserver(observer);
+		}
 	}
 }
