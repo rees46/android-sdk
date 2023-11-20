@@ -20,16 +20,18 @@ import java.io.File;
 final class Player {
 
 	final ExoPlayer player;
-	final SimpleCache cache;
+	static SimpleCache cache;
 
 	public Player(Context context) {
 		player = new ExoPlayer.Builder(context).build();
 		player.setHandleAudioBecomingNoisy(true);
 
 		//Подготавливаем кеш
-		File file = new File(context.getCacheDir(), "stories");
-		LeastRecentlyUsedCacheEvictor limit = new LeastRecentlyUsedCacheEvictor(50 * 1024 * 1024);
-		cache = new SimpleCache(file, limit, new StandaloneDatabaseProvider(context));
+		if( cache == null ) {
+			File file = new File(context.getCacheDir(), "stories");
+			LeastRecentlyUsedCacheEvictor limit = new LeastRecentlyUsedCacheEvictor(50 * 1024 * 1024);
+			cache = new SimpleCache(file, limit, new StandaloneDatabaseProvider(context));
+		}
 	}
 
 	public void prepare(String url) {
@@ -47,6 +49,7 @@ final class Player {
 
 	public void release() {
 		cache.release();
+		cache = null;
 		player.release();
 	}
 }
