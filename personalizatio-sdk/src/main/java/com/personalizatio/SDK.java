@@ -681,13 +681,15 @@ public class SDK {
 				did = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 			}
 
+			//Добавляем запрос токена в очередь
+			queue.add(new Thread(this::getToken));
+
 			//Если еще ни разу не вызывали init
 			if( preferences.getString(DID_FIELD, null) == null ) {
 				init();
 			} else {
 				initialized(null);
 			}
-			queue.add(new Thread(this::getToken));
 		}
 	}
 

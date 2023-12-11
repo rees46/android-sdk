@@ -4,7 +4,6 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.ContentObserver;
-import android.graphics.Color;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Handler;
@@ -64,11 +63,17 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		parseAttrs(attrs);
 	}
 
+	/**
+	 * Вызывать, когда объект сторисов удален с экрана и больше не нужен
+	 */
+	public void release() {
+		player.release();
+	}
+
 	@Override
 	protected void onDetachedFromWindow() {
 		super.onDetachedFromWindow();
 		unregisterObserver();
-		player.release();
 	}
 
 	@Override

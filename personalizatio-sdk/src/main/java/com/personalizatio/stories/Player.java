@@ -19,12 +19,14 @@ import java.io.File;
 @UnstableApi
 final class Player {
 
-	final ExoPlayer player;
+	static ExoPlayer player;
 	static SimpleCache cache;
 
 	public Player(Context context) {
-		player = new ExoPlayer.Builder(context).build();
-		player.setHandleAudioBecomingNoisy(true);
+		if( player == null ) {
+			player = new ExoPlayer.Builder(context).build();
+			player.setHandleAudioBecomingNoisy(true);
+		}
 
 		//Подготавливаем кеш
 		if( cache == null ) {
@@ -51,5 +53,6 @@ final class Player {
 		cache.release();
 		cache = null;
 		player.release();
+		player = null;
 	}
 }

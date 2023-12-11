@@ -1,5 +1,8 @@
 package com.personalizatio.sample;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -7,6 +10,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 import com.personalizatio.SDK;
 
@@ -22,6 +26,12 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 //		Log.e("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
+
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ) {
+			if( ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED ) {
+				ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+			}
+		}
 
 		if( getIntent().getExtras() != null ) {
 			T.notificationClicked(getIntent().getExtras());

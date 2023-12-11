@@ -45,11 +45,13 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 
 					@Override
 					protected Bitmap doInBackground(String... params) {
-						try {
-							InputStream in = new URL(params[0]).openStream();
-							return BitmapFactory.decodeStream(in);
-						} catch (IOException e) {
-							e.printStackTrace();
+						if( params[0] != null ) {
+							try {
+								InputStream in = new URL(params[0]).openStream();
+								return BitmapFactory.decodeStream(in);
+							} catch(IOException e) {
+								e.printStackTrace();
+							}
 						}
 						return null;
 					}
@@ -65,16 +67,19 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 						intent.putExtra(T.NOTIFICATION_TYPE, data.get("type"));
 						intent.putExtra(T.NOTIFICATION_ID, data.get("id"));
 
-						PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT);
+						PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
 						NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), getString(R.string.notification_channel_id))
 								.setSmallIcon(R.mipmap.ic_launcher)
-								.setLargeIcon(result)
 								.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
 								.setContentTitle(data.get("title"))
 								.setContentText(data.get("body"))
 								.setAutoCancel(true)
 								.setContentIntent(pendingIntent);
+
+						if( result != null ) {
+							notificationBuilder.setLargeIcon(result);
+						}
 
 						NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 						if( notificationManager != null ) {

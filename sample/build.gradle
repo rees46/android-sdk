@@ -56,6 +56,7 @@ dependencies {
 	implementation fileTree(dir: 'libs', include: ['*.jar'])
 	implementation 'androidx.appcompat:appcompat:1.6.1'
 	implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+	implementation 'androidx.recyclerview:recyclerview:1.3.2'
 
 //	rees46DebugImplementation project(path: ':personalizatio-sdk', configuration: 'rees46Debug')
 //	personaclickDebugImplementation project(path: ':personalizatio-sdk', configuration: 'personaclickDebug')
