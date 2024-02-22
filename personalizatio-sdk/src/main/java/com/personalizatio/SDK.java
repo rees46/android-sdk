@@ -600,6 +600,20 @@ public class SDK {
 		}
 	}
 
+	/**
+	 * Send notification token
+	 * https://reference.api.rees46.com/?java#create-new-token
+	 *
+	 * @param token
+	 * @param listener
+	 */
+	public static void setPushTokenNotification(@NonNull String token, Api.OnApiCallbackListener listener) {
+		HashMap<String, String> params = new HashMap<>();
+		params.put("platform", "android");
+		params.put("token", token);
+		instance.sendAsync("mobile_push_tokens", new JSONObject(params), listener);
+	}
+
 	//----------Private--------------->
 
 	/**
@@ -821,10 +835,7 @@ public class SDK {
 			if( prefs().getString(TOKEN_FIELD, null) == null || !Objects.equals(prefs().getString(TOKEN_FIELD, null), token) ) {
 
 				//Send token
-				HashMap<String, String> params = new HashMap<>();
-				params.put("platform", "android");
-				params.put("token", token);
-				send("post", "mobile_push_tokens", new JSONObject(params), new Api.OnApiCallbackListener() {
+				setPushTokenNotification(token, new Api.OnApiCallbackListener() {
 					@Override
 					public void onSuccess(JSONObject msg) {
 						SharedPreferences.Editor edit = prefs().edit();

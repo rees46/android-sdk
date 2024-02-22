@@ -14,7 +14,8 @@
         tools:replace="android:name"
         tools:ignore="GoogleAppIndexingWarning">
 
-        <activity android:name="com.personaclick.sample.MainActivity">
+        <activity android:name="com.personaclick.sample.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
