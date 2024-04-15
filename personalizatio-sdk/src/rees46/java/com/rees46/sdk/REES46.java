@@ -21,11 +21,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Map;
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
 final public class REES46 extends SDK {
 
 	public static final String TAG = "REES46";
