@@ -26,6 +26,7 @@ public final class SearchParams extends AbstractParams<SearchParams> {
 		PRICE_MIN("price_min"),
 		PRICE_MAX("price_max"),
 		COLORS("colors"),
+		FASHION_SIZES("fashion_sizes")
 		EXCLUDE("exclude"),
 		//params.put(SearchParams.Parameter.NO_CLARIFICATION, true);
 		NO_CLARIFICATION("no_clarification"),

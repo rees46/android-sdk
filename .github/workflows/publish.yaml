@@ -1,0 +1,25 @@
+name: Publish to Sona
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    permissions: write-all
+    with:
+      PROPERTIES_FILE: gradle.properties
+      SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
+    secrets:
+      OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
+      SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
