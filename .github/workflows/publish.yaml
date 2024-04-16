@@ -15,6 +15,7 @@ jobs:
     with:
       PROPERTIES_FILE: gradle.properties
       SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
+      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalizatio-sdk
     secrets:
       OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
@@ -23,4 +24,3 @@ jobs:
       SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
       SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalizatio-sdk
