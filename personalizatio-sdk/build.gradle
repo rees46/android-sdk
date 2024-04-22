@@ -93,6 +93,25 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 	from javadoc.destinationDir
 }
 
+task printVersionName {
+	println version
+}
+
+task increaseVersionCode {
+	def (major, minor, patch) = version.tokenize('.')
+	major = major.toInteger()
+	minor = minor.toInteger()
+	patch = patch.toInteger()
+
+	Integer newPatch = patch + 1
+
+	String result = "$major.$minor.$newPatch"
+
+	String s = buildFile.getText().replaceFirst("version='$version'", "version='$result'")
+
+	buildFile.setText(s)
+}
+
 artifacts {
 	archives javadocJar
 	archives sourcesJar
