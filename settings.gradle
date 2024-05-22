@@ -1,1 +1,2 @@
-include ':sample', ':personalizatio-sdk'
+include ':personalizatio-sdk'
+include ':sample'
