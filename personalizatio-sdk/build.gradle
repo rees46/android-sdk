@@ -9,6 +9,7 @@ version = '1.8.15'
 
 android {
 	compileSdkVersion 34
+	flavorDimensions += 'default'
 
 	defaultConfig {
 		minSdkVersion 19
