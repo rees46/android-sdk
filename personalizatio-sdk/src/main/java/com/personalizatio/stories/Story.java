@@ -75,6 +75,8 @@ final class Story {
 			public String label_show;
 			public ArrayList<Product> products = new ArrayList<>();
 			public Product item;
+			public String text_input;
+			public int y_offset;
 
 			public Element(@NonNull JSONObject json) throws JSONException {
 				type = json.getString("type");
@@ -114,6 +116,12 @@ final class Story {
 				}
 				if( json.has("item") && type.equals("product") ) {
 					item = new Product(json.getJSONObject("item"));
+				}
+				if( json.has("text_input") ) {
+					text_input = json.getString("text_input");
+				}
+				if( json.has("y_offset") ) {
+					y_offset = json.getInt("y_offset");
 				}
 			}
 		}

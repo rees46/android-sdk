@@ -1,6 +1,7 @@
 package com.personalizatio.stories;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -12,12 +13,14 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -86,6 +89,7 @@ final class StoryItemView extends ConstraintLayout {
 
 	//Элементы управления
 	private Button button;
+	private FrameLayout text_blocks_layout;
 	public ImageButton reload;
 	public View reload_layout;
 	private TextView reload_text;
@@ -97,6 +101,8 @@ final class StoryItemView extends ConstraintLayout {
 	private ViewGroup elements_layout;
 	private RecyclerView products;
 	private ProductsAdapter products_adapter;
+
+	private int screenHeight;
 
 	public StoryItemView(@NonNull Context context) {
 		super(context);
@@ -143,6 +149,7 @@ final class StoryItemView extends ConstraintLayout {
 
 		//Элементы управления
 		button = findViewById(android.R.id.button1);
+		text_blocks_layout = findViewById(R.id.text_blocks_layout);
 		reload = findViewById(R.id.reload);
 		reload_layout = findViewById(R.id.reload_layout);
 		reload_text = findViewById(R.id.reload_text);
@@ -171,6 +178,8 @@ final class StoryItemView extends ConstraintLayout {
 		product_discount_box = findViewById(R.id.product_discount_box);
 		product_image = findViewById(R.id.product_image);
 		promocode_text = findViewById(R.id.promocode_text);
+
+		screenHeight = getScreenHeight(getContext());
 	}
 
 	/**
@@ -478,7 +487,47 @@ final class StoryItemView extends ConstraintLayout {
 							return false;
 						}
 					});
+				case "text_block":
+					var textView = new TextView(getContext());
+					textView.setLayoutParams(new FrameLayout.LayoutParams(
+							LinearLayout.LayoutParams.MATCH_PARENT,
+							LinearLayout.LayoutParams.WRAP_CONTENT));
+
+					textView.setText(element.text_input);
+
+					var y = screenHeight * element.y_offset / 100f;
+					textView.setY(y);
+
+					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+						textView.setBackgroundTintList(ColorStateList.valueOf(element.background == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.background)));
+					} else {
+						textView.setBackgroundColor(element.background == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.background));
+					}
+					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+						textView.setTextColor(ColorStateList.valueOf(element.color == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.color)));
+					} else {
+						textView.setTextColor(element.color == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.color));
+					}
+
+					text_blocks_layout.addView(textView);
+
+					break;
 			}
+		}
+	}
+
+	public static int getScreenHeight(Context context) {
+		var activity = (Activity) context;
+
+		if( activity == null ) return 0;
+
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ) {
+			var windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
+			return windowMetrics.getBounds().height();
+		} else {
+			var displayMetrics = new DisplayMetrics();
+			activity.getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+			return displayMetrics.heightPixels;
 		}
 	}
 }
