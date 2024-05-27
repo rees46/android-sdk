@@ -1,9 +1,9 @@
 package com.personalizatio.stories;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.graphics.Color;
 import android.util.Log;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -11,7 +11,6 @@ import android.view.ViewGroup;
 import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
@@ -21,7 +20,6 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
 
@@ -48,6 +46,8 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 	//Heading
 	private final StoryDialog.OnProgressState state_listener;
+
+	private Pair<Integer, Integer> viewPagerSize = null;
 
 	@SuppressLint("ClickableViewAccessibility")
 	public StoryView(StoriesView stories_view, StoryDialog.OnProgressState state_listener) {
@@ -216,8 +216,16 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 		public PagerHolder(@NonNull View view) {
 			super(view);
+
 			story_item = (StoryItemView) view;
 			story_item.setStoriesView(stories_view);
+			if(viewPagerSize == null) {
+				var viewPagerHeight = mViewPager.getHeight();
+				var params = (ConstraintLayout.LayoutParams) storiesProgressView.getLayoutParams();
+				var viewPagerTopOffset = params.height + params.bottomMargin + params.topMargin;
+				viewPagerSize = new Pair<>(viewPagerHeight, viewPagerTopOffset);
+			}
+			story_item.setViewSize(viewPagerSize.first, viewPagerSize.second);
 			story_item.setOnPageListener(new StoryItemView.OnPageListener() {
 				@Override
 				public void onPrev() {

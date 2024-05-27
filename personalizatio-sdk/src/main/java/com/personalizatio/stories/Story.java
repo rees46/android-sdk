@@ -71,12 +71,20 @@ final class Story {
 			public String background;
 			public String color;
 			public Boolean text_bold = false;
+			public Boolean text_italic = false;
 			public String label_hide;
 			public String label_show;
 			public ArrayList<Product> products = new ArrayList<>();
 			public Product item;
 			public String text_input;
 			public int y_offset;
+			public String font_type;
+			public int font_size = 14;
+			public String text_align;
+			public String text_color;
+			public double text_line_spacing;
+			public String text_background_color = "#FFFFFF";
+			public String text_background_color_opacity = "0%";
 
 			public Element(@NonNull JSONObject json) throws JSONException {
 				type = json.getString("type");
@@ -104,6 +112,12 @@ final class Story {
 				if( json.has("text_bold") ) {
 					text_bold = json.getBoolean("text_bold");
 				}
+				if( json.has("bold") ) {
+					text_bold = json.getBoolean("bold");
+				}
+				if( json.has("italic") ) {
+					text_italic = json.getBoolean("italic");
+				}
 				if( json.has("labels") ) {
 					label_hide = json.getJSONObject("labels").getString("hide_carousel");
 					label_show = json.getJSONObject("labels").getString("show_carousel");
@@ -122,6 +136,27 @@ final class Story {
 				}
 				if( json.has("y_offset") ) {
 					y_offset = json.getInt("y_offset");
+				}
+				if( json.has("font_type") ) {
+					font_type = json.getString("font_type");
+				}
+				if( json.has("font_size") ) {
+					font_size = json.getInt("font_size");
+				}
+				if( json.has("text_align") ) {
+					text_align = json.getString("text_align");
+				}
+				if( json.has("text_color") ) {
+					text_color = json.getString("text_color");
+				}
+				if( json.has("text_line_spacing") ) {
+					text_line_spacing = json.getDouble("text_line_spacing");
+				}
+				if( json.has("text_background_color") ) {
+					text_background_color = json.getString("text_background_color");
+				}
+				if( json.has("text_background_color_opacity") ) {
+					text_background_color_opacity = json.getString("text_background_color_opacity");
 				}
 			}
 		}
