@@ -1,7 +1,6 @@
 package com.personalizatio.stories;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -13,7 +12,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -27,12 +25,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.FontRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.core.view.ViewCompat;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,12 +50,9 @@ import com.bumptech.glide.request.target.Target;
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.ShapeAppearanceModel;
-import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
-
-import org.w3c.dom.Text;
 
 final class StoryItemView extends ConstraintLayout {
 
@@ -102,7 +99,8 @@ final class StoryItemView extends ConstraintLayout {
 	private RecyclerView products;
 	private ProductsAdapter products_adapter;
 
-	private int screenHeight;
+	private int viewHeight;
+	private int viewTopOffset;
 
 	public StoryItemView(@NonNull Context context) {
 		super(context);
@@ -178,8 +176,6 @@ final class StoryItemView extends ConstraintLayout {
 		product_discount_box = findViewById(R.id.product_discount_box);
 		product_image = findViewById(R.id.product_image);
 		promocode_text = findViewById(R.id.promocode_text);
-
-		screenHeight = getScreenHeight(getContext());
 	}
 
 	/**
@@ -203,6 +199,11 @@ final class StoryItemView extends ConstraintLayout {
 		prev.setOnTouchListener(listener);
 		next.setOnTouchListener(listener);
 		super.setOnTouchListener((v, event) -> true);
+	}
+
+	public void setViewSize(int height, int topOffset) {
+		viewHeight = height;
+		viewTopOffset = topOffset;
 	}
 
 	/**
@@ -489,45 +490,111 @@ final class StoryItemView extends ConstraintLayout {
 					});
 				case "text_block":
 					var textView = new TextView(getContext());
-					textView.setLayoutParams(new FrameLayout.LayoutParams(
-							LinearLayout.LayoutParams.MATCH_PARENT,
-							LinearLayout.LayoutParams.WRAP_CONTENT));
+
+					var layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+					textView.setLayoutParams(layoutParams);
 
 					textView.setText(element.text_input);
 
-					var y = screenHeight * element.y_offset / 100f;
-					textView.setY(y);
+					textView.setPadding(2, element.font_size, 2, element.font_size);
 
-					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-						textView.setBackgroundTintList(ColorStateList.valueOf(element.background == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.background)));
-					} else {
-						textView.setBackgroundColor(element.background == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.background));
-					}
-					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-						textView.setTextColor(ColorStateList.valueOf(element.color == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.color)));
-					} else {
-						textView.setTextColor(element.color == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.color));
-					}
+					textView.setY(viewHeight * element.y_offset / 100f + viewTopOffset);
+
+					textView.setTextSize(element.font_size);
+
+					var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.font_type, element.text_bold, element.text_italic));
+					textView.setTypeface(typeface, getTypefaceStyle(element.text_bold, element.text_italic));
+
+					textView.setTextAlignment(getTextAlignment(element.text_align));
+
+					textView.setLineSpacing(textView.getLineHeight(), (float)element.text_line_spacing);
+
+					setTextBackgroundColor(textView, element.text_background_color, element.text_background_color_opacity);
+					setTextColor(textView, element.text_color);
 
 					text_blocks_layout.addView(textView);
-
-					break;
 			}
 		}
 	}
 
-	public static int getScreenHeight(Context context) {
-		var activity = (Activity) context;
-
-		if( activity == null ) return 0;
-
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ) {
-			var windowMetrics = activity.getWindowManager().getCurrentWindowMetrics();
-			return windowMetrics.getBounds().height();
-		} else {
-			var displayMetrics = new DisplayMetrics();
-			activity.getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-			return displayMetrics.heightPixels;
+	private @FontRes int getFontRes(String fontType, boolean bold, boolean italic) {
+		switch( fontType ) {
+            case "serif": {
+				if( bold && italic ) return R.font.droid_serif_bold_italic;
+				if( bold ) return R.font.droid_serif_bold;
+				if( italic ) return R.font.droid_serif_italic;
+				return R.font.droid_serif_regular;
+			}
+			case "sans-serif": {
+				if( bold ) return R.font.droid_sans_bold;
+				return R.font.droid_sans_regular;
+			}
+			case "monospaced":
+			default: {
+				return R.font.droid_sans_mono;
+			}
 		}
+	}
+
+	private static int getTypefaceStyle(boolean bold, boolean italic) {
+		if( bold && italic ) return Typeface.BOLD_ITALIC;
+		if( bold ) return Typeface.BOLD;
+		if( italic ) return Typeface.ITALIC;
+		return Typeface.NORMAL;
+	}
+
+	private static int getTextAlignment(String textAlign) {
+		return switch (textAlign) {
+			case "center" -> View.TEXT_ALIGNMENT_CENTER;
+			case "right" -> View.TEXT_ALIGNMENT_TEXT_END;
+			default -> View.TEXT_ALIGNMENT_TEXT_START;
+		};
+	}
+
+	private static void setTextColor(TextView textView, String colorString) {
+		if( !colorString.startsWith("#") ) {
+			colorString = "#FFFFFF";
+		}
+
+		var color = Color.parseColor(colorString);
+
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+			textView.setTextColor(ColorStateList.valueOf(color));
+		} else {
+			textView.setTextColor(color);
+		}
+	}
+
+	private static void setTextBackgroundColor(TextView textView, String colorString, String colorOpacityString) {
+		if( !colorString.startsWith("#") ) {
+			colorString = "#FFFFFF";
+		}
+
+		var colorOpacity = GetColorOpacity(colorOpacityString);
+		var colorOpacityValueString = Integer.toString(colorOpacity,16);
+		if( colorOpacityValueString.length() == 1) colorOpacityValueString = 0 + colorOpacityValueString;
+
+		var fullColorString = colorString.replace("#", "#" + colorOpacityValueString);
+
+		textView.setBackgroundColor(Color.parseColor(fullColorString));
+	}
+
+	private static int GetColorOpacity(String percentsString) {
+		var percents = 0;
+
+		try {
+			percents = Integer.parseInt(percentsString);
+		}
+		catch( NumberFormatException e ) {
+			try {
+				if (!percentsString.isEmpty()) {
+					percents = Integer.parseInt(percentsString.substring(0, percentsString.length() - 1));
+				}
+			}
+			catch( NumberFormatException ignored) {
+			}
+		}
+
+		return 255 * percents / 100;
 	}
 }
