@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
-import android.media.Image;
 import android.net.Uri;
 import android.os.Build;
 import android.util.AttributeSet;
@@ -53,8 +52,13 @@ import com.google.android.material.shape.ShapeAppearanceModel;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.models.elements.ButtonElement;
+import com.personalizatio.stories.models.elements.HeaderElement;
+import com.personalizatio.stories.models.elements.ProductElement;
+import com.personalizatio.stories.models.elements.ProductsElement;
+import com.personalizatio.stories.models.elements.TextBlockElement;
 import com.personalizatio.stories.viewAdapters.ProductsAdapter;
-import com.personalizatio.stories.models.Element;
+import com.personalizatio.stories.models.elements.Element;
 import com.personalizatio.stories.models.Slide;
 
 final public class StoryItemView extends ConstraintLayout {
@@ -291,13 +295,10 @@ final public class StoryItemView extends ConstraintLayout {
 				String link = null;
 				//Сначала ищем элемент с товаром
 				for (var element : slide.getElements()) {
-					switch( element.getType() ) {
-						case "product":
-							product = element.getItem();
-							break;
-						case "button":
-							link = element.getLink();
-							break;
+					if (element instanceof ProductElement productElement) {
+						product = productElement.getItem();
+					} else if (element instanceof ButtonElement buttonElement) {
+						link = buttonElement.getLink();
 					}
 				}
 				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
@@ -324,7 +325,7 @@ final public class StoryItemView extends ConstraintLayout {
 		Glide.with(getContext()).load(url).listener(listener).into(image);
 	}
 
-	public void updateProduct(Element element, RequestListener<Drawable> listener) {
+	public void updateProduct(ProductElement element, RequestListener<Drawable> listener) {
 		var item = element.getItem();
 		product.setVisibility(VISIBLE);
 		product_brand.setVisibility(item.brand == null ? GONE : VISIBLE);
@@ -380,40 +381,38 @@ final public class StoryItemView extends ConstraintLayout {
 		elementsLayout.animate().alpha(visibility == GONE ? 0 : 1).setStartDelay(visibility == GONE ? 100 : 0).setDuration(200);
 	}
 
-	private void updateHeader(Element element, String slide_id, String code, int story_id) {
-		if( element.getType().equals("header") ) {
-			header.setVisibility(VISIBLE);
-			header.setOnTouchListener((View v, MotionEvent event) -> {
-				if( event.getAction() == MotionEvent.ACTION_UP ) {
-					getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(element.getLink())));
-					SDK.track_story("click", code, story_id, slide_id);
-				}
-				return true;
-			});
-
-			if( element.getIcon() != null ) {
-				titleCardView.setVisibility(VISIBLE);
-				if( getContext() == null ) return;
-				Glide.with(getContext()).load(element.getIcon()).into(titleIconImageView);
-			} else {
-				titleCardView.setVisibility(GONE);
+	private void updateHeader(HeaderElement element, String slide_id, String code, int story_id) {
+		header.setVisibility(VISIBLE);
+		header.setOnTouchListener((View v, MotionEvent event) -> {
+			if( event.getAction() == MotionEvent.ACTION_UP ) {
+				getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(element.getLink())));
+				SDK.track_story("click", code, story_id, slide_id);
 			}
+			return true;
+		});
 
-			titleTextView.setTypeface(stories_view.getSettings().font_family);
-			if( element.getTitle() != null ) {
-				titleTextView.setVisibility(VISIBLE);
-				titleTextView.setText(element.getTitle());
-			} else {
-				titleTextView.setVisibility(GONE);
-			}
+		if( element.getIcon() != null ) {
+			titleCardView.setVisibility(VISIBLE);
+			if( getContext() == null ) return;
+			Glide.with(getContext()).load(element.getIcon()).into(titleIconImageView);
+		} else {
+			titleCardView.setVisibility(GONE);
+		}
 
-			subtitleTextView.setTypeface(stories_view.getSettings().font_family);
-			if( element.getSubtitle() != null ) {
-				subtitleTextView.setVisibility(VISIBLE);
-				subtitleTextView.setText(element.getSubtitle());
-			} else {
-				subtitleTextView.setVisibility(GONE);
-			}
+		titleTextView.setTypeface(stories_view.getSettings().font_family);
+		if( element.getTitle() != null ) {
+			titleTextView.setVisibility(VISIBLE);
+			titleTextView.setText(element.getTitle());
+		} else {
+			titleTextView.setVisibility(GONE);
+		}
+
+		subtitleTextView.setTypeface(stories_view.getSettings().font_family);
+		if( element.getSubtitle() != null ) {
+			subtitleTextView.setVisibility(VISIBLE);
+			subtitleTextView.setText(element.getSubtitle());
+		} else {
+			subtitleTextView.setVisibility(GONE);
 		}
 	}
 
@@ -426,40 +425,36 @@ final public class StoryItemView extends ConstraintLayout {
 
 		//Отображаем необходимые элементы
 		for (Element element : slide.getElements()) {
-			switch( element.getType() ) {
-				case "header":
-					updateHeader(element, slide.getId(), code, story_id);
-					break;
-				case "button":
-					setupButton(element);
-					break;
-				case "products":
-					setupProducts(element, slide.getId(), story_id);
-					break;
-				case "product":
-					updateProduct(element, new RequestListener<>() {
-						@Override
-						public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
-							return false;
-						}
+			if (element instanceof HeaderElement headerElement) {
+				updateHeader(headerElement, slide.getId(), code, story_id);
+			} else if (element instanceof TextBlockElement textBlockElement) {
+				updateTextBlock(textBlockElement);
+			} else if (element instanceof ButtonElement buttonElement) {
+				updateButton(buttonElement);
+			}
+			else if (element instanceof ProductsElement productsElement) {
+				updateProducts(productsElement, slide.getId(), story_id);
+			} else if (element instanceof ProductElement productElement) {
+				updateProduct(productElement, new RequestListener<>() {
+					@Override
+					public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+						return false;
+					}
 
-						@Override
-						public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
-							slide.setPrepared(true);
-							if( page_listener != null ) {
-								page_listener.onPrepared(position);
-							}
-							return false;
+					@Override
+					public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+						slide.setPrepared(true);
+						if( page_listener != null ) {
+							page_listener.onPrepared(position);
 						}
-					});
-				case "text_block":
-					setupTextBlock(element);
-					break;
+						return false;
+					}
+				});
 			}
 		}
 	}
 
-	private void setupProducts(Element element, String slideId, int storyId) {
+	private void updateProducts(ProductsElement element, String slideId, int storyId) {
 		products_adapter.setProducts(element.getProducts(), storyId, slideId);
 		buttonProducts.setVisibility(VISIBLE);
 		buttonProducts.setText(element.getLabelShow());
@@ -496,7 +491,7 @@ final public class StoryItemView extends ConstraintLayout {
 		}
 	}
 
-	private void setupButton(Element element) {
+	private void updateButton(ButtonElement element) {
 		button.setVisibility(VISIBLE);
 		button.setText(element.getTitle());
 		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
@@ -512,7 +507,7 @@ final public class StoryItemView extends ConstraintLayout {
 		button.setTypeface(Typeface.create(stories_view.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
 	}
 
-	private void setupTextBlock(Element element) {
+	private void updateTextBlock(TextBlockElement element) {
 		var textView = new TextView(getContext());
 
 		var layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
@@ -528,8 +523,8 @@ final public class StoryItemView extends ConstraintLayout {
 
 		textView.setTextSize(fontSize);
 
-		var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.getFontType(), element.getTextBold(), element.getTextItalic()));
-		textView.setTypeface(typeface, getTypefaceStyle(element.getTextBold(), element.getTextItalic()));
+		var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.getFontType(), element.isBold(), element.isItalic()));
+		textView.setTypeface(typeface, getTypefaceStyle(element.isBold(), element.isItalic()));
 
 		textView.setTextAlignment(getTextAlignment(element.getTextAlign()));
 

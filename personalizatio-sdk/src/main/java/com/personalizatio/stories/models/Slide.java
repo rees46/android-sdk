@@ -2,6 +2,13 @@ package com.personalizatio.stories.models;
 
 import androidx.annotation.NonNull;
 
+import com.personalizatio.stories.models.elements.ButtonElement;
+import com.personalizatio.stories.models.elements.Element;
+import com.personalizatio.stories.models.elements.HeaderElement;
+import com.personalizatio.stories.models.elements.ProductElement;
+import com.personalizatio.stories.models.elements.ProductsElement;
+import com.personalizatio.stories.models.elements.TextBlockElement;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -13,10 +20,10 @@ import java.util.List;
 final public class Slide implements Serializable {
     private String id;
     private String background;
-    private String background_color;
+    private String backgroundColor;
     private String preview;
     private String type;
-    private List<Element> elements;
+    private final List<Element> elements;
     private long duration;
     private boolean prepared = false;
 
@@ -28,7 +35,7 @@ final public class Slide implements Serializable {
             background = json.getString("background");
         }
         if (json.has("background_color")) {
-            background_color = json.getString("background_color");
+            backgroundColor = json.getString("background_color");
         }
         if (json.has("preview")) {
             preview = json.getString("preview");
@@ -42,10 +49,39 @@ final public class Slide implements Serializable {
         elements = new ArrayList<>();
         if (json.has("elements")) {
             JSONArray json_elements = json.getJSONArray("elements");
-            for( int i = 0; i < json_elements.length(); i++ ) {
-                elements.add(new Element(json_elements.getJSONObject(i)));
+            for (int i = 0; i < json_elements.length(); i++) {
+                var element = createElement(json_elements.getJSONObject(i));
+                if (element != null) {
+                    elements.add(element);
+                }
             }
         }
+    }
+
+    private Element createElement(JSONObject json) throws JSONException {
+        if (json.has("type")) {
+            var type = json.getString("type");
+
+            switch (type) {
+                case "text_block": {
+                    return new TextBlockElement(json);
+                }
+                case "header": {
+                    return new HeaderElement(json);
+                }
+                case "products": {
+                    return new ProductsElement(json);
+                }
+                case "product": {
+                    return new ProductElement(json);
+                }
+                case "button": {
+                    return new ButtonElement(json);
+                }
+            }
+        }
+
+        return null;
     }
 
     public String getId() {
@@ -57,7 +93,7 @@ final public class Slide implements Serializable {
     }
 
     public String getBackgroundColor() {
-        return background_color;
+        return backgroundColor;
     }
 
     public String getPreview() {
