@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.app.Dialog;
 import android.content.res.Configuration;
@@ -19,12 +19,12 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.personalizatio.R;
 import com.personalizatio.stories.models.Story;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
+final public class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 
-	private final ArrayList<Story> stories;
+	private final List<Story> stories;
 	private final HashMap<Integer, StoryView> storyViews = new HashMap<>();
 	private final ViewPagerAdapter adapter;
 	private ViewPager2 mViewPager;
@@ -37,7 +37,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		void onState(boolean running);
 	}
 
-	public StoryDialog(StoriesView stories_view, ArrayList<Story> stories, int start_position, Runnable completeListener) {
+	public StoryDialog(StoriesView stories_view, List<Story> stories, int start_position, Runnable completeListener) {
 		super(stories_view.getContext(), android.R.style.Theme_Translucent_NoTitleBar);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.dialog_stories);
@@ -74,7 +74,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		closeImageButton.setOnClickListener(v -> {
 			onDismissed();
 		});
-		closeImageButton.setColorFilter(Color.parseColor(stories_view.settings.close_color));
+		closeImageButton.setColorFilter(Color.parseColor(stories_view.getSettings().close_color));
 		mViewPager = findViewById(R.id.view_pager);
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);

@@ -280,7 +280,7 @@ REES46.subscribeForBackInStock("PRODUCT_ID", properties, "mail@example.com", nul
 Add code to your layout:
 
 ```xml
-<com.personalizatio.stories.StoriesView
+<com.personalizatio.stories.views.StoriesView
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:code="STORY BLOCK CODE" />
