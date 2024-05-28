@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;

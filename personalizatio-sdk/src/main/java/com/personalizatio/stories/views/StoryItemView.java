@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.annotation.TargetApi;
 import android.content.ActivityNotFoundException;
@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.media.Image;
 import android.net.Uri;
 import android.os.Build;
 import android.util.AttributeSet;
@@ -52,12 +53,11 @@ import com.google.android.material.shape.ShapeAppearanceModel;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.viewAdapters.ProductsAdapter;
 import com.personalizatio.stories.models.Element;
 import com.personalizatio.stories.models.Slide;
-import com.personalizatio.stories.models.Story;
 
-
-final class StoryItemView extends ConstraintLayout {
+final public class StoryItemView extends ConstraintLayout {
 
 	public interface OnPageListener {
 		void onPrev();
@@ -69,8 +69,8 @@ final class StoryItemView extends ConstraintLayout {
 		void onLocked(boolean lock);
 	}
 
-	public ImageView image;
-	public PlayerView video;
+	private ImageView image;
+	private PlayerView video;
 	private ConstraintLayout product;
 	private LinearLayout product_price_box;
 	private LinearLayout product_discount_box;
@@ -89,16 +89,16 @@ final class StoryItemView extends ConstraintLayout {
 
 	//Элементы управления
 	private Button button;
-	private FrameLayout text_blocks_layout;
+	private FrameLayout textBlocksLayout;
 	public ImageButton reload;
 	public View reload_layout;
-	private TextView reload_text;
+	private TextView reloadText;
 	private ConstraintLayout header;
 	private TextView titleTextView, subtitleTextView;
 	private CardView titleCardView;
 	private ImageView titleIconImageView;
-	private Button button_products;
-	private ViewGroup elements_layout;
+	private Button buttonProducts;
+	private ViewGroup elementsLayout;
 	private RecyclerView products;
 	private ProductsAdapter products_adapter;
 
@@ -150,17 +150,17 @@ final class StoryItemView extends ConstraintLayout {
 
 		//Элементы управления
 		button = findViewById(android.R.id.button1);
-		text_blocks_layout = findViewById(R.id.text_blocks_layout);
+		textBlocksLayout = findViewById(R.id.text_blocks_layout);
 		reload = findViewById(R.id.reload);
 		reload_layout = findViewById(R.id.reload_layout);
-		reload_text = findViewById(R.id.reload_text);
+		reloadText = findViewById(R.id.reload_text);
 		header = findViewById(R.id.header);
 		titleTextView = findViewById(R.id.title_textView);
 		subtitleTextView = findViewById(R.id.subtitle_textView);
 		titleIconImageView = findViewById(R.id.title_imageView);
 		titleCardView = findViewById(R.id.titleCardView);
-		button_products = findViewById(android.R.id.button2);
-		elements_layout = findViewById(R.id.elements_layout);
+		buttonProducts = findViewById(android.R.id.button2);
+		elementsLayout = findViewById(R.id.elements_layout);
 
 		products_adapter = new ProductsAdapter();
 		products = findViewById(android.R.id.list);
@@ -216,46 +216,14 @@ final class StoryItemView extends ConstraintLayout {
 	 */
 	public void update(Slide slide, int position, String code, int story_id) {
 		slide.setPrepared(false);
-		var backgroundColor = slide.getBackgroundColor();
-		setBackgroundColor(backgroundColor == null ? getContext().getResources().getColor(android.R.color.black) : Color.parseColor(backgroundColor));
+
+		setBackgroundColor(getColor(slide.getBackgroundColor(), android.R.color.black));
+
 		video.setVisibility(GONE);
-		reload_layout.setVisibility(GONE);
-		reload_text.setTypeface(stories_view.settings.failed_load_font_family);
-		reload_text.setTextSize(stories_view.settings.failed_load_size);
-		reload_text.setText(stories_view.settings.failed_load_text);
-		reload_text.setTextColor(Color.parseColor(stories_view.settings.failed_load_color));
 
-		reload.setOnClickListener((View) -> {
-			update(slide, position, code, story_id);
-		});
+		setupReloadView(slide, position, code, story_id);
 
-		//Вызываем клик по кнопке
-		button.setOnClickListener(view -> {
-			try {
-				Product product = null;
-				String link = null;
-				//Сначала ищем элемент с товаром
-				for (var element : slide.getElements()) {
-					switch( element.getType() ) {
-						case "product":
-							product = element.getItem();
-							break;
-						case "button":
-							link = element.getLink();
-							break;
-					}
-				}
-				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
-				//Вызываем колбек клика
-				if( stories_view.click_listener == null || product == null && stories_view.click_listener.onClick(link) || product != null && stories_view.click_listener.onClick(product) ) {
-					getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(link)));
-				}
-				SDK.track_story("click", code, story_id, slide.getId());
-			} catch(ActivityNotFoundException | NullPointerException e) {
-				Log.e(SDK.TAG, e.getMessage(), e);
-				Toast.makeText(getContext(), "Unknown error", Toast.LENGTH_SHORT).show();
-			}
-		});
+		setButtonOnClickListener(slide, code, story_id);
 
 		//Загуражем картинку
 		if( slide.getType().equals("image") ) {
@@ -296,16 +264,53 @@ final class StoryItemView extends ConstraintLayout {
 		}
 
 		//Обновляем элементы слайда
-		updateElements(slide, code, story_id, position);
+		setupElements(slide, code, story_id, position);
+	}
+
+	ImageView getImage() {
+		return image;
+	}
+
+	PlayerView getVideo() {
+		return video;
 	}
 
 	private void onPreparedSlide(Slide slide, int position) {
 		slide.setPrepared(true);
 		reload_layout.setVisibility(GONE);
-		elements_layout.setVisibility(VISIBLE);
-		if( !button_products.isActivated() && page_listener != null ) {
+		elementsLayout.setVisibility(VISIBLE);
+		if (!buttonProducts.isActivated() && page_listener != null) {
 			page_listener.onPrepared(position);
 		}
+	}
+
+	private void setButtonOnClickListener(Slide slide, String code, int storyId) {
+		button.setOnClickListener(view -> {
+			try {
+				Product product = null;
+				String link = null;
+				//Сначала ищем элемент с товаром
+				for (var element : slide.getElements()) {
+					switch( element.getType() ) {
+						case "product":
+							product = element.getItem();
+							break;
+						case "button":
+							link = element.getLink();
+							break;
+					}
+				}
+				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
+				//Вызываем колбек клика
+				if( stories_view.getClickListener() == null || product == null && stories_view.getClickListener().onClick(link) || product != null && stories_view.getClickListener().onClick(product) ) {
+					getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(link)));
+				}
+				SDK.track_story("click", code, storyId, slide.getId());
+			} catch(ActivityNotFoundException | NullPointerException e) {
+				Log.e(SDK.TAG, e.getMessage(), e);
+				Toast.makeText(getContext(), "Unknown error", Toast.LENGTH_SHORT).show();
+			}
+		});
 	}
 
 	/**
@@ -324,20 +329,20 @@ final class StoryItemView extends ConstraintLayout {
 		product.setVisibility(VISIBLE);
 		product_brand.setVisibility(item.brand == null ? GONE : VISIBLE);
 		product_brand.setText(item.brand);
-		product_brand.setTypeface(stories_view.settings.font_family);
+		product_brand.setTypeface(stories_view.getSettings().font_family);
 		product_name.setText(item.name);
-		product_name.setTypeface(stories_view.settings.font_family);
+		product_name.setTypeface(stories_view.getSettings().font_family);
 		Glide.with(getContext()).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL).into(product_image);
 		product_price.setText(item.price);
-		product_price.setTypeface(stories_view.settings.font_family);
+		product_price.setTypeface(stories_view.getSettings().font_family);
 		product_oldprice.setVisibility(item.oldprice == null ? GONE : VISIBLE);
 		product_oldprice.setText(item.oldprice);
 		product_oldprice.setPaintFlags(product_oldprice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-		product_oldprice.setTypeface(stories_view.settings.font_family);
+		product_oldprice.setTypeface(stories_view.getSettings().font_family);
 		product_discount_box.setVisibility(item.discount_percent == null && item.promocode == null ? GONE : VISIBLE);
 		promocode_text.setText(element.getTitle());
 		promocode_text.setVisibility(element.getTitle() == null || item.promocode == null ? GONE : VISIBLE);
-		promocode_text.setTypeface(stories_view.settings.font_family);
+		promocode_text.setTypeface(stories_view.getSettings().font_family);
 
 		//Указываем закругления
 		float radius = getResources().getDimension(R.dimen.product_price_box_radius);
@@ -354,7 +359,7 @@ final class StoryItemView extends ConstraintLayout {
 		ViewCompat.setBackground(product_price_box, shape_box_drawable);
 
 		//Блок скидки или промокода
-		product_discount.setTypeface(stories_view.settings.font_family);
+		product_discount.setTypeface(stories_view.getSettings().font_family);
 		if( item.promocode != null ) {
 			product_discount.setText(item.promocode);
 			product_price.setText(item.price_with_promocode);
@@ -372,7 +377,7 @@ final class StoryItemView extends ConstraintLayout {
 	}
 
 	public void setHeadingVisibility(int visibility) {
-		elements_layout.animate().alpha(visibility == GONE ? 0 : 1).setStartDelay(visibility == GONE ? 100 : 0).setDuration(200);
+		elementsLayout.animate().alpha(visibility == GONE ? 0 : 1).setStartDelay(visibility == GONE ? 100 : 0).setDuration(200);
 	}
 
 	private void updateHeader(Element element, String slide_id, String code, int story_id) {
@@ -394,7 +399,7 @@ final class StoryItemView extends ConstraintLayout {
 				titleCardView.setVisibility(GONE);
 			}
 
-			titleTextView.setTypeface(stories_view.settings.font_family);
+			titleTextView.setTypeface(stories_view.getSettings().font_family);
 			if( element.getTitle() != null ) {
 				titleTextView.setVisibility(VISIBLE);
 				titleTextView.setText(element.getTitle());
@@ -402,7 +407,7 @@ final class StoryItemView extends ConstraintLayout {
 				titleTextView.setVisibility(GONE);
 			}
 
-			subtitleTextView.setTypeface(stories_view.settings.font_family);
+			subtitleTextView.setTypeface(stories_view.getSettings().font_family);
 			if( element.getSubtitle() != null ) {
 				subtitleTextView.setVisibility(VISIBLE);
 				subtitleTextView.setText(element.getSubtitle());
@@ -412,72 +417,25 @@ final class StoryItemView extends ConstraintLayout {
 		}
 	}
 
-	private void updateElements(Slide slide, String code, int story_id, int position) {
-
+	private void setupElements(Slide slide, String code, int story_id, int position) {
 		//Скрываем все элементы
 		header.setVisibility(GONE);
 		button.setVisibility(GONE);
-		button_products.setVisibility(GONE);
+		buttonProducts.setVisibility(GONE);
 		products.setVisibility(GONE);
 
 		//Отображаем необходимые элементы
-		for (Element element : slide.getElements() ) {
+		for (Element element : slide.getElements()) {
 			switch( element.getType() ) {
 				case "header":
 					updateHeader(element, slide.getId(), code, story_id);
 					break;
 				case "button":
-					button.setVisibility(VISIBLE);
-					button.setText(element.getTitle());
-					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-						button.setBackgroundTintList(ColorStateList.valueOf(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground())));
-					} else {
-						button.setBackgroundColor(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground()));
-					}
-					if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-						button.setTextColor(ColorStateList.valueOf(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor())));
-					} else {
-						button.setTextColor(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor()));
-					}
-					button.setTypeface(Typeface.create(stories_view.settings.button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
+					setupButton(element);
 					break;
 				case "products":
-					products_adapter.setProducts(element.getProducts(), story_id, slide.getId());
-					button_products.setVisibility(VISIBLE);
-					button_products.setText(element.getLabelShow());
-					button_products.setTypeface(stories_view.settings.products_button_font_family);
-					button_products.setOnClickListener(view -> {
-						button_products.setActivated(!button_products.isActivated());
-						button_products.setText(button_products.isActivated() ? element.getLabelHide() : element.getLabelShow());
-
-						//Анимация появления товаров
-						ConstraintSet set = new ConstraintSet();
-						set.clone((ConstraintLayout) elements_layout);
-
-						Transition transition = new ChangeBounds();
-						transition.addTarget(button_products.getId());
-						transition.addTarget(button.getId());
-
-						Transition transition2 = new androidx.transition.Slide(Gravity.BOTTOM);
-						transition2.addTarget(products.getId());
-
-						TransitionSet transitions = new TransitionSet();
-						transitions.addTransition(transition);
-						transitions.addTransition(transition2);
-
-						TransitionManager.beginDelayedTransition(elements_layout, transitions);
-						products.setVisibility(button_products.isActivated() ? VISIBLE : GONE);
-						//--->
-
-						if( page_listener != null ) {
-							page_listener.onLocked(button_products.isActivated());
-						}
-					});
-					if( page_listener != null ) {
-						page_listener.onLocked(button_products.isActivated());
-					}
+					setupProducts(element, slide.getId(), story_id);
 					break;
-
 				case "product":
 					updateProduct(element, new RequestListener<>() {
 						@Override
@@ -495,34 +453,92 @@ final class StoryItemView extends ConstraintLayout {
 						}
 					});
 				case "text_block":
-					var textView = new TextView(getContext());
-
-					var layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-					textView.setLayoutParams(layoutParams);
-
-					textView.setText(element.getTextInput());
-
-					var fontSize = element.getFontSize();
-
-					textView.setPadding(2, fontSize, 2, fontSize);
-
-					textView.setY(viewHeight * element.getYOffset() / 100f + viewTopOffset);
-
-					textView.setTextSize(fontSize);
-
-					var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.getFontType(), element.getTextBold(), element.getTextItalic()));
-					textView.setTypeface(typeface, getTypefaceStyle(element.getTextBold(), element.getTextItalic()));
-
-					textView.setTextAlignment(getTextAlignment(element.getTextAlign()));
-
-					textView.setLineSpacing(textView.getLineHeight(), (float)element.getTextLineSpacing());
-
-					setTextBackgroundColor(textView, element.getTextBackgroundColor(), element.getTextBackgroundColorOpacity());
-					setTextColor(textView, element.getTextColor());
-
-					text_blocks_layout.addView(textView);
+					setupTextBlock(element);
+					break;
 			}
 		}
+	}
+
+	private void setupProducts(Element element, String slideId, int storyId) {
+		products_adapter.setProducts(element.getProducts(), storyId, slideId);
+		buttonProducts.setVisibility(VISIBLE);
+		buttonProducts.setText(element.getLabelShow());
+		buttonProducts.setTypeface(stories_view.getSettings().products_button_font_family);
+		buttonProducts.setOnClickListener(view -> {
+			buttonProducts.setActivated(!buttonProducts.isActivated());
+			buttonProducts.setText(buttonProducts.isActivated() ? element.getLabelHide() : element.getLabelShow());
+
+			//Анимация появления товаров
+			ConstraintSet set = new ConstraintSet();
+			set.clone((ConstraintLayout) elementsLayout);
+
+			Transition transition = new ChangeBounds();
+			transition.addTarget(buttonProducts.getId());
+			transition.addTarget(button.getId());
+
+			Transition transition2 = new androidx.transition.Slide(Gravity.BOTTOM);
+			transition2.addTarget(products.getId());
+
+			TransitionSet transitions = new TransitionSet();
+			transitions.addTransition(transition);
+			transitions.addTransition(transition2);
+
+			TransitionManager.beginDelayedTransition(elementsLayout, transitions);
+			products.setVisibility(buttonProducts.isActivated() ? VISIBLE : GONE);
+			//--->
+
+			if( page_listener != null ) {
+				page_listener.onLocked(buttonProducts.isActivated());
+			}
+		});
+		if( page_listener != null ) {
+			page_listener.onLocked(buttonProducts.isActivated());
+		}
+	}
+
+	private void setupButton(Element element) {
+		button.setVisibility(VISIBLE);
+		button.setText(element.getTitle());
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+			button.setBackgroundTintList(ColorStateList.valueOf(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground())));
+		} else {
+			button.setBackgroundColor(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground()));
+		}
+		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
+			button.setTextColor(ColorStateList.valueOf(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor())));
+		} else {
+			button.setTextColor(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor()));
+		}
+		button.setTypeface(Typeface.create(stories_view.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
+	}
+
+	private void setupTextBlock(Element element) {
+		var textView = new TextView(getContext());
+
+		var layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+		textView.setLayoutParams(layoutParams);
+
+		textView.setText(element.getTextInput());
+
+		var fontSize = element.getFontSize();
+
+		textView.setPadding(2, fontSize, 2, fontSize);
+
+		textView.setY(viewHeight * element.getYOffset() / 100f + viewTopOffset);
+
+		textView.setTextSize(fontSize);
+
+		var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.getFontType(), element.getTextBold(), element.getTextItalic()));
+		textView.setTypeface(typeface, getTypefaceStyle(element.getTextBold(), element.getTextItalic()));
+
+		textView.setTextAlignment(getTextAlignment(element.getTextAlign()));
+
+		textView.setLineSpacing(textView.getLineHeight(), (float)element.getTextLineSpacing());
+
+		setTextBackgroundColor(textView, element.getTextBackgroundColor(), element.getTextBackgroundColorOpacity());
+		setTextColor(textView, element.getTextColor());
+
+		textBlocksLayout.addView(textView);
 	}
 
 	private @FontRes int getFontRes(String fontType, boolean bold, boolean italic) {
@@ -587,6 +603,12 @@ final class StoryItemView extends ConstraintLayout {
 		textView.setBackgroundColor(Color.parseColor(fullColorString));
 	}
 
+	private int getColor(String color, int defaultColorId) {
+		return color == null
+				? getContext().getResources().getColor(defaultColorId)
+				: Color.parseColor(color);
+	}
+
 	private static int GetColorOpacity(String percentsString) {
 		var percents = 0;
 
@@ -604,5 +626,16 @@ final class StoryItemView extends ConstraintLayout {
 		}
 
 		return 255 * percents / 100;
+	}
+
+	private void setupReloadView(Slide slide, int position, String code, int storyId) {
+		reload_layout.setVisibility(GONE);
+
+		reloadText.setTypeface(stories_view.getSettings().failed_load_font_family);
+		reloadText.setTextSize(stories_view.getSettings().failed_load_size);
+		reloadText.setText(stories_view.getSettings().failed_load_text);
+		reloadText.setTextColor(Color.parseColor(stories_view.getSettings().failed_load_color));
+
+		reload.setOnClickListener((View) -> update(slide, position, code, storyId));
 	}
 }
