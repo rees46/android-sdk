@@ -1,7 +1,6 @@
 package com.personalizatio.stories;
 
 import android.app.Dialog;
-import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Rect;
@@ -14,12 +13,11 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
+import com.personalizatio.stories.models.Story;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -147,8 +145,8 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 	public void onDetachedFromWindow() {
 		//При закрытии диалогового окна, возвращаем все метки в исходное
 		for( Story story : stories ) {
-			for( Story.Slide slide : story.slides ) {
-				slide.prepared = false;
+			for (var i = 0; i < story.getSlidesCount(); i++){
+				story.getSlide(i).setPrepared(false);
 			}
 		}
 	}
