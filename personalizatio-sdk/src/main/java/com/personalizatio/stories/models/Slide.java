@@ -27,6 +27,8 @@ final public class Slide implements Serializable {
     private long duration;
     private boolean prepared = false;
 
+    private final int DEFAULT_DURATION_SECONDS = 5;
+
     public Slide(@NonNull JSONObject json) throws JSONException {
         if (json.has("id")) {
             id = json.getString("id");
@@ -44,7 +46,7 @@ final public class Slide implements Serializable {
             type = json.getString("type");
         }
         if (json.has("duration")) {
-            duration = json.optLong("duration", 5) * 1000L;
+            duration = json.optLong("duration", DEFAULT_DURATION_SECONDS) * 1000L;
         }
         elements = new ArrayList<>();
         if (json.has("elements")) {

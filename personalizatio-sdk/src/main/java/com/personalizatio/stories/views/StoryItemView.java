@@ -109,6 +109,10 @@ final public class StoryItemView extends ConstraintLayout {
 	private int viewHeight;
 	private int viewTopOffset;
 
+	private final int ELEMENTS_LAYOUT_ANIMATION_DELAY = 100;
+	private final int ELEMENTS_LAYOUT_ANIMATION_DURATION = 200;
+	private final int MAX_COLOR_CHANNEL_VALUE = 255;
+
 	public StoryItemView(@NonNull Context context) {
 		super(context);
 	}
@@ -378,7 +382,7 @@ final public class StoryItemView extends ConstraintLayout {
 	}
 
 	public void setHeadingVisibility(int visibility) {
-		elementsLayout.animate().alpha(visibility == GONE ? 0 : 1).setStartDelay(visibility == GONE ? 100 : 0).setDuration(200);
+		elementsLayout.animate().alpha(visibility == GONE ? 0 : 1).setStartDelay(visibility == GONE ? ELEMENTS_LAYOUT_ANIMATION_DELAY : 0).setDuration(ELEMENTS_LAYOUT_ANIMATION_DURATION);
 	}
 
 	private void updateHeader(HeaderElement element, String slide_id, String code, int story_id) {
@@ -517,7 +521,7 @@ final public class StoryItemView extends ConstraintLayout {
 
 		var fontSize = element.getFontSize();
 
-		textView.setPadding(2, fontSize, 2, fontSize);
+		textView.setPadding(0, fontSize, 0, fontSize);
 
 		textView.setY(viewHeight * element.getYOffset() / 100f + viewTopOffset);
 
@@ -584,7 +588,7 @@ final public class StoryItemView extends ConstraintLayout {
 		}
 	}
 
-	private static void setTextBackgroundColor(TextView textView, String colorString, String colorOpacityString) {
+	private void setTextBackgroundColor(TextView textView, String colorString, String colorOpacityString) {
 		if( !colorString.startsWith("#") ) {
 			colorString = "#FFFFFF";
 		}
@@ -604,7 +608,7 @@ final public class StoryItemView extends ConstraintLayout {
 				: Color.parseColor(color);
 	}
 
-	private static int GetColorOpacity(String percentsString) {
+	private int GetColorOpacity(String percentsString) {
 		var percents = 0;
 
 		try {
@@ -620,7 +624,7 @@ final public class StoryItemView extends ConstraintLayout {
 			}
 		}
 
-		return 255 * percents / 100;
+		return MAX_COLOR_CHANNEL_VALUE * percents / 100;
 	}
 
 	private void setupReloadView(Slide slide, int position, String code, int storyId) {
