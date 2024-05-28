@@ -14,10 +14,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.shape.CornerFamily;
-import com.google.android.material.shape.CornerTreatment;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.ShapeAppearanceModel;
 import com.personalizatio.R;
+import com.personalizatio.stories.models.Story;
 
 import java.util.ArrayList;
 
@@ -54,7 +54,7 @@ final class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.ViewHolde
 			final float scale = itemView.getResources().getDisplayMetrics().density;
 
 			//Загружаем иконку
-			Glide.with(image.getContext()).load(story.avatar).into(image);
+			Glide.with(image.getContext()).load(story.getAvatar()).into(image);
 
 			//Изменяем иконку на квадратную
 			if( stories_view.settings.icon_display_format == Settings.ICON_DISPLAY_FORMAT.RECTANGLE ) {
@@ -66,17 +66,18 @@ final class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.ViewHolde
 			}
 
 			//Загружаем в кеш картинку первого слайда
-			if( story.slides.get(story.start_position).type.equals("image") ) {
-				Glide.with(image.getContext()).load(story.slides.get(story.start_position).background).preload();
+			var firstSlide = story.getSlide(story.getStartPosition());
+			if (firstSlide.getType().equals("image")) {
+				Glide.with(image.getContext()).load(firstSlide.getBackground()).preload();
 			}
 			if( stories_view.settings.new_campaign_border_color != null ) {
 				border.setStrokeWidth(border.getContext().getResources().getDimension(R.dimen.story_avatar_border));
-				border.setStrokeColor(ColorStateList.valueOf(Color.parseColor(story.viewed ? stories_view.settings.visited_campaign_border_color : stories_view.settings.new_campaign_border_color)));
+				border.setStrokeColor(ColorStateList.valueOf(Color.parseColor(story.isViewed() ? stories_view.settings.visited_campaign_border_color : stories_view.settings.new_campaign_border_color)));
 			} else {
 				//Default border style for old api
-				border.setStrokeWidth(story.viewed ? 0 : border.getContext().getResources().getDimension(R.dimen.story_avatar_border));
+				border.setStrokeWidth(story.isViewed() ? 0 : border.getContext().getResources().getDimension(R.dimen.story_avatar_border));
 			}
-			itemView.setAlpha(story.viewed ? stories_view.settings.visited_campaign_transparency : 1);
+			itemView.setAlpha(story.isViewed() ? stories_view.settings.visited_campaign_transparency : 1);
 			//Размер аватарки
 			ViewGroup.LayoutParams layoutParams = avatar_size.getLayoutParams();
 			layoutParams.width = (int) (stories_view.settings.icon_size * scale + 0.5f);
@@ -92,13 +93,13 @@ final class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.ViewHolde
 			//Позиция
 			story_index = position;
 			image.setOnClickListener(this);
-			name.setText(story.name);
+			name.setText(story.getName());
 			name.setTextColor(Color.parseColor(stories_view.settings.label_font_color));
 			name.setTextSize(stories_view.settings.label_font_size);
 			name.setTypeface(stories_view.settings.label_font_family);
 			name.setWidth((int) ((stories_view.settings.label_width != null ? stories_view.settings.label_width : stories_view.settings.icon_size) * scale));
 			//Пин
-			pin.setVisibility(story.pinned ? View.VISIBLE : View.GONE);
+			pin.setVisibility(story.isPinned() ? View.VISIBLE : View.GONE);
 			pin.setText(stories_view.settings.pin_symbol);
 			ShapeAppearanceModel shapeAppearanceModel = new ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, 50).build();
 			MaterialShapeDrawable shapeDrawable = new MaterialShapeDrawable(shapeAppearanceModel);

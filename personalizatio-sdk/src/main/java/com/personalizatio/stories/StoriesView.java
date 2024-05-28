@@ -21,6 +21,7 @@ import com.personalizatio.Api;
 import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.models.Story;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -131,8 +132,9 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		Story story = list.get(index);
 
 		//Сбрасываем позицию
-		if( story.start_position >= story.slides.size() || story.start_position < 0 ) {
-			story.start_position = 0;
+		var startPosition = story.getStartPosition();
+		if( startPosition >= story.getSlidesCount() || startPosition < 0 ) {
+			story.setStartPosition(0);
 		}
 
 		StoryDialog dialog = new StoryDialog(this, list, index, () -> {

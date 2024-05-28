@@ -23,10 +23,11 @@ import com.personalizatio.R;
 import com.personalizatio.SDK;
 
 import java.util.ArrayList;
+import java.util.List;
 
 final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHolder> {
 
-	private ArrayList<Product> products = new ArrayList<>();
+	private List<Product> products = new ArrayList<>();
 	private int story_id;
 	private String slide_id;
 	private StoriesView stories_view;
@@ -35,7 +36,7 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 		stories_view = view;
 	}
 
-	public void setProducts(ArrayList<Product> products, int story_id, String slide_id) {
+	public void setProducts(List<Product> products, int story_id, String slide_id) {
 		this.products = products;
 		this.story_id = story_id;
 		this.slide_id = slide_id;
