@@ -307,7 +307,10 @@ final public class StoryItemView extends ConstraintLayout {
 				}
 				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
 				//Вызываем колбек клика
-				if( stories_view.getClickListener() == null || product == null && stories_view.getClickListener().onClick(link) || product != null && stories_view.getClickListener().onClick(product) ) {
+				var clickListener = stories_view.getClickListener();
+				if( clickListener == null
+						|| product == null && clickListener.onClick(link)
+						|| product != null && clickListener.onClick(product) ) {
 					getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(link)));
 				}
 				SDK.track_story("click", code, storyId, slide.getId());
@@ -331,23 +334,18 @@ final public class StoryItemView extends ConstraintLayout {
 
 	public void updateProduct(ProductElement element, RequestListener<Drawable> listener) {
 		var item = element.getItem();
+
 		product.setVisibility(VISIBLE);
-		product_brand.setVisibility(item.brand == null ? GONE : VISIBLE);
-		product_brand.setText(item.brand);
-		product_brand.setTypeface(stories_view.getSettings().font_family);
-		product_name.setText(item.name);
-		product_name.setTypeface(stories_view.getSettings().font_family);
+
 		Glide.with(getContext()).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL).into(product_image);
-		product_price.setText(item.price);
-		product_price.setTypeface(stories_view.getSettings().font_family);
-		product_oldprice.setVisibility(item.oldprice == null ? GONE : VISIBLE);
-		product_oldprice.setText(item.oldprice);
+
+		setupDefaultTextView(product_brand, item.brand != null, item.brand);
+		setupDefaultTextView(product_name, item.name);
+		setupDefaultTextView(product_price, item.price);
+		setupDefaultTextView(product_oldprice, item.oldprice != null, item.oldprice);
+		setupDefaultTextView(promocode_text, element.getTitle() != null && item.promocode != null, element.getTitle());
 		product_oldprice.setPaintFlags(product_oldprice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-		product_oldprice.setTypeface(stories_view.getSettings().font_family);
 		product_discount_box.setVisibility(item.discount_percent == null && item.promocode == null ? GONE : VISIBLE);
-		promocode_text.setText(element.getTitle());
-		promocode_text.setVisibility(element.getTitle() == null || item.promocode == null ? GONE : VISIBLE);
-		promocode_text.setTypeface(stories_view.getSettings().font_family);
 
 		//Указываем закругления
 		float radius = getResources().getDimension(R.dimen.product_price_box_radius);
@@ -364,14 +362,19 @@ final public class StoryItemView extends ConstraintLayout {
 		ViewCompat.setBackground(product_price_box, shape_box_drawable);
 
 		//Блок скидки или промокода
-		product_discount.setTypeface(stories_view.getSettings().font_family);
+		var productDiscountText = "";
+		int shapeDiscountColor = 0;
 		if( item.promocode != null ) {
-			product_discount.setText(item.promocode);
+			productDiscountText = item.promocode;
+			shapeDiscountColor = R.color.product_promocode_color;
 			product_price.setText(item.price_with_promocode);
-			shape_discount_drawable.setFillColor(ContextCompat.getColorStateList(getContext(), R.color.product_promocode_color));
 		} else if( item.discount_percent != null ) {
-			product_discount.setText("-" + item.discount_percent + "%");
-			shape_discount_drawable.setFillColor(ContextCompat.getColorStateList(getContext(), R.color.product_discount_color));
+			productDiscountText = "-" + item.discount_percent + "%";
+			shapeDiscountColor = R.color.product_discount_color;
+		}
+		setupDefaultTextView(product_discount, productDiscountText);
+		if(shapeDiscountColor != 0) {
+			shape_discount_drawable.setFillColor(ContextCompat.getColorStateList(getContext(), shapeDiscountColor));
 		}
 
 		ViewCompat.setBackground(product_discount_box, shape_discount_drawable);
@@ -403,21 +406,11 @@ final public class StoryItemView extends ConstraintLayout {
 			titleCardView.setVisibility(GONE);
 		}
 
-		titleTextView.setTypeface(stories_view.getSettings().font_family);
-		if( element.getTitle() != null ) {
-			titleTextView.setVisibility(VISIBLE);
-			titleTextView.setText(element.getTitle());
-		} else {
-			titleTextView.setVisibility(GONE);
-		}
+		var title = element.getTitle();
+		setupDefaultTextView(titleTextView, title != null, title);
 
-		subtitleTextView.setTypeface(stories_view.getSettings().font_family);
-		if( element.getSubtitle() != null ) {
-			subtitleTextView.setVisibility(VISIBLE);
-			subtitleTextView.setText(element.getSubtitle());
-		} else {
-			subtitleTextView.setVisibility(GONE);
-		}
+		var subtitle = element.getSubtitle();
+		setupDefaultTextView(subtitleTextView, subtitle != null, subtitle);
 	}
 
 	private void setupElements(Slide slide, String code, int story_id, int position) {
@@ -460,9 +453,7 @@ final public class StoryItemView extends ConstraintLayout {
 
 	private void updateProducts(ProductsElement element, String slideId, int storyId) {
 		products_adapter.setProducts(element.getProducts(), storyId, slideId);
-		buttonProducts.setVisibility(VISIBLE);
-		buttonProducts.setText(element.getLabelShow());
-		buttonProducts.setTypeface(stories_view.getSettings().products_button_font_family);
+		setupTextView(buttonProducts, true, element.getLabelShow(), stories_view.getSettings().products_button_font_family);
 		buttonProducts.setOnClickListener(view -> {
 			buttonProducts.setActivated(!buttonProducts.isActivated());
 			buttonProducts.setText(buttonProducts.isActivated() ? element.getLabelHide() : element.getLabelShow());
@@ -498,16 +489,17 @@ final public class StoryItemView extends ConstraintLayout {
 	private void updateButton(ButtonElement element) {
 		button.setVisibility(VISIBLE);
 		button.setText(element.getTitle());
+
+		var backgroundColor = getColor(element.getBackground(), R.color.primary);
+		var textColor = getColor(element.getColor(), R.color.white);
 		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-			button.setBackgroundTintList(ColorStateList.valueOf(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground())));
+			button.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
+			button.setTextColor(ColorStateList.valueOf(textColor));
 		} else {
-			button.setBackgroundColor(element.getBackground() == null ? button.getContext().getResources().getColor(R.color.primary) : Color.parseColor(element.getBackground()));
+			button.setBackgroundColor(backgroundColor);
+			button.setTextColor(textColor);
 		}
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-			button.setTextColor(ColorStateList.valueOf(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor())));
-		} else {
-			button.setTextColor(element.getColor() == null ? button.getContext().getResources().getColor(R.color.white) : Color.parseColor(element.getColor()));
-		}
+
 		button.setTypeface(Typeface.create(stories_view.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
 	}
 
@@ -574,12 +566,8 @@ final public class StoryItemView extends ConstraintLayout {
 		};
 	}
 
-	private static void setTextColor(TextView textView, String colorString) {
-		if( !colorString.startsWith("#") ) {
-			colorString = "#FFFFFF";
-		}
-
-		var color = Color.parseColor(colorString);
+	private void setTextColor(TextView textView, String colorString) {
+		var color = getColor(colorString, R.color.white);
 
 		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
 			textView.setTextColor(ColorStateList.valueOf(color));
@@ -599,13 +587,23 @@ final public class StoryItemView extends ConstraintLayout {
 
 		var fullColorString = colorString.replace("#", "#" + colorOpacityValueString);
 
-		textView.setBackgroundColor(Color.parseColor(fullColorString));
+		var color = getColor(fullColorString, R.color.white);
+		textView.setBackgroundColor(color);
 	}
 
-	private int getColor(String color, int defaultColorId) {
-		return color == null
-				? getContext().getResources().getColor(defaultColorId)
-				: Color.parseColor(color);
+	private int getColor(String colorString, int defaultColorId) {
+		if (colorString == null) {
+			return getContext().getResources().getColor(defaultColorId);
+		}
+
+		int color;
+		try {
+			color = Color.parseColor(colorString);
+		} catch (IllegalArgumentException e) {
+			color = getContext().getResources().getColor(defaultColorId);
+		}
+
+		return color;
 	}
 
 	private int GetColorOpacity(String percentsString) {
@@ -630,11 +628,32 @@ final public class StoryItemView extends ConstraintLayout {
 	private void setupReloadView(Slide slide, int position, String code, int storyId) {
 		reload_layout.setVisibility(GONE);
 
-		reloadText.setTypeface(stories_view.getSettings().failed_load_font_family);
+		var settings = stories_view.getSettings();
+		setupTextView(reloadText, settings.failed_load_text, settings.failed_load_font_family);
 		reloadText.setTextSize(stories_view.getSettings().failed_load_size);
-		reloadText.setText(stories_view.getSettings().failed_load_text);
 		reloadText.setTextColor(Color.parseColor(stories_view.getSettings().failed_load_color));
 
 		reload.setOnClickListener((View) -> update(slide, position, code, storyId));
+	}
+
+	private void setupDefaultTextView(TextView textView, boolean visibility, String text) {
+		setupTextView(textView, visibility, text, stories_view.getSettings().font_family);
+	}
+
+	private void setupTextView(TextView textView, boolean visibility, String text, Typeface typeface) {
+		textView.setVisibility(visibility ? VISIBLE : GONE);
+
+		if (visibility) {
+			setupTextView(textView, text, typeface);
+		}
+	}
+
+	private void setupDefaultTextView(TextView textView, String text) {
+		setupTextView(textView, text, stories_view.getSettings().font_family);
+	}
+
+	private void setupTextView(TextView textView, String text, Typeface typeface) {
+		textView.setText(text);
+		textView.setTypeface(typeface);
 	}
 }
