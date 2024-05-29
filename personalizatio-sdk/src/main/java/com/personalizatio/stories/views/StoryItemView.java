@@ -114,14 +114,12 @@ final public class StoryItemView extends ConstraintLayout {
 
 	public StoryItemView(StoriesView storiesView) {
 		super(storiesView.getContext());
-
 		this.storiesView = storiesView;
 
 		inflate(getContext(), R.layout.story_item, this);
 		setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
 		initViews();
-
 		setupViews();
 	}
 

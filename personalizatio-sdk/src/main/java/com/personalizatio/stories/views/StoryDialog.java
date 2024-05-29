@@ -30,8 +30,8 @@ final public class StoryDialog extends Dialog implements PullDismissLayout.Liste
 	private ViewPager2 mViewPager;
 
 	private final Runnable completeListener;
-	private final int start_position;
-	private final StoriesView stories_view;
+	private final int startPosition;
+	private final StoriesView storiesView;
 
 	public interface OnProgressState {
 		void onState(boolean running);
@@ -49,9 +49,9 @@ final public class StoryDialog extends Dialog implements PullDismissLayout.Liste
 		window.setAttributes(wlp);
 		window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
-		this.stories_view = stories_view;
+		this.storiesView = stories_view;
 		this.stories = stories;
-		this.start_position = start_position;
+		this.startPosition = start_position;
 		adapter = new ViewPagerAdapter(running -> mViewPager.setUserInputEnabled(running));
 
 		this.completeListener = completeListener;
@@ -74,7 +74,7 @@ final public class StoryDialog extends Dialog implements PullDismissLayout.Liste
 		closeImageButton.setOnClickListener(v -> {
 			onDismissed();
 		});
-		closeImageButton.setColorFilter(Color.parseColor(stories_view.getSettings().close_color));
+		closeImageButton.setColorFilter(Color.parseColor(storiesView.getSettings().close_color));
 		mViewPager = findViewById(R.id.view_pager);
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);
@@ -104,9 +104,9 @@ final public class StoryDialog extends Dialog implements PullDismissLayout.Liste
 
 		mViewPager.setAdapter(adapter);
 		//Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
-		mViewPager.setCurrentItem(start_position == 0 ? stories.size() : 0, false);
+		mViewPager.setCurrentItem(startPosition == 0 ? stories.size() : 0, false);
 		//Устанавливаем позицию
-		mViewPager.setCurrentItem(start_position, false);
+		mViewPager.setCurrentItem(startPosition, false);
 		mViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
 
 			@Override
@@ -186,7 +186,7 @@ final public class StoryDialog extends Dialog implements PullDismissLayout.Liste
 		@NonNull
 		@Override
 		public PagerHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			return new PagerHolder(new StoryView(stories_view, state_listener));
+			return new PagerHolder(new StoryView(storiesView, state_listener));
 		}
 
 		@Override

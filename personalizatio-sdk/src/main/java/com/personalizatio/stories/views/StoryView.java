@@ -37,14 +37,14 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	private Runnable completeListener;
 	private Runnable prevStoryListener;
 
-	private final StoriesProgressView storiesProgressView;
-	private final OnTouchListener onTouchListener;
-	private final ViewPager2 mViewPager;
+	private StoriesProgressView storiesProgressView;
+	private OnTouchListener onTouchListener;
+	private ViewPager2 mViewPager;
 	private boolean storiesStarted = false;
 	private boolean prevFocusState = true;
 	private boolean locked = false;
 	private final HashMap<Integer, PagerHolder> holders = new HashMap<>();
-	private final ToggleButton mute;
+	private ToggleButton mute;
 
 	//Heading
 	private final StoryDialog.OnProgressState stateListener;
@@ -54,13 +54,26 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	@SuppressLint("ClickableViewAccessibility")
 	public StoryView(StoriesView storiesView, StoryDialog.OnProgressState stateListener) {
 		super(storiesView.getContext());
-
 		this.storiesView = storiesView;
 		this.stateListener = stateListener;
 
 		inflate(getContext(), R.layout.story_view, this);
 		setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
+		initViews();
+		setupViews();
+	}
+
+	private void initViews() {
+		storiesProgressView = findViewById(R.id.storiesProgressView);
+
+		mViewPager = findViewById(R.id.storiesViewPager);
+
+		mute = findViewById(R.id.mute);
+	}
+
+	@SuppressLint("ClickableViewAccessibility")
+	private void setupViews() {
 		onTouchListener = (v, event) -> {
 			if( storiesStarted ) {
 				switch( event.getAction() ) {
@@ -80,10 +93,10 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 			}
 			return false;
 		};
-		storiesProgressView = findViewById(R.id.storiesProgressView);
+
 		storiesProgressView.setColor(Color.parseColor(storiesView.getSettings().background_progress));
-		mViewPager = findViewById(R.id.storiesViewPager);
 		storiesProgressView.setStoriesListener(this);
+
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);
 		mViewPager.setOffscreenPageLimit(1);
@@ -116,7 +129,6 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		});
 
 		//Управление звуком
-		mute = findViewById(R.id.mute);
 		mute.setOnClickListener(v -> {
 			storiesView.muteVideo(mute.isChecked());
 			storiesView.getPlayer().getPlayer().setVolume(mute.isChecked() ? 0f : 1f);

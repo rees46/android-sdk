@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".AbstractMainActivity">
 
-    <com.personalizatio.stories.StoriesView
+    <com.personalizatio.stories.views.StoriesView
         android:id="@+id/story_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
