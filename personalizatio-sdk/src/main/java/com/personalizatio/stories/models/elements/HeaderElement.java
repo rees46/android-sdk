@@ -2,28 +2,21 @@ package com.personalizatio.stories.models.elements;
 
 import androidx.annotation.NonNull;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Objects;
 
 public class HeaderElement implements LinkElement {
 
-    private String title;
-    private String subtitle;
+    private final String title;
+    private final String subtitle;
     private final String link;
-    private String icon;
+    private final String icon;
 
-    public HeaderElement(@NonNull JSONObject json) throws JSONException {
-        if (json.has("icon")) {
-            icon = json.getString("icon");
-        }
-        if (json.has("title")) {
-            title = json.getString("title");
-        }
-        if (json.has("subtitle")) {
-            subtitle = json.getString("subtitle");
-        }
+    public HeaderElement(@NonNull JSONObject json) {
+        icon = json.optString("icon", "");
+        title = json.optString("title", "");
+        subtitle = json.optString("subtitle", "");
         link = getLink(json);
     }
 
