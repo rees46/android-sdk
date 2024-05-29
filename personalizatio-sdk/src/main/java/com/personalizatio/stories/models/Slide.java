@@ -9,8 +9,6 @@ import com.personalizatio.stories.models.elements.ProductElement;
 import com.personalizatio.stories.models.elements.ProductsElement;
 import com.personalizatio.stories.models.elements.TextBlockElement;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
@@ -20,41 +18,30 @@ import java.util.Objects;
 
 final public class Slide implements Serializable {
 
-    private String id;
-    private String background;
-    private String backgroundColor;
-    private String preview;
-    private String type;
+    private final String id;
+    private final String background;
+    private final String backgroundColor;
+    private final String preview;
+    private final String type;
     private final List<Element> elements;
     private long duration;
     private boolean prepared = false;
 
-    private final int DEFAULT_DURATION_SECONDS = 5;
+    private static final int DEFAULT_DURATION_SECONDS = 5;
+    private static final String DEFAULT_BACKGROUND_COLOR = "#000000";
 
-    public Slide(@NonNull JSONObject json) throws JSONException {
-        if (json.has("id")) {
-            id = json.getString("id");
-        }
-        if (json.has("background")) {
-            background = json.getString("background");
-        }
-        if (json.has("background_color")) {
-            backgroundColor = json.getString("background_color");
-        }
-        if (json.has("preview")) {
-            preview = json.getString("preview");
-        }
-        if (json.has("type")) {
-            type = json.getString("type");
-        }
-        if (json.has("duration")) {
-            duration = json.optLong("duration", DEFAULT_DURATION_SECONDS) * 1000L;
-        }
+    public Slide(@NonNull JSONObject json) {
+        id = json.optString("id", "");
+        background = json.optString("background", "");
+        backgroundColor = json.optString("background_color", DEFAULT_BACKGROUND_COLOR);
+        preview = json.optString("preview", "");
+        type = json.optString("type", "");
+        duration = json.optLong("duration", DEFAULT_DURATION_SECONDS) * 1000L;
         elements = new ArrayList<>();
-        if (json.has("elements")) {
-            JSONArray json_elements = json.getJSONArray("elements");
-            for (int i = 0; i < json_elements.length(); i++) {
-                var element = createElement(json_elements.getJSONObject(i));
+        var elementsJsonArray = json.optJSONArray("elements");
+        if (elementsJsonArray != null) {
+            for (int i = 0; i < elementsJsonArray.length(); i++) {
+                var element = createElement(elementsJsonArray.optJSONObject(i));
                 if (element != null) {
                     elements.add(element);
                 }
@@ -62,30 +49,17 @@ final public class Slide implements Serializable {
         }
     }
 
-    private Element createElement(JSONObject json) throws JSONException {
-        if (json.has("type")) {
-            var type = json.getString("type");
+    private static Element createElement(JSONObject json) {
+        var type = json.optString("type", null);
 
-            switch (type) {
-                case "text_block": {
-                    return new TextBlockElement(json);
-                }
-                case "header": {
-                    return new HeaderElement(json);
-                }
-                case "products": {
-                    return new ProductsElement(json);
-                }
-                case "product": {
-                    return new ProductElement(json);
-                }
-                case "button": {
-                    return new ButtonElement(json);
-                }
-            }
-        }
-
-        return null;
+        return switch (type) {
+            case "text_block" -> new TextBlockElement(json);
+            case "header" -> new HeaderElement(json);
+            case "products" -> new ProductsElement(json);
+            case "product" -> new ProductElement(json);
+            case "button" -> new ButtonElement(json);
+            default -> null;
+        };
     }
 
     public String getId() {

@@ -1,62 +1,95 @@
 package com.personalizatio;
 
-import org.json.JSONException;
+import androidx.annotation.NonNull;
+
 import org.json.JSONObject;
 
 final public class Product {
-	public final String id;
-	public final String name;
-	public final String brand;
-	public final String image;
-	public final String oldprice;
-	public final String price;
-	public final String discount;
-	public final String url;
-	public final String deeplink;
-	public final String promocode;
-	public final String price_with_promocode;
-	public final String discount_percent;
+	private final String id;
+	private final String name;
+	private final String brand;
+	private final String image;
+	private final String oldPrice;
+	private final String price;
+	private final String discount;
+	private final String url;
+	private final String deeplink;
+	private final String promocode;
+	private final String priceWithPromocode;
+	private final String discountPercent;
 
-	public Product(JSONObject product) throws JSONException {
-		id = product.getString("id");
-		name = product.getString("name");
-		image = product.getString("image_url");
-		if( product.has("oldprice") && product.getDouble("oldprice") > 0 ) {
-			oldprice = product.getString("oldprice_formatted");
-		} else {
-			oldprice = null;
+	public Product(@NonNull JSONObject json) {
+		id = json.optString("id", "");
+		name = json.optString("name", "");
+		image = json.optString("image_url", "");
+		var oldPriceValue = json.optDouble("oldprice", 0);
+		if (oldPriceValue > 0) {
+			oldPrice = json.optString("oldprice_formatted", "");
 		}
-		if( product.has("brand") ) {
-			brand = product.getString("brand");
-		} else {
-			brand = null;
+		else {
+			oldPrice = "";
 		}
-		if( product.has("promocode") ) {
-			promocode = product.getString("promocode");
-		} else {
-			promocode = null;
+		brand = json.optString("brand", "");
+		promocode = json.optString("promocode", "");
+		priceWithPromocode = json.optString("price_with_promocode_formatted", "");
+		discountPercent = json.optString("discount_percent", "");
+		price = json.optString("price_formatted", "");
+		url = json.optString("url", "");
+		deeplink = json.optString("deeplink_android", "");
+		var priceValue = json.optDouble("price", 0);
+		if (oldPriceValue > 0 && oldPriceValue > priceValue) {
+			discount = json.optString("discount", "");
 		}
-		if( product.has("price_with_promocode") ) {
-			price_with_promocode = product.getString("price_with_promocode_formatted");
-		} else {
-			price_with_promocode = null;
+		else {
+			discount = "";
 		}
-		if( product.has("discount_percent") ) {
-			discount_percent = product.getString("discount_percent");
-		} else {
-			discount_percent = null;
-		}
-		price = product.getString("price_formatted");
-		url = product.getString("url");
-		if( product.has("deeplink_android") ) {
-			deeplink = product.getString("deeplink_android");
-		} else {
-			deeplink = null;
-		}
-		if( product.has("discount") && product.getDouble("oldprice") > 0 && product.getDouble("oldprice") > product.getDouble("price") ) {
-			discount = product.getString("discount");
-		} else {
-			discount = null;
-		}
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getBrand() {
+		return brand;
+	}
+
+	public String getImage() {
+		return image;
+	}
+
+	public String getOldPrice() {
+		return oldPrice;
+	}
+
+	public String getPrice() {
+		return price;
+	}
+
+	public String getDiscount() {
+		return discount;
+	}
+
+	public String getUrl() {
+		return url;
+	}
+
+	public String getDeeplink() {
+		return deeplink;
+	}
+
+	public String getPromocode() {
+		return promocode;
+	}
+
+	public String getPriceWithPromocode() {
+		return priceWithPromocode;
+	}
+
+	public String getDiscountPercent() {
+		return discountPercent;
 	}
 }

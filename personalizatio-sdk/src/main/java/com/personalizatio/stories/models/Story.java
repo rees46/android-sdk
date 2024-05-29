@@ -2,8 +2,6 @@ package com.personalizatio.stories.models;
 
 import androidx.annotation.NonNull;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -11,38 +9,26 @@ import java.util.List;
 import java.util.Objects;
 
 final public class Story {
-	private int id;
-	private String avatar;
-	private String name;
+	private final int id;
+	private final String avatar;
+	private final String name;
 	private boolean viewed;
-	private boolean pinned;
-	private int start_position;
+	private final boolean pinned;
+	private int startPosition;
 	private final List<Slide> slides;
 
-	public Story(@NonNull JSONObject json) throws JSONException {
-		if (json.has("id")) {
-			id = json.getInt("id");
-		}
-		if (json.has("avatar")) {
-			avatar = json.getString("avatar");
-		}
-		if (json.has("name")) {
-			name = json.getString("name");
-		}
-		if (json.has("viewed")) {
-			viewed = json.getBoolean("viewed");
-		}
-		if (json.has("pinned")) {
-			pinned = json.getBoolean("pinned");
-		}
-		if (json.has("start_position")) {
-			start_position = json.getInt("start_position");
-		}
+	public Story(@NonNull JSONObject json) {
+		id = json.optInt("id", 0);
+		avatar = json.optString("avatar", "");
+		name = json.optString("name", "");
+		viewed = json.optBoolean("viewed", false);
+		pinned = json.optBoolean("pinned", false);
+		startPosition = json.optInt("start_position", 0);
 		slides = new ArrayList<>();
-		if (json.has("slides")) {
-			JSONArray json_slides = json.getJSONArray("slides");
-			for( int i = 0; i < json_slides.length(); i++ ) {
-				slides.add(new Slide(json_slides.getJSONObject(i)));
+		var slidesJsonArray = json.optJSONArray("slides");
+		if (slidesJsonArray != null) {
+			for( int i = 0; i < slidesJsonArray.length(); i++ ) {
+				slides.add(new Slide(slidesJsonArray.optJSONObject(i)));
 			}
 		}
 	}
@@ -72,11 +58,11 @@ final public class Story {
 	}
 
 	public int getStartPosition() {
-		return start_position;
+		return startPosition;
 	}
 
 	public void setStartPosition(int startPosition) {
-		this.start_position = startPosition;
+		this.startPosition = startPosition;
 	}
 
 	public Slide getSlide(int position) {
@@ -94,7 +80,7 @@ final public class Story {
 		return id == story.id
 				&& viewed == story.viewed
 				&& pinned == story.pinned
-				&& start_position == story.start_position
+				&& startPosition == story.startPosition
 				&& avatar.equals(story.avatar)
 				&& name.equals(story.name)
 				&& slides.equals(story.slides);
@@ -102,7 +88,7 @@ final public class Story {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(id, avatar, name, viewed, pinned, start_position, slides);
+		return Objects.hash(id, avatar, name, viewed, pinned, startPosition, slides);
 	}
 
 	@NonNull
@@ -114,7 +100,7 @@ final public class Story {
 				", name='" + name + '\'' +
 				", viewed=" + viewed +
 				", pinned=" + pinned +
-				", start_position=" + start_position +
+				", start_position=" + startPosition +
 				", slides=" + slides +
 				'}';
 	}

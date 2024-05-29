@@ -2,32 +2,26 @@ package com.personalizatio.stories.models.elements;
 
 import androidx.annotation.NonNull;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Objects;
 
 public class ButtonElement implements LinkElement {
 
-    private String title;
-    private String background;
-    private String color;
-    private boolean textBold = false;
+    private final String title;
+    private final String background;
+    private final String color;
+    private final boolean textBold;
     private final String link;
 
-    public ButtonElement(@NonNull JSONObject json) throws JSONException {
-        if (json.has("title")) {
-            title = json.getString("title");
-        }
-        if (json.has("background")) {
-            background = json.getString("background");
-        }
-        if (json.has("color")) {
-            color = json.getString("color");
-        }
-        if (json.has("text_bold")) {
-            textBold = json.getBoolean("text_bold");
-        }
+    private static final String DEFAULT_BACKGROUND = "#FFFFFF";
+    private static final String DEFAULT_COLOR = "#000000";
+
+    public ButtonElement(@NonNull JSONObject json) {
+        title = json.optString("title", "");
+        background = json.optString("background", DEFAULT_BACKGROUND);
+        color = json.optString("color", DEFAULT_COLOR);
+        textBold = json.optBoolean("text_bold", false);
         link = getLink(json);
     }
 
@@ -43,7 +37,7 @@ public class ButtonElement implements LinkElement {
         return color;
     }
 
-    public Boolean getTextBold() {
+    public boolean getTextBold() {
         return textBold;
     }
 

@@ -2,66 +2,47 @@ package com.personalizatio.stories.models.elements;
 
 import androidx.annotation.NonNull;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Objects;
 
 public final class TextBlockElement implements Element {
 
-    private boolean bold = false;
-    private boolean italic = false;
-    private String textInput;
-    private int yOffset;
-    private String fontType;
-    private int fontSize = 14;
-    private String textAlign;
-    private String textColor;
-    private double textLineSpacing;
-    private String textBackgroundColor = "#FFFFFF";
-    private String textBackgroundColorOpacity = "0%";
+    private final boolean bold;
+    private final boolean italic;
+    private final String textInput;
+    private final int yOffset;
+    private final String fontType;
+    private final int fontSize;
+    private final String textAlign;
+    private final String textColor;
+    private final double textLineSpacing;
+    private final String textBackgroundColor;
+    private final String textBackgroundColorOpacity;
 
-    public TextBlockElement(@NonNull JSONObject json) throws JSONException {
-        if (json.has("bold")) {
-            bold = json.getBoolean("bold");
-        }
-        if (json.has("italic")) {
-            italic = json.getBoolean("italic");
-        }
-        if (json.has("text_input")) {
-            textInput = json.getString("text_input");
-        }
-        if (json.has("y_offset")) {
-            yOffset = json.getInt("y_offset");
-        }
-        if (json.has("font_type")) {
-            fontType = json.getString("font_type");
-        }
-        if (json.has("font_size")) {
-            fontSize = json.getInt("font_size");
-        }
-        if (json.has("text_align")) {
-            textAlign = json.getString("text_align");
-        }
-        if (json.has("text_color")) {
-            textColor = json.getString("text_color");
-        }
-        if (json.has("text_line_spacing")) {
-            textLineSpacing = json.getDouble("text_line_spacing");
-        }
-        if (json.has("text_background_color")) {
-            textBackgroundColor = json.getString("text_background_color");
-        }
-        if (json.has("text_background_color_opacity")) {
-            textBackgroundColorOpacity = json.getString("text_background_color_opacity");
-        }
+    private static final int DEFAULT_FONT_SIZE = 14;
+    private static final String DEFAULT_TEXT_BACKGROUND_COLOR = "#FFFFFF";
+    private static final String DEFAULT_TEXT_BACKGROUND_COLOR_OPACITY = "0%";
+
+    public TextBlockElement(@NonNull JSONObject json) {
+        bold = json.optBoolean("bold", false);
+        italic = json.optBoolean("italic", false);
+        textInput = json.optString("text_input", "");
+        yOffset = json.optInt("y_offset", 0);
+        fontType = json.optString("font_type", "");
+        fontSize = json.optInt("font_size", DEFAULT_FONT_SIZE);
+        textAlign = json.optString("text_align", "");
+        textColor = json.optString("text_color", "");
+        textLineSpacing = json.optDouble("text_line_spacing", 0.0);
+        textBackgroundColor = json.optString("text_background_color", DEFAULT_TEXT_BACKGROUND_COLOR);
+        textBackgroundColorOpacity = json.optString("text_background_color_opacity", DEFAULT_TEXT_BACKGROUND_COLOR_OPACITY);
     }
 
-    public Boolean isBold() {
+    public boolean isBold() {
         return bold;
     }
 
-    public Boolean isItalic() {
+    public boolean isItalic() {
         return italic;
     }
 

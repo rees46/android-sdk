@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.common.base.Strings;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
@@ -77,28 +78,28 @@ final public class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.
 		}
 
 		public void bind(Product product) {
-			Glide.with(image.getContext()).load(product.image).into(image);
-			name.setText(product.name);
+			Glide.with(image.getContext()).load(product.getImage()).into(image);
+			name.setText(product.getName());
 			var settings = storiesView.getSettings();
 			name.setTypeface(settings.font_family);
 			discount.setTypeface(settings.font_family);
 			oldprice.setTypeface(settings.font_family);
 			price.setTypeface(settings.font_family);
-			if( product.oldprice == null ) {
+			if (Strings.isNullOrEmpty(product.getOldPrice())) {
 				discount.setVisibility(View.GONE);
 				oldprice.setVisibility(View.GONE);
 			} else {
 				discount.setVisibility(View.VISIBLE);
 				oldprice.setVisibility(View.VISIBLE);
-				oldprice.setText(product.oldprice);
-				discount.setText((String.format("-%s%%", product.discount)));
+				oldprice.setText(product.getOldPrice());
+				discount.setText((String.format("-%s%%", product.getDiscount())));
 			}
-			price.setText(product.price);
+			price.setText(product.getPrice());
 			itemView.setOnClickListener(view -> {
-				Log.d(SDK.TAG, "click: " + product.name + ", " + product.url);
+				Log.d(SDK.TAG, "click: " + product.getName() + ", " + product.getUrl());
 				try {
 					if( storiesView.getClickListener() == null || storiesView.getClickListener().onClick(product) ) {
-						itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(product.deeplink != null ? product.deeplink : product.url)));
+						itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Strings.isNullOrEmpty(product.getDeeplink()) ? product.getUrl() : product.getDeeplink())));
 					}
 					SDK.track_story("click", storiesView.getCode(), storyId, slideId);
 				} catch(ActivityNotFoundException e) {

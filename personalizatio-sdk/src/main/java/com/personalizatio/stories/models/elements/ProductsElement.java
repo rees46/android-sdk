@@ -4,8 +4,6 @@ import androidx.annotation.NonNull;
 
 import com.personalizatio.Product;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -18,20 +16,17 @@ public class ProductsElement implements Element {
     private String labelShow;
     private final List<Product> products = new ArrayList<>();
 
-    public ProductsElement(@NonNull JSONObject json) throws JSONException {
-        if (json.has("labels")) {
-            var labelsJson = json.getJSONObject("labels");
-            if (labelsJson.has("hide_carousel")) {
-                labelHide = labelsJson.getString("hide_carousel");
-            }
-            if (labelsJson.has("show_carousel")) {
-                labelShow = labelsJson.getString("show_carousel");
-            }
+    public ProductsElement(@NonNull JSONObject json) {
+        var labelsJson = json.optJSONObject("labels");
+        if (labelsJson != null) {
+            labelHide = json.optString("hide_carousel", "");
+            labelShow = json.optString("show_carousel", "");
         }
-        if (json.has("products")) {
-            JSONArray products = json.getJSONArray("products");
-            for (int i = 0; i < products.length(); i++) {
-                this.products.add(new Product(products.getJSONObject(i)));
+        var productsJsonArray = json.optJSONArray("products");
+        if (productsJsonArray != null)
+        {
+            for (int i = 0; i < productsJsonArray.length(); i++) {
+                products.add(new Product(productsJsonArray.optJSONObject(i)));
             }
         }
     }

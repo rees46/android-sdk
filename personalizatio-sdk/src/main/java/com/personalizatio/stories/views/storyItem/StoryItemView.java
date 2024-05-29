@@ -42,6 +42,7 @@ import com.bumptech.glide.request.target.Target;
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.ShapeAppearanceModel;
+import com.google.common.base.Strings;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
@@ -288,7 +289,7 @@ final public class StoryItemView extends ConstraintLayout {
 						link = buttonElement.getLink();
 					}
 				}
-				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
+				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.getId() + "`" : ""));
 				//Вызываем колбек клика
 				var clickListener = storiesView.getClickListener();
 				if( clickListener == null
@@ -320,15 +321,15 @@ final public class StoryItemView extends ConstraintLayout {
 
 		product.setVisibility(VISIBLE);
 
-		Glide.with(getContext()).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL).into(productImage);
+		Glide.with(getContext()).load(item.getImage()).listener(listener).override(Target.SIZE_ORIGINAL).into(productImage);
 
-		setupDefaultTextView(productBrand, item.brand != null, item.brand);
-		setupDefaultTextView(productName, item.name);
-		setupDefaultTextView(productPrice, item.price);
-		setupDefaultTextView(productOldPrice, item.oldprice != null, item.oldprice);
-		setupDefaultTextView(promocodeText, element.getTitle() != null && item.promocode != null, element.getTitle());
+		setupDefaultTextView(productBrand, Strings.isNullOrEmpty(item.getBrand()), item.getBrand());
+		setupDefaultTextView(productName, item.getName());
+		setupDefaultTextView(productPrice, item.getPrice());
+		setupDefaultTextView(productOldPrice, Strings.isNullOrEmpty(item.getOldPrice()), item.getOldPrice());
+		setupDefaultTextView(promocodeText, element.getTitle() != null && !Strings.isNullOrEmpty(item.getPromocode()), element.getTitle());
 		productOldPrice.setPaintFlags(productOldPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-		productDiscountBox.setVisibility(item.discount_percent == null && item.promocode == null ? GONE : VISIBLE);
+		productDiscountBox.setVisibility(Strings.isNullOrEmpty(item.getDiscountPercent()) && Strings.isNullOrEmpty(item.getPromocode()) ? GONE : VISIBLE);
 
 		//Указываем закругления
 		float radius = getResources().getDimension(R.dimen.product_price_box_radius);
@@ -347,12 +348,12 @@ final public class StoryItemView extends ConstraintLayout {
 		//Блок скидки или промокода
 		var productDiscountText = "";
 		int shapeDiscountColor = 0;
-		if( item.promocode != null ) {
-			productDiscountText = item.promocode;
+		if (!Strings.isNullOrEmpty(item.getPromocode())) {
+			productDiscountText = item.getPromocode();
 			shapeDiscountColor = R.color.product_promocode_color;
-			productPrice.setText(item.price_with_promocode);
-		} else if( item.discount_percent != null ) {
-			productDiscountText = "-" + item.discount_percent + "%";
+			productPrice.setText(item.getPriceWithPromocode());
+		} else if (!Strings.isNullOrEmpty(item.getDiscountPercent())) {
+			productDiscountText = "-" + item.getDiscountPercent() + "%";
 			shapeDiscountColor = R.color.product_discount_color;
 		}
 		setupDefaultTextView(productDiscount, productDiscountText);
