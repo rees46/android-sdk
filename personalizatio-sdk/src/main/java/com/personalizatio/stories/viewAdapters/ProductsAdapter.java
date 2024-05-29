@@ -29,9 +29,9 @@ final public class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.
 	private List<Product> products = new ArrayList<>();
 	private int storyId;
 	private String slideId;
-	private StoriesView storiesView;
+	private final StoriesView storiesView;
 
-	public void setStoriesView(StoriesView view) {
+	public ProductsAdapter(StoriesView view) {
 		storiesView = view;
 	}
 
