@@ -23,6 +23,7 @@ import com.personalizatio.R;
 import com.personalizatio.SDK;
 import com.personalizatio.stories.models.Slide;
 import com.personalizatio.stories.models.Story;
+import com.personalizatio.stories.views.storyItem.StoryItemView;
 
 import java.util.HashMap;
 
