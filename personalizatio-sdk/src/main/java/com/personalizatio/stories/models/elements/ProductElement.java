@@ -45,9 +45,7 @@ public class ProductElement implements Element {
     @NonNull
     @Override
     public String toString() {
-        return "ProductElement{" +
-                "title='" + title + '\'' +
-                ", item=" + item +
-                '}';
+        return String.format("ProductElement{title='%s', item=%s}",
+                title, item.toString());
     }
 }

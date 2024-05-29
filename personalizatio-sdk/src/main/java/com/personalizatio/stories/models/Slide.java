@@ -124,16 +124,7 @@ final public class Slide implements Serializable {
     @NonNull
     @Override
     public String toString() {
-        return "Slide{" +
-                "id='" + id + '\'' +
-                ", background='" + background + '\'' +
-                ", backgroundColor='" + backgroundColor + '\'' +
-                ", preview='" + preview + '\'' +
-                ", type='" + type + '\'' +
-                ", elements=" + elements +
-                ", duration=" + duration +
-                ", prepared=" + prepared +
-                ", DEFAULT_DURATION_SECONDS=" + DEFAULT_DURATION_SECONDS +
-                '}';
+        return String.format("Slide{id='%s', background='%s', backgroundColor='%s', preview='%s', type='%s', elements=%s, duration=%d, prepared=%b}",
+                id, background, backgroundColor, preview, type, elements, duration, prepared);
     }
 }

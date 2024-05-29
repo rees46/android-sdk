@@ -55,11 +55,7 @@ public class HeaderElement implements LinkElement {
     @NonNull
     @Override
     public String toString() {
-        return "HeaderElement{" +
-                "title='" + title + '\'' +
-                ", subtitle='" + subtitle + '\'' +
-                ", link='" + link + '\'' +
-                ", icon='" + icon + '\'' +
-                '}';
+        return String.format("HeaderElement{title='%s', subtitle='%s', link='%s', icon='%s'}",
+                title, subtitle, link, icon);
     }
 }

@@ -60,10 +60,7 @@ public class ProductsElement implements Element {
     @NonNull
     @Override
     public String toString() {
-        return "ProductsElement{" +
-                "labelHide='" + labelHide + '\'' +
-                ", labelShow='" + labelShow + '\'' +
-                ", products=" + products +
-                '}';
+        return String.format("ProductsElement{labelHide='%s', labelShow='%s', products=%s}",
+                labelHide, labelShow, products);
     }
 }
