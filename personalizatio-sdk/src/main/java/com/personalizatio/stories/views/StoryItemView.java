@@ -1,8 +1,7 @@
 package com.personalizatio.stories.views;
 
-import android.annotation.TargetApi;
+import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -11,7 +10,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -26,7 +24,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.FontRes;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -61,6 +58,7 @@ import com.personalizatio.stories.viewAdapters.ProductsAdapter;
 import com.personalizatio.stories.models.elements.Element;
 import com.personalizatio.stories.models.Slide;
 
+@SuppressLint("ViewConstructor")
 final public class StoryItemView extends ConstraintLayout {
 
 	public interface OnPageListener {
@@ -76,20 +74,20 @@ final public class StoryItemView extends ConstraintLayout {
 	private ImageView image;
 	private PlayerView video;
 	private ConstraintLayout product;
-	private LinearLayout product_price_box;
-	private LinearLayout product_discount_box;
-	private TextView product_brand;
-	private TextView product_name;
-	private TextView product_oldprice;
-	private TextView product_price;
-	private TextView product_discount;
-	private TextView promocode_text;
-	private ImageView product_image;
+	private LinearLayout productPriceBox;
+	private LinearLayout productDiscountBox;
+	private TextView productBrand;
+	private TextView productName;
+	private TextView productOldPrice;
+	private TextView productPrice;
+	private TextView productDiscount;
+	private TextView promocodeText;
+	private ImageView productImage;
 
-	private OnPageListener page_listener;
+	private OnPageListener pageListener;
 	private View prev;
 	private View next;
-	private StoriesView stories_view;
+	private final StoriesView storiesView;
 
 	//Элементы управления
 	private Button button;
@@ -98,13 +96,14 @@ final public class StoryItemView extends ConstraintLayout {
 	public View reload_layout;
 	private TextView reloadText;
 	private ConstraintLayout header;
-	private TextView titleTextView, subtitleTextView;
+	private TextView titleTextView;
+	private TextView subtitleTextView;
 	private CardView titleCardView;
 	private ImageView titleIconImageView;
 	private Button buttonProducts;
 	private ViewGroup elementsLayout;
 	private RecyclerView products;
-	private ProductsAdapter products_adapter;
+	private ProductsAdapter productsAdapter;
 
 	private int viewHeight;
 	private int viewTopOffset;
@@ -113,48 +112,26 @@ final public class StoryItemView extends ConstraintLayout {
 	private final int ELEMENTS_LAYOUT_ANIMATION_DURATION = 200;
 	private final int MAX_COLOR_CHANNEL_VALUE = 255;
 
-	public StoryItemView(@NonNull Context context) {
-		super(context);
+	public StoryItemView(StoriesView storiesView) {
+		super(storiesView.getContext());
+
+		this.storiesView = storiesView;
+
+		inflate(getContext(), R.layout.story_item, this);
+		setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+		initViews();
+
+		setupViews();
 	}
 
-	public StoryItemView(@NonNull Context context, @Nullable AttributeSet attrs) {
-		super(context, attrs);
-	}
-
-	public StoryItemView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-		super(context, attrs, defStyleAttr);
-	}
-
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
-	public StoryItemView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-		super(context, attrs, defStyleAttr, defStyleRes);
-	}
-
-	@Override
-	protected void onFinishInflate() {
-		super.onFinishInflate();
-		init();
-	}
-
-	private void init() {
+	private void initViews() {
 		image = findViewById(android.R.id.background);
 		video = findViewById(android.R.id.widget_frame);
-		image.setVisibility(View.GONE);
-		video.setVisibility(View.GONE);
 
 		//Переключение слайда
 		prev = findViewById(R.id.reverse);
 		next = findViewById(R.id.skip);
-		prev.setOnClickListener((View) -> {
-			if( page_listener != null ) {
-				page_listener.onPrev();
-			}
-		});
-		next.setOnClickListener((View) -> {
-			if( page_listener != null ) {
-				page_listener.onNext();
-			}
-		});
 
 		//Элементы управления
 		button = findViewById(android.R.id.button1);
@@ -170,23 +147,42 @@ final public class StoryItemView extends ConstraintLayout {
 		buttonProducts = findViewById(android.R.id.button2);
 		elementsLayout = findViewById(R.id.elements_layout);
 
-		products_adapter = new ProductsAdapter();
 		products = findViewById(android.R.id.list);
-		products.setAdapter(products_adapter);
 
 		//Товарный слайд
 		product = findViewById(R.id.product);
-		product.setVisibility(GONE);
 
-		product_price_box = findViewById(R.id.product_price_box);
-		product_brand = findViewById(R.id.product_brand);
-		product_name = findViewById(R.id.product_name);
-		product_oldprice = findViewById(R.id.product_oldprice);
-		product_price = findViewById(R.id.product_price);
-		product_discount = findViewById(R.id.product_discount);
-		product_discount_box = findViewById(R.id.product_discount_box);
-		product_image = findViewById(R.id.product_image);
-		promocode_text = findViewById(R.id.promocode_text);
+		productPriceBox = findViewById(R.id.product_price_box);
+		productBrand = findViewById(R.id.product_brand);
+		productName = findViewById(R.id.product_name);
+		productOldPrice = findViewById(R.id.product_oldprice);
+		productPrice = findViewById(R.id.product_price);
+		productDiscount = findViewById(R.id.product_discount);
+		productDiscountBox = findViewById(R.id.product_discount_box);
+		productImage = findViewById(R.id.product_image);
+		promocodeText = findViewById(R.id.promocode_text);
+	}
+
+	private void setupViews() {
+		image.setVisibility(View.GONE);
+		video.setVisibility(View.GONE);
+
+		//Переключение слайда
+		prev.setOnClickListener((View) -> {
+			if( pageListener != null ) {
+				pageListener.onPrev();
+			}
+		});
+		next.setOnClickListener((View) -> {
+			if( pageListener != null ) {
+				pageListener.onNext();
+			}
+		});
+
+		productsAdapter = new ProductsAdapter(storiesView);
+		products.setAdapter(productsAdapter);
+
+		product.setVisibility(GONE);
 	}
 
 	/**
@@ -194,16 +190,7 @@ final public class StoryItemView extends ConstraintLayout {
 	 * @param listener OnPageListener
 	 */
 	public void setOnPageListener(OnPageListener listener) {
-		page_listener = listener;
-	}
-
-	/**
-	 * Слушатель клика по ссылке
-	 * @param view StoriesView
-	 */
-	public void setStoriesView(StoriesView view) {
-		stories_view = view;
-		products_adapter.setStoriesView(view);
+		pageListener = listener;
 	}
 
 	public void setOnTouchListener(OnTouchListener listener) {
@@ -287,8 +274,8 @@ final public class StoryItemView extends ConstraintLayout {
 		slide.setPrepared(true);
 		reload_layout.setVisibility(GONE);
 		elementsLayout.setVisibility(VISIBLE);
-		if (!buttonProducts.isActivated() && page_listener != null) {
-			page_listener.onPrepared(position);
+		if (!buttonProducts.isActivated() && pageListener != null) {
+			pageListener.onPrepared(position);
 		}
 	}
 
@@ -307,7 +294,7 @@ final public class StoryItemView extends ConstraintLayout {
 				}
 				Log.d(SDK.TAG, "open link: " + link + (product != null ? " with product: `" + product.id + "`" : ""));
 				//Вызываем колбек клика
-				var clickListener = stories_view.getClickListener();
+				var clickListener = storiesView.getClickListener();
 				if( clickListener == null
 						|| product == null && clickListener.onClick(link)
 						|| product != null && clickListener.onClick(product) ) {
@@ -337,15 +324,15 @@ final public class StoryItemView extends ConstraintLayout {
 
 		product.setVisibility(VISIBLE);
 
-		Glide.with(getContext()).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL).into(product_image);
+		Glide.with(getContext()).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL).into(productImage);
 
-		setupDefaultTextView(product_brand, item.brand != null, item.brand);
-		setupDefaultTextView(product_name, item.name);
-		setupDefaultTextView(product_price, item.price);
-		setupDefaultTextView(product_oldprice, item.oldprice != null, item.oldprice);
-		setupDefaultTextView(promocode_text, element.getTitle() != null && item.promocode != null, element.getTitle());
-		product_oldprice.setPaintFlags(product_oldprice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-		product_discount_box.setVisibility(item.discount_percent == null && item.promocode == null ? GONE : VISIBLE);
+		setupDefaultTextView(productBrand, item.brand != null, item.brand);
+		setupDefaultTextView(productName, item.name);
+		setupDefaultTextView(productPrice, item.price);
+		setupDefaultTextView(productOldPrice, item.oldprice != null, item.oldprice);
+		setupDefaultTextView(promocodeText, element.getTitle() != null && item.promocode != null, element.getTitle());
+		productOldPrice.setPaintFlags(productOldPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+		productDiscountBox.setVisibility(item.discount_percent == null && item.promocode == null ? GONE : VISIBLE);
 
 		//Указываем закругления
 		float radius = getResources().getDimension(R.dimen.product_price_box_radius);
@@ -359,7 +346,7 @@ final public class StoryItemView extends ConstraintLayout {
 
 		//Заполняем
 		shape_box_drawable.setFillColor(ContextCompat.getColorStateList(getContext(), android.R.color.white));
-		ViewCompat.setBackground(product_price_box, shape_box_drawable);
+		ViewCompat.setBackground(productPriceBox, shape_box_drawable);
 
 		//Блок скидки или промокода
 		var productDiscountText = "";
@@ -367,17 +354,17 @@ final public class StoryItemView extends ConstraintLayout {
 		if( item.promocode != null ) {
 			productDiscountText = item.promocode;
 			shapeDiscountColor = R.color.product_promocode_color;
-			product_price.setText(item.price_with_promocode);
+			productPrice.setText(item.price_with_promocode);
 		} else if( item.discount_percent != null ) {
 			productDiscountText = "-" + item.discount_percent + "%";
 			shapeDiscountColor = R.color.product_discount_color;
 		}
-		setupDefaultTextView(product_discount, productDiscountText);
+		setupDefaultTextView(productDiscount, productDiscountText);
 		if(shapeDiscountColor != 0) {
 			shape_discount_drawable.setFillColor(ContextCompat.getColorStateList(getContext(), shapeDiscountColor));
 		}
 
-		ViewCompat.setBackground(product_discount_box, shape_discount_drawable);
+		ViewCompat.setBackground(productDiscountBox, shape_discount_drawable);
 	}
 
 	public void release() {
@@ -441,8 +428,8 @@ final public class StoryItemView extends ConstraintLayout {
 					@Override
 					public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
 						slide.setPrepared(true);
-						if( page_listener != null ) {
-							page_listener.onPrepared(position);
+						if( pageListener != null ) {
+							pageListener.onPrepared(position);
 						}
 						return false;
 					}
@@ -452,8 +439,8 @@ final public class StoryItemView extends ConstraintLayout {
 	}
 
 	private void updateProducts(ProductsElement element, String slideId, int storyId) {
-		products_adapter.setProducts(element.getProducts(), storyId, slideId);
-		setupTextView(buttonProducts, true, element.getLabelShow(), stories_view.getSettings().products_button_font_family);
+		productsAdapter.setProducts(element.getProducts(), storyId, slideId);
+		setupTextView(buttonProducts, true, element.getLabelShow(), storiesView.getSettings().products_button_font_family);
 		buttonProducts.setOnClickListener(view -> {
 			buttonProducts.setActivated(!buttonProducts.isActivated());
 			buttonProducts.setText(buttonProducts.isActivated() ? element.getLabelHide() : element.getLabelShow());
@@ -477,12 +464,12 @@ final public class StoryItemView extends ConstraintLayout {
 			products.setVisibility(buttonProducts.isActivated() ? VISIBLE : GONE);
 			//--->
 
-			if( page_listener != null ) {
-				page_listener.onLocked(buttonProducts.isActivated());
+			if( pageListener != null ) {
+				pageListener.onLocked(buttonProducts.isActivated());
 			}
 		});
-		if( page_listener != null ) {
-			page_listener.onLocked(buttonProducts.isActivated());
+		if( pageListener != null ) {
+			pageListener.onLocked(buttonProducts.isActivated());
 		}
 	}
 
@@ -500,7 +487,7 @@ final public class StoryItemView extends ConstraintLayout {
 			button.setTextColor(textColor);
 		}
 
-		button.setTypeface(Typeface.create(stories_view.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
+		button.setTypeface(Typeface.create(storiesView.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
 	}
 
 	private void updateTextBlock(TextBlockElement element) {
@@ -628,16 +615,16 @@ final public class StoryItemView extends ConstraintLayout {
 	private void setupReloadView(Slide slide, int position, String code, int storyId) {
 		reload_layout.setVisibility(GONE);
 
-		var settings = stories_view.getSettings();
+		var settings = storiesView.getSettings();
 		setupTextView(reloadText, settings.failed_load_text, settings.failed_load_font_family);
-		reloadText.setTextSize(stories_view.getSettings().failed_load_size);
-		reloadText.setTextColor(Color.parseColor(stories_view.getSettings().failed_load_color));
+		reloadText.setTextSize(storiesView.getSettings().failed_load_size);
+		reloadText.setTextColor(Color.parseColor(storiesView.getSettings().failed_load_color));
 
 		reload.setOnClickListener((View) -> update(slide, position, code, storyId));
 	}
 
 	private void setupDefaultTextView(TextView textView, boolean visibility, String text) {
-		setupTextView(textView, visibility, text, stories_view.getSettings().font_family);
+		setupTextView(textView, visibility, text, storiesView.getSettings().font_family);
 	}
 
 	private void setupTextView(TextView textView, boolean visibility, String text, Typeface typeface) {
@@ -649,7 +636,7 @@ final public class StoryItemView extends ConstraintLayout {
 	}
 
 	private void setupDefaultTextView(TextView textView, String text) {
-		setupTextView(textView, text, stories_view.getSettings().font_family);
+		setupTextView(textView, text, storiesView.getSettings().font_family);
 	}
 
 	private void setupTextView(TextView textView, String text, Typeface typeface) {
