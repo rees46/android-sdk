@@ -1,15 +1,13 @@
-package com.personalizatio.stories.views;
+package com.personalizatio.stories.views.storyItem;
 
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -23,13 +21,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.FontRes;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
 import androidx.core.view.ViewCompat;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
@@ -57,6 +53,8 @@ import com.personalizatio.stories.models.elements.TextBlockElement;
 import com.personalizatio.stories.viewAdapters.ProductsAdapter;
 import com.personalizatio.stories.models.elements.Element;
 import com.personalizatio.stories.models.Slide;
+import com.personalizatio.stories.views.StoriesView;
+import com.personalizatio.utils.ViewUtils;
 
 @SuppressLint("ViewConstructor")
 final public class StoryItemView extends ConstraintLayout {
@@ -110,7 +108,6 @@ final public class StoryItemView extends ConstraintLayout {
 
 	private final int ELEMENTS_LAYOUT_ANIMATION_DELAY = 100;
 	private final int ELEMENTS_LAYOUT_ANIMATION_DURATION = 200;
-	private final int MAX_COLOR_CHANNEL_VALUE = 255;
 
 	public StoryItemView(StoriesView storiesView) {
 		super(storiesView.getContext());
@@ -207,10 +204,11 @@ final public class StoryItemView extends ConstraintLayout {
 	 *
 	 * @param slide Story.Slide
 	 */
-	public void update(Slide slide, int position, String code, int story_id) {
+	@SuppressLint("ResourceAsColor")
+    public void update(Slide slide, int position, String code, int story_id) {
 		slide.setPrepared(false);
 
-		setBackgroundColor(getColor(slide.getBackgroundColor(), android.R.color.black));
+		setBackgroundColor(ViewUtils.getColor(getContext(), slide.getBackgroundColor(), android.R.color.black));
 
 		video.setVisibility(GONE);
 
@@ -260,11 +258,11 @@ final public class StoryItemView extends ConstraintLayout {
 		setupElements(slide, code, story_id, position);
 	}
 
-	ImageView getImage() {
+	public ImageView getImage() {
 		return image;
 	}
 
-	PlayerView getVideo() {
+	public PlayerView getVideo() {
 		return video;
 	}
 
@@ -471,143 +469,23 @@ final public class StoryItemView extends ConstraintLayout {
 		}
 	}
 
+	@SuppressLint("ResourceAsColor")
 	private void updateButton(ButtonElement element) {
 		button.setVisibility(VISIBLE);
 		button.setText(element.getTitle());
 
-		var backgroundColor = getColor(element.getBackground(), R.color.primary);
-		var textColor = getColor(element.getColor(), R.color.white);
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-			button.setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
-			button.setTextColor(ColorStateList.valueOf(textColor));
-		} else {
-			button.setBackgroundColor(backgroundColor);
-			button.setTextColor(textColor);
-		}
+		ViewUtils.setBackgroundColor(getContext(), button, element.getBackground(), R.color.primary);
+		ViewUtils.setTextColor(getContext(), button, element.getColor(), R.color.white);
 
 		button.setTypeface(Typeface.create(storiesView.getSettings().button_font_family, element.getTextBold() ? Typeface.BOLD : Typeface.NORMAL));
 	}
 
 	private void updateTextBlock(TextBlockElement element) {
-		var textView = new TextView(getContext());
+		var textBlockView = new TextBlockView(getContext());
 
-		var layoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-		textView.setLayoutParams(layoutParams);
+		textBlockView.updateView(element, viewHeight, viewTopOffset);
 
-		textView.setText(element.getTextInput());
-
-		var fontSize = element.getFontSize();
-
-		textView.setPadding(0, fontSize, 0, fontSize);
-
-		textView.setY(viewHeight * element.getYOffset() / 100f + viewTopOffset);
-
-		textView.setTextSize(fontSize);
-
-		var typeface = ResourcesCompat.getFont(getContext(), getFontRes(element.getFontType(), element.isBold(), element.isItalic()));
-		textView.setTypeface(typeface, getTypefaceStyle(element.isBold(), element.isItalic()));
-
-		textView.setTextAlignment(getTextAlignment(element.getTextAlign()));
-
-		textView.setLineSpacing(textView.getLineHeight(), (float)element.getTextLineSpacing());
-
-		setTextBackgroundColor(textView, element.getTextBackgroundColor(), element.getTextBackgroundColorOpacity());
-		setTextColor(textView, element.getTextColor());
-
-		textBlocksLayout.addView(textView);
-	}
-
-	private @FontRes int getFontRes(String fontType, boolean bold, boolean italic) {
-		switch( fontType ) {
-            case "serif": {
-				if( bold && italic ) return R.font.droid_serif_bold_italic;
-				if( bold ) return R.font.droid_serif_bold;
-				if( italic ) return R.font.droid_serif_italic;
-				return R.font.droid_serif_regular;
-			}
-			case "sans-serif": {
-				if( bold ) return R.font.droid_sans_bold;
-				return R.font.droid_sans_regular;
-			}
-			case "monospaced":
-			default: {
-				return R.font.droid_sans_mono;
-			}
-		}
-	}
-
-	private static int getTypefaceStyle(boolean bold, boolean italic) {
-		if( bold && italic ) return Typeface.BOLD_ITALIC;
-		if( bold ) return Typeface.BOLD;
-		if( italic ) return Typeface.ITALIC;
-		return Typeface.NORMAL;
-	}
-
-	private static int getTextAlignment(String textAlign) {
-		return switch (textAlign) {
-			case "center" -> View.TEXT_ALIGNMENT_CENTER;
-			case "right" -> View.TEXT_ALIGNMENT_TEXT_END;
-			default -> View.TEXT_ALIGNMENT_TEXT_START;
-		};
-	}
-
-	private void setTextColor(TextView textView, String colorString) {
-		var color = getColor(colorString, R.color.white);
-
-		if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ) {
-			textView.setTextColor(ColorStateList.valueOf(color));
-		} else {
-			textView.setTextColor(color);
-		}
-	}
-
-	private void setTextBackgroundColor(TextView textView, String colorString, String colorOpacityString) {
-		if( !colorString.startsWith("#") ) {
-			colorString = "#FFFFFF";
-		}
-
-		var colorOpacity = GetColorOpacity(colorOpacityString);
-		var colorOpacityValueString = Integer.toString(colorOpacity,16);
-		if( colorOpacityValueString.length() == 1) colorOpacityValueString = 0 + colorOpacityValueString;
-
-		var fullColorString = colorString.replace("#", "#" + colorOpacityValueString);
-
-		var color = getColor(fullColorString, R.color.white);
-		textView.setBackgroundColor(color);
-	}
-
-	private int getColor(String colorString, int defaultColorId) {
-		if (colorString == null) {
-			return getContext().getResources().getColor(defaultColorId);
-		}
-
-		int color;
-		try {
-			color = Color.parseColor(colorString);
-		} catch (IllegalArgumentException e) {
-			color = getContext().getResources().getColor(defaultColorId);
-		}
-
-		return color;
-	}
-
-	private int GetColorOpacity(String percentsString) {
-		var percents = 0;
-
-		try {
-			percents = Integer.parseInt(percentsString);
-		}
-		catch( NumberFormatException e ) {
-			try {
-				if (!percentsString.isEmpty()) {
-					percents = Integer.parseInt(percentsString.substring(0, percentsString.length() - 1));
-				}
-			}
-			catch( NumberFormatException ignored) {
-			}
-		}
-
-		return MAX_COLOR_CHANNEL_VALUE * percents / 100;
+		textBlocksLayout.addView(textBlockView);
 	}
 
 	private void setupReloadView(Slide slide, int position, String code, int storyId) {
