@@ -44,7 +44,7 @@ final public class Params extends AbstractParams<Params> {
 		EXTENDED("extended"),
 		;
 
-		protected String value;
+		private final String value;
 		Parameter(String v) {
 			value = v;
 		}
@@ -68,7 +68,7 @@ final public class Params extends AbstractParams<Params> {
 			STORIES("stories"),
 			;
 
-			protected String value;
+			private final String value;
 			TYPE(String v) {
 				value = v;
 			}
@@ -77,8 +77,8 @@ final public class Params extends AbstractParams<Params> {
 			}
 		}
 
-		String type;
-		String code;
+		private final String type;
+		private String code;
 		public RecommendedBy(TYPE type) {
 			this.type = type.getValue();
 		}
@@ -98,13 +98,13 @@ final public class Params extends AbstractParams<Params> {
 			PRICE("price"),
 			FASHION_SIZE("fashion_size"),
 			;
-			String value;
+			private final String value;
 			COLUMN(String v) {
 				value = v;
 			}
 		}
 
-		final HashMap<String, String> columns = new HashMap<>();
+		private final HashMap<String, String> columns = new HashMap<>();
 		public Item(@NonNull String id) {
 			columns.put(COLUMN.ID.value, id);
 		}
@@ -196,7 +196,7 @@ final public class Params extends AbstractParams<Params> {
 		PROPERTIES("properties"),
 		;
 
-		protected String value;
+		final String value;
 		InternalParameter(String v) {
 			value = v;
 		}
