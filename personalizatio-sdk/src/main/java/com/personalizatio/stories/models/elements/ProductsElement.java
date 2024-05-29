@@ -10,6 +10,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ProductsElement implements Element {
 
@@ -45,5 +46,29 @@ public class ProductsElement implements Element {
 
     public List<Product> getProducts() {
         return products;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ProductsElement that)) return false;
+        return labelHide.equals(that.labelHide)
+                && labelShow.equals(that.labelShow)
+                && products.equals(that.products);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(labelHide, labelShow, products);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "ProductsElement{" +
+                "labelHide='" + labelHide + '\'' +
+                ", labelShow='" + labelShow + '\'' +
+                ", products=" + products +
+                '}';
     }
 }

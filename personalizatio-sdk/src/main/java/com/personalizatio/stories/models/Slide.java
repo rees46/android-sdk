@@ -16,8 +16,10 @@ import org.json.JSONObject;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 final public class Slide implements Serializable {
+
     private String id;
     private String background;
     private String backgroundColor;
@@ -124,5 +126,40 @@ final public class Slide implements Serializable {
 
     public void setPrepared(boolean prepared) {
         this.prepared = prepared;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Slide slide)) return false;
+        return duration == slide.duration
+                && prepared == slide.prepared
+                && id.equals(slide.id)
+                && background.equals(slide.background)
+                && backgroundColor.equals(slide.backgroundColor)
+                && preview.equals(slide.preview)
+                && type.equals(slide.type)
+                && elements.equals(slide.elements);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, background, backgroundColor, preview, type, elements, duration, prepared, DEFAULT_DURATION_SECONDS);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "Slide{" +
+                "id='" + id + '\'' +
+                ", background='" + background + '\'' +
+                ", backgroundColor='" + backgroundColor + '\'' +
+                ", preview='" + preview + '\'' +
+                ", type='" + type + '\'' +
+                ", elements=" + elements +
+                ", duration=" + duration +
+                ", prepared=" + prepared +
+                ", DEFAULT_DURATION_SECONDS=" + DEFAULT_DURATION_SECONDS +
+                '}';
     }
 }

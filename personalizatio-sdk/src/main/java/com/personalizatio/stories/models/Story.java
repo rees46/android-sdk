@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 final public class Story {
 	private int id;
@@ -16,7 +17,7 @@ final public class Story {
 	private boolean viewed;
 	private boolean pinned;
 	private int start_position;
-	private List<Slide> slides;
+	private final List<Slide> slides;
 
 	public Story(@NonNull JSONObject json) throws JSONException {
 		if (json.has("id")) {
@@ -84,5 +85,37 @@ final public class Story {
 
 	public int getSlidesCount() {
 		return slides.size();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Story story)) return false;
+		return id == story.id
+				&& viewed == story.viewed
+				&& pinned == story.pinned
+				&& start_position == story.start_position
+				&& avatar.equals(story.avatar)
+				&& name.equals(story.name)
+				&& slides.equals(story.slides);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, avatar, name, viewed, pinned, start_position, slides);
+	}
+
+	@NonNull
+	@Override
+	public String toString() {
+		return "Story{" +
+				"id=" + id +
+				", avatar='" + avatar + '\'' +
+				", name='" + name + '\'' +
+				", viewed=" + viewed +
+				", pinned=" + pinned +
+				", start_position=" + start_position +
+				", slides=" + slides +
+				'}';
 	}
 }

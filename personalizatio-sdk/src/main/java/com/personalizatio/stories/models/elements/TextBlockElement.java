@@ -5,18 +5,21 @@ import androidx.annotation.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Objects;
+
 public final class TextBlockElement implements Element {
-    private Boolean bold = false;
-    private Boolean italic = false;
-    private String text_input;
-    private int y_offset;
-    private String font_type;
-    private int font_size = 14;
-    private String text_align;
-    private String text_color;
-    private double text_line_spacing;
-    private String text_background_color = "#FFFFFF";
-    private String text_background_color_opacity = "0%";
+
+    private boolean bold = false;
+    private boolean italic = false;
+    private String textInput;
+    private int yOffset;
+    private String fontType;
+    private int fontSize = 14;
+    private String textAlign;
+    private String textColor;
+    private double textLineSpacing;
+    private String textBackgroundColor = "#FFFFFF";
+    private String textBackgroundColorOpacity = "0%";
 
     public TextBlockElement(@NonNull JSONObject json) throws JSONException {
         if (json.has("bold")) {
@@ -26,31 +29,31 @@ public final class TextBlockElement implements Element {
             italic = json.getBoolean("italic");
         }
         if (json.has("text_input")) {
-            text_input = json.getString("text_input");
+            textInput = json.getString("text_input");
         }
         if (json.has("y_offset")) {
-            y_offset = json.getInt("y_offset");
+            yOffset = json.getInt("y_offset");
         }
         if (json.has("font_type")) {
-            font_type = json.getString("font_type");
+            fontType = json.getString("font_type");
         }
         if (json.has("font_size")) {
-            font_size = json.getInt("font_size");
+            fontSize = json.getInt("font_size");
         }
         if (json.has("text_align")) {
-            text_align = json.getString("text_align");
+            textAlign = json.getString("text_align");
         }
         if (json.has("text_color")) {
-            text_color = json.getString("text_color");
+            textColor = json.getString("text_color");
         }
         if (json.has("text_line_spacing")) {
-            text_line_spacing = json.getDouble("text_line_spacing");
+            textLineSpacing = json.getDouble("text_line_spacing");
         }
         if (json.has("text_background_color")) {
-            text_background_color = json.getString("text_background_color");
+            textBackgroundColor = json.getString("text_background_color");
         }
         if (json.has("text_background_color_opacity")) {
-            text_background_color_opacity = json.getString("text_background_color_opacity");
+            textBackgroundColorOpacity = json.getString("text_background_color_opacity");
         }
     }
 
@@ -63,38 +66,78 @@ public final class TextBlockElement implements Element {
     }
 
     public String getTextInput() {
-        return text_input;
+        return textInput;
     }
 
     public int getYOffset() {
-        return y_offset;
+        return yOffset;
     }
 
     public String getFontType() {
-        return font_type;
+        return fontType;
     }
 
     public int getFontSize() {
-        return font_size;
+        return fontSize;
     }
 
     public String getTextAlign() {
-        return text_align;
+        return textAlign;
     }
 
     public String getTextColor() {
-        return text_color;
+        return textColor;
     }
 
     public double getTextLineSpacing() {
-        return text_line_spacing;
+        return textLineSpacing;
     }
 
     public String getTextBackgroundColor() {
-        return text_background_color;
+        return textBackgroundColor;
     }
 
     public String getTextBackgroundColorOpacity() {
-        return text_background_color_opacity;
+        return textBackgroundColorOpacity;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TextBlockElement that)) return false;
+        return yOffset == that.yOffset
+                && fontSize == that.fontSize
+                && Double.compare(textLineSpacing, that.textLineSpacing) == 0
+                && bold == that.bold
+                && italic == that.italic
+                && textInput.equals(that.textInput)
+                && fontType.equals(that.fontType)
+                && textAlign.equals(that.textAlign)
+                && textColor.equals(that.textColor)
+                && textBackgroundColor.equals(that.textBackgroundColor)
+                && textBackgroundColorOpacity.equals(that.textBackgroundColorOpacity);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(bold, italic, textInput, yOffset, fontType, fontSize, textAlign, textColor, textLineSpacing, textBackgroundColor, textBackgroundColorOpacity);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "TextBlockElement{" +
+                "bold=" + bold +
+                ", italic=" + italic +
+                ", textInput='" + textInput + '\'' +
+                ", yOffset=" + yOffset +
+                ", fontType='" + fontType + '\'' +
+                ", fontSize=" + fontSize +
+                ", textAlign='" + textAlign + '\'' +
+                ", textColor='" + textColor + '\'' +
+                ", textLineSpacing=" + textLineSpacing +
+                ", textBackgroundColor='" + textBackgroundColor + '\'' +
+                ", textBackgroundColorOpacity='" + textBackgroundColorOpacity + '\'' +
+                '}';
     }
 }
