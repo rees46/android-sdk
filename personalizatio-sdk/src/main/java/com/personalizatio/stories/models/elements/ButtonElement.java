@@ -5,12 +5,14 @@ import androidx.annotation.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Objects;
+
 public class ButtonElement implements LinkElement {
 
     private String title;
     private String background;
     private String color;
-    private Boolean textBold = false;
+    private boolean textBold = false;
     private final String link;
 
     public ButtonElement(@NonNull JSONObject json) throws JSONException {
@@ -48,5 +50,33 @@ public class ButtonElement implements LinkElement {
     @Override
     public String getLink() {
         return link;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ButtonElement that)) return false;
+        return textBold == that.textBold
+                && title.equals(that.title)
+                && background.equals(that.background)
+                && color.equals(that.color)
+                && link.equals(that.link);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(title, background, color, textBold, link);
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "ButtonElement{" +
+                "title='" + title + '\'' +
+                ", background='" + background + '\'' +
+                ", color='" + color + '\'' +
+                ", textBold=" + textBold +
+                ", link='" + link + '\'' +
+                '}';
     }
 }
