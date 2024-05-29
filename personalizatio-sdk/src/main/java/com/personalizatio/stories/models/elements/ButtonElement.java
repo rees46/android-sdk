@@ -65,12 +65,7 @@ public class ButtonElement implements LinkElement {
     @NonNull
     @Override
     public String toString() {
-        return "ButtonElement{" +
-                "title='" + title + '\'' +
-                ", background='" + background + '\'' +
-                ", color='" + color + '\'' +
-                ", textBold=" + textBold +
-                ", link='" + link + '\'' +
-                '}';
+        return String.format("ButtonElement{title='%s', background='%s', color='%s', textBold=%b, link='%s'}",
+                title, background, color, textBold, link);
     }
 }

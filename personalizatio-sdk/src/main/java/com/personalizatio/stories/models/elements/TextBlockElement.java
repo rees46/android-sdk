@@ -107,18 +107,7 @@ public final class TextBlockElement implements Element {
     @NonNull
     @Override
     public String toString() {
-        return "TextBlockElement{" +
-                "bold=" + bold +
-                ", italic=" + italic +
-                ", textInput='" + textInput + '\'' +
-                ", yOffset=" + yOffset +
-                ", fontType='" + fontType + '\'' +
-                ", fontSize=" + fontSize +
-                ", textAlign='" + textAlign + '\'' +
-                ", textColor='" + textColor + '\'' +
-                ", textLineSpacing=" + textLineSpacing +
-                ", textBackgroundColor='" + textBackgroundColor + '\'' +
-                ", textBackgroundColorOpacity='" + textBackgroundColorOpacity + '\'' +
-                '}';
+        return String.format("TextBlockElement{bold=%b, italic=%b, textInput='%s', yOffset=%d, fontType='%s', fontSize=%d, textAlign='%s', textColor='%s', textLineSpacing=%f, textBackgroundColor='%s', textBackgroundColorOpacity='%s'}",
+                bold, italic, textInput, yOffset, fontType, fontSize, textAlign, textColor, textLineSpacing, textBackgroundColor, textBackgroundColorOpacity);
     }
 }

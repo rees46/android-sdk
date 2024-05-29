@@ -94,14 +94,7 @@ final public class Story {
 	@NonNull
 	@Override
 	public String toString() {
-		return "Story{" +
-				"id=" + id +
-				", avatar='" + avatar + '\'' +
-				", name='" + name + '\'' +
-				", viewed=" + viewed +
-				", pinned=" + pinned +
-				", start_position=" + startPosition +
-				", slides=" + slides +
-				'}';
+		return String.format("Story{id='%s', avatar='%s', name='%s', viewed=%b, pinned=%b, startPosition=%d, slides=%s}",
+				id, avatar, name, viewed, pinned, startPosition, slides);
 	}
 }
