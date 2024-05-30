@@ -192,6 +192,9 @@ final public class Params extends AbstractParams<Params> {
 		RECOMMENDED_CODE("recommended_code"),
 		EMAIL("email"),
 		PHONE("phone"),
+		EXTERNAL_ID("external_id"),
+		LOYALTY_ID("loyalty_id"),
+		TELEGRAM_ID("telegram_id"),
 		PROPERTIES("properties"),
 		;
 

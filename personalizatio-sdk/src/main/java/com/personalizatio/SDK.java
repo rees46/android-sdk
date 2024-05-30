@@ -512,16 +512,35 @@ public class SDK {
 	}
 
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
+		manageSubscription(email, phone, null, null, null, subscriptions, listener);
+	}
+
+	public static void manageSubscription(@Nullable String email, @Nullable String phone, @Nullable String externalId, @Nullable String loyaltyId, @Nullable String telegramId,
+										  @NonNull HashMap<String, Boolean> subscriptions) {
+		manageSubscription(email, phone, externalId, loyaltyId, telegramId, subscriptions, null);
+	}
+
+	public static void manageSubscription(@Nullable String email, @Nullable String phone, @Nullable String externalId, @Nullable String loyaltyId, @Nullable String telegramId,
+										  @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
 		try {
 			JSONObject params = new JSONObject();
 			for( Map.Entry<String, Boolean> entry : subscriptions.entrySet() ) {
 				params.put(entry.getKey(), entry.getValue());
 			}
-			if( email != null ) {
+			if (email != null) {
 				params.put(InternalParameter.EMAIL.value, email);
 			}
-			if( phone != null ) {
+			if (phone != null) {
 				params.put(InternalParameter.PHONE.value, phone);
+			}
+			if (externalId != null) {
+				params.put(InternalParameter.EXTERNAL_ID.value, externalId);
+			}
+			if (loyaltyId != null) {
+				params.put(InternalParameter.LOYALTY_ID.value, loyaltyId);
+			}
+			if (telegramId != null) {
+				params.put(InternalParameter.TELEGRAM_ID.value, telegramId);
 			}
 			instance.sendAsync("subscriptions/manage", params, listener);
 		} catch(JSONException e) {
