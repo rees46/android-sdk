@@ -501,7 +501,7 @@ public class SDK {
 
 	/**
 	 * Manage subscriptions
-	 * https://reference.api.rees46.com/?swift#manage-subscriptions
+	 * https://reference.api.rees46.com/?java#manage-subscriptions
 	 *
 	 * @param email
 	 * @param phone
@@ -511,15 +511,47 @@ public class SDK {
 		manageSubscription(email, phone, subscriptions, null);
 	}
 
+	/**
+	 * Manage subscriptions
+	 * https://reference.api.rees46.com/?java#manage-subscriptions
+	 *
+	 * @param email
+	 * @param phone
+	 * @param subscriptions
+	 * @param listener
+	 */
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
 		manageSubscription(email, phone, null, null, null, subscriptions, listener);
 	}
 
+	/**
+	 * Manage subscriptions
+	 * https://reference.api.rees46.com/?java#manage-subscriptions
+	 *
+	 * @param email
+	 * @param phone
+	 * @param externalId
+	 * @param loyaltyId
+	 * @param telegramId
+	 * @param subscriptions
+	 */
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @Nullable String externalId, @Nullable String loyaltyId, @Nullable String telegramId,
 										  @NonNull HashMap<String, Boolean> subscriptions) {
 		manageSubscription(email, phone, externalId, loyaltyId, telegramId, subscriptions, null);
 	}
 
+	/**
+	 * Manage subscriptions
+	 * https://reference.api.rees46.com/?java#manage-subscriptions
+	 *
+	 * @param email
+	 * @param phone
+	 * @param externalId
+	 * @param loyaltyId
+	 * @param telegramId
+	 * @param subscriptions
+	 * @param listener
+	 */
 	public static void manageSubscription(@Nullable String email, @Nullable String phone, @Nullable String externalId, @Nullable String loyaltyId, @Nullable String telegramId,
 										  @NonNull HashMap<String, Boolean> subscriptions, Api.OnApiCallbackListener listener) {
 		try {
