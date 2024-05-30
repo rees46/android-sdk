@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.personalizatio.Params;
 import com.personalizatio.SDK;
 
 import java.util.HashMap;
@@ -118,6 +119,14 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 //				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
 //			);
 //		T.track(Params.TrackEvent.CART, full_cart);
+//
+//		//Трекинг избранного
+//		Params full_wish = new Params();
+//		full_wish
+//			.put(Params.Parameter.FULL_WISH, true)
+//			.put(new Params.Item("37"))
+//			.put(new Params.Item("40"));
+//		T.track(Params.TrackEvent.WISH, full_wish);
 //
 //		//Покупка
 //		Params purchase = new Params();
