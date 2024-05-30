@@ -133,6 +133,9 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 //		purchase
 //				.put(new Params.Item("37").set(Params.Item.COLUMN.AMOUNT, 2).set(Params.Item.COLUMN.PRICE, 10.5))
 //				.put(new Params.Item("38").set(Params.Item.COLUMN.AMOUNT, 2))
+//				.put(new Params.CustomOrderParameters()
+//						.set("tour_class", "lux")
+//						.set("children_count", 1))
 //				.put(Params.Parameter.ORDER_ID, "100234")
 //				.put(Params.Parameter.ORDER_PRICE, 100500)
 //				.put(new Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"));
