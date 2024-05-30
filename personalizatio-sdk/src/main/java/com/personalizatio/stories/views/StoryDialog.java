@@ -1,7 +1,6 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.app.Dialog;
-import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Rect;
@@ -14,32 +13,31 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
+import com.personalizatio.stories.models.Story;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
-final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
+final public class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 
-	private final ArrayList<Story> stories;
+	private final List<Story> stories;
 	private final HashMap<Integer, StoryView> storyViews = new HashMap<>();
 	private final ViewPagerAdapter adapter;
 	private ViewPager2 mViewPager;
 
 	private final Runnable completeListener;
-	private final int start_position;
-	private final StoriesView stories_view;
+	private final int startPosition;
+	private final StoriesView storiesView;
 
 	public interface OnProgressState {
 		void onState(boolean running);
 	}
 
-	public StoryDialog(StoriesView stories_view, ArrayList<Story> stories, int start_position, Runnable completeListener) {
+	public StoryDialog(StoriesView stories_view, List<Story> stories, int start_position, Runnable completeListener) {
 		super(stories_view.getContext(), android.R.style.Theme_Translucent_NoTitleBar);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.dialog_stories);
@@ -51,9 +49,9 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		window.setAttributes(wlp);
 		window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
-		this.stories_view = stories_view;
+		this.storiesView = stories_view;
 		this.stories = stories;
-		this.start_position = start_position;
+		this.startPosition = start_position;
 		adapter = new ViewPagerAdapter(running -> mViewPager.setUserInputEnabled(running));
 
 		this.completeListener = completeListener;
@@ -76,7 +74,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		closeImageButton.setOnClickListener(v -> {
 			onDismissed();
 		});
-		closeImageButton.setColorFilter(Color.parseColor(stories_view.settings.close_color));
+		closeImageButton.setColorFilter(Color.parseColor(storiesView.getSettings().close_color));
 		mViewPager = findViewById(R.id.view_pager);
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);
@@ -106,9 +104,9 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 
 		mViewPager.setAdapter(adapter);
 		//Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
-		mViewPager.setCurrentItem(start_position == 0 ? stories.size() : 0, false);
+		mViewPager.setCurrentItem(startPosition == 0 ? stories.size() : 0, false);
 		//Устанавливаем позицию
-		mViewPager.setCurrentItem(start_position, false);
+		mViewPager.setCurrentItem(startPosition, false);
 		mViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
 
 			@Override
@@ -147,8 +145,8 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 	public void onDetachedFromWindow() {
 		//При закрытии диалогового окна, возвращаем все метки в исходное
 		for( Story story : stories ) {
-			for( Story.Slide slide : story.slides ) {
-				slide.prepared = false;
+			for (var i = 0; i < story.getSlidesCount(); i++){
+				story.getSlide(i).setPrepared(false);
 			}
 		}
 	}
@@ -188,7 +186,7 @@ final class StoryDialog extends Dialog implements PullDismissLayout.Listener {
 		@NonNull
 		@Override
 		public PagerHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			return new PagerHolder(new StoryView(stories_view, state_listener));
+			return new PagerHolder(new StoryView(storiesView, state_listener));
 		}
 
 		@Override

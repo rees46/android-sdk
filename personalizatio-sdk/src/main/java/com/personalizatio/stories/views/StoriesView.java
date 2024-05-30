@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -21,29 +21,33 @@ import com.personalizatio.Api;
 import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.Player;
+import com.personalizatio.stories.Settings;
+import com.personalizatio.stories.viewAdapters.StoriesAdapter;
+import com.personalizatio.stories.models.Story;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 
 final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
 
 	private StoriesAdapter adapter;
-	private final ArrayList<Story> list = new ArrayList<>();
+	private final List<Story> list = new ArrayList<>();
 	private ContentObserver observer;
-	public final Settings settings = new Settings();
-	String code;
-	Player player;
-	@Nullable
-	OnLinkClickListener click_listener;
-	boolean mute = true;
-	Runnable mute_listener;
+	private final Settings settings = new Settings();
+	private String code;
+	private Player player;
+	@Nullable private OnLinkClickListener clickListener;
+	private boolean mute = true;
+	private Runnable muteListener;
 
 	public StoriesView(Context context, String code) {
 		super(context);
-		this.code = code;
+		this.setCode(code);
 		initialize();
 	}
 
@@ -63,11 +67,23 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		parseAttrs(attrs);
 	}
 
+	public Settings getSettings() {
+		return settings;
+	}
+
+	public Player getPlayer() {
+		return player;
+	}
+
+	public void setPlayer(Player player) {
+		this.player = player;
+	}
+
 	/**
 	 * Вызывать, когда объект сторисов удален с экрана и больше не нужен
 	 */
 	public void release() {
-		player.release();
+		getPlayer().release();
 	}
 
 	@Override
@@ -84,7 +100,7 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 
 	private void parseAttrs(AttributeSet attrs) {
 		TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.StoriesView);
-		code = typedArray.getString(R.styleable.StoriesView_code);
+		setCode(typedArray.getString(R.styleable.StoriesView_code));
 	}
 
 	//Инициализация
@@ -104,12 +120,12 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		};
 
 		//Плеер для просмотра видео
-		player = new Player(getContext());
+		setPlayer(new Player(getContext()));
 
-		settings.failed_load_text = getResources().getString(R.string.failed_load_text);
+		getSettings().failed_load_text = getResources().getString(R.string.failed_load_text);
 
 		//Запрашиваем сторисы
-		SDK.stories(code, new Api.OnApiCallbackListener() {
+		SDK.stories(getCode(), new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.d("stories", response.toString());
@@ -131,8 +147,9 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		Story story = list.get(index);
 
 		//Сбрасываем позицию
-		if( story.start_position >= story.slides.size() || story.start_position < 0 ) {
-			story.start_position = 0;
+		var startPosition = story.getStartPosition();
+		if( startPosition >= story.getSlidesCount() || startPosition < 0 ) {
+			story.setStartPosition(0);
 		}
 
 		StoryDialog dialog = new StoryDialog(this, list, index, () -> {
@@ -146,7 +163,7 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	 * @param listener OnLinkClickListener
 	 */
 	public void setOnLinkClickListener(@Nullable OnLinkClickListener listener) {
-		this.click_listener = listener;
+		this.setClickListener(listener);
 	}
 
 	public void muteVideo(boolean mute) {
@@ -165,8 +182,8 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 				AudioManager manager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
 				if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ) {
 					mute = manager.isStreamMute(AudioManager.STREAM_MUSIC);
-					if( mute_listener != null ) {
-						mute_listener.run();
+					if (muteListener != null) {
+						muteListener.run();
 					}
 				}
 			}
@@ -178,5 +195,26 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		if( observer != null ) {
 			getContext().getContentResolver().unregisterContentObserver(observer);
 		}
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public void setCode(String code) {
+		this.code = code;
+	}
+
+	@Nullable
+	public OnLinkClickListener getClickListener() {
+		return clickListener;
+	}
+
+	public void setClickListener(@Nullable OnLinkClickListener clickListener) {
+		this.clickListener = clickListener;
+	}
+
+	public void setMuteListener(Runnable muteListener) {
+		this.muteListener = muteListener;
 	}
 }

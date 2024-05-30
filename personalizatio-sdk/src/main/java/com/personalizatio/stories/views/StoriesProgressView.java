@@ -1,11 +1,10 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 
@@ -13,7 +12,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.personalizatio.R;
-import com.personalizatio.SDK;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,16 +21,16 @@ final class StoriesProgressView extends LinearLayout {
 	private final LayoutParams PROGRESS_BAR_LAYOUT_PARAM = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1);
 	private final LayoutParams SPACE_LAYOUT_PARAM = new LayoutParams(5, LayoutParams.WRAP_CONTENT);
 
-	public final List<PausableProgressBar> progressBars = new ArrayList<>();
+	private final List<PausableProgressBar> progressBars = new ArrayList<>();
 
 	private int storiesCount = -1;
 	private int color;
 	/**
 	 * pointer of running animation
 	 */
-	public int current = -1;
+	private int current = -1;
 	private StoriesListener storiesListener;
-	boolean isComplete;
+	private boolean isComplete;
 
 	private boolean isSkipStart;
 	private boolean isReverseStart;

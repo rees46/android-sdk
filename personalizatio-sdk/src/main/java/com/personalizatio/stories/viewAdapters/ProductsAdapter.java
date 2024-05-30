@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.viewAdapters;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -13,32 +13,33 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.personalizatio.OnLinkClickListener;
+import com.google.common.base.Strings;
 import com.personalizatio.Product;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.views.StoriesView;
 
 import java.util.ArrayList;
+import java.util.List;
 
-final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHolder> {
+final public class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHolder> {
 
-	private ArrayList<Product> products = new ArrayList<>();
-	private int story_id;
-	private String slide_id;
-	private StoriesView stories_view;
+	private List<Product> products = new ArrayList<>();
+	private int storyId;
+	private String slideId;
+	private final StoriesView storiesView;
 
-	public void setStoriesView(StoriesView view) {
-		stories_view = view;
+	public ProductsAdapter(StoriesView view) {
+		storiesView = view;
 	}
 
-	public void setProducts(ArrayList<Product> products, int story_id, String slide_id) {
+	public void setProducts(List<Product> products, int storyId, String slideId) {
 		this.products = products;
-		this.story_id = story_id;
-		this.slide_id = slide_id;
+		this.storyId = storyId;
+		this.slideId = slideId;
 		notifyDataSetChanged();
 	}
 
@@ -77,29 +78,30 @@ final class ProductsAdapter extends RecyclerView.Adapter<ProductsAdapter.ViewHol
 		}
 
 		public void bind(Product product) {
-			Glide.with(image.getContext()).load(product.image).into(image);
-			name.setText(product.name);
-			name.setTypeface(stories_view.settings.font_family);
-			discount.setTypeface(stories_view.settings.font_family);
-			oldprice.setTypeface(stories_view.settings.font_family);
-			price.setTypeface(stories_view.settings.font_family);
-			if( product.oldprice == null ) {
+			Glide.with(image.getContext()).load(product.getImage()).into(image);
+			name.setText(product.getName());
+			var settings = storiesView.getSettings();
+			name.setTypeface(settings.font_family);
+			discount.setTypeface(settings.font_family);
+			oldprice.setTypeface(settings.font_family);
+			price.setTypeface(settings.font_family);
+			if (Strings.isNullOrEmpty(product.getOldPrice())) {
 				discount.setVisibility(View.GONE);
 				oldprice.setVisibility(View.GONE);
 			} else {
 				discount.setVisibility(View.VISIBLE);
 				oldprice.setVisibility(View.VISIBLE);
-				oldprice.setText(product.oldprice);
-				discount.setText((String.format("-%s%%", product.discount)));
+				oldprice.setText(product.getOldPrice());
+				discount.setText((String.format("-%s%%", product.getDiscount())));
 			}
-			price.setText(product.price);
+			price.setText(product.getPrice());
 			itemView.setOnClickListener(view -> {
-				Log.d(SDK.TAG, "click: " + product.name + ", " + product.url);
+				Log.d(SDK.TAG, "click: " + product.getName() + ", " + product.getUrl());
 				try {
-					if( stories_view.click_listener == null || stories_view.click_listener.onClick(product) ) {
-						itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(product.deeplink != null ? product.deeplink : product.url)));
+					if( storiesView.getClickListener() == null || storiesView.getClickListener().onClick(product) ) {
+						itemView.getContext().startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Strings.isNullOrEmpty(product.getDeeplink()) ? product.getUrl() : product.getDeeplink())));
 					}
-					SDK.track_story("click", stories_view.code, story_id, slide_id);
+					SDK.track_story("click", storiesView.getCode(), storyId, slideId);
 				} catch(ActivityNotFoundException e) {
 					Log.e(SDK.TAG, e.getMessage(), e);
 					Toast.makeText(itemView.getContext(), "Unknown error", Toast.LENGTH_SHORT).show();
