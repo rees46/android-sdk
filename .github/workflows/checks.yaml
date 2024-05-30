@@ -1,0 +1,11 @@
+name: Android SDK PR checks
+
+on:
+  pull_request:
+    paths-ignore:
+      - '.github'
+
+jobs:
+  Check:
+    uses: rees46/workflow/.github/workflows/reusable-android-checks.yaml@master
+    permissions: write-all
