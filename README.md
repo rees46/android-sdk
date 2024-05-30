@@ -1,4 +1,3 @@
-
 # Personalisatio Android SDK
 
 ## Download
