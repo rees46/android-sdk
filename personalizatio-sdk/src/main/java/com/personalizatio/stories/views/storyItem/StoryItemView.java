@@ -323,13 +323,13 @@ final public class StoryItemView extends ConstraintLayout {
 
 		Glide.with(getContext()).load(item.getImage()).listener(listener).override(Target.SIZE_ORIGINAL).into(productImage);
 
-		setupDefaultTextView(productBrand, Strings.isNullOrEmpty(item.getBrand()), item.getBrand());
+		setupDefaultTextView(productBrand, !Strings.isNullOrEmpty(item.getBrand()), item.getBrand());
 		setupDefaultTextView(productName, item.getName());
 		setupDefaultTextView(productPrice, item.getPrice());
-		setupDefaultTextView(productOldPrice, Strings.isNullOrEmpty(item.getOldPrice()), item.getOldPrice());
+		setupDefaultTextView(productOldPrice, !Strings.isNullOrEmpty(item.getOldPrice()), item.getOldPrice());
 		setupDefaultTextView(promocodeText, element.getTitle() != null && !Strings.isNullOrEmpty(item.getPromocode()), element.getTitle());
 		productOldPrice.setPaintFlags(productOldPrice.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-		productDiscountBox.setVisibility(Strings.isNullOrEmpty(item.getDiscountPercent()) && Strings.isNullOrEmpty(item.getPromocode()) ? GONE : VISIBLE);
+		productDiscountBox.setVisibility(!Strings.isNullOrEmpty(item.getDiscountPercent()) && !Strings.isNullOrEmpty(item.getPromocode()) ? GONE : VISIBLE);
 
 		//Указываем закругления
 		float radius = getResources().getDimension(R.dimen.product_price_box_radius);
