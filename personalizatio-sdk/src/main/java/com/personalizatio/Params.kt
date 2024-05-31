@@ -1,12 +1,15 @@
 package com.personalizatio
 
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 
-class Params : AbstractParams<Params?>() {
+class Params : AbstractParams<Params>() {
     /**
      * Основные параметры
      */
-    enum class Parameter(protected var value: String?) : ParamInterface {
+    enum class Parameter(override val value: String) : ParamInterface {
         LIMIT("limit"),
         ITEM("item"),
         PRICE("price"),
@@ -21,6 +24,7 @@ class Params : AbstractParams<Params?>() {
         CATEGORIES("categories"),
         DISCOUNT("discount"),
         FULL_CART("full_cart"),
+        FULL_WISH("full_wish"),
         ORDER_ID("order_id"),
         ORDER_PRICE("order_price"),
         DELIVERY_ADDRESS("delivery_address"),
@@ -32,19 +36,13 @@ class Params : AbstractParams<Params?>() {
         CATEGORY("category"),
         SEARCH_QUERY("search_query"),
         EXTENDED("extended"),
-        ;
-
-        @Override
-        fun getValue(): String? {
-            return value
-        }
     }
 
     /**
      * Типы рекомендаций
      */
     class RecommendedBy {
-        enum class TYPE(protected var value: String?) {
+        enum class TYPE(val value: String) {
             RECOMMENDATION("dynamic"),
             TRIGGER("chain"),
             BULK("bulk"),
@@ -52,22 +50,17 @@ class Params : AbstractParams<Params?>() {
             INSTANT_SEARCH("instant_search"),
             FULL_SEARCH("full_search"),
             STORIES("stories"),
-            ;
-
-            fun getValue(): String? {
-                return value
-            }
         }
 
-        var type: String?
+        val type: String
         var code: String? = null
 
-        constructor(type: TYPE?) {
-            this.type = type.getValue()
+        constructor(type: TYPE) {
+            this.type = type.value
         }
 
-        constructor(type: TYPE?, code: String?) {
-            this.type = type.getValue()
+        constructor(type: TYPE, code: String?) {
+            this.type = type.value
             this.code = code
         }
     }
@@ -75,39 +68,60 @@ class Params : AbstractParams<Params?>() {
     /**
      * Товар
      */
-    class Item(@NonNull id: String?) {
-        enum class COLUMN(var value: String?) {
+    class Item(id: String) {
+        enum class COLUMN(val value: String) {
             ID("id"),
             AMOUNT("amount"),
             PRICE("price"),
             FASHION_SIZE("fashion_size"),
         }
 
-        val columns: HashMap<String?, String?>? = HashMap()
+        val columns: HashMap<String, String> = HashMap()
 
         init {
-            columns.put(COLUMN.ID.value, id)
+            columns[COLUMN.ID.value] = id
         }
 
-        fun set(column: COLUMN?, @NonNull value: String?): Item? {
-            columns.put(column.value, value)
+        fun set(column: COLUMN, value: String): Item {
+            columns[column.value] = value
             return this
         }
 
-        fun set(column: COLUMN?, value: Int): Item? {
-            return set(column, String.valueOf(value))
+        fun set(column: COLUMN, value: Int): Item {
+            return set(column, value.toString())
         }
 
-        fun set(column: COLUMN?, value: Double): Item? {
-            return set(column, String.valueOf(value))
+        fun set(column: COLUMN, value: Double): Item {
+            return set(column, value.toString())
         }
 
-        fun set(column: COLUMN?, value: Boolean): Item? {
+        fun set(column: COLUMN, value: Boolean): Item {
             return set(column, if (value) "1" else "0")
         }
     }
 
-    enum class TrackEvent(var value: String?) {
+    class CustomOrderParameters {
+        val parameters: HashMap<String, String> = HashMap()
+
+        fun set(name: String, value: String): CustomOrderParameters {
+            parameters[name] = value
+            return this
+        }
+
+        fun set(name: String, value: Int): CustomOrderParameters {
+            return set(name, value.toString())
+        }
+
+        fun set(name: String, value: Double): CustomOrderParameters {
+            return set(name, value.toString())
+        }
+
+        fun set(name: String, value: Boolean): CustomOrderParameters {
+            return set(name, if (value) "1" else "0")
+        }
+    }
+
+    enum class TrackEvent(@JvmField var value: String) {
         VIEW("view"),
         CATEGORY("category"),
         CART("cart"),
@@ -121,14 +135,14 @@ class Params : AbstractParams<Params?>() {
     /**
      * Вставка параметров рекомендаций
      */
-    fun put(recommended_by: RecommendedBy?): Params? {
+    fun put(recommendedBy: RecommendedBy): Params {
         try {
-            params.put(InternalParameter.RECOMMENDED_BY.getValue(), recommended_by.type)
-            if (recommended_by.code != null) {
-                params.put(InternalParameter.RECOMMENDED_CODE.getValue(), recommended_by.code)
+            params.put(InternalParameter.RECOMMENDED_BY.value, recommendedBy.type)
+            if (recommendedBy.code != null) {
+                params.put(InternalParameter.RECOMMENDED_CODE.value, recommendedBy.code)
             }
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.getMessage(), e)
+            Log.e(SDK.TAG, e.message, e)
         }
         return this
     }
@@ -136,29 +150,47 @@ class Params : AbstractParams<Params?>() {
     /**
      * Вставка товара
      */
-    fun put(item: Item?): Params? {
+    fun put(item: Item): Params {
         try {
-            val array: JSONArray?
+            val array: JSONArray
             if (params.has("items")) {
                 array = params.getJSONArray("items")
             } else {
                 array = JSONArray()
                 params.put("items", array)
             }
-            val `object`: JSONObject = JSONObject()
-            for (entry in item.columns.entrySet()) {
-                `object`.put(entry.getKey(), entry.getValue())
+            val jsonObject = JSONObject()
+            for ((key, value) in item.columns) {
+                jsonObject.put(key, value)
             }
-            array.put(`object`)
+            array.put(jsonObject)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.getMessage(), e)
+            Log.e(SDK.TAG, e.message, e)
+        }
+
+        return this
+    }
+
+    /**
+     * Вставка свойст заказа
+     */
+    fun put(customOrderParameter: CustomOrderParameters): Params {
+        try {
+            val jsonObject = JSONObject()
+            for ((key, value) in customOrderParameter.parameters) {
+                jsonObject.put(key, value)
+            }
+
+            params.put("custom", jsonObject)
+        } catch (e: JSONException) {
+            Log.e(SDK.TAG, e.message, e)
         }
 
         return this
     }
 
     //---------------Private---------->
-    internal enum class InternalParameter(protected var value: String?) : ParamInterface {
+    internal enum class InternalParameter(override val value: String) : ParamInterface {
         SEARCH_TYPE("type"),
         SEARCH_QUERY("search_query"),
         RECOMMENDER_TYPE("recommender_type"),
@@ -171,12 +203,9 @@ class Params : AbstractParams<Params?>() {
         RECOMMENDED_CODE("recommended_code"),
         EMAIL("email"),
         PHONE("phone"),
+        EXTERNAL_ID("external_id"),
+        LOYALTY_ID("loyalty_id"),
+        TELEGRAM_ID("telegram_id"),
         PROPERTIES("properties"),
-        ;
-
-        @Override
-        fun getValue(): String? {
-            return value
-        }
     }
 }
