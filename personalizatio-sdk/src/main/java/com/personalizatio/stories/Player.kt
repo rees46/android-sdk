@@ -1,45 +1,59 @@
 package com.personalizatio.stories
 
 import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import com.personalizatio.SDK
+import java.io.File
 
 @UnstableApi
-internal class Player(context: Context?) {
+class Player(context: Context) {
     init {
         if (player == null) {
-            player = Builder(context).build()
-            player.setHandleAudioBecomingNoisy(true)
+            player = ExoPlayer.Builder(context).build()
+            player?.setHandleAudioBecomingNoisy(true)
         }
 
         //Подготавливаем кеш
         if (cache == null) {
-            val file: File = File(context.getCacheDir(), "stories")
-            val limit: LeastRecentlyUsedCacheEvictor = LeastRecentlyUsedCacheEvictor(50 * 1024 * 1024)
+            val file = File(context.cacheDir, "stories")
+            val limit = LeastRecentlyUsedCacheEvictor((50 * 1024 * 1024).toLong())
             cache = SimpleCache(file, limit, StandaloneDatabaseProvider(context))
         }
     }
 
-    fun prepare(url: String?) {
-        val mediaSource: ProgressiveMediaSource = Factory(
-            Factory()
-                .setCache(cache)
-                .setUpstreamDataSourceFactory(Factory().setUserAgent(SDK.userAgent()))
+    fun prepare(url: String) {
+        if (cache == null) return
+        val mediaSource = ProgressiveMediaSource.Factory(
+            CacheDataSource.Factory()
+                .setCache(cache!!)
+                .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent()))
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         ).createMediaSource(MediaItem.fromUri(url))
-        player.setMediaSource(mediaSource)
-        //		player.setMediaItem(MediaItem.fromUri(url));
-        player.prepare()
-        player.setPlayWhenReady(true)
+        player?.apply {
+            setMediaSource(mediaSource)
+            //		player.setMediaItem(MediaItem.fromUri(url));
+            prepare()
+            playWhenReady = true
+        }
     }
 
     fun release() {
-        cache.release()
+        cache?.release()
         cache = null
-        player.release()
+        player?.release()
         player = null
     }
 
     companion object {
-        var player: ExoPlayer? = null
-        var cache: SimpleCache? = null
+		var player: ExoPlayer? = null
+        private var cache: SimpleCache? = null
     }
 }

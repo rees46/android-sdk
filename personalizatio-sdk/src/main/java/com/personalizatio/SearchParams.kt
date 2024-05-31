@@ -1,12 +1,14 @@
 package com.personalizatio
 
 import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 
-class SearchParams : AbstractParams<SearchParams?>() {
+class SearchParams : AbstractParams<SearchParams>() {
     /**
      * https://reference.api.rees46.com/#full-search
      */
-    enum class Parameter(protected var value: String?) : AbstractParams.ParamInterface {
+    enum class Parameter(override var value: String) : ParamInterface {
         PAGE("page"),
         LIMIT("limit"),
         CATEGORY_LIMIT("category_limit"),
@@ -25,25 +27,15 @@ class SearchParams : AbstractParams<SearchParams?>() {
 
         //params.put(SearchParams.Parameter.NO_CLARIFICATION, true);
         NO_CLARIFICATION("no_clarification"),
-        ;
-
-        @Override
-        fun getValue(): String? {
-            return value
-        }
     }
 
 
     /**
      * Типы поиска
      */
-    enum class TYPE(protected var value: String?) {
+    enum class TYPE(var value: String) {
         INSTANT("instant_search"),
-        FULL("full_search");
-
-        fun getValue(): String? {
-            return value
-        }
+        FULL("full_search")
     }
 
 
@@ -51,27 +43,26 @@ class SearchParams : AbstractParams<SearchParams?>() {
      * Структура для фильтров
      */
     class SearchFilters {
-        private val filters: HashMap<String?, Array<String?>?>? = HashMap()
+        private val filters = HashMap<String, Array<String>>()
 
-        fun put(key: String?, values: Array<String?>?) {
-            filters.put(key, values)
+        fun put(key: String, values: Array<String>) {
+            filters[key] = values
         }
 
-        fun toString(): String? {
-            val json: JSONObject = JSONObject()
-            for (entry in filters.entrySet()) {
-                val key: String = entry.getKey()
+        override fun toString(): String {
+            val json = JSONObject()
+            for ((key, value) in filters) {
                 try {
-                    json.put(key, JSONArray(entry.getValue()))
+                    json.put(key, JSONArray(value))
                 } catch (e: JSONException) {
-                    SDK.warn(e.getMessage())
+                    SDK.warn(e.message)
                 }
             }
             return json.toString()
         }
     }
 
-    fun put(param: Parameter?, value: SearchFilters?): SearchParams? {
-        return put(param, value.toString())
+    fun put(param: Parameter?, value: SearchFilters): SearchParams {
+        return put(param!!, value.toString())
     }
 }
