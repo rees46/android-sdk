@@ -1,17 +1,15 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.graphics.Color;
 import android.util.Log;
-import android.view.LayoutInflater;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
@@ -21,43 +19,62 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.models.Slide;
+import com.personalizatio.stories.models.Story;
+import com.personalizatio.stories.views.storyItem.StoryItemView;
 
 import java.util.HashMap;
 
+@SuppressLint("ViewConstructor")
 final class StoryView extends ConstraintLayout implements StoriesProgressView.StoriesListener, Player.Listener {
 
-	private final StoriesView stories_view;
+	private final StoriesView storiesView;
 	private Story story;
 
-	long pressTime = 0L;
+	private long pressTime = 0L;
 	private final static long LIMIT = 500L;
 	private Runnable completeListener;
 	private Runnable prevStoryListener;
 
-	public final StoriesProgressView storiesProgressView;
-	private final OnTouchListener onTouchListener;
-	public final ViewPager2 mViewPager;
+	private StoriesProgressView storiesProgressView;
+	private OnTouchListener onTouchListener;
+	private ViewPager2 mViewPager;
 	private boolean storiesStarted = false;
 	private boolean prevFocusState = true;
 	private boolean locked = false;
 	private final HashMap<Integer, PagerHolder> holders = new HashMap<>();
-	private final ToggleButton mute;
+	private ToggleButton mute;
 
 	//Heading
-	private final StoryDialog.OnProgressState state_listener;
+	private final StoryDialog.OnProgressState stateListener;
+
+	private Pair<Integer, Integer> viewPagerSize = null;
 
 	@SuppressLint("ClickableViewAccessibility")
-	public StoryView(StoriesView stories_view, StoryDialog.OnProgressState state_listener) {
-		super(stories_view.getContext());
-		this.stories_view = stories_view;
-		this.state_listener = state_listener;
+	public StoryView(StoriesView storiesView, StoryDialog.OnProgressState stateListener) {
+		super(storiesView.getContext());
+		this.storiesView = storiesView;
+		this.stateListener = stateListener;
 
 		inflate(getContext(), R.layout.story_view, this);
 		setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
+		initViews();
+		setupViews();
+	}
+
+	private void initViews() {
+		storiesProgressView = findViewById(R.id.storiesProgressView);
+
+		mViewPager = findViewById(R.id.storiesViewPager);
+
+		mute = findViewById(R.id.mute);
+	}
+
+	@SuppressLint("ClickableViewAccessibility")
+	private void setupViews() {
 		onTouchListener = (v, event) -> {
 			if( storiesStarted ) {
 				switch( event.getAction() ) {
@@ -77,21 +94,22 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 			}
 			return false;
 		};
-		storiesProgressView = findViewById(R.id.storiesProgressView);
-		storiesProgressView.setColor(Color.parseColor(stories_view.settings.background_progress));
-		mViewPager = findViewById(R.id.storiesViewPager);
+
+		storiesProgressView.setColor(Color.parseColor(storiesView.getSettings().background_progress));
 		storiesProgressView.setStoriesListener(this);
+
 		mViewPager.setClipToPadding(false);
 		mViewPager.setClipChildren(false);
 		mViewPager.setOffscreenPageLimit(1);
 		mViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
 			@Override
 			public void onPageSelected(int position) {
-				if( stories_view.player.player.isPlaying() || stories_view.player.player.isLoading() ) {
-					stories_view.player.player.pause();
+				var player = storiesView.getPlayer().getPlayer();
+				if( player.isPlaying() || player.isLoading() ) {
+					player.pause();
 				}
 				//При изменении слайда останавливаем видео на скрытых
-				for( int i = 0; i < story.slides.size(); i++ ) {
+				for( int i = 0; i < story.getSlidesCount(); i++ ) {
 					PagerHolder holder = getHolder(i);
 					if( holder != null ) {
 						if( i != position ) {
@@ -100,24 +118,23 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 					}
 				}
 				if( storiesStarted ) {
-					SDK.track_story("view", stories_view.code, story.id, story.slides.get(position).id);
+					SDK.track_story("view", storiesView.getCode(), story.getId(), story.getSlide(position).getId());
 					playVideo();
 				}
 			}
 		});
 
-		stories_view.player.player.setVolume(stories_view.isMute() ? 0f : 1f);
-		stories_view.mute_listener = () -> {
-			stories_view.player.player.setVolume(1f);
-		};
+		storiesView.getPlayer().getPlayer().setVolume(storiesView.isMute() ? 0f : 1f);
+		storiesView.setMuteListener(() -> {
+			storiesView.getPlayer().getPlayer().setVolume(1f);
+		});
 
 		//Управление звуком
-		mute = findViewById(R.id.mute);
 		mute.setOnClickListener(v -> {
-			stories_view.muteVideo(mute.isChecked());
-			stories_view.player.player.setVolume(mute.isChecked() ? 0f : 1f);
+			storiesView.muteVideo(mute.isChecked());
+			storiesView.getPlayer().getPlayer().setVolume(mute.isChecked() ? 0f : 1f);
 		});
-		mute.setChecked(stories_view.isMute());
+		mute.setChecked(storiesView.isMute());
 	}
 
 	public void setStory(Story story, Runnable completeListener, Runnable prevStoryListener) {
@@ -125,12 +142,13 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		this.completeListener = completeListener;
 		this.prevStoryListener = prevStoryListener;
 
-		storiesProgressView.setStoriesCount(story.slides.size());
+		var slidesCount = story.getSlidesCount();
+		storiesProgressView.setStoriesCount(slidesCount);
 		mViewPager.setAdapter(new ViewPagerAdapter());
 		//Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
-		mViewPager.setCurrentItem(story.start_position == 0 ? story.slides.size() : 0, false);
+		mViewPager.setCurrentItem(story.getStartPosition() == 0 ? slidesCount : 0, false);
 		//Устанавливаем позицию
-		mViewPager.setCurrentItem(story.start_position, false);
+		mViewPager.setCurrentItem(story.getStartPosition(), false);
 	}
 
 	@UnstableApi
@@ -138,17 +156,18 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		if( storiesStarted ) {
 			PagerHolder holder = getHolder(mViewPager.getCurrentItem());
 			if( holder != null ) {
-				Story.Slide slide = story.slides.get(mViewPager.getCurrentItem());
-				if( slide.type.equals("video") ) {
-					slide.prepared = false;
+				Slide slide = story.getSlide(mViewPager.getCurrentItem());
+				if( slide.getType().equals("video") ) {
+					slide.setPrepared(false);
 					//Подготавливаем плеер
-					stories_view.player.player.addListener(this);
-					holder.story_item.video.setVisibility(GONE);
-					holder.story_item.image.setAlpha(1f);
-					holder.story_item.video.setPlayer(stories_view.player.player);
-					stories_view.player.prepare(slide.background);
+					var player = storiesView.getPlayer().getPlayer();
+					player.addListener(this);
+					holder.getStoryItem().getVideo().setVisibility(GONE);
+					holder.getStoryItem().getImage().setAlpha(1f);
+					holder.getStoryItem().getVideo().setPlayer(player);
+					storiesView.getPlayer().prepare(slide.getBackground());
 					storiesProgressView.pause();
-					mute.setChecked(stories_view.isMute());
+					mute.setChecked(storiesView.isMute());
 				}
 			}
 		}
@@ -161,7 +180,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 				storiesProgressView.pause();
 				break;
 			case Player.STATE_READY:
-				stories_view.player.player.play();
+				storiesView.getPlayer().getPlayer().play();
 				break;
 		}
 	}
@@ -170,40 +189,44 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	public void onIsPlayingChanged(boolean isPlaying) {
 		if( isPlaying ) {
 			PagerHolder holder = getHolder(mViewPager.getCurrentItem());
-			holder.story_item.video.setVisibility(VISIBLE);
-			holder.story_item.image.animate().alpha(0).setDuration(300);
-			story.slides.get(mViewPager.getCurrentItem()).prepared = true;
+			holder.getStoryItem().getVideo().setVisibility(VISIBLE);
+			holder.getStoryItem().getImage().animate().alpha(0).setDuration(300);
+			story.getSlide(mViewPager.getCurrentItem()).setPrepared(true);
 			resume();
 		}
 	}
 
 	@Override
 	public void onTracksChanged(@NonNull Tracks tracks) {
-		if( stories_view.player.player.getContentDuration() > 0 ) {
-			story.slides.get(mViewPager.getCurrentItem()).duration = stories_view.player.player.getContentDuration();
-			updateDuration(mViewPager.getCurrentItem());
+		var contentDuration = storiesView.getPlayer().getPlayer().getContentDuration();
+
+		if(contentDuration > 0) {
+			int currentItem = mViewPager.getCurrentItem();
+			story.getSlide(currentItem).setDuration(contentDuration);
+			updateDuration(currentItem);
 		}
+
 		mute.setVisibility(tracks.isTypeSupported(C.TRACK_TYPE_AUDIO) ? VISIBLE : GONE);
 	}
 
 	@Override
 	public void onPlayerError(PlaybackException error) {
-		Log.e(SDK.TAG, "player error: " + error.getMessage() + ", story: " + story.id);
+		Log.e(SDK.TAG, "player error: " + error.getMessage() + ", story: " + story.getId());
 		PagerHolder holder = getCurrentHolder();
-		holder.story_item.reload_layout.setVisibility(VISIBLE);
+		holder.getStoryItem().reload_layout.setVisibility(VISIBLE);
 
-		holder.story_item.reload.setOnClickListener((View) -> {
-			Story.Slide slide = story.slides.get(mViewPager.getCurrentItem());
-			if( slide.type.equals("video") ) {
-				holder.story_item.reload_layout.setVisibility(GONE);
+		holder.getStoryItem().reload.setOnClickListener((View) -> {
+			Slide slide = story.getSlide(mViewPager.getCurrentItem());
+			if( slide.getType().equals("video") ) {
+				holder.getStoryItem().reload_layout.setVisibility(GONE);
 				playVideo();
 			} else {
-				holder.story_item.update(slide, mViewPager.getCurrentItem(), stories_view.code, story.id);
+				holder.getStoryItem().update(slide, mViewPager.getCurrentItem(), storiesView.getCode(), story.getId());
 			}
 		});
 
 		//Добавляем авто-обновление
-		holder.story_item.reload.postDelayed(() -> holder.story_item.reload.callOnClick(), 15000L);
+		holder.getStoryItem().reload.postDelayed(() -> holder.getStoryItem().reload.callOnClick(), 15000L);
 	}
 
 	@Override
@@ -212,13 +235,20 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	}
 
 	class PagerHolder extends RecyclerView.ViewHolder {
-		public StoryItemView story_item;
+		private StoryItemView storyItem;
 
 		public PagerHolder(@NonNull View view) {
 			super(view);
-			story_item = (StoryItemView) view;
-			story_item.setStoriesView(stories_view);
-			story_item.setOnPageListener(new StoryItemView.OnPageListener() {
+
+			storyItem = (StoryItemView) view;
+			if(viewPagerSize == null) {
+				var viewPagerHeight = mViewPager.getHeight();
+				var params = (ConstraintLayout.LayoutParams) storiesProgressView.getLayoutParams();
+				var viewPagerTopOffset = params.height + params.bottomMargin + params.topMargin;
+				viewPagerSize = new Pair<>(viewPagerHeight, viewPagerTopOffset);
+			}
+			storyItem.setViewSize(viewPagerSize.first, viewPagerSize.second);
+			storyItem.setOnPageListener(new StoryItemView.OnPageListener() {
 				@Override
 				public void onPrev() {
 					previousSlide();
@@ -231,7 +261,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 				@Override
 				public void onPrepared(int position) {
-					if( story.slides.get(position).type.equals("image") && storiesStarted ) {
+					if( story.getSlide(position).getType().equals("image") && storiesStarted ) {
 						try {
 							storiesProgressView.resume();
 						} catch(IndexOutOfBoundsException e) {
@@ -242,7 +272,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 				@Override
 				public void onLocked(boolean lock) {
 					locked = lock;
-					state_listener.onState(!lock);
+					stateListener.onState(!lock);
 					if( lock ) {
 						pause();
 					} else {
@@ -252,11 +282,11 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 			});
 		}
 
-		public void bind(Story.Slide slide, int position) {
+		public void bind(Slide slide, int position) {
 			holders.put(position, this);
 			mute.setVisibility(GONE);
-			story_item.update(slide, position, stories_view.code, story.id);
-			story_item.setOnTouchListener(onTouchListener);
+			storyItem.update(slide, position, storiesView.getCode(), story.getId());
+			storyItem.setOnTouchListener(onTouchListener);
 
 			//Устанавливаем загрузку видео, если биндим текущий элемент
 			if( position == mViewPager.getCurrentItem() ) {
@@ -265,7 +295,11 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		}
 
 		public void release() {
-			story_item.release();
+			storyItem.release();
+		}
+
+		public StoryItemView getStoryItem() {
+			return storyItem;
 		}
 	}
 
@@ -274,17 +308,17 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		@NonNull
 		@Override
 		public PagerHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			return new PagerHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.story_item, parent, false));
+			return new PagerHolder(new StoryItemView(storiesView));
 		}
 
 		@Override
 		public void onBindViewHolder(@NonNull PagerHolder holder, int position) {
-			holder.bind(story.slides.get(position), position);
+			holder.bind(story.getSlide(position), position);
 		}
 
 		@Override
 		public int getItemCount() {
-			return story.slides.size();
+			return story.getSlidesCount();
 		}
 	}
 
@@ -303,9 +337,10 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	}
 
 	public void updateDurations() {
-		long[] durations = new long[story.slides.size()];
-		for( int i = 0; i < story.slides.size(); i++ ) {
-			durations[i] = story.slides.get(i).duration;
+		var slidesCount = story.getSlidesCount();
+		long[] durations = new long[slidesCount];
+		for( int i = 0; i < slidesCount; i++ ) {
+			durations[i] = story.getSlide(i).getDuration();
 		}
 		storiesProgressView.setStoriesCountWithDurations(durations);
 	}
@@ -320,35 +355,41 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 	public void pause() {
 		storiesProgressView.pause();
-		stories_view.player.player.pause();
+		storiesView.getPlayer().getPlayer().pause();
 	}
 
 	public void resume() {
-		if( !locked && story.slides.get(mViewPager.getCurrentItem()).prepared ) {
+		var slide = story.getSlide(mViewPager.getCurrentItem());
+
+		if( !locked && slide.isPrepared() ) {
 			storiesProgressView.resume();
-			if( story.slides.get(mViewPager.getCurrentItem()).type.equals("video") && !stories_view.player.player.isLoading() && !stories_view.player.player.isPlaying() ) {
-				stories_view.player.player.play();
+			var player = storiesView.getPlayer().getPlayer();
+			if(slide.getType().equals("video") && !player.isLoading() && !player.isPlaying() ) {
+				player.play();
 			}
 		}
 	}
 
 	@Override
 	public void onNext() {
-		if( story.start_position + 1 >= story.slides.size() ) {
+		var startPosition = story.getStartPosition();
+		if(startPosition + 1 >= story.getSlidesCount()) {
 			onComplete();
 			return;
 		}
-		mViewPager.setCurrentItem(++story.start_position, false);
-		storiesProgressView.startStories(story.start_position);
+		startPosition++;
+		story.setStartPosition(startPosition);
+		mViewPager.setCurrentItem(startPosition, false);
+		storiesProgressView.startStories(startPosition);
 	}
 
 	@Override
 	public void onStart(int position) {
 		//Для текущего слайда
 		if( position == mViewPager.getCurrentItem() ) {
-			Story.Slide slide = story.slides.get(position);
+			Slide slide = story.getSlide(position);
 			//Если видео еще подгружается, приостанавливаем таймер анимации
-			if( !slide.prepared ) {
+			if( !slide.isPrepared() ) {
 				storiesProgressView.pause();
 			}
 		}
@@ -356,43 +397,49 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 
 	@Override
 	public void onPrev() {
-		if( story.start_position <= 0 ) {
+		var startPosition = story.getStartPosition();
+		if( startPosition <= 0 ) {
 			prevStoryListener.run();
 			return;
 		}
-		mViewPager.setCurrentItem(--story.start_position, false);
-		storiesProgressView.startStories(story.start_position);
+		startPosition--;
+		story.setStartPosition(startPosition);
+		mViewPager.setCurrentItem(startPosition, false);
+		storiesProgressView.startStories(startPosition);
 	}
 
 	@Override
 	public void onComplete() {
-		story.viewed = true;
-		story.start_position = 0;
+		story.setViewed(true);
+		story.setStartPosition(0);
 		updateDurations();
 		completeListener.run();
 	}
 
 	public void updateDuration(int position) {
-		storiesProgressView.updateStoryDuration(position, story.slides.get(position).duration);
+		storiesProgressView.updateStoryDuration(position, story.getSlide(position).getDuration());
 	}
 
 	public void startStories() {
+		var startPosition = story.getStartPosition();
+
 		if( !storiesStarted ) {
 			storiesStarted = true;
 			playVideo();
-			SDK.track_story("view", stories_view.code, story.id, story.slides.get(story.start_position).id);
+			SDK.track_story("view", storiesView.getCode(), story.getId(), story.getSlide(startPosition).getId());
 		}
+
 		if( !locked ) {
 			updateDurations();
-			storiesProgressView.startStories(story.start_position);
-			mViewPager.setCurrentItem(story.start_position, false);
+			storiesProgressView.startStories(startPosition);
+			mViewPager.setCurrentItem(startPosition, false);
 		}
 	}
 
 	public void stopStories() {
 		storiesStarted = false;
 		//Если кампания сториса не активна на экране, удаляем листенеры
-		stories_view.player.player.removeListener(this);
+		storiesView.getPlayer().getPlayer().removeListener(this);
 		pause();
 		storiesProgressView.destroy();
 		PagerHolder holder = getCurrentHolder();
@@ -415,9 +462,9 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 	}
 
 	public void release() {
-		stories_view.player.player.removeListener(this);
-		stories_view.player.player.stop();
-		for( int i = 0; i < story.slides.size(); i++ ) {
+		storiesView.getPlayer().getPlayer().removeListener(this);
+		storiesView.getPlayer().getPlayer().stop();
+		for( int i = 0; i < story.getSlidesCount(); i++ ) {
 			PagerHolder holder = getHolder(i);
 			if( holder != null ) {
 				holder.release();

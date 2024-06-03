@@ -123,6 +123,24 @@ final public class Params extends AbstractParams<Params> {
 		}
 	}
 
+	final public static class CustomOrderParameters {
+		private final HashMap<String, String> parameters = new HashMap<>();
+
+		public CustomOrderParameters set(@NonNull String name, @NonNull String value) {
+			parameters.put(name, value);
+			return this;
+		}
+		public CustomOrderParameters set(@NonNull String name, int value) {
+			return set(name, String.valueOf(value));
+		}
+		public CustomOrderParameters set(@NonNull String name, double value) {
+			return set(name, String.valueOf(value));
+		}
+		public CustomOrderParameters set(@NonNull String name, boolean value) {
+			return set(name, value ? "1" : "0");
+		}
+	}
+
 	public enum TrackEvent {
 		VIEW("view"),
 		CATEGORY("category"),
@@ -178,6 +196,24 @@ final public class Params extends AbstractParams<Params> {
 		return this;
 	}
 
+	/**
+	 * Вставка свойст заказа
+	 */
+	public Params put(CustomOrderParameters customOrderParameter) {
+		try {
+			JSONObject object = new JSONObject();
+			for (var entry : customOrderParameter.parameters.entrySet()) {
+				object.put(entry.getKey(), entry.getValue());
+			}
+
+			params.put("custom", object);
+		} catch(JSONException e) {
+			Log.e(SDK.TAG, e.getMessage(), e);
+		}
+
+		return this;
+	}
+
 	//---------------Private---------->
 
 	enum InternalParameter implements ParamInterface {
@@ -193,6 +229,9 @@ final public class Params extends AbstractParams<Params> {
 		RECOMMENDED_CODE("recommended_code"),
 		EMAIL("email"),
 		PHONE("phone"),
+		EXTERNAL_ID("external_id"),
+		LOYALTY_ID("loyalty_id"),
+		TELEGRAM_ID("telegram_id"),
 		PROPERTIES("properties"),
 		;
 

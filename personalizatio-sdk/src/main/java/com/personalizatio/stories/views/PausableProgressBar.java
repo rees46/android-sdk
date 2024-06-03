@@ -1,4 +1,4 @@
-package com.personalizatio.stories;
+package com.personalizatio.stories.views;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -22,10 +22,10 @@ final class PausableProgressBar extends FrameLayout {
 
 	private static final int DEFAULT_PROGRESS_DURATION = 2000;
 
-	public final View frontProgressView;
-	public final View maxProgressView;
+	private final View frontProgressView;
+	private final View maxProgressView;
 
-	public PausableScaleAnimation animation;
+	private PausableScaleAnimation animation;
 	private long duration = DEFAULT_PROGRESS_DURATION;
 	private Callback callback;
 	private boolean paused = false;

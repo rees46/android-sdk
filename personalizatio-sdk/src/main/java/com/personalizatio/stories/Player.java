@@ -17,10 +17,10 @@ import com.personalizatio.SDK;
 import java.io.File;
 
 @UnstableApi
-final class Player {
+final public class Player {
 
-	static ExoPlayer player;
-	static SimpleCache cache;
+	private static ExoPlayer player;
+	private static SimpleCache cache;
 
 	public Player(Context context) {
 		if( player == null ) {
@@ -34,6 +34,10 @@ final class Player {
 			LeastRecentlyUsedCacheEvictor limit = new LeastRecentlyUsedCacheEvictor(50 * 1024 * 1024);
 			cache = new SimpleCache(file, limit, new StandaloneDatabaseProvider(context));
 		}
+	}
+
+	public ExoPlayer getPlayer() {
+		return player;
 	}
 
 	public void prepare(String url) {

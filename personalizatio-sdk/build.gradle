@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-version='1.8.10'
+version='1.8.14'
 
 android {
 	compileSdk 34
