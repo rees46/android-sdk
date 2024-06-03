@@ -1,68 +1,82 @@
 package com.personalizatio
 
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import android.util.Log
+import androidx.core.util.Consumer
+import com.google.android.gms.tasks.Task
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.RemoteMessage
+import com.personalizatio.Api.OnApiCallbackListener
+import com.personalizatio.Params.InternalParameter
+import com.personalizatio.Params.RecommendedBy
+import com.personalizatio.Params.TrackEvent
+import org.json.JSONException
+import org.json.JSONObject
+import java.security.SecureRandom
+import java.sql.Timestamp
+import java.util.Collections
+import java.util.Locale
+import java.util.TimeZone
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
-class SDK protected constructor(
-    context: Context?,
-    private val shop_id: String?,
-    api_url: String?,
-    tag: String?,
-    prefs_key: String?,
-    private val stream: String?
-) {
-    private val PREFERENCES_KEY: String?
-    private val context: Context? = context
+open class SDK {
+    private lateinit var context: Context
     private var did: String? = null
     private var seance: String? = null
     private var onMessageListener: OnMessageListener? = null
+
+    var NOTIFICATION_TYPE: String = "NOTIFICATION_TYPE"
+    var NOTIFICATION_ID: String = "NOTIFICATION_ID"
+    val tag: String
+        get() = TAG
 
     @Volatile
     private var initialized = false
 
     @Volatile
     private var attempt = 0
-    private val queue: List<Thread?>? = Collections.synchronizedList(ArrayList())
+    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private var search: Search? = null
-    private val segment: String?
-    private var source_type: String?
-    private var source_id: String?
-    private var source_time: Long = 0
+    private lateinit var segment: String
+    private var sourceType: String? = null
+    private var sourceId: String? = null
+    private var sourceTime: Long = 0
+    private lateinit var shopId: String
+    private lateinit var stream: String
+    private lateinit var preferencesKey: String
 
     /**
-     * @param shop_id Shop key
+     * @param shopId Shop key
      */
-    init {
-        TAG = tag
-        PREFERENCES_KEY = prefs_key
-        Api.initialize(api_url)
+    public fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
+        Api.initialize(apiUrl)
 
+        this.context = context
+        this.shopId = shopId
+        this.stream = stream
+        this.preferencesKey = preferencesKey
+        TAG = tag
         //Инициализируем сегмент
-        segment = prefs().getString(
-            PREFERENCES_KEY.toString() + ".segment",
-            arrayOf<String?>("A", "B")[Math.round(Math.random()) as Int]
-        )
-        source_type = prefs().getString("source_type", null)
-        source_id = prefs().getString("source_id", null)
-        source_time = prefs().getLong("source_time", 0)
+        segment = prefs().getString("$preferencesKey.segment", arrayOf("A", "B")[Math.round(Math.random()).toInt()]).toString()
+        sourceType = prefs().getString("source_type", null)
+        sourceId = prefs().getString("source_id", null)
+        sourceTime = prefs().getLong("source_time", 0)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Create channel to show notifications.
-            val channelId: String = context.getString(R.string.notification_channel_id)
-            val channelName: String = context.getString(R.string.notification_channel_name)
-            val notificationManager: NotificationManager = context.getSystemService(NotificationManager::class.java)
+            val channelId = context.getString(R.string.notification_channel_id)
+            val channelName = context.getString(R.string.notification_channel_name)
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
             if (notificationManager != null) {
-                notificationManager.createNotificationChannel(
-                    NotificationChannel(
-                        channelId,
-                        channelName,
-                        NotificationManager.IMPORTANCE_LOW
-                    )
-                )
+                notificationManager.createNotificationChannel(NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW))
             } else {
                 error("NotificationManager not allowed")
             }
@@ -73,8 +87,8 @@ class SDK protected constructor(
     /**
      * @return preferences
      */
-    private fun prefs(): SharedPreferences? {
-        return context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+    private fun prefs(): SharedPreferences {
+        return context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
     }
 
     /**
@@ -83,15 +97,15 @@ class SDK protected constructor(
     @SuppressLint("HardwareIds")
     private fun did() {
         if (did == null) {
-            val preferences: SharedPreferences? = prefs()
+            val preferences = prefs()
             did = preferences.getString(DID_FIELD, null)
             if (did == null) {
                 //get unique device id
-                did = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID)
+                did = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             }
 
             //Добавляем запрос токена в очередь
-            queue.add(Thread { this.getToken() })
+            queue.add(Thread { this.token })
 
             //Если еще ни разу не вызывали init
             if (preferences.getString(DID_FIELD, null) == null) {
@@ -102,9 +116,8 @@ class SDK protected constructor(
         }
     }
 
-    private fun isTestDevice(): Boolean {
-        return "true".equals(Settings.System.getString(context.getContentResolver(), "firebase.test.lab"))
-    }
+    private val isTestDevice: Boolean
+        get() = "true" == Settings.System.getString(context.contentResolver, "firebase.test.lab")
 
     /**
      * Connect to init script
@@ -112,45 +125,43 @@ class SDK protected constructor(
     private fun init() {
         //Disable working Google Play Pre-Launch report devices
 
-        if (isTestDevice()) {
+        if (isTestDevice) {
             Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
             return
         }
 
         try {
-            val params: JSONObject = JSONObject()
-            params.put("tz", String.valueOf((TimeZone.getDefault().getRawOffset() / 3600000.0) as Int))
+            val params = JSONObject()
+            params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
             send("get", "init", params, object : OnApiCallbackListener() {
-                @Override
-                fun onSuccess(response: JSONObject?) {
+                override fun onSuccess(response: JSONObject?) {
                     try {
                         // Сохраняем данные в память
-                        val edit: SharedPreferences.Editor = prefs().edit()
-                        did = response.getString("did")
+                        val edit = prefs().edit()
+                        did = response!!.getString("did")
                         edit.putString(DID_FIELD, did)
                         edit.apply()
 
                         // Выполняем таски из очереди
                         initialized(response.getString("seance"))
                     } catch (e: JSONException) {
-                        error(e.getMessage(), e)
+                        error(e.message, e)
                     }
                 }
 
-                @Override
-                fun onError(code: Int, msg: String?) {
+                override fun onError(code: Int, msg: String?) {
                     if (code >= 500 || code <= 0) {
                         Log.e(TAG, "code: $code, $msg")
                         if (attempt < 5) {
                             attempt++
                         }
-                        val handler: Handler = Handler(Looper.getMainLooper())
+                        val handler = Handler(Looper.getMainLooper())
                         handler.postDelayed({ init() }, 1000L * attempt)
                     }
                 }
             })
         } catch (e: JSONException) {
-            error(e.getMessage(), e)
+            error(e.message, e)
         }
     }
 
@@ -159,17 +170,16 @@ class SDK protected constructor(
      *
      * @param sid String
      */
-    private fun initialized(@Nullable sid: String?) {
+    private fun initialized(sid: String?) {
         initialized = true
         seance = sid
 
         //Если сеанса нет, пробуем найти в хранилище
         //Нужно разделять сеансы по времени.
         //Для этого достаточно отслеживать время последнего действия на сеанс и, если оно больше N часов, то создавать новый сеанс.
-        if (seance == null && prefs().getString(SID_FIELD, null) != null && prefs().getLong(
-                SID_LAST_ACT_FIELD,
-                0
-            ) >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
+        if (seance == null && prefs().getString(SID_FIELD, null) != null
+            && prefs().getLong(SID_LAST_ACT_FIELD, 0)
+            >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
         ) {
             seance = prefs().getString(SID_FIELD, null)
         }
@@ -180,12 +190,8 @@ class SDK protected constructor(
             seance = alphanumeric(10)
         }
         updateSidActivity()
-        debug(
-            "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
-                prefs().getLong(
-                    SID_LAST_ACT_FIELD, 0
-                )
-            )
+        debug("Device ID: " + did + ", seance: " + seance + ", last act: "
+                + Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0))
         )
 
         //Seach
@@ -202,56 +208,100 @@ class SDK protected constructor(
      * Обновляем время последней активности
      */
     private fun updateSidActivity() {
-        val edit: SharedPreferences.Editor = prefs().edit()
+        val edit = prefs().edit()
         edit.putString(SID_FIELD, seance)
         edit.putLong(SID_LAST_ACT_FIELD, System.currentTimeMillis())
         edit.apply()
     }
 
-    private fun alphanumeric(length: Int): String? {
-        val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
-        val sb: StringBuilder = StringBuilder(length)
-        val secureRandom: SecureRandom = SecureRandom()
+    private fun alphanumeric(length: Int): String {
+        val source = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
+        val sb = StringBuilder(length)
+        val secureRandom = SecureRandom()
         for (i in 0 until length) {
-            sb.append(SOURCE.charAt(secureRandom.nextInt(SOURCE.length())))
+            sb.append(source[secureRandom.nextInt(source.length)])
         }
         return sb.toString()
     }
 
+    private val token: Unit
+        /**
+         * Get device token
+         */
+        get() {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
+                if (!task.isSuccessful) {
+                    error("getInstanceId failed", task.exception)
+                    return@addOnCompleteListener
+                }
+                if (task.result == null) {
+                    error("Firebase result is null")
+                    return@addOnCompleteListener
+                }
+
+                // Get new Instance ID token
+                val token = task.result
+                debug("token: $token")
+
+                //Check send token
+                val tokenField = prefs().getString(TOKEN_FIELD, null)
+                if (tokenField == null || tokenField != token) {
+                    //Send token
+
+                    setPushTokenNotification(token, object : OnApiCallbackListener() {
+                        override fun onSuccess(response: JSONObject?) {
+                            val edit = prefs().edit()
+                            edit.putString(TOKEN_FIELD, token)
+                            edit.apply()
+                        }
+                    })
+                }
+            }
+        }
+
     /**
-     * Get device token
+     * Update profile data
+     * https://reference.api.rees46.com/#save-profile-settings
+     *
+     * @param data profile data
      */
-    private fun getToken() {
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener { task ->
-            if (!task.isSuccessful()) {
-                error("getInstanceId failed", task.getException())
-                return@addOnCompleteListener
+    fun profile(data: HashMap<String, String>, listener: OnApiCallbackListener? = null) {
+        instance?.sendAsync("profile/set", JSONObject(data.toMap()), listener)
+    }
+
+    /**
+     * Возвращает идентификатор сессии
+     */
+    fun getSid(listener: Consumer<String?>) {
+        instance?.apply {
+            val thread = Thread {
+                listener.accept(seance)
             }
-            if (task.getResult() == null) {
-                error("Firebase result is null")
-                return@addOnCompleteListener
+            if (initialized) {
+                thread.start()
+            } else {
+                queue.add(thread)
             }
+        }
+    }
 
-            // Get new Instance ID token
-            val token: String = task.getResult()
-            debug("token: $token")
+    /**
+     * @param extras from data notification
+     */
+    public fun notificationClicked(extras: Bundle?) {
+        val type = extras?.getString(NOTIFICATION_TYPE, null)
+        val code = extras?.getString(NOTIFICATION_ID, null)
+        if (type != null && code != null) {
+            val params = JSONObject()
+            try {
+                params.put("type", type)
+                params.put("code", code)
+                instance?.sendAsync("track/clicked", params)
 
-            //Check send token
-            if (prefs().getString(TOKEN_FIELD, null) == null || !Objects.equals(
-                    prefs().getString(TOKEN_FIELD, null),
-                    token
-                )
-            ) {
-                //Send token
-
-                setPushTokenNotification(token, object : OnApiCallbackListener() {
-                    @Override
-                    fun onSuccess(msg: JSONObject?) {
-                        val edit: SharedPreferences.Editor = prefs().edit()
-                        edit.putString(TOKEN_FIELD, token)
-                        edit.apply()
-                    }
-                })
+                //Сохраняем источник
+                setSource(type, code)
+            } catch (e: JSONException) {
+                Log.e(TAG, e.message, e)
             }
         }
     }
@@ -259,15 +309,10 @@ class SDK protected constructor(
     /**
      * Прямое выполенение запроса
      */
-    private fun send(
-        request_type: String?,
-        method: String?,
-        params: JSONObject?,
-        @Nullable listener: Api.OnApiCallbackListener?
-    ) {
+    private fun send(requestType: String, method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         updateSidActivity()
         try {
-            params.put("shop_id", shop_id)
+            params.put("shop_id", shopId)
             if (did != null) {
                 params.put("did", did)
             }
@@ -279,28 +324,28 @@ class SDK protected constructor(
             params.put("stream", stream)
 
             //Добавляем источник к запросу, проверяем время действия 2 дня
-            if (source_type != null && source_time > 0 && source_time + 172800 * 1000 > System.currentTimeMillis()) {
-                val source: JSONObject = JSONObject()
-                source.put("from", source_type)
-                source.put("code", source_id)
+            if (sourceType != null && sourceTime > 0 && sourceTime + 172800 * 1000 > System.currentTimeMillis()) {
+                val source = JSONObject()
+                source.put("from", sourceType)
+                source.put("code", sourceId)
                 params.put("source", source)
             }
 
-            Api.send(request_type, method, params, listener)
+            Api.send(requestType, method, params, listener)
         } catch (e: JSONException) {
-            error(e.getMessage(), e)
+            error(e.message, e)
         }
     }
 
-    private fun sendAsync(method: String?, params: JSONObject?) {
+    private fun sendAsync(method: String, params: JSONObject) {
         sendAsync(method, params, null)
     }
 
     /**
      * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
      */
-    fun sendAsync(method: String?, params: JSONObject?, @Nullable listener: Api.OnApiCallbackListener?) {
-        val thread: Thread = Thread { send("post", method, params, listener) }
+    fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        val thread = Thread { send("post", method, params, listener) }
         if (did != null && initialized) {
             thread.start()
         } else {
@@ -311,8 +356,8 @@ class SDK protected constructor(
     /**
      * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
      */
-    fun getAsync(method: String?, params: JSONObject?, @Nullable listener: Api.OnApiCallbackListener?) {
-        val thread: Thread = Thread { send("get", method, params, listener) }
+    fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        val thread = Thread { send("get", method, params, listener) }
         if (did != null && initialized) {
             thread.start()
         } else {
@@ -320,642 +365,519 @@ class SDK protected constructor(
         }
     }
 
-    companion object {
-        var TAG: String?
-        var NOTIFICATION_TYPE: String? = "NOTIFICATION_TYPE"
-        var NOTIFICATION_ID: String? = "NOTIFICATION_ID"
-        private val SID_FIELD: String? = "sid"
-        private val SID_LAST_ACT_FIELD: String? = "sid_last_act"
-        private val DID_FIELD: String? = "did"
-        private val TOKEN_FIELD: String? = "token"
-        private const val SESSION_CODE_EXPIRE = 2
+    /**
+     * @param listener Event on message receive
+     */
+    fun setOnMessageListener(listener: OnMessageListener) {
+        instance?.onMessageListener = listener
+    }
 
-        @SuppressLint("StaticFieldLeak")
-        protected var instance: SDK? = null
+    fun initialize(context: Context?, shop_id: String?) {
+        throw IllegalStateException("You need make static initialize method!")
+    }
 
-        private var last_recommended_by: Params.RecommendedBy? = null
+    fun initialize(context: Context?, shop_id: String?, stream: String?) {
+        throw IllegalStateException("You need make static initialize method!")
+    }
 
-        fun initialize(context: Context?, shop_id: String?) {
-            throw IllegalStateException("You need make static initialize method!")
-        }
-
-        fun initialize(context: Context?, shop_id: String?, stream: String?) {
-            throw IllegalStateException("You need make static initialize method!")
-        }
-
-        fun userAgent(): String? {
-            return ("Personalizatio SDK " + BuildConfig.FLAVOR.toUpperCase()).toString() + ", v" + BuildConfig.VERSION_NAME
-        }
-
-        /**
-         * Update profile data
-         * https://reference.api.rees46.com/#save-profile-settings
-         *
-         * @param data profile data
-         */
-        fun profile(data: HashMap<String?, String?>?) {
-            profile(data, null)
-        }
-
-        fun profile(data: HashMap<String?, String?>?, listener: Api.OnApiCallbackListener?) {
-            instance.sendAsync("profile/set", JSONObject(data), listener)
-        }
-
-        /**
-         * @param data from data notification
-         */
-        fun notificationReceived(data: Map<String?, String?>?) {
-            val params: JSONObject = JSONObject()
-            try {
-                if (data.get("type") != null) {
-                    params.put("type", data.get("type"))
-                }
-                if (data.get("id") != null) {
-                    params.put("code", data.get("id"))
-                }
-                if (params.length() > 0) {
-                    instance.sendAsync("track/received", params)
-                }
-            } catch (e: JSONException) {
-                Log.e(TAG, e.getMessage(), e)
-            }
-        }
-
-        /**
-         * @param extras from data notification
-         */
-        fun notificationClicked(extras: Bundle?) {
-            if (extras != null && extras.getString(NOTIFICATION_TYPE, null) != null && extras.getString(
-                    NOTIFICATION_ID,
-                    null
-                ) != null
-            ) {
-                val params: JSONObject = JSONObject()
-                try {
-                    params.put("type", extras.getString(NOTIFICATION_TYPE))
-                    params.put("code", extras.getString(NOTIFICATION_ID))
-                    instance.sendAsync("track/clicked", params)
-
-                    //Сохраняем источник
-                    setSource(extras.getString(NOTIFICATION_TYPE), extras.getString(NOTIFICATION_ID))
-                } catch (e: JSONException) {
-                    Log.e(TAG, e.getMessage(), e)
-                }
-            }
-        }
-
-        /**
-         * Сохраняет данные источника
-         *
-         * @param type тип источника: bulk, chain, transactional
-         * @param id   идентификатор сообщения
-         */
-        protected fun setSource(type: String?, id: String?) {
-            instance.source_type = type
-            instance.source_id = id
-            instance.source_time = System.currentTimeMillis()
-            instance.prefs().edit()
+    /**
+     * Сохраняет данные источника
+     *
+     * @param type тип источника: bulk, chain, transactional
+     * @param id   идентификатор сообщения
+     */
+    protected fun setSource(type: String, id: String) {
+        instance?.apply {
+            sourceType = type
+            sourceId = id
+            sourceTime = System.currentTimeMillis()
+            prefs().edit()
                 .putString("source_type", type)
                 .putString("source_id", id)
-                .putLong("source_time", instance.source_time)
+                .putLong("source_time", sourceTime)
                 .apply()
         }
+    }
 
-        /**
-         * @param listener Event on message receive
-         */
-        fun setOnMessageListener(listener: OnMessageListener?) {
-            instance.onMessageListener = listener
+    /**
+     * Быстрый поиск
+     *
+     * @param query    Поисковая фраза
+     * @param type     Тип поиска
+     * @param listener Колбек
+     */
+    fun search(query: String, type: SearchParams.TYPE, listener: OnApiCallbackListener) {
+        search(query, type, SearchParams(), listener)
+    }
+
+    /**
+     * Быстрый поиск
+     *
+     * @param query    Поисковая фраза
+     * @param type     Тип поиска
+     * @param params   Дополнительные параметры к запросу
+     * @param listener v
+     */
+    fun search(query: String, type: SearchParams.TYPE, params: SearchParams, listener: OnApiCallbackListener) {
+        if (instance?.search != null) {
+            params.put(InternalParameter.SEARCH_TYPE, type.value)
+                .put(InternalParameter.SEARCH_QUERY, query)
+            instance?.getAsync("search", params.build(), listener)
+        } else {
+            warn("Search not initialized")
         }
+    }
 
-        /**
-         * Быстрый поиск
-         *
-         * @param query    Поисковая фраза
-         * @param type     Тип поиска
-         * @param listener Колбек
-         */
-        fun search(query: String?, type: SearchParams.TYPE?, listener: Api.OnApiCallbackListener?) {
-            search(query, type, SearchParams(), listener)
-        }
-
-        /**
-         * Быстрый поиск
-         *
-         * @param query    Поисковая фраза
-         * @param type     Тип поиска
-         * @param params   Дополнительные параметры к запросу
-         * @param listener v
-         */
-        fun search(
-            query: String?,
-            type: SearchParams.TYPE?,
-            params: SearchParams?,
-            listener: Api.OnApiCallbackListener?
-        ) {
-            if (instance.search != null) {
-                params
-                    .put(InternalParameter.SEARCH_TYPE, type.getValue())
-                    .put(InternalParameter.SEARCH_QUERY, query)
-                instance.getAsync("search", params.build(), listener)
-            } else {
-                warn("Search not initialized")
-            }
-        }
-
-        /**
-         * Пустой поиск
-         *
-         * @param listener v
-         */
-        @Deprecated
-        @Deprecated(
-            """This method is no longer acceptable to compute time between versions.
+    /**
+     * Пустой поиск
+     *
+     * @param listener v
+     */
+    @Deprecated(
+        """This method is no longer acceptable to compute time between versions.
 	  <p> Use {@link SDK#searchBlank(Api.OnApiCallbackListener)} instead."""
-        )
-        fun search_blank(listener: Api.OnApiCallbackListener?) {
-            searchBlank(listener)
-        }
+    )
+    fun search_blank(listener: OnApiCallbackListener) {
+        searchBlank(listener)
+    }
 
-        fun searchBlank(listener: Api.OnApiCallbackListener?) {
-            if (instance.search != null) {
-                if (instance.search.blank == null) {
-                    instance.getAsync("search/blank",
+    fun searchBlank(listener: OnApiCallbackListener) {
+        instance?.apply {
+            if (search != null) {
+                if (search!!.blank == null) {
+                    instance!!.getAsync("search/blank",
                         Params().build(), object : OnApiCallbackListener() {
-                            @Override
-                            fun onSuccess(response: JSONObject?) {
-                                instance.search.blank = response
+                            override fun onSuccess(response: JSONObject?) {
+                                search!!.blank = response
                                 listener.onSuccess(response)
                             }
 
-                            @Override
-                            fun onError(code: Int, msg: String?) {
+                            override fun onError(code: Int, msg: String?) {
                                 listener.onError(code, msg)
                             }
                         })
                 } else {
-                    listener.onSuccess(instance.search.blank)
+                    listener.onSuccess(search!!.blank)
                 }
             } else {
                 warn("Search not initialized")
             }
         }
+    }
 
-        /**
-         * Запрос динамического блока рекомендаций
-         *
-         * @param recommender_code Код блока рекомендаций
-         * @param listener         Колбек
-         */
-        fun recommend(recommender_code: String?, listener: Api.OnApiCallbackListener?) {
-            recommend(recommender_code, Params(), listener)
+    /**
+     * Запрос динамического блока рекомендаций
+     *
+     * @param recommender_code Код блока рекомендаций
+     * @param listener         Колбек
+     */
+    fun recommend(recommender_code: String, listener: OnApiCallbackListener) {
+        recommend(recommender_code, Params(), listener)
+    }
+
+    /**
+     * Запрос динамического блока рекомендаций
+     *
+     * @param code     Код динамического блока рекомендаций
+     * @param params   Параметры для запроса
+     * @param listener Колбек
+     */
+    fun recommend(code: String, params: Params, listener: OnApiCallbackListener) {
+        instance!!.getAsync("recommend/$code", params.build(), listener)
+    }
+
+    /**
+     * Трекинг события
+     *
+     * @param event   Тип события
+     * @param item_id ID товара
+     */
+    fun track(event: TrackEvent, item_id: String) {
+        track(event, Params().put(Params.Item(item_id)), null)
+    }
+
+    /**
+     * Трекинг события
+     *
+     * @param event    Тип события
+     * @param params   Параметры для запроса
+     * @param listener Колбек
+     */
+    /**
+     * Трекинг события
+     *
+     * @param event  Тип события
+     * @param params Параметры
+     */
+    fun track(event: TrackEvent, params: Params, listener: OnApiCallbackListener? = null) {
+        params.put(InternalParameter.EVENT, event.value)
+        if (lastRecommendedBy != null) {
+            params.put(lastRecommendedBy!!)
+            lastRecommendedBy = null
         }
+        instance?.sendAsync("push", params.build(), listener)
+    }
 
-        /**
-         * Запрос динамического блока рекомендаций
-         *
-         * @param code     Код динамического блока рекомендаций
-         * @param params   Параметры для запроса
-         * @param listener Колбек
-         */
-        fun recommend(code: String?, params: Params?, listener: Api.OnApiCallbackListener?) {
-            instance.getAsync("recommend/$code", params.build(), listener)
+    /**
+     * Трекинг кастомных событий
+     *
+     * @param event    Ключ события
+     * @param category Event category
+     * @param label    Event label
+     * @param value    Event value
+     * @param listener Колбек
+     */
+    /**
+     * Трекинг кастомных событий
+     *
+     * @param event Ключ события
+     */
+    /**
+     * Трекинг кастомных событий
+     *
+     * @param event    Ключ события
+     * @param category Event category
+     * @param label    Event label
+     * @param value    Event value
+     */
+    @JvmOverloads
+    fun track(event: String, category: String? = null, label: String? = null, value: Int? = null, listener: OnApiCallbackListener? = null) {
+        val params = Params()
+        params.put(InternalParameter.EVENT, event)
+        if (category != null) {
+            params.put(InternalParameter.CATEGORY, category)
         }
-
-        /**
-         * Трекинг события
-         *
-         * @param event   Тип события
-         * @param item_id ID товара
-         */
-        fun track(event: Params.TrackEvent?, item_id: String?) {
-            track(event, Params().put(Item(item_id)), null)
+        if (label != null) {
+            params.put(InternalParameter.LABEL, label)
         }
-
-        /**
-         * Трекинг события
-         *
-         * @param event  Тип события
-         * @param params Параметры
-         */
-        fun track(event: Params.TrackEvent?, @NonNull params: Params?) {
-            track(event, params, null)
+        if (value != null) {
+            params.put(InternalParameter.VALUE, value)
         }
+        instance?.sendAsync("push/custom", params.build(), listener)
+    }
 
-        /**
-         * Трекинг события
-         *
-         * @param event    Тип события
-         * @param params   Параметры для запроса
-         * @param listener Колбек
-         */
-        fun track(event: Params.TrackEvent?, @NonNull params: Params?, @Nullable listener: Api.OnApiCallbackListener?) {
-            params.put(InternalParameter.EVENT, event.value)
-            if (last_recommended_by != null) {
-                params.put(last_recommended_by)
-                last_recommended_by = null
-            }
-            instance.sendAsync("push", params.build(), listener)
+    /**
+     * Возвращает идентификатор устройства
+     *
+     * @return String
+     */
+    fun getDid(): String? {
+        return instance?.did
+    }
+
+    /**
+     * Подписывает на снижение цены
+     * https://reference.api.rees46.com/?shell#price-drop
+     *
+     * @param id            Идентификатор товара
+     * @param current_price Текущая цена
+     * @param email         Email, если есть
+     * @param phone         Телефон, если есть
+     */
+    fun subscribeForPriceDrop(id: String, current_price: Double, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        val params = Params()
+        params.put(Params.Parameter.ITEM, id)
+        params.put(Params.Parameter.PRICE, current_price.toString())
+        if (email != null) {
+            params.put(InternalParameter.EMAIL, email)
         }
-
-        /**
-         * Трекинг кастомных событий
-         *
-         * @param event Ключ события
-         */
-        fun track(event: String?) {
-            track(event, null, null, null, null)
+        if (phone != null) {
+            params.put(InternalParameter.PHONE, phone)
         }
+        instance?.sendAsync("subscriptions/subscribe_for_product_price", params.build(), listener)
+    }
 
-        /**
-         * Трекинг кастомных событий
-         *
-         * @param event    Ключ события
-         * @param category Event category
-         * @param label    Event label
-         * @param value    Event value
-         */
-        fun track(event: String?, @Nullable category: String?, @Nullable label: String?, @Nullable value: Integer?) {
-            track(event, category, label, value, null)
-        }
-
-        /**
-         * Трекинг кастомных событий
-         *
-         * @param event    Ключ события
-         * @param category Event category
-         * @param label    Event label
-         * @param value    Event value
-         * @param listener Колбек
-         */
-        fun track(
-            event: String?,
-            @Nullable category: String?,
-            @Nullable label: String?,
-            @Nullable value: Integer?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            val params: Params = Params()
-            params.put(InternalParameter.EVENT, event)
-            if (category != null) {
-                params.put(InternalParameter.CATEGORY, category)
-            }
-            if (label != null) {
-                params.put(InternalParameter.LABEL, label)
-            }
-            if (value != null) {
-                params.put(InternalParameter.VALUE, value)
-            }
-            instance.sendAsync("push/custom", params.build(), listener)
-        }
-
-        /**
-         * @param listener
-         */
-        fun stories(code: String?, listener: Api.OnApiCallbackListener?) {
-            if (instance != null) {
-                instance.getAsync("stories/$code", JSONObject(), listener)
-            }
-        }
-
-        /**
-         * Вызывает событие сторисов
-         *
-         * @param event    Событие
-         * @param code     Код блока сторисов
-         * @param story_id Идентификатор сториса
-         * @param slide_id Идентификатор слайда
-         */
-        fun track_story(event: String?, code: String?, story_id: Int, slide_id: String?) {
-            if (instance != null) {
-                try {
-                    val params: JSONObject = JSONObject()
-                    params.put("event", event)
-                    params.put("story_id", story_id)
-                    params.put("slide_id", slide_id)
-                    params.put("code", code)
-
-                    //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
-                    last_recommended_by = RecommendedBy(Params.RecommendedBy.TYPE.STORIES, code)
-
-                    instance.sendAsync("track/stories", params, null)
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                }
-            }
-        }
-
-        /**
-         * Возвращает идентификатор устройства
-         *
-         * @return String
-         */
-        fun getDid(): String? {
-            return instance.did
-        }
-
-        /**
-         * Возвращает идентификатор сессии
-         */
-        fun getSid(listener: Consumer<String?>?) {
-            val thread: Thread = Thread { listener.accept(instance.seance) }
-            if (instance.initialized) {
-                thread.start()
-            } else {
-                instance.queue.add(thread)
-            }
-        }
-
-        /**
-         * Подписывает на снижение цены
-         * https://reference.api.rees46.com/?shell#price-drop
-         *
-         * @param id            Идентификатор товара
-         * @param current_price Текущая цена
-         * @param email         Email, если есть
-         * @param phone         Телефон, если есть
-         */
-        fun subscribeForPriceDrop(
-            id: String?,
-            current_price: Double,
-            @Nullable email: String?,
-            @Nullable phone: String?
-        ) {
-            subscribeForPriceDrop(id, current_price, email, phone, null)
-        }
-
-        fun subscribeForPriceDrop(
-            id: String?,
-            current_price: Double,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            val params: Params = Params()
-            params.put(Params.Parameter.ITEM, id)
-            params.put(Params.Parameter.PRICE, String.valueOf(current_price))
+    /**
+     * Отписывает на снижение цены
+     * https://reference.api.rees46.com/?shell#price-drop
+     *
+     * @param item_ids Идентификаторы товара
+     * @param email    Email, если есть
+     * @param phone    Телефон, если есть
+     */
+    fun unsubscribeForPriceDrop(item_ids: Array<String>, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        val params = JSONObject()
+        try {
+            params.put("item_ids", java.lang.String.join(", ", *item_ids))
             if (email != null) {
-                params.put(InternalParameter.EMAIL, email)
+                params.put(InternalParameter.EMAIL.value, email)
             }
             if (phone != null) {
-                params.put(InternalParameter.PHONE, phone)
+                params.put(InternalParameter.PHONE.value, phone)
             }
-            instance.sendAsync("subscriptions/subscribe_for_product_price", params.build(), listener)
+            instance?.sendAsync("subscriptions/unsubscribe_from_product_price", params, listener)
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
         }
+    }
 
-        /**
-         * Отписывает на снижение цены
-         * https://reference.api.rees46.com/?shell#price-drop
-         *
-         * @param item_ids Идентификаторы товара
-         * @param email    Email, если есть
-         * @param phone    Телефон, если есть
-         */
-        fun unsubscribeForPriceDrop(item_ids: Array<String?>?, @Nullable email: String?, @Nullable phone: String?) {
-            unsubscribeForPriceDrop(item_ids, email, phone, null)
+    /**
+     * Подписывает на наличие товара
+     * https://reference.api.rees46.com/?shell#back-in-stock
+     *
+     * @param id    Идентификатор товара
+     * @param email Email, если есть
+     * @param phone Телефон, если есть
+     */
+    fun subscribeForBackInStock(id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        subscribeForBackInStock(id, null, email, phone, listener)
+    }
+
+    fun subscribeForBackInStock(id: String, properties: JSONObject?, email: String?, phone: String?, listener: OnApiCallbackListener?) {
+        val params = Params()
+        params.put(Params.Parameter.ITEM, id)
+        if (properties != null) {
+            params.put(InternalParameter.PROPERTIES, properties)
         }
-
-        fun unsubscribeForPriceDrop(
-            item_ids: Array<String?>?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            val params: JSONObject = JSONObject()
-            try {
-                params.put("item_ids", String.join(", ", item_ids))
-                if (email != null) {
-                    params.put(InternalParameter.EMAIL.value, email)
-                }
-                if (phone != null) {
-                    params.put(InternalParameter.PHONE.value, phone)
-                }
-                instance.sendAsync("subscriptions/unsubscribe_from_product_price", params, listener)
-            } catch (e: JSONException) {
-                Log.e(TAG, e.getMessage(), e)
-            }
+        if (email != null) {
+            params.put(InternalParameter.EMAIL, email)
         }
-
-        /**
-         * Подписывает на наличие товара
-         * https://reference.api.rees46.com/?shell#back-in-stock
-         *
-         * @param id    Идентификатор товара
-         * @param email Email, если есть
-         * @param phone Телефон, если есть
-         */
-        fun subscribeForBackInStock(id: String?, @Nullable email: String?, @Nullable phone: String?) {
-            subscribeForBackInStock(id, null, email, phone, null)
+        if (phone != null) {
+            params.put(InternalParameter.PHONE, phone)
         }
+        instance?.sendAsync("subscriptions/subscribe_for_product_available", params.build(), listener)
+    }
 
-        fun subscribeForBackInStock(
-            id: String?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            subscribeForBackInStock(id, null, email, phone, listener)
-        }
-
-        fun subscribeForBackInStock(
-            id: String?,
-            @Nullable properties: JSONObject?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            val params: Params = Params()
-            params.put(Params.Parameter.ITEM, id)
-            if (properties != null) {
-                params.put(InternalParameter.PROPERTIES, properties)
-            }
+    /**
+     * Отписывает на наличие товара
+     * https://reference.api.rees46.com/?shell#back-in-stock
+     *
+     * @param item_ids Идентификатор товара
+     * @param email    Email, если есть
+     * @param phone    Телефон, если есть
+     */
+    @JvmOverloads
+    fun unsubscribeForBackInStock(item_ids: Array<String>, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        val params = JSONObject()
+        try {
+            params.put("item_ids", java.lang.String.join(", ", *item_ids))
             if (email != null) {
-                params.put(InternalParameter.EMAIL, email)
+                params.put(InternalParameter.EMAIL.value, email)
             }
             if (phone != null) {
-                params.put(InternalParameter.PHONE, phone)
+                params.put(InternalParameter.PHONE.value, phone)
             }
-            instance.sendAsync("subscriptions/subscribe_for_product_available", params.build(), listener)
+            instance?.sendAsync(
+                "subscriptions/unsubscribe_from_product_available",
+                params,
+                listener
+            )
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
         }
+    }
 
-        /**
-         * Отписывает на наличие товара
-         * https://reference.api.rees46.com/?shell#back-in-stock
-         *
-         * @param item_ids Идентификатор товара
-         * @param email    Email, если есть
-         * @param phone    Телефон, если есть
-         */
-        fun unsubscribeForBackInStock(item_ids: Array<String?>?, @Nullable email: String?, @Nullable phone: String?) {
-            unsubscribeForBackInStock(item_ids, email, phone, null)
-        }
+    /**
+     * Manage subscriptions
+     * https://reference.api.rees46.com/?java#manage-subscriptions
+     *
+     * @param email
+     * @param phone
+     * @param subscriptions
+     * @param listener
+     */
+    /**
+     * Manage subscriptions
+     * https://reference.api.rees46.com/?java#manage-subscriptions
+     *
+     * @param email
+     * @param phone
+     * @param subscriptions
+     */
+    fun manageSubscription(email: String?, phone: String?, subscriptions: HashMap<String, Boolean>, listener: OnApiCallbackListener? = null) {
+        manageSubscription(email, phone, null, null, null, subscriptions, listener)
+    }
 
-        fun unsubscribeForBackInStock(
-            item_ids: Array<String?>?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
-            val params: JSONObject = JSONObject()
-            try {
-                params.put("item_ids", String.join(", ", item_ids))
-                if (email != null) {
-                    params.put(InternalParameter.EMAIL.value, email)
-                }
-                if (phone != null) {
-                    params.put(InternalParameter.PHONE.value, phone)
-                }
-                instance.sendAsync("subscriptions/unsubscribe_from_product_available", params, listener)
-            } catch (e: JSONException) {
-                Log.e(TAG, e.getMessage(), e)
+    /**
+     * Manage subscriptions
+     * https://reference.api.rees46.com/?java#manage-subscriptions
+     *
+     * @param email
+     * @param phone
+     * @param externalId
+     * @param loyaltyId
+     * @param telegramId
+     * @param subscriptions
+     * @param listener
+     */
+    /**
+     * Manage subscriptions
+     * https://reference.api.rees46.com/?java#manage-subscriptions
+     *
+     * @param email
+     * @param phone
+     * @param externalId
+     * @param loyaltyId
+     * @param telegramId
+     * @param subscriptions
+     */
+    @JvmOverloads
+    fun manageSubscription(email: String?, phone: String?, externalId: String?, loyaltyId: String?, telegramId: String?,
+                           subscriptions: HashMap<String, Boolean>, listener: OnApiCallbackListener? = null) {
+        try {
+            val params = JSONObject()
+            for ((key, value) in subscriptions) {
+                params.put(key, value)
             }
-        }
-
-        /**
-         * Manage subscriptions
-         * https://reference.api.rees46.com/?swift#manage-subscriptions
-         *
-         * @param email
-         * @param phone
-         * @param subscriptions
-         */
-        fun manageSubscription(
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @NonNull subscriptions: HashMap<String?, Boolean?>?
-        ) {
-            manageSubscription(email, phone, subscriptions, null)
-        }
-
-        fun manageSubscription(
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @NonNull subscriptions: HashMap<String?, Boolean?>?,
-            listener: Api.OnApiCallbackListener?
-        ) {
-            try {
-                val params: JSONObject = JSONObject()
-                for (entry in subscriptions.entrySet()) {
-                    params.put(entry.getKey(), entry.getValue())
-                }
-                if (email != null) {
-                    params.put(InternalParameter.EMAIL.value, email)
-                }
-                if (phone != null) {
-                    params.put(InternalParameter.PHONE.value, phone)
-                }
-                instance.sendAsync("subscriptions/manage", params, listener)
-            } catch (e: JSONException) {
-                Log.e(TAG, e.getMessage(), e)
+            if (email != null) {
+                params.put(InternalParameter.EMAIL.value, email)
             }
+            if (phone != null) {
+                params.put(InternalParameter.PHONE.value, phone)
+            }
+            if (externalId != null) {
+                params.put(InternalParameter.EXTERNAL_ID.value, externalId)
+            }
+            if (loyaltyId != null) {
+                params.put(InternalParameter.LOYALTY_ID.value, loyaltyId)
+            }
+            if (telegramId != null) {
+                params.put(InternalParameter.TELEGRAM_ID.value, telegramId)
+            }
+            instance?.sendAsync("subscriptions/manage", params, listener)
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
         }
+    }
 
-        /**
-         * Возвращает текущий сегмент для А/В тестирования
-         */
-        fun getSegment(): String? {
+    /**
+     * Возвращает текущий сегмент для А/В тестирования
+     */
+    fun getSegment(): String {
+        if (instance == null) {
+            throw RuntimeException("You need initialize SDK before request segment")
+        } else {
+            return instance!!.segment
+        }
+    }
+
+    /**
+     * Add user to a segment
+     * https://reference.api.rees46.com/?java#add-user-to-a-segment
+     *
+     * @param segment_id
+     * @param email
+     * @param phone
+     */
+    fun addToSegment(segment_id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        segmentMethod("add", segment_id, email, phone, listener)
+    }
+
+    /**
+     * Remove user from a segment
+     * https://reference.api.rees46.com/?swift#remove-user-from-a-segment
+     *
+     * @param segment_id
+     * @param email
+     * @param phone
+     */
+    fun removeFromSegment(segment_id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+        segmentMethod("remove", segment_id, email, phone, listener)
+    }
+
+    /**
+     * Get user segments
+     * https://reference.api.rees46.com/?swift#get-user-segments
+     *
+     * @param listener
+     */
+    fun getCurrentSegment(listener: OnApiCallbackListener) {
+        instance?.getAsync("segments/get", JSONObject(), listener)
+    }
+
+    private fun segmentMethod(method: String, segmentId: String?, email: String?, phone: String?, listener: OnApiCallbackListener?) {
+        try {
+            val params = JSONObject()
+            if (segmentId != null) {
+                params.put("segment_id", segmentId)
+            }
+            if (email != null) {
+                params.put("email", email)
+            }
+            if (phone != null) {
+                params.put("phone", phone)
+            }
+            instance?.sendAsync("segments/$method", params, listener)
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
+        }
+    }
+
+    /**
+     * Send notification token
+     * https://reference.api.rees46.com/?java#create-new-token
+     *
+     * @param token
+     * @param listener
+     */
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+        val params = HashMap<String, String>()
+        params["platform"] = "android"
+        params["token"] = token
+        instance?.sendAsync("mobile_push_tokens", JSONObject(params.toMap()), listener)
+    }
+
+    companion object {
+        lateinit var TAG: String
+        private const val SID_FIELD = "sid"
+        private const val SID_LAST_ACT_FIELD = "sid_last_act"
+        private const val DID_FIELD = "did"
+        private const val TOKEN_FIELD = "token"
+        private const val SESSION_CODE_EXPIRE = 2
+        private var lastRecommendedBy: RecommendedBy? = null
+
+        @SuppressLint("StaticFieldLeak")
+        @Volatile
+        private var instance: SDK? = null
+
+        fun getInstance(): SDK {
             if (instance == null) {
-                throw RuntimeException("You need initialize SDK before request segment")
-            } else {
-                return instance.segment
+                synchronized(this) {
+                    if (instance == null) {
+                        instance = SDK()
+                    }
+                }
             }
+            return instance!!
         }
+
+        fun isInstanced() : Boolean {
+            return instance != null
+        }
+
+        fun userAgent(): String {
+            return "Personalizatio SDK " + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v";// + BuildConfig.VERSION_NAME
+        }
+
 
         /**
-         * Add user to a segment
-         * https://reference.api.rees46.com/?java#add-user-to-a-segment
-         *
-         * @param segment_id
-         * @param email
-         * @param phone
+         * @param data from data notification
          */
-        fun addToSegment(@NonNull segment_id: String?, @Nullable email: String?, @Nullable phone: String?) {
-            segmentMethod("add", segment_id, email, phone, null)
-        }
-
-        fun addToSegment(
-            @NonNull segment_id: String?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            listener: Api.OnApiCallbackListener?
-        ) {
-            segmentMethod("add", segment_id, email, phone, listener)
-        }
-
-        /**
-         * Remove user from a segment
-         * https://reference.api.rees46.com/?swift#remove-user-from-a-segment
-         *
-         * @param segment_id
-         * @param email
-         * @param phone
-         */
-        fun removeFromSegment(@NonNull segment_id: String?, @Nullable email: String?, @Nullable phone: String?) {
-            segmentMethod("remove", segment_id, email, phone, null)
-        }
-
-        fun removeFromSegment(
-            @NonNull segment_id: String?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            listener: Api.OnApiCallbackListener?
-        ) {
-            segmentMethod("remove", segment_id, email, phone, listener)
-        }
-
-        /**
-         * Get user segments
-         * https://reference.api.rees46.com/?swift#get-user-segments
-         *
-         * @param listener
-         */
-        fun getCurrentSegment(@NonNull listener: Api.OnApiCallbackListener?) {
-            instance.getAsync("segments/get", JSONObject(), listener)
-        }
-
-        private fun segmentMethod(
-            method: String?,
-            @Nullable segment_id: String?,
-            @Nullable email: String?,
-            @Nullable phone: String?,
-            @Nullable listener: Api.OnApiCallbackListener?
-        ) {
+        fun notificationReceived(data: Map<String, String>) {
+            val params = JSONObject()
             try {
-                val params: JSONObject = JSONObject()
-                if (segment_id != null) {
-                    params.put("segment_id", segment_id)
+                val type = data["type"]
+                if (type != null) {
+                    params.put("type", type)
                 }
-                if (email != null) {
-                    params.put("email", email)
+                val id = data["id"]
+                if (id != null) {
+                    params.put("code", id)
                 }
-                if (phone != null) {
-                    params.put("phone", phone)
+                if (params.length() > 0) {
+                    instance?.sendAsync("track/received", params)
                 }
-                instance.sendAsync("segments/$method", params, listener)
             } catch (e: JSONException) {
-                Log.e(TAG, e.getMessage(), e)
+                Log.e(TAG, e.message, e)
             }
         }
 
-        /**
-         * Send notification token
-         * https://reference.api.rees46.com/?java#create-new-token
-         *
-         * @param token
-         * @param listener
-         */
-        fun setPushTokenNotification(@NonNull token: String?, listener: Api.OnApiCallbackListener?) {
-            val params: HashMap<String?, String?> = HashMap()
-            params.put("platform", "android")
-            params.put("token", token)
-            instance.sendAsync("mobile_push_tokens", JSONObject(params), listener)
-        }
 
         //----------Private--------------->
         /**
          * @param message Сообщение
          */
-        fun debug(message: String?) {
+        fun debug(message: String) {
             Log.d(TAG, message)
         }
 
@@ -963,14 +885,14 @@ class SDK protected constructor(
          * @param message Сообщение
          */
         fun warn(message: String?) {
-            Log.w(TAG, message)
+            Log.w(TAG, message.toString())
         }
 
         /**
          * @param message Сообщение об ошибке
          */
         fun error(message: String?) {
-            Log.e(TAG, message)
+            Log.e(TAG, message.toString())
         }
 
         /**
@@ -984,11 +906,42 @@ class SDK protected constructor(
         /**
          * @param remoteMessage
          */
-        fun onMessage(remoteMessage: RemoteMessage?) {
-            notificationReceived(remoteMessage.getData())
-            if (instance.onMessageListener != null) {
-                instance.onMessageListener.onMessage(remoteMessage.getData())
+        fun onMessage(remoteMessage: RemoteMessage) {
+            notificationReceived(remoteMessage.data)
+            instance?.onMessageListener?.onMessage(remoteMessage.data)
+        }
+
+        /**
+         * @param listener
+         */
+        fun stories(code: String, listener: OnApiCallbackListener) {
+            instance?.getAsync("stories/$code", JSONObject(), listener)
+        }
+
+        /**
+         * Вызывает событие сторисов
+         *
+         * @param event    Событие
+         * @param code     Код блока сторисов
+         * @param story_id Идентификатор сториса
+         * @param slide_id Идентификатор слайда
+         */
+        fun track_story(event: String, code: String?, story_id: Int, slide_id: String) {
+            try {
+                val params = JSONObject()
+                params.put("event", event)
+                params.put("story_id", story_id)
+                params.put("slide_id", slide_id)
+                params.put("code", code)
+
+                //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
+                lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
+
+                instance?.sendAsync("track/stories", params, null)
+            } catch (e: JSONException) {
+                e.printStackTrace()
             }
         }
+
     }
 }

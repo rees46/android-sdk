@@ -1,25 +1,20 @@
 package com.personalizatio
 
 import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
 class MessagingService : FirebaseMessagingService() {
-    @Override
-    fun onMessageReceived(remoteMessage: RemoteMessage?) {
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
         // Check if message contains a data payload.
 
-        if (remoteMessage.getData().size() > 0) {
-            SDK.debug("Message data payload: " + remoteMessage.getData())
+        if (remoteMessage.data.isNotEmpty()) {
+            SDK.debug("Message data payload: " + remoteMessage.data)
             SDK.onMessage(remoteMessage)
         }
 
         // Check if message contains a notification payload.
-        if (remoteMessage.getNotification() != null) {
-            SDK.debug("Message Notification Body: " + remoteMessage.getNotification().getBody())
+        if (remoteMessage.notification != null) {
+            SDK.debug("Message Notification Body: " + remoteMessage.notification!!.body)
         }
     }
 }

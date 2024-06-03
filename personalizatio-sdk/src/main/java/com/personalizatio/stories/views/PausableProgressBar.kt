@@ -95,7 +95,7 @@ internal class PausableProgressBar @JvmOverloads constructor(
 
         animation = PausableScaleAnimation(0f, 1f, 1f, 1f, Animation.ABSOLUTE, 0f, Animation.RELATIVE_TO_SELF, 0f)
         animation?.apply {
-            this.duration = duration
+            duration = this@PausableProgressBar.duration
             interpolator = LinearInterpolator()
             fillAfter = true;
             setAnimationListener(object : Animation.AnimationListener {

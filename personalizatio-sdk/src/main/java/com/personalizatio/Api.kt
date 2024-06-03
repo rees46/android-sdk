@@ -1,22 +1,33 @@
 package com.personalizatio
 
 import android.net.Uri
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.ConnectException
+import java.net.HttpURLConnection
+import java.net.URL
+import java.nio.charset.StandardCharsets
+import java.util.Locale
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
-class Api private constructor(private val url: String?) {
+class Api private constructor(private val url: String) {
+
     abstract class OnApiCallbackListener {
-        fun onSuccess(response: JSONObject?) {}
-        fun onSuccess(response: JSONArray?) {}
-        fun onError(code: Int, msg: String?) {}
+        open fun onSuccess(response: JSONObject?) {}
+        fun onSuccess(response: JSONArray) {}
+        open fun onError(code: Int, msg: String?) {}
     }
 
     companion object {
         private var instance: Api? = null
-        fun initialize(url: String?) {
+
+        fun initialize(url: String) {
             instance = Api(url)
         }
 
@@ -25,39 +36,34 @@ class Api private constructor(private val url: String?) {
          * @param params   request
          * @param listener callback
          */
-        fun send(
-            request_type: String?,
-            method: String?,
-            params: JSONObject?,
-            @Nullable listener: OnApiCallbackListener?
-        ) {
-            val thread: Thread = Thread {
+        fun send(request_type: String, method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+            val thread = Thread {
                 try {
-                    val builder: Uri.Builder = Uri.parse(instance.url + method).buildUpon()
-                    val it: Iterator<String?> = params.keys()
+                    val urlString = instance?.url ?: ""
+                    if (urlString.isEmpty()) return@Thread
+
+                    val builder = Uri.parse(urlString + method).buildUpon()
+                    val it = params.keys()
                     while (it.hasNext()) {
                         val key = it.next()
                         builder.appendQueryParameter(key, params.getString(key))
                     }
-
-                    val url: URL?
-                    if (request_type.toUpperCase().equals("POST")) {
-                        url = URL(instance.url + method)
+                    val url = if (request_type.uppercase(Locale.getDefault()) == "POST") {
+                        URL(urlString + method)
                     } else {
-                        url = URL(builder.build().toString())
+                        URL(builder.build().toString())
                     }
 
-                    val conn: HttpURLConnection = url.openConnection() as HttpURLConnection
+                    val conn = url.openConnection() as HttpURLConnection
                     conn.setRequestProperty("User-Agent", SDK.userAgent())
-                    conn.setRequestMethod(request_type.toUpperCase())
-                    conn.setConnectTimeout(5000)
+                    conn.requestMethod = request_type.uppercase(Locale.getDefault())
+                    conn.connectTimeout = 5000
 
-                    if (request_type.toUpperCase().equals("POST")) {
+                    if (request_type.uppercase(Locale.getDefault()) == "POST") {
                         conn.setRequestProperty("Content-Type", "application/json")
-                        conn.setDoOutput(true)
-                        conn.setDoInput(true)
-                        val os: BufferedWriter =
-                            BufferedWriter(OutputStreamWriter(conn.getOutputStream(), StandardCharsets.UTF_8))
+                        conn.doOutput = true
+                        conn.doInput = true
+                        val os = BufferedWriter(OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8))
                         os.write(params.toString())
                         os.flush()
                         os.close()
@@ -65,51 +71,48 @@ class Api private constructor(private val url: String?) {
 
                     conn.connect()
 
-                    if (request_type.toUpperCase().equals("POST")) {
-                        SDK.debug((conn.getResponseCode() + ": " + request_type.toUpperCase()).toString() + " " + url + " with body: " + params)
+                    if (request_type.uppercase(Locale.getDefault()) == "POST") {
+                        SDK.debug(conn.responseCode.toString() + ": " + request_type.uppercase(Locale.getDefault())
+                                    + " " + url + " with body: " + params)
                     } else {
-                        SDK.debug(
-                            (conn.getResponseCode() + ": " + request_type.toUpperCase()).toString() + " " + builder.build()
-                                .toString()
-                        )
+                        SDK.debug(conn.responseCode.toString() + ": " + request_type.uppercase(Locale.getDefault())
+                                + " " + builder.build().toString())
                     }
 
-                    if (listener != null && conn.getResponseCode() === HttpURLConnection.HTTP_OK) {
-                        val json: Object = JSONTokener(readStream(conn.getInputStream())).nextValue()
+                    if (listener != null && conn.responseCode == HttpURLConnection.HTTP_OK) {
+                        val json = JSONTokener(readStream(conn.inputStream)).nextValue()
                         if (json is JSONObject) {
-                            listener.onSuccess(json as JSONObject)
+                            listener.onSuccess(json)
                         } else if (json is JSONArray) {
-                            listener.onSuccess(json as JSONArray)
+                            listener.onSuccess(json)
                         }
                     }
 
-                    if (conn.getResponseCode() >= 400) {
-                        val error = readStream(conn.getErrorStream())
+                    if (conn.responseCode >= 400) {
+                        val error = readStream(conn.errorStream)
                         SDK.error(error)
-                        listener?.onError(conn.getResponseCode(), error)
+                        listener?.onError(conn.responseCode, error)
                     }
 
                     conn.disconnect()
                 } catch (e: ConnectException) {
-                    SDK.error(e.getMessage())
-                    listener?.onError(504, e.getMessage())
+                    SDK.error(e.message)
+                    listener?.onError(504, e.message)
                 } catch (e: Exception) {
-                    SDK.error(e.getMessage(), e)
-                    if (listener != null) {
-                        listener.onError(-1, e.getMessage())
-                    }
+                    SDK.error(e.message, e)
+                    listener?.onError(-1, e.message)
                 }
             }
 
             thread.start()
         }
 
-        private fun readStream(`in`: InputStream?): String? {
+        private fun readStream(inputStream: InputStream): String {
             var reader: BufferedReader? = null
-            val response: StringBuffer = StringBuffer()
+            val response = StringBuffer()
             try {
-                reader = BufferedReader(InputStreamReader(`in`))
-                var line: String? = ""
+                reader = BufferedReader(InputStreamReader(inputStream))
+                var line: String?
                 while ((reader.readLine().also { line = it }) != null) {
                     response.append(line)
                 }

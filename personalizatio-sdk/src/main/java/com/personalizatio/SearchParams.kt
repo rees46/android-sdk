@@ -33,7 +33,7 @@ class SearchParams : AbstractParams<SearchParams>() {
     /**
      * Типы поиска
      */
-    enum class TYPE(var value: String) {
+    enum class TYPE(@JvmField var value: String) {
         INSTANT("instant_search"),
         FULL("full_search")
     }

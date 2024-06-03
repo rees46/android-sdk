@@ -111,7 +111,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                 }
                 if (storiesStarted) {
                     story?.apply {
-                        SDK.track_story("view", storiesView.code, story!!.id, story!!.getSlide(position).id)
+                        SDK.track_story("view", storiesView.code, id, getSlide(position).id)
                         playVideo()
                     }
                 }
@@ -219,7 +219,9 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                         holder.storyItem.reloadLayout.visibility = GONE
                         playVideo()
                     } else {
-                        holder.storyItem.update(this, mViewPager.currentItem, storiesView.code!!, story!!.id)
+                        storiesView.code?.let { code ->
+                            holder.storyItem.update(this, mViewPager.currentItem, code, story!!.id)
+                        }
                     }
                 }
             }
