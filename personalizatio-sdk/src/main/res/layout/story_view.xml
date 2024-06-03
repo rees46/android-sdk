@@ -24,7 +24,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <com.personalizatio.stories.StoriesProgressView
+        <com.personalizatio.stories.views.StoriesProgressView
             android:id="@+id/storiesProgressView"
             android:layout_width="0dp"
             android:layout_height="3dp"
