@@ -100,20 +100,24 @@ class StoriesView : ConstraintLayout, ClickListener {
         settings.failed_load_text = resources.getString(R.string.failed_load_text)
 
         //Запрашиваем сторисы
-        SDK.stories(this.code, object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject) {
-                Log.d("stories", response.toString())
-                try {
-                    val jsonStories = response.getJSONArray("stories")
-                    for (i in 0 until jsonStories.length()) {
-                        list.add(Story(jsonStories.getJSONObject(i)))
+        this.code?.let {
+            SDK.stories(it, object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response?.apply {
+                        Log.d("stories", response.toString())
+                        try {
+                            val jsonStories = response.getJSONArray("stories")
+                            for (i in 0 until jsonStories.length()) {
+                                list.add(Story(jsonStories.getJSONObject(i)))
+                            }
+                            handler.sendEmptyMessage(1)
+                        } catch (e: JSONException) {
+                            Log.e(SDK.TAG, e.message, e)
+                        }
                     }
-                    handler.sendEmptyMessage(1)
-                } catch (e: JSONException) {
-                    Log.e(SDK.TAG, e.message, e)
                 }
-            }
-        })
+            })
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
