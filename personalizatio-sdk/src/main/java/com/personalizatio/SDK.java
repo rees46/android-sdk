@@ -880,7 +880,7 @@ public class SDK {
 
 			// Get new Instance ID token
 			final String token = task.getResult();
-			SDK.debug("token: " + token);
+			SDK.debug("Firebase token: " + token);
 
 			//Check send token
 			if( prefs().getString(TOKEN_FIELD, null) == null || !Objects.equals(prefs().getString(TOKEN_FIELD, null), token) ) {
@@ -964,8 +964,21 @@ public class SDK {
 	 */
 	public static void onMessage(RemoteMessage remoteMessage) {
 		notificationReceived(remoteMessage.getData());
-		if( instance.onMessageListener != null ) {
-			instance.onMessageListener.onMessage(remoteMessage.getData());
+
+		if (instance.onMessageListener != null) {
+			RemoteMessage.Notification notification = remoteMessage.getNotification();
+			Map<String, String> data = new HashMap<>(remoteMessage.getData());
+
+			if (notification != null) {
+				data.put("title", notification.getTitle());
+				data.put("body", notification.getBody());
+				if (notification.getImageUrl() != null) {
+					String imageUrl = notification.getImageUrl().toString();
+					data.put("image", imageUrl);
+				}
+			}
+
+			instance.onMessageListener.onMessage(data);
 		}
 	}
 }

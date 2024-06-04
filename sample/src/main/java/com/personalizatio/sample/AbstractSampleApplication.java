@@ -14,6 +14,7 @@ import android.util.Log;
 
 import com.personalizatio.OnMessageListener;
 import com.personalizatio.SDK;
+import com.rees46.sdk.REES46;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,11 +46,11 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 
 					@Override
 					protected Bitmap doInBackground(String... params) {
-						if( params[0] != null ) {
+						if (params[0] != null) {
 							try {
 								InputStream in = new URL(params[0]).openStream();
 								return BitmapFactory.decodeStream(in);
-							} catch(IOException e) {
+							} catch (IOException e) {
 								e.printStackTrace();
 							}
 						}
@@ -59,37 +60,76 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 					@Override
 					protected void onPostExecute(Bitmap result) {
 						super.onPostExecute(result);
-
-						Intent intent = new Intent(getApplicationContext(), AbstractMainActivity.class);
-						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-
-						//REQUIRED! For tracking click notification
-						intent.putExtra(T.NOTIFICATION_TYPE, data.get("type"));
-						intent.putExtra(T.NOTIFICATION_ID, data.get("id"));
-
-						PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
-
-						NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getApplicationContext(), getString(R.string.notification_channel_id))
-								.setSmallIcon(R.mipmap.ic_launcher)
-								.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")))
-								.setContentTitle(data.get("title"))
-								.setContentText(data.get("body"))
-								.setAutoCancel(true)
-								.setContentIntent(pendingIntent);
-
-						if( result != null ) {
-							notificationBuilder.setLargeIcon(result);
-						}
-
-						NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-						if( notificationManager != null ) {
-							notificationManager.notify(0, notificationBuilder.build());
-						} else {
-							Log.e(T.TAG, "NotificationManager not allowed");
-						}
+						createNotification(getApplicationContext(), data);
 					}
 				}.execute(data.get("icon"));
 			}
 		});
+	}
+
+	private static void createNotification(Context context, Map<String, String> data) {
+		Intent intent = new Intent(context, context.getClass());
+		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+		intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
+		intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
+
+		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, "notification_channel")
+				.setContentTitle(data.get("title"))
+				.setContentText(data.get("body"))
+				.setSmallIcon(android.R.drawable.stat_notify_chat)
+				.setAutoCancel(true)
+				.setContentIntent(pendingIntent);
+
+		// Check if there is an image URL in the data
+		String imageUrl = data.get("image");
+		if (imageUrl != null && !imageUrl.isEmpty()) {
+			// Load the image asynchronously
+			new AsyncTask<String, Void, Bitmap>() {
+				@Override
+				protected Bitmap doInBackground(String... params) {
+					try {
+						InputStream in = new URL(params[0]).openStream();
+						return BitmapFactory.decodeStream(in);
+					} catch (IOException e) {
+						e.printStackTrace();
+						return null;
+					}
+				}
+
+				@Override
+				protected void onPostExecute(Bitmap result) {
+					super.onPostExecute(result);
+					if (result != null) {
+						// If the image is loaded successfully, set it as the large icon
+						notificationBuilder.setLargeIcon(result)
+								.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(result).bigLargeIcon(null));
+					} else {
+						// If the image failed to load, use BigTextStyle
+						notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+					}
+
+					// Show the notification
+					NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+					if (notificationManager != null) {
+						notificationManager.notify(0, notificationBuilder.build());
+					} else {
+						Log.e(REES46.TAG, "NotificationManager not allowed");
+					}
+				}
+			}.execute(imageUrl);
+		} else {
+			// If there is no image URL, use BigTextStyle
+			notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+
+			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+			if (notificationManager != null) {
+				notificationManager.notify(0, notificationBuilder.build());
+			} else {
+				Log.e(REES46.TAG, "NotificationManager not allowed");
+			}
+		}
 	}
 }

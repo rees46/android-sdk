@@ -12,8 +12,10 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.personalizatio.Params;
 import com.personalizatio.SDK;
+import com.rees46.sdk.REES46;
 
 import java.util.HashMap;
 
@@ -57,6 +59,13 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		});
 
 		T.notificationClicked(getIntent().getExtras());
+
+		FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+					final String token = task.getResult();
+					System.out.println("FIREBASE TOKEN" + token);
+				}
+				);
+
 
 //		//Запрашиваем поиск
 //		SearchParams params = new SearchParams();

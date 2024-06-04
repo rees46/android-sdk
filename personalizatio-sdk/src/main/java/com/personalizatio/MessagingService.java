@@ -16,12 +16,13 @@ final public class MessagingService extends FirebaseMessagingService {
 		// Check if message contains a data payload.
 		if( remoteMessage.getData().size() > 0 ) {
 			SDK.debug("Message data payload: " + remoteMessage.getData());
-			SDK.onMessage(remoteMessage);
 		}
 
 		// Check if message contains a notification payload.
 		if( remoteMessage.getNotification() != null ) {
-			SDK.debug("Message Notification Body: " + remoteMessage.getNotification().getBody());
+			SDK.debug("Message Notification Body: " + remoteMessage.getNotification());
 		}
+
+		SDK.onMessage(remoteMessage);
 	}
 }
