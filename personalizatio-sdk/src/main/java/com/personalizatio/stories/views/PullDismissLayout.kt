@@ -60,7 +60,7 @@ internal class PullDismissLayout : FrameLayout {
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        dragHelper?.apply {
+        dragHelper?.let { dragHelper ->
             val action = MotionEventCompat.getActionMasked(event)
 
             var pullingDown = false
@@ -69,26 +69,27 @@ internal class PullDismissLayout : FrameLayout {
                 MotionEvent.ACTION_DOWN -> {
                     verticalTouchSlop = event.y
                     val dy = event.y - verticalTouchSlop
-                    if (dy > touchSlop) {
+                    if (dy > dragHelper.touchSlop) {
                         pullingDown = true
                     }
                 }
 
                 MotionEvent.ACTION_MOVE -> {
                     val dy = event.y - verticalTouchSlop
-                    if (dy > touchSlop) {
+                    if (dy > dragHelper.touchSlop) {
                         pullingDown = true
                     }
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> verticalTouchSlop = 0.0f
             }
-            if (!shouldInterceptTouchEvent(event) && pullingDown) {
-                if (viewDragState == ViewDragHelper.STATE_IDLE && checkTouchSlop(ViewDragHelper.DIRECTION_VERTICAL)) {
+            if (!dragHelper.shouldInterceptTouchEvent(event) && pullingDown) {
+                if (dragHelper.viewDragState == ViewDragHelper.STATE_IDLE
+                    && dragHelper.checkTouchSlop(ViewDragHelper.DIRECTION_VERTICAL)) {
                     val child = getChildAt(0)
                     if (child != null && listener?.onShouldInterceptTouchEvent() != true) {
-                        captureChildView(child, event.getPointerId(0))
-                        return viewDragState == ViewDragHelper.STATE_DRAGGING
+                        dragHelper.captureChildView(child, event.getPointerId(0))
+                        return dragHelper.viewDragState == ViewDragHelper.STATE_DRAGGING
                     }
                 }
             }
@@ -99,9 +100,9 @@ internal class PullDismissLayout : FrameLayout {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        dragHelper?.apply {
-            processTouchEvent(event)
-            return capturedView != null
+        dragHelper?.let { dragHelper ->
+            dragHelper.processTouchEvent(event)
+            return dragHelper.capturedView != null
         }
 
         return false

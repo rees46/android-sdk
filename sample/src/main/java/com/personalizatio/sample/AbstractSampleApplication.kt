@@ -61,8 +61,8 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
                         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
                         //REQUIRED! For tracking click notification
-                        intent.putExtra(sdk.NOTIFICATION_TYPE, data["type"])
-                        intent.putExtra(sdk.NOTIFICATION_ID, data["id"])
+                        intent.putExtra(SDK.NOTIFICATION_TYPE, data["type"])
+                        intent.putExtra(SDK.NOTIFICATION_ID, data["id"])
 
                         val pendingIntent = PendingIntent.getActivity(
                             applicationContext,

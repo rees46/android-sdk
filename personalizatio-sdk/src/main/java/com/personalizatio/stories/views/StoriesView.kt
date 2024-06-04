@@ -103,7 +103,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         this.code?.let {
             SDK.stories(it, object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.apply {
+                    response?.let { response ->
                         Log.d("stories", response.toString())
                         try {
                             val jsonStories = response.getJSONArray("stories")
