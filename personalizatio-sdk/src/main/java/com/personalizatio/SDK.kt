@@ -844,7 +844,7 @@ open class SDK {
         }
 
         fun userAgent(): String {
-            return "Personalizatio SDK " + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v";// + BuildConfig.VERSION_NAME
+            return "Personalizatio SDK " + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
         }
 
         /**
