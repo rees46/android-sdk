@@ -59,9 +59,7 @@ publishing {
 				source = variant.javaCompileProvider.get().source // Yes, javaCompile is deprecated,
 				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
 				destinationDir = javaDocDestDir
-				classpath += files(android.getBootClasspath().join(File.pathSeparator))
 				configurations.implementation.setCanBeResolved(true)
-				classpath += files(configurations.implementation)
 				options.links("http://docs.oracle.com/javase/7/docs/api/");
 				options.links("http://d.android.com/reference/");
 				exclude '**/BuildConfig.java'
@@ -150,6 +148,9 @@ publishing {
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
+	javadoc.classpath += files(project.android.getBootClasspath().join(File.pathSeparator))
+	javadoc.classpath += files(configurations.implementation)
+
 	nexusPublishing {
 		repositories {
 			android.libraryVariants.all { variant ->
