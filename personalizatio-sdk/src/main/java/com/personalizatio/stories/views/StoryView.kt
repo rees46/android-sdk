@@ -98,7 +98,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         mViewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 val player = com.personalizatio.stories.Player.player
-                player?.apply {
+                player?.let {
                     if (player.isPlaying || player.isLoading) {
                         player.pause()
                     }
@@ -110,24 +110,26 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     }
                 }
                 if (storiesStarted) {
-                    story?.apply {
-                        SDK.track_story("view", storiesView.code, id, getSlide(position).id)
+                    story?.let { story ->
+                        SDK.track_story("view", storiesView.code, id, story.getSlide(position).id)
                         playVideo()
                     }
                 }
             }
         })
 
-        com.personalizatio.stories.Player?.apply {
-            player!!.volume = if (storiesView.isMute) 0f else 1f
-            storiesView.muteListener = Runnable {
-                player!!.volume = 1f
-            }
+        com.personalizatio.stories.Player?.let { player ->
+            player.player?.let { innerPlayer ->
+                innerPlayer.volume = if (storiesView.isMute) 0f else 1f
+                storiesView.muteListener = Runnable {
+                    innerPlayer.volume = 1f
+                }
 
-            //Управление звуком
-            mute.setOnClickListener {
-                storiesView.muteVideo(mute.isChecked)
-                player!!.volume = if (mute.isChecked) 0f else 1f
+                //Управление звуком
+                mute.setOnClickListener {
+                    storiesView.muteVideo(mute.isChecked)
+                    innerPlayer.volume = if (mute.isChecked) 0f else 1f
+                }
             }
         }
 
@@ -181,7 +183,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         if (isPlaying) {
             val holder = getHolder(mViewPager.currentItem)
-            holder?.apply {
+            holder?.let {
                 holder.storyItem.video.visibility = VISIBLE
                 holder.storyItem.image.animate().alpha(0f).setDuration(300)
             }
@@ -210,23 +212,23 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     override fun onPlayerError(error: PlaybackException) {
         Log.e(SDK.TAG, "player error: " + error.message + ", story: " + story?.id)
         val holder = currentHolder
-        holder?.storyItem?.apply {
-            reloadLayout.visibility = VISIBLE
-            reload.setOnClickListener {
+        holder?.storyItem?.let { storyItem ->
+            storyItem.reloadLayout.visibility = VISIBLE
+            storyItem.reload.setOnClickListener {
                 val slide = story?.getSlide(mViewPager.currentItem)
-                slide?.apply {
-                    if (type == "video") {
+                slide?.let {
+                    if (slide.type == "video") {
                         holder.storyItem.reloadLayout.visibility = GONE
                         playVideo()
                     } else {
                         storiesView.code?.let { code ->
-                            holder.storyItem.update(this, mViewPager.currentItem, code, story!!.id)
+                            holder.storyItem.update(slide, mViewPager.currentItem, code, story!!.id)
                         }
                     }
                 }
             }
             //Добавляем авто-обновление
-            reload.postDelayed({ holder.storyItem.reload.callOnClick() }, 15000L)
+            storyItem.reload.postDelayed({ holder.storyItem.reload.callOnClick() }, 15000L)
         }
     }
 
@@ -279,8 +281,8 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         fun bind(slide: Slide?, position: Int) {
             holders[position] = this
             mute.visibility = GONE
-            slide?.apply { storyItem.update(this, position, storiesView.code!!, story!!.id) }
-            onTouchListener?.apply { storyItem.setOnTouchListener(this)  }
+            slide?.let { storyItem.update(slide, position, storiesView.code!!, story!!.id) }
+            onTouchListener?.let { listener -> storyItem.setOnTouchListener(listener)  }
 
             //Устанавливаем загрузку видео, если биндим текущий элемент
             if (position == mViewPager.currentItem) {
@@ -321,11 +323,11 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     fun updateDurations() {
-        story?.apply {
-            val slidesCount = slidesCount
+        story?.let { story ->
+            val slidesCount = story.slidesCount
             val durations = LongArray(slidesCount)
             for (i in 0 until slidesCount) {
-                durations[i] = getSlide(i).duration
+                durations[i] = story.getSlide(i).duration
             }
             storiesProgressView.setStoriesCountWithDurations(durations)
         }
@@ -346,13 +348,13 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     fun resume() {
         val slide = story?.getSlide(mViewPager.currentItem)
 
-        slide?.apply {
-            if (!locked && isPrepared) {
+        slide?.let {
+            if (!locked && slide.isPrepared) {
                 storiesProgressView.resume()
                 val player = com.personalizatio.stories.Player.player
-                player?.apply {
-                    if (type == "video" && !isLoading && !isPlaying) {
-                        this.play()
+                player?.let {
+                    if (slide.type == "video" && !player.isLoading && !player.isPlaying) {
+                        player.play()
                     }
                 }
             }
@@ -360,14 +362,14 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     override fun onNext() {
-        story?.apply {
-            var startPosition = startPosition
-            if (startPosition + 1 >= slidesCount) {
+        story?.let { story ->
+            var startPosition = story.startPosition
+            if (startPosition + 1 >= story.slidesCount) {
                 onComplete()
                 return
             }
             startPosition++
-            this.startPosition = startPosition
+            story.startPosition = startPosition
             mViewPager.setCurrentItem(startPosition, false)
             storiesProgressView.startStories(startPosition)
         }
@@ -385,23 +387,23 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     override fun onPrev() {
-        story?.apply {
-            var startPosition = startPosition
+        story?.let { story ->
+            var startPosition = story.startPosition
             if (startPosition <= 0) {
                 prevStoryListener!!.run()
                 return
             }
             startPosition--
-            this.startPosition = startPosition
+            story.startPosition = startPosition
             mViewPager.setCurrentItem(startPosition, false)
             storiesProgressView.startStories(startPosition)
         }
     }
 
     override fun onComplete() {
-        story?.apply {
-            isViewed = true
-            startPosition = 0
+        story?.let { story ->
+            story.isViewed = true
+            story.startPosition = 0
         }
         updateDurations()
         completeListener?.run()
@@ -412,13 +414,13 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     fun startStories() {
-        story?.apply {
-            val startPosition = startPosition
+        story?.let { story ->
+            val startPosition = story.startPosition
 
             if (!storiesStarted) {
                 storiesStarted = true
                 playVideo()
-                SDK.track_story("view", storiesView.code, id, getSlide(startPosition).id)
+                SDK.track_story("view", storiesView.code, id, story.getSlide(startPosition).id)
             }
 
             if (!locked) {

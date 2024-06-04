@@ -33,8 +33,6 @@ open class SDK {
     private var seance: String? = null
     private var onMessageListener: OnMessageListener? = null
 
-    var NOTIFICATION_TYPE: String = "NOTIFICATION_TYPE"
-    var NOTIFICATION_ID: String = "NOTIFICATION_ID"
     val tag: String
         get() = TAG
 
@@ -273,15 +271,13 @@ open class SDK {
      * Возвращает идентификатор сессии
      */
     fun getSid(listener: Consumer<String?>) {
-        instance?.apply {
-            val thread = Thread {
-                listener.accept(seance)
-            }
-            if (initialized) {
-                thread.start()
-            } else {
-                queue.add(thread)
-            }
+        val thread = Thread {
+            listener.accept(seance)
+        }
+        if (initialized) {
+            thread.start()
+        } else {
+            queue.add(thread)
         }
     }
 
@@ -387,7 +383,7 @@ open class SDK {
      * @param id   идентификатор сообщения
      */
     protected fun setSource(type: String, id: String) {
-        instance?.apply {
+        instance?.let {
             sourceType = type
             sourceId = id
             sourceTime = System.currentTimeMillis()
@@ -442,10 +438,10 @@ open class SDK {
     }
 
     fun searchBlank(listener: OnApiCallbackListener) {
-        instance?.apply {
+        instance?.let { instance ->
             if (search != null) {
                 if (search!!.blank == null) {
-                    instance!!.getAsync("search/blank",
+                    instance.getAsync("search/blank",
                         Params().build(), object : OnApiCallbackListener() {
                             override fun onSuccess(response: JSONObject?) {
                                 search!!.blank = response
@@ -819,6 +815,8 @@ open class SDK {
 
     companion object {
         lateinit var TAG: String
+        var NOTIFICATION_TYPE: String = "NOTIFICATION_TYPE"
+        var NOTIFICATION_ID: String = "NOTIFICATION_ID"
         private const val SID_FIELD = "sid"
         private const val SID_LAST_ACT_FIELD = "sid_last_act"
         private const val DID_FIELD = "did"
@@ -848,7 +846,6 @@ open class SDK {
         fun userAgent(): String {
             return "Personalizatio SDK " + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v";// + BuildConfig.VERSION_NAME
         }
-
 
         /**
          * @param data from data notification

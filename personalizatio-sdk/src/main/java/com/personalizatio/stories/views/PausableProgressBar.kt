@@ -48,9 +48,7 @@ internal class PausableProgressBar @JvmOverloads constructor(
 
     fun setDuration(duration: Long) {
         this.duration = duration
-        if (animation != null) {
-            animation!!.duration = duration
-        }
+        animation?.duration = duration
     }
 
     fun setCallback(callback: Callback) {
@@ -94,11 +92,11 @@ internal class PausableProgressBar @JvmOverloads constructor(
         maxProgressView.visibility = GONE
 
         animation = PausableScaleAnimation(0f, 1f, 1f, 1f, Animation.ABSOLUTE, 0f, Animation.RELATIVE_TO_SELF, 0f)
-        animation?.apply {
-            duration = this@PausableProgressBar.duration
-            interpolator = LinearInterpolator()
-            fillAfter = true;
-            setAnimationListener(object : Animation.AnimationListener {
+        animation?.let { animation ->
+            animation.duration = duration
+            animation.interpolator = LinearInterpolator()
+            animation.fillAfter = true;
+            animation.setAnimationListener(object : Animation.AnimationListener {
                 override fun onAnimationStart(animation: Animation) {
                     frontProgressView.visibility = VISIBLE
                     callback?.onStartProgress()
@@ -120,17 +118,13 @@ internal class PausableProgressBar @JvmOverloads constructor(
     }
 
     fun pauseProgress() {
-        animation?.apply {
-            paused = true;
-            pause()
-        }
+        paused = true
+        animation?.pause()
     }
 
     fun resumeProgress() {
-        animation?.apply {
-            paused = false;
-            resume()
-        }
+        paused = false
+        animation?.resume()
     }
 
     fun clear() {
