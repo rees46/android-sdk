@@ -148,8 +148,8 @@ publishing {
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
-	javadoc.classpath += files(project.android.getBootClasspath().join(File.pathSeparator))
-	javadoc.classpath += files(configurations.implementation)
+	tasks.javadoc.classpath += files(project.android.getBootClasspath().join(File.pathSeparator))
+	tasks.javadoc.classpath += files(configurations.implementation)
 
 	nexusPublishing {
 		repositories {
