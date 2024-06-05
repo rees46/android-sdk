@@ -1,22 +1,21 @@
-plugins {
-	id 'com.android.library'
-	id 'org.jetbrains.kotlin.android'
-	id 'maven-publish'
-	id 'signing'
-}
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
 
-version = '1.8.10'
+version='1.8.15'
 
 android {
-	compileSdkVersion 34
+	compileSdk 34
 	flavorDimensions += 'default'
+//	publishNonDefault true
 
 	defaultConfig {
 		minSdkVersion 19
 		targetSdkVersion 34
 		buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
-		versionCode 1
-		versionName "1.0"
+		aarMetadata {
+			minCompileSdk = 34
+		}
 	}
 
 	buildTypes {
@@ -31,30 +30,20 @@ android {
 		targetCompatibility JavaVersion.VERSION_17
 	}
 
-	kotlinOptions {
-		jvmTarget = '17'
-	}
-
-	sourceSets {
-		main {
-			java.srcDirs = ['src/main/java']
-		}
-	}
-
 	productFlavors {
 		rees46 {
-			dimension 'default'
-			ext.set("group", "com.rees46")
-			ext.set("libraryName", "com.rees46.sdk")
-			ext.set("webSite", "https://rees46.com")
-			ext.set("vcsUrl", "https://github.com/rees46/rees46-android-sdk")
+			dimension = 'default'
+			project.ext.set("group", "com.rees46")
+			project.ext.set("libraryName", "com.rees46.sdk")
+			project.ext.set("webSite", "https://rees46.com")
+			project.ext.set("vcsUrl", "https://github.com/rees46/rees46-android-sdk")
 		}
 		personaclick {
-			dimension 'default'
-			ext.set("group", "com.personaclick")
-			ext.set("libraryName", "com.personaclick.sdk")
-			ext.set("webSite", "https://personaclick.com")
-			ext.set("vcsUrl", "https://personaclick.com")
+			dimension = 'default'
+			project.ext.set("group", "com.personaclick")
+			project.ext.set("libraryName", "com.personaclick.sdk")
+			project.ext.set("webSite", "https://personaclick.com")
+			project.ext.set("vcsUrl", "https://personaclick.com")
 		}
 	}
 
@@ -62,7 +51,7 @@ android {
 		enable = false
 	}
 
-	namespace 'com.personalizatio'
+	namespace 'com.personalizatio'//expects a release variant
 }
 
 configurations {
@@ -83,11 +72,11 @@ dependencies {
 	implementation 'com.github.bumptech.glide:glide:4.16.0'
 	implementation 'androidx.media3:media3-exoplayer:1.2.1'
 	implementation 'androidx.media3:media3-ui:1.2.1'
-    implementation 'androidx.core:core-ktx:1.13.1'
+//	implementation 'androidx.palette:palette:1.0.0'
 }
 
-group = 'com.personalizatio'
-apply from: '../publish.gradle'
+group='com.personalizatio'
+apply from: '../publish.gradle' // M
 
 task sourcesJar(type: Jar) {
 	archiveClassifier.set('sources')
@@ -95,14 +84,8 @@ task sourcesJar(type: Jar) {
 }
 
 task javadoc(type: Javadoc) {
-	source = fileTree(dir: 'src/main/java', include: '**/*.kt')
+	source = android.sourceSets.main.java.srcDirs
 	classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-	failOnError false
-	options.encoding = 'UTF-8'
-	options.charSet('UTF-8')
-	options.links("http://docs.oracle.com/javase/7/docs/api/")
-	options.links("http://d.android.com/reference/")
-	destinationDir = file("${buildDir}/docs/javadoc")
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
@@ -111,26 +94,22 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 }
 
 task printVersionName {
-	doLast {
-		println version
-	}
+	println version
 }
 
 task increaseVersionCode {
-	doLast {
-		def (major, minor, patch) = version.tokenize('.')
-		major = major.toInteger()
-		minor = minor.toInteger()
-		patch = patch.toInteger()
+	def (major, minor, patch) = version.tokenize('.')
+	major = major.toInteger()
+	minor = minor.toInteger()
+	patch = patch.toInteger()
 
-		Integer newPatch = patch + 1
+	Integer newPatch = patch + 1
 
-		String result = "$major.$minor.$newPatch"
+	String result = "$major.$minor.$newPatch"
 
-		String s = buildFile.getText().replaceFirst("version='$version'", "version='$result'")
+	String s = buildFile.getText().replaceFirst("version='$version'", "version='$result'")
 
-		buildFile.setText(s)
-	}
+	buildFile.setText(s)
 }
 
 artifacts {
