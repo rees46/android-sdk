@@ -28,6 +28,13 @@ final public class REES46 extends SDK {
     public static final String NOTIFICATION_ID = "REES46_NOTIFICATION_ID";
     protected static final String PREFERENCES_KEY = "rees46.sdk";
     protected static final String API_URL = BuildConfig.DEBUG ? "http://dev.api.rees46.com:8000/" : "https://api.rees46.ru/";
+    private static final String NOTIFICATION_CHANNEL = "notification_channel";
+
+    private static final String IMAGE_FIELD = "image";
+    private static final String BODY_FIELD = "body";
+    private static final String TITLE_FIELD = "title";
+    private static final String TYPE_FIELD = "type";
+    private static final String ID_FIELD = "id";
 
     private REES46(Context context, String shop_id, String api_host) {
         super(context, shop_id, api_host == null ? API_URL : "https://".concat(api_host).concat("/"), TAG, PREFERENCES_KEY, "android");
@@ -40,7 +47,6 @@ final public class REES46 extends SDK {
     public static void initialize(final Context context, String shop_id, String api_host) {
         if (instance == null) {
             instance = new REES46(context, shop_id, api_host);
-            System.out.println("CLICK REES");
             REES46.setOnMessageListener(new OnMessageListener() {
                 @SuppressLint("StaticFieldLeak")
                 @Override
@@ -62,7 +68,7 @@ final public class REES46 extends SDK {
                             super.onPostExecute(result);
                             createNotification(context, data);
                         }
-                    }.execute(data.get("image"));
+                    }.execute(data.get(IMAGE_FIELD));
                 }
             });
         }
@@ -72,20 +78,20 @@ final public class REES46 extends SDK {
         Intent intent = new Intent(context, context.getClass());
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-        intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
-        intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
+        intent.putExtra(REES46.NOTIFICATION_TYPE, data.get(TYPE_FIELD));
+        intent.putExtra(REES46.NOTIFICATION_ID, data.get(ID_FIELD));
 
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, "notification_channel")
-                .setContentTitle(data.get("title"))
-                .setContentText(data.get("body"))
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
+                .setContentTitle(data.get(TITLE_FIELD))
+                .setContentText(data.get(BODY_FIELD))
                 .setSmallIcon(android.R.drawable.stat_notify_chat)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent);
 
         // Check if there is an image URL in the data
-        String imageUrl = data.get("image");
+        String imageUrl = data.get(IMAGE_FIELD);
         if (imageUrl != null && !imageUrl.isEmpty()) {
             // Load the image asynchronously
             new AsyncTask<String, Void, Bitmap>() {
@@ -109,7 +115,7 @@ final public class REES46 extends SDK {
                                 .setStyle(new NotificationCompat.BigPictureStyle().bigPicture(result).bigLargeIcon(null));
                     } else {
                         // If the image failed to load, use BigTextStyle
-                        notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+                        notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get(BODY_FIELD)));
                     }
 
                     // Show the notification
@@ -123,7 +129,7 @@ final public class REES46 extends SDK {
             }.execute(imageUrl);
         } else {
             // If there is no image URL, use BigTextStyle
-            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get(BODY_FIELD)));
 
             // Show the notification
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

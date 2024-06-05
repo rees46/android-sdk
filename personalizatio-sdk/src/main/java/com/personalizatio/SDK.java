@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -43,15 +44,18 @@ import java.util.TimeZone;
  */
 public class SDK {
 
-	public static String TAG;
-	public static String NOTIFICATION_TYPE = "NOTIFICATION_TYPE";
-	public static String NOTIFICATION_ID = "NOTIFICATION_ID";
-	private final String PREFERENCES_KEY;
-	private static final String SID_FIELD = "sid";
-	private static final String SID_LAST_ACT_FIELD = "sid_last_act";
-	private static final String DID_FIELD = "did";
-	private static final String TOKEN_FIELD = "token";
-	private static final int SESSION_CODE_EXPIRE = 2;
+    public static String TAG;
+    public static String NOTIFICATION_TYPE = "NOTIFICATION_TYPE";
+    public static String NOTIFICATION_ID = "NOTIFICATION_ID";
+    private final String PREFERENCES_KEY;
+    private static final String SID_FIELD = "sid";
+    private static final String SID_LAST_ACT_FIELD = "sid_last_act";
+    private static final String DID_FIELD = "did";
+    private static final String TOKEN_FIELD = "token";
+    private static final String TITLE_FIELD = "title";
+    private static final String BODY_FIELD = "body";
+    private static final String IMAGE_FIELD = "image";
+    private static final int SESSION_CODE_EXPIRE = 2;
 
 	private final Context context;
 	private final String shop_id;
@@ -962,23 +966,31 @@ public class SDK {
 	/**
 	 * @param remoteMessage
 	 */
-	public static void onMessage(RemoteMessage remoteMessage) {
-		notificationReceived(remoteMessage.getData());
+    public static void onMessage(RemoteMessage remoteMessage) {
+        notificationReceived(remoteMessage.getData());
 
-		if (instance.onMessageListener != null) {
-			RemoteMessage.Notification notification = remoteMessage.getNotification();
-			Map<String, String> data = new HashMap<>(remoteMessage.getData());
+        if (instance.onMessageListener != null) {
+            Map<String, String> data = new HashMap<>();
 
-			if (notification != null) {
-				data.put("title", notification.getTitle());
-				data.put("body", notification.getBody());
-				if (notification.getImageUrl() != null) {
-					String imageUrl = notification.getImageUrl().toString();
-					data.put("image", imageUrl);
-				}
-			}
+            RemoteMessage.Notification notification = remoteMessage.getNotification();
+            if (notification != null) {
+                String title = notification.getTitle();
+                if (title != null && !title.isEmpty()) {
+                    data.put(TITLE_FIELD, title);
+                }
 
-			instance.onMessageListener.onMessage(data);
-		}
-	}
+                String body = notification.getBody();
+                if (body != null && !body.isEmpty()) {
+                    data.put(BODY_FIELD, body);
+                }
+
+                Uri imageUrl = notification.getImageUrl();
+                if (imageUrl != null) {
+                    data.put(IMAGE_FIELD, imageUrl.toString());
+                }
+            }
+
+            instance.onMessageListener.onMessage(data);
+        }
+    }
 }

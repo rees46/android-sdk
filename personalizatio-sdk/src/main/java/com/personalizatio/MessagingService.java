@@ -20,7 +20,7 @@ final public class MessagingService extends FirebaseMessagingService {
 
 		// Check if message contains a notification payload.
 		if( remoteMessage.getNotification() != null ) {
-			SDK.debug("Message Notification Body: " + remoteMessage.getNotification());
+			SDK.debug("Message Notification Body: " + remoteMessage.getNotification().getBody());
 		}
 
 		SDK.onMessage(remoteMessage);

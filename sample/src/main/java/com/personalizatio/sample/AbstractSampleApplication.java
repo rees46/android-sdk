@@ -21,16 +21,18 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Map;
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
 public abstract class AbstractSampleApplication<T extends SDK> extends Application {
 
 	protected abstract String getShopId();
 
 	protected abstract void initialize();
+
+	private static final String NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE";
+	private static final String NOTIFICATION_ID = "REES46_NOTIFICATION_ID";
+	private static final String NOTIFICATION_TITLE = "REES46_NOTIFICATION_TITLE";
+	private static final String NOTIFICATION_BODY = "REES46_NOTIFICATION_BODY";
+	private static final String NOTIFICATION_IMAGE = "REES46_NOTIFICATION_IMAGE";
+	private static final String NOTIFICATION_CHANNEL = "notification_channel";
 
 	public void onCreate() {
 		super.onCreate();
@@ -71,20 +73,20 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 		Intent intent = new Intent(context, context.getClass());
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
-		intent.putExtra(REES46.NOTIFICATION_TYPE, data.get("type"));
-		intent.putExtra(REES46.NOTIFICATION_ID, data.get("id"));
+		intent.putExtra(NOTIFICATION_TYPE, data.get(NOTIFICATION_TYPE));
+		intent.putExtra(NOTIFICATION_ID, data.get(NOTIFICATION_ID));
 
 		PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
-		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, "notification_channel")
-				.setContentTitle(data.get("title"))
-				.setContentText(data.get("body"))
+		NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
+				.setContentTitle(data.get(NOTIFICATION_TITLE))
+				.setContentText(data.get(NOTIFICATION_BODY))
 				.setSmallIcon(android.R.drawable.stat_notify_chat)
 				.setAutoCancel(true)
 				.setContentIntent(pendingIntent);
 
 		// Check if there is an image URL in the data
-		String imageUrl = data.get("image");
+		String imageUrl = data.get(NOTIFICATION_IMAGE);
 		if (imageUrl != null && !imageUrl.isEmpty()) {
 			// Load the image asynchronously
 			new AsyncTask<String, Void, Bitmap>() {
@@ -108,7 +110,7 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 								.setStyle(new NotificationCompat.BigPictureStyle().bigPicture(result).bigLargeIcon(null));
 					} else {
 						// If the image failed to load, use BigTextStyle
-						notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+						notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get(NOTIFICATION_BODY)));
 					}
 
 					// Show the notification
@@ -122,7 +124,7 @@ public abstract class AbstractSampleApplication<T extends SDK> extends Applicati
 			}.execute(imageUrl);
 		} else {
 			// If there is no image URL, use BigTextStyle
-			notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get("body")));
+			notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(data.get(NOTIFICATION_BODY)));
 
 			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 			if (notificationManager != null) {
