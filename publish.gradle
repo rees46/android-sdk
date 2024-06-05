@@ -179,7 +179,9 @@ signing {
 }
 
 afterEvaluate {
-	tasks.javadoc.classpath += files(android.libraryVariants.collect { variant ->
-		variant.javaCompileProvider.get().classpath.files
-	})
+	android.libraryVariants.all { variant ->
+		if(variant == 'release') {
+			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
+		}
+	}
 }
