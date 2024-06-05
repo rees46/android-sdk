@@ -85,7 +85,7 @@ tasks.register('sourcesJar', Jar) {
 
 tasks.register('javadoc', Javadoc) {
 	source = android.sourceSets.main.java.srcDirs
-	classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+	classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 }
 
 tasks.register('javadocJar', Jar) {
