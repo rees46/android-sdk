@@ -85,7 +85,7 @@ tasks.register('sourcesJar', Jar) {
 
 tasks.register('javadoc', Javadoc) {
 	source = android.sourceSets.main.java.srcDirs
-	classpath += project.files(project.android.getBootClasspath().join(File.pathSeparator))
+	classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 }
 
 tasks.register('javadocJar', Jar) {
@@ -116,4 +116,10 @@ tasks.register('increaseVersionCode') {
 artifacts {
 	archives javadocJar
 	archives sourcesJar
+}
+
+afterEvaluate {
+	tasks.javadoc.classpath += files(android.libraryVariants.collect { variant ->
+		variant.javaCompileProvider.get().classpath.files
+	})
 }

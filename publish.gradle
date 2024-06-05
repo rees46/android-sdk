@@ -59,8 +59,9 @@ publishing {
 				source = variant.javaCompileProvider.get().source // Yes, javaCompile is deprecated,
 				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
 				destinationDir = javaDocDestDir
-				configurations.implementation.setCanBeResolved(true)
 				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
+				configurations.implementation.setCanBeResolved(true)
+				classpath += files(configurations.implementation)
 				options.links("http://docs.oracle.com/javase/7/docs/api/");
 				options.links("http://d.android.com/reference/");
 				exclude '**/BuildConfig.java'
@@ -175,4 +176,10 @@ ext["ossrhPassword"] = ossrhPassword
 
 signing {
 	sign publishing.publications
+}
+
+afterEvaluate {
+	tasks.javadoc.classpath += files(android.libraryVariants.collect { variant ->
+		variant.javaCompileProvider.get().classpath.files
+	})
 }
