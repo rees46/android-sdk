@@ -30,24 +30,25 @@ class Player(context: Context) {
     }
 
     fun prepare(url: String) {
-        if (player == null || cache == null) return
-        val mediaSource = ProgressiveMediaSource.Factory(
-            CacheDataSource.Factory()
-                .setCache(cache!!)
-                .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent()))
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-        ).createMediaSource(MediaItem.fromUri(url))
-        player!!.setMediaSource(mediaSource)
-        //		player.setMediaItem(MediaItem.fromUri(url));
-        player!!.prepare()
-        player!!.playWhenReady = true
+        if (cache == null) return
+        player?.let { player ->
+            val mediaSource = ProgressiveMediaSource.Factory(
+                CacheDataSource.Factory()
+                    .setCache(cache!!)
+                    .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent()))
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            ).createMediaSource(MediaItem.fromUri(url))
+            player.setMediaSource(mediaSource)
+            //		player.setMediaItem(MediaItem.fromUri(url));
+            player.prepare()
+            player.playWhenReady = true
+        }
     }
 
     fun release() {
-        if (player == null || cache == null) return
-        cache!!.release()
+        cache?.release()
         cache = null
-        player!!.release()
+        player?.release()
         player = null
     }
 

@@ -7,13 +7,12 @@ import android.graphics.Typeface
 import android.os.Build
 import android.widget.Button
 import android.widget.TextView
-import androidx.annotation.ColorInt
+import androidx.annotation.ColorRes
 
 object ViewUtils {
     const val MAX_COLOR_CHANNEL_VALUE: Int = 255
 
-    @JvmStatic
-    fun getColor(context: Context, colorString: String?, @ColorInt defaultColor: Int): Int {
+    fun getColor(context: Context, colorString: String?, @ColorRes defaultColor: Int): Int {
         if (colorString == null) {
             return context.resources.getColor(defaultColor)
         }
@@ -30,7 +29,7 @@ object ViewUtils {
         context: Context,
         textView: TextView,
         colorString: String?,
-        @ColorInt defaultColor: Int
+        @ColorRes defaultColor: Int
     ) {
         val color = getColor(context, colorString, defaultColor)
 
@@ -41,12 +40,11 @@ object ViewUtils {
         }
     }
 
-    @JvmStatic
     fun setTextColor(
         context: Context,
         button: Button,
         colorString: String?,
-        @ColorInt defaultColor: Int
+        @ColorRes defaultColor: Int
     ) {
         val color = getColor(context, colorString, defaultColor)
 
@@ -57,12 +55,11 @@ object ViewUtils {
         }
     }
 
-    @JvmStatic
     fun setBackgroundColor(
         context: Context,
         button: Button,
         colorString: String?,
-        @ColorInt defaultColor: Int
+        @ColorRes defaultColor: Int
     ) {
         val backgroundColor = getColor(context, colorString, defaultColor)
 
