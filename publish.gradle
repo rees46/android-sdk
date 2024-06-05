@@ -60,6 +60,7 @@ publishing {
 				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
 				destinationDir = javaDocDestDir
 				configurations.implementation.setCanBeResolved(true)
+				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 				options.links("http://docs.oracle.com/javase/7/docs/api/");
 				options.links("http://d.android.com/reference/");
 				exclude '**/BuildConfig.java'
@@ -148,8 +149,6 @@ publishing {
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
-	tasks.javadoc.classpath += files(project.android.getBootClasspath().join(File.pathSeparator))
-	tasks.javadoc.classpath += files(configurations.implementation)
 
 	nexusPublishing {
 		repositories {
