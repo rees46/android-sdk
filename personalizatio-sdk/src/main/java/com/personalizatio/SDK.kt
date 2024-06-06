@@ -266,7 +266,7 @@ open class SDK {
      * @param data profile data
      */
     fun profile(data: HashMap<String, String>, listener: OnApiCallbackListener? = null) {
-        instance?.sendAsync("profile/set", JSONObject(data.toMap()), listener)
+        sendAsync("profile/set", JSONObject(data.toMap()), listener)
     }
 
     /**
@@ -345,7 +345,7 @@ open class SDK {
      * @param listener Event on message receive
      */
     fun setOnMessageListener(listener: OnMessageListener) {
-        instance?.onMessageListener = listener
+        onMessageListener = listener
     }
 
     fun initialize(context: Context?, shop_id: String?) {
@@ -376,49 +376,34 @@ open class SDK {
      * @param listener v
      */
     fun search(query: String, type: SearchParams.TYPE, params: SearchParams, listener: OnApiCallbackListener) {
-        if (instance?.search != null) {
+        if (search != null) {
             params.put(InternalParameter.SEARCH_TYPE, type.value)
                 .put(InternalParameter.SEARCH_QUERY, query)
-            instance?.getAsync("search", params.build(), listener)
+            getAsync("search", params.build(), listener)
         } else {
             warn("Search not initialized")
         }
     }
 
-    /**
-     * Пустой поиск
-     *
-     * @param listener v
-     */
-    @Deprecated(
-        """This method is no longer acceptable to compute time between versions.
-	  <p> Use {@link SDK#searchBlank(Api.OnApiCallbackListener)} instead."""
-    )
-    fun search_blank(listener: OnApiCallbackListener) {
-        searchBlank(listener)
-    }
-
     fun searchBlank(listener: OnApiCallbackListener) {
-        instance?.let { instance ->
-            if (search != null) {
-                if (search!!.blank == null) {
-                    instance.getAsync("search/blank",
-                        Params().build(), object : OnApiCallbackListener() {
-                            override fun onSuccess(response: JSONObject?) {
-                                search!!.blank = response
-                                listener.onSuccess(response)
-                            }
+        if (search != null) {
+            if (search?.blank == null) {
+                getAsync("search/blank",
+                    Params().build(), object : OnApiCallbackListener() {
+                        override fun onSuccess(response: JSONObject?) {
+                            search?.blank = response
+                            listener.onSuccess(response)
+                        }
 
-                            override fun onError(code: Int, msg: String?) {
-                                listener.onError(code, msg)
-                            }
-                        })
-                } else {
-                    listener.onSuccess(search!!.blank)
-                }
+                        override fun onError(code: Int, msg: String?) {
+                            listener.onError(code, msg)
+                        }
+                    })
             } else {
-                warn("Search not initialized")
+                listener.onSuccess(search?.blank)
             }
+        } else {
+            warn("Search not initialized")
         }
     }
 
@@ -440,7 +425,7 @@ open class SDK {
      * @param listener Колбек
      */
     fun recommend(code: String, params: Params, listener: OnApiCallbackListener) {
-        instance!!.getAsync("recommend/$code", params.build(), listener)
+        getAsync("recommend/$code", params.build(), listener)
     }
 
     /**
@@ -472,7 +457,7 @@ open class SDK {
             params.put(lastRecommendedBy!!)
             lastRecommendedBy = null
         }
-        instance?.sendAsync("push", params.build(), listener)
+        sendAsync("push", params.build(), listener)
     }
 
     /**
@@ -510,7 +495,7 @@ open class SDK {
         if (value != null) {
             params.put(InternalParameter.VALUE, value)
         }
-        instance?.sendAsync("push/custom", params.build(), listener)
+        sendAsync("push/custom", params.build(), listener)
     }
 
     /**
@@ -519,7 +504,7 @@ open class SDK {
      * @return String
      */
     fun getDid(): String? {
-        return instance?.did
+        return did
     }
 
     /**
@@ -541,7 +526,7 @@ open class SDK {
         if (phone != null) {
             params.put(InternalParameter.PHONE, phone)
         }
-        instance?.sendAsync("subscriptions/subscribe_for_product_price", params.build(), listener)
+        sendAsync("subscriptions/subscribe_for_product_price", params.build(), listener)
     }
 
     /**
@@ -562,7 +547,7 @@ open class SDK {
             if (phone != null) {
                 params.put(InternalParameter.PHONE.value, phone)
             }
-            instance?.sendAsync("subscriptions/unsubscribe_from_product_price", params, listener)
+            sendAsync("subscriptions/unsubscribe_from_product_price", params, listener)
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -592,7 +577,7 @@ open class SDK {
         if (phone != null) {
             params.put(InternalParameter.PHONE, phone)
         }
-        instance?.sendAsync("subscriptions/subscribe_for_product_available", params.build(), listener)
+        sendAsync("subscriptions/subscribe_for_product_available", params.build(), listener)
     }
 
     /**
@@ -614,11 +599,7 @@ open class SDK {
             if (phone != null) {
                 params.put(InternalParameter.PHONE.value, phone)
             }
-            instance?.sendAsync(
-                "subscriptions/unsubscribe_from_product_available",
-                params,
-                listener
-            )
+            sendAsync("subscriptions/unsubscribe_from_product_available", params, listener)
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -691,7 +672,7 @@ open class SDK {
             if (telegramId != null) {
                 params.put(InternalParameter.TELEGRAM_ID.value, telegramId)
             }
-            instance?.sendAsync("subscriptions/manage", params, listener)
+            sendAsync("subscriptions/manage", params, listener)
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -739,7 +720,7 @@ open class SDK {
      * @param listener
      */
     fun getCurrentSegment(listener: OnApiCallbackListener) {
-        instance?.getAsync("segments/get", JSONObject(), listener)
+        getAsync("segments/get", JSONObject(), listener)
     }
 
     private fun segmentMethod(method: String, segmentId: String?, email: String?, phone: String?, listener: OnApiCallbackListener?) {
@@ -754,7 +735,7 @@ open class SDK {
             if (phone != null) {
                 params.put("phone", phone)
             }
-            instance?.sendAsync("segments/$method", params, listener)
+            sendAsync("segments/$method", params, listener)
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -771,7 +752,7 @@ open class SDK {
         val params = HashMap<String, String>()
         params["platform"] = "android"
         params["token"] = token
-        instance?.sendAsync("mobile_push_tokens", JSONObject(params.toMap()), listener)
+        sendAsync("mobile_push_tokens", JSONObject(params.toMap()), listener)
     }
 
     companion object {

@@ -17,11 +17,6 @@ import java.net.URL
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast
 
-/**
- * Created by Sergey Odintsov
- *
- * @author nixx.dj@gmail.com
- */
 abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     private val classT: KClass<T>
 ): Application() {
