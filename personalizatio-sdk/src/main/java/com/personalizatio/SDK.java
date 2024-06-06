@@ -55,6 +55,7 @@ public class SDK {
     private static final String TITLE_FIELD = "title";
     private static final String BODY_FIELD = "body";
     private static final String IMAGE_FIELD = "image";
+    private static final String IMAGES_FIELD = "images";
     private static final int SESSION_CODE_EXPIRE = 2;
 
 	private final Context context;
@@ -966,31 +967,38 @@ public class SDK {
 	/**
 	 * @param remoteMessage
 	 */
-    public static void onMessage(RemoteMessage remoteMessage) {
-        notificationReceived(remoteMessage.getData());
+	public static void onMessage(RemoteMessage remoteMessage) {
+		notificationReceived(remoteMessage.getData());
 
-        if (instance.onMessageListener != null) {
-            Map<String, String> data = new HashMap<>();
+		if (instance.onMessageListener != null) {
+			Map<String, String> data = new HashMap<>(remoteMessage.getData());
 
-            RemoteMessage.Notification notification = remoteMessage.getNotification();
-            if (notification != null) {
-                String title = notification.getTitle();
-                if (title != null && !title.isEmpty()) {
-                    data.put(TITLE_FIELD, title);
-                }
+			RemoteMessage.Notification notification = remoteMessage.getNotification();
+			if (notification != null) {
+				String title = notification.getTitle();
+				if (title != null && !title.isEmpty()) {
+					data.put(TITLE_FIELD, title);
+				}
 
-                String body = notification.getBody();
-                if (body != null && !body.isEmpty()) {
-                    data.put(BODY_FIELD, body);
-                }
+				String body = notification.getBody();
+				if (body != null && !body.isEmpty()) {
+					data.put(BODY_FIELD, body);
+				}
 
-                Uri imageUrl = notification.getImageUrl();
-                if (imageUrl != null) {
-                    data.put(IMAGE_FIELD, imageUrl.toString());
-                }
-            }
+				Uri imageUrl = notification.getImageUrl();
+				if (imageUrl != null) {
+					data.put(IMAGE_FIELD, imageUrl.toString());
+				}
+			}
 
-            instance.onMessageListener.onMessage(data);
-        }
-    }
+			// Extract and handle multiple images from the data payload
+			String images = data.get(IMAGES_FIELD);
+			if (images != null && !images.isEmpty()) {
+				data.put(IMAGES_FIELD, images); // Preserve the images string
+			}
+
+			instance.onMessageListener.onMessage(data);
+		}
+	}
+
 }
