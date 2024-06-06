@@ -15,10 +15,13 @@ import androidx.core.util.Consumer
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
-import com.personalizatio.Api.OnApiCallbackListener
 import com.personalizatio.Params.InternalParameter
 import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.Params.TrackEvent
+import com.personalizatio.api.Api
+import com.personalizatio.api.ApiMethod
+import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.notifications.Source
 import org.json.JSONException
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -44,29 +47,28 @@ open class SDK {
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private var search: Search? = null
     private lateinit var segment: String
-    private var sourceType: String? = null
-    private var sourceId: String? = null
-    private var sourceTime: Long = 0
+    private lateinit var source: Source
     private lateinit var shopId: String
     private lateinit var stream: String
     private lateinit var preferencesKey: String
+
+    private lateinit var api : Api
 
     /**
      * @param shopId Shop key
      */
     public fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
-        Api.initialize(apiUrl)
+        this.api = Api.getApi(apiUrl)
 
         this.context = context
         this.shopId = shopId
         this.stream = stream
         this.preferencesKey = preferencesKey
         TAG = tag
+
         //Инициализируем сегмент
         segment = prefs().getString("$preferencesKey.segment", arrayOf("A", "B")[Math.round(Math.random()).toInt()]).toString()
-        sourceType = prefs().getString("source_type", null)
-        sourceId = prefs().getString("source_id", null)
-        sourceTime = prefs().getLong("source_time", 0)
+        source = Source.createSource(prefs())
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Create channel to show notifications.
@@ -131,7 +133,7 @@ open class SDK {
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            send("get", "init", params, object : OnApiCallbackListener() {
+            send(ApiMethod.GET("init"), params, object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     try {
                         // Сохраняем данные в память
@@ -292,10 +294,10 @@ open class SDK {
             try {
                 params.put("type", type)
                 params.put("code", code)
-                instance?.sendAsync("track/clicked", params)
+                sendAsync("track/clicked", params)
 
                 //Сохраняем источник
-                setSource(type, code)
+                source.update(type, code, prefs())
             } catch (e: JSONException) {
                 Log.e(TAG, e.message, e)
             }
@@ -305,32 +307,10 @@ open class SDK {
     /**
      * Прямое выполенение запроса
      */
-    private fun send(requestType: String, method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+    private fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         updateSidActivity()
-        try {
-            params.put("shop_id", shopId)
-            if (did != null) {
-                params.put("did", did)
-            }
-            if (seance != null) {
-                params.put("seance", seance)
-                params.put("sid", seance)
-            }
-            params.put("segment", segment)
-            params.put("stream", stream)
 
-            //Добавляем источник к запросу, проверяем время действия 2 дня
-            if (sourceType != null && sourceTime > 0 && sourceTime + 172800 * 1000 > System.currentTimeMillis()) {
-                val source = JSONObject()
-                source.put("from", sourceType)
-                source.put("code", sourceId)
-                params.put("source", source)
-            }
-
-            Api.send(requestType, method, params, listener)
-        } catch (e: JSONException) {
-            error(e.message, e)
-        }
+        api.send(apiMethod, params, listener, shopId, did, seance, segment, stream, source)
     }
 
     private fun sendAsync(method: String, params: JSONObject) {
@@ -341,7 +321,7 @@ open class SDK {
      * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
      */
     fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        val thread = Thread { send("post", method, params, listener) }
+        val thread = Thread { send(ApiMethod.POST(method), params, listener) }
         if (did != null && initialized) {
             thread.start()
         } else {
@@ -353,7 +333,7 @@ open class SDK {
      * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
      */
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        val thread = Thread { send("get", method, params, listener) }
+        val thread = Thread { send(ApiMethod.GET(method), params, listener) }
         if (did != null && initialized) {
             thread.start()
         } else {
@@ -374,25 +354,6 @@ open class SDK {
 
     fun initialize(context: Context?, shop_id: String?, stream: String?) {
         throw IllegalStateException("You need make static initialize method!")
-    }
-
-    /**
-     * Сохраняет данные источника
-     *
-     * @param type тип источника: bulk, chain, transactional
-     * @param id   идентификатор сообщения
-     */
-    protected fun setSource(type: String, id: String) {
-        instance?.let {
-            sourceType = type
-            sourceId = id
-            sourceTime = System.currentTimeMillis()
-            prefs().edit()
-                .putString("source_type", type)
-                .putString("source_id", id)
-                .putLong("source_time", sourceTime)
-                .apply()
-        }
     }
 
     /**
