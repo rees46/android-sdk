@@ -150,7 +150,6 @@ publishing {
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
-
 	nexusPublishing {
 		repositories {
 			android.libraryVariants.all { variant ->
@@ -166,6 +165,12 @@ afterEvaluate {
 			}
 		}
 	}
+
+	android.libraryVariants.all { variant ->
+		if(variant == 'release') {
+			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
+		}
+	}
 }
 
 ext["signing.keyId"] = signing_keyId
@@ -176,12 +181,4 @@ ext["ossrhPassword"] = ossrhPassword
 
 signing {
 	sign publishing.publications
-}
-
-afterEvaluate {
-	android.libraryVariants.all { variant ->
-		if(variant == 'release') {
-			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
-		}
-	}
 }
