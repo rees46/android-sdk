@@ -13,10 +13,10 @@ import android.util.AttributeSet
 import android.util.Log
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.personalizatio.Api.OnApiCallbackListener
 import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
 import com.personalizatio.SDK
+import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
