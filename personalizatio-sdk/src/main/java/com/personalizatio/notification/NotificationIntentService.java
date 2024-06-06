@@ -1,15 +1,11 @@
-package com.personalizatio;
+package com.personalizatio.notification;
 
 import android.app.IntentService;
-import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-
-import com.personalizatio.utils.NotificationHelper;
+import com.personalizatio.notification.NotificationHelper;
 
 import java.io.IOException;
 import java.io.InputStream;

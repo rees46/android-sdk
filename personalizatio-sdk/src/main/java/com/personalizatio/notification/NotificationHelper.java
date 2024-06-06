@@ -1,17 +1,21 @@
-package com.personalizatio.utils;
+package com.personalizatio.notification;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import com.personalizatio.NotificationIntentService;
 import com.rees46.sdk.REES46;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -76,6 +80,22 @@ public class NotificationHelper {
         intent.putExtra(NOTIFICATION_TITLE, data.get(NOTIFICATION_TITLE));
         intent.putExtra(NOTIFICATION_BODY, data.get(NOTIFICATION_BODY));
         return PendingIntent.getService(context, (int) System.currentTimeMillis(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    public static List<Bitmap> loadBitmaps(String urls) {
+        List<Bitmap> bitmaps = new ArrayList<>();
+        if (urls != null) {
+            String[] urlArray = urls.split(",");
+            for (String url : urlArray) {
+                try {
+                    InputStream in = new URL(url).openStream();
+                    bitmaps.add(BitmapFactory.decodeStream(in));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return bitmaps;
     }
 }
 
