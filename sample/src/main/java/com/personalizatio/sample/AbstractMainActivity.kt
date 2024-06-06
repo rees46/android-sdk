@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import com.personalizatio.Params
 import com.personalizatio.SDK
 import com.personalizatio.SearchParams
+import com.personalizatio.api.OnApiCallbackListener
 import org.json.JSONObject
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast
@@ -70,14 +71,14 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 //		val filters = SearchParams.SearchFilters()
 //		filters.put("voltage", arrayOf("11.1", "14.8"))
 //		params.put(SearchParams.Parameter.FILTERS, filters);
-//		sdk?.search("coats", SearchParams.TYPE.FULL, params, object : Api.OnApiCallbackListener() {
+//		sdk?.search("coats", SearchParams.TYPE.FULL, params, object : OnApiCallbackListener() {
 //			override fun onSuccess(response: JSONObject?) {
 //				Log.i(sdk.tag, "Search response: $response")
 //			}
 //		})
 //
 //		//Запрашиваем поиск при клике на пустое поле
-//		sdk?.search_blank(object : Api.OnApiCallbackListener() {
+//		sdk?.search_blank(object : OnApiCallbackListener() {
 //            override fun onSuccess(response: JSONObject?) {
 //                Log.i(sdk.tag, "Search response: $response")
 //            }
@@ -87,7 +88,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 //		val recommenderParams = Params()
 //        recommenderParams.put(Params.Parameter.EXTENDED, true)
 //        recommenderParams.put(Params.Parameter.ITEM, "37")
-//		sdk?.recommend("e9ddb9cdc66285fac40c7a897760582a", recommenderParams, object : Api.OnApiCallbackListener() {
+//		sdk?.recommend("e9ddb9cdc66285fac40c7a897760582a", recommenderParams, object : OnApiCallbackListener() {
 //            override fun onSuccess(response: JSONObject?) {
 //                Log.i(sdk.tag, "Recommender response: $response")
 //            }
