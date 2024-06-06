@@ -78,7 +78,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 //		})
 //
 //		//Запрашиваем поиск при клике на пустое поле
-//		sdk?.search_blank(object : OnApiCallbackListener() {
+//		sdk?.searchBlank(object : OnApiCallbackListener() {
 //            override fun onSuccess(response: JSONObject?) {
 //                Log.i(sdk.tag, "Search response: $response")
 //            }
