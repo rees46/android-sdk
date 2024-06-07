@@ -110,7 +110,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                 }
                 if (storiesStarted) {
                     story?.let { story ->
-                        SDK.track_story("view", storiesView.code, id, story.getSlide(position).id)
+                        SDK.getInstance().trackStory("view", storiesView.code, id, story.getSlide(position).id)
                         playVideo()
                     }
                 }
@@ -418,7 +418,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
             if (!storiesStarted) {
                 storiesStarted = true
                 playVideo()
-                SDK.track_story("view", storiesView.code, id, story.getSlide(startPosition).id)
+                SDK.getInstance().trackStory("view", storiesView.code, id, story.getSlide(startPosition).id)
             }
 
             if (!locked) {

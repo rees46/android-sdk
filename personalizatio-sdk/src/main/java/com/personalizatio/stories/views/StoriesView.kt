@@ -101,7 +101,7 @@ class StoriesView : ConstraintLayout, ClickListener {
 
         //Запрашиваем сторисы
         this.code?.let {
-            SDK.stories(it, object : OnApiCallbackListener() {
+            SDK.getInstance().stories(it, object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     response?.let { response ->
                         Log.d("stories", response.toString())

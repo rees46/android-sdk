@@ -83,7 +83,7 @@ class ProductsAdapter(private val storiesView: StoriesView) :
                                 Intent.ACTION_VIEW,
                                 Uri.parse(if (Strings.isNullOrEmpty(product.deeplink)) product.url else product.deeplink)))
                     }
-                    SDK.track_story("click", storiesView.code, storyId, slideId)
+                    SDK.getInstance().trackStory("click", storiesView.code, storyId, slideId)
                 } catch (e: ActivityNotFoundException) {
                     Log.e(SDK.TAG, e.message, e)
                     Toast.makeText(itemView.context, "Unknown error", Toast.LENGTH_SHORT).show()

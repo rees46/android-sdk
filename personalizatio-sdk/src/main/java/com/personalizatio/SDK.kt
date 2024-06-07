@@ -51,6 +51,7 @@ open class SDK {
     private lateinit var shopId: String
     private lateinit var stream: String
     private lateinit var preferencesKey: String
+    private var lastRecommendedBy: RecommendedBy? = null
 
     private lateinit var api : Api
 
@@ -755,6 +756,61 @@ open class SDK {
         sendAsync("mobile_push_tokens", JSONObject(params.toMap()), listener)
     }
 
+
+    /**
+     * @param listener
+     */
+    fun stories(code: String, listener: OnApiCallbackListener) {
+        instance?.getAsync("stories/$code", JSONObject(), listener)
+    }
+
+    /**
+     * Вызывает событие сторисов
+     *
+     * @param event    Событие
+     * @param code     Код блока сторисов
+     * @param storyId Идентификатор сториса
+     * @param slideId Идентификатор слайда
+     */
+    fun trackStory(event: String, code: String?, storyId: Int, slideId: String) {
+        try {
+            val params = JSONObject()
+            params.put("event", event)
+            params.put("story_id", storyId)
+            params.put("slide_id", slideId)
+            params.put("code", code)
+
+            //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
+            lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
+
+            sendAsync("track/stories", params, null)
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * @param data from data notification
+     */
+    fun notificationReceived(data: Map<String, String>) {
+        val params = JSONObject()
+        try {
+            val type = data["type"]
+            if (type != null) {
+                params.put("type", type)
+            }
+            val id = data["id"]
+            if (id != null) {
+                params.put("code", id)
+            }
+            if (params.length() > 0) {
+                sendAsync("track/received", params)
+            }
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
+        }
+    }
+
     companion object {
         lateinit var TAG: String
         var NOTIFICATION_TYPE: String = "NOTIFICATION_TYPE"
@@ -764,7 +820,6 @@ open class SDK {
         private const val DID_FIELD = "did"
         private const val TOKEN_FIELD = "token"
         private const val SESSION_CODE_EXPIRE = 2
-        private var lastRecommendedBy: RecommendedBy? = null
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
@@ -789,30 +844,6 @@ open class SDK {
             return "Personalizatio SDK " + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
         }
 
-        /**
-         * @param data from data notification
-         */
-        fun notificationReceived(data: Map<String, String>) {
-            val params = JSONObject()
-            try {
-                val type = data["type"]
-                if (type != null) {
-                    params.put("type", type)
-                }
-                val id = data["id"]
-                if (id != null) {
-                    params.put("code", id)
-                }
-                if (params.length() > 0) {
-                    instance?.sendAsync("track/received", params)
-                }
-            } catch (e: JSONException) {
-                Log.e(TAG, e.message, e)
-            }
-        }
-
-
-        //----------Private--------------->
         /**
          * @param message Сообщение
          */
@@ -841,46 +872,12 @@ open class SDK {
             Log.e(TAG, message, e)
         }
 
-        //-------------Методы------------>
         /**
          * @param remoteMessage
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            notificationReceived(remoteMessage.data)
+            instance?.notificationReceived(remoteMessage.data)
             instance?.onMessageListener?.onMessage(remoteMessage.data)
         }
-
-        /**
-         * @param listener
-         */
-        fun stories(code: String, listener: OnApiCallbackListener) {
-            instance?.getAsync("stories/$code", JSONObject(), listener)
-        }
-
-        /**
-         * Вызывает событие сторисов
-         *
-         * @param event    Событие
-         * @param code     Код блока сторисов
-         * @param story_id Идентификатор сториса
-         * @param slide_id Идентификатор слайда
-         */
-        fun track_story(event: String, code: String?, story_id: Int, slide_id: String) {
-            try {
-                val params = JSONObject()
-                params.put("event", event)
-                params.put("story_id", story_id)
-                params.put("slide_id", slide_id)
-                params.put("code", code)
-
-                //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
-                lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
-
-                instance?.sendAsync("track/stories", params, null)
-            } catch (e: JSONException) {
-                e.printStackTrace()
-            }
-        }
-
     }
 }
