@@ -8,13 +8,13 @@ import android.os.Build;
 import android.widget.Button;
 import android.widget.TextView;
 
-import androidx.annotation.ColorInt;
+import androidx.annotation.ColorRes;
 
 public class ViewUtils {
 
     public static final int MAX_COLOR_CHANNEL_VALUE = 255;
 
-    public static int getColor(Context context, String colorString, @ColorInt int defaultColor) {
+    public static int getColor(Context context, String colorString, @ColorRes int defaultColor) {
         if (colorString == null) {
             return context.getResources().getColor(defaultColor);
         }
@@ -29,7 +29,7 @@ public class ViewUtils {
         return color;
     }
 
-    public static void setTextColor(Context context, TextView textView, String colorString, @ColorInt int defaultColor) {
+    public static void setTextColor(Context context, TextView textView, String colorString, @ColorRes int defaultColor) {
         var color = getColor(context, colorString, defaultColor);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -39,7 +39,7 @@ public class ViewUtils {
         }
     }
 
-    public static void setTextColor(Context context, Button button, String colorString, @ColorInt int defaultColor) {
+    public static void setTextColor(Context context, Button button, String colorString, @ColorRes int defaultColor) {
         var color = getColor(context, colorString, defaultColor);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -49,7 +49,7 @@ public class ViewUtils {
         }
     }
 
-    public static void setBackgroundColor(Context context, Button button, String colorString, @ColorInt int defaultColor) {
+    public static void setBackgroundColor(Context context, Button button, String colorString, @ColorRes int defaultColor) {
         var backgroundColor = getColor(context, colorString, defaultColor);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {

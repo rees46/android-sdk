@@ -1,9 +1,9 @@
 package com.personalizatio.stories;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 
 import androidx.media3.common.MediaItem;
-import androidx.media3.common.util.UnstableApi;
 import androidx.media3.database.StandaloneDatabaseProvider;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.datasource.cache.CacheDataSource;
@@ -16,7 +16,7 @@ import com.personalizatio.SDK;
 
 import java.io.File;
 
-@UnstableApi
+@SuppressLint("UnsafeOptInUsageError")
 final public class Player {
 
 	private static ExoPlayer player;

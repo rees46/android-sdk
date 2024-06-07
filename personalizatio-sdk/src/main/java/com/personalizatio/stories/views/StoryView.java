@@ -15,7 +15,6 @@ import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
-import androidx.media3.common.util.UnstableApi;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
@@ -151,7 +150,7 @@ final class StoryView extends ConstraintLayout implements StoriesProgressView.St
 		mViewPager.setCurrentItem(story.getStartPosition(), false);
 	}
 
-	@UnstableApi
+
 	private void playVideo() {
 		if( storiesStarted ) {
 			PagerHolder holder = getHolder(mViewPager.getCurrentItem());
