@@ -34,7 +34,7 @@ publishing {
 				description "Generates Javadoc for ${variant.name}."
 				source = variant.javaCompileProvider.get().source
 				destinationDir = javaDocDestDir
-				classpath += files(android.getBootClasspath().join(File.pathSeparator))
+				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 				configurations.implementation.setCanBeResolved(true)
 				classpath += files(configurations.implementation)
 				options.links("http://docs.oracle.com/javase/7/docs/api/");
@@ -128,6 +128,12 @@ afterEvaluate {
 					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 				}
 			}
+		}
+	}
+
+	android.libraryVariants.all { variant ->
+		if(variant == 'release') {
+			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
 		}
 	}
 }
