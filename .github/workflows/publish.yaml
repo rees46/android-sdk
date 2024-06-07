@@ -6,10 +6,13 @@ on:
       - closed
     branches:
       - master
+    paths-ignore:
+      - '.github'
   workflow_dispatch:
 
 jobs:
   version:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
     permissions: write-all
     with:
