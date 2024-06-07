@@ -6,13 +6,6 @@ def pomConfig = {
 			distribution "repo"
 		}
 	}
-	developers {
-		developer {
-			id "pnixx"
-			name "Sergey Odintsov"
-			email "nixx.dj@gmail.com"
-		}
-	}
 
 	scm {
 		connection "scm:git:github.com:rees46/rees46-android-sdk.git"
@@ -30,34 +23,16 @@ publishing {
 
 			def flavored = !variant.flavorName.isEmpty()
 
-			/**
-			 * Translates "_" in flavor names to "-" for artifactIds, because "-" in flavor name is an
-			 * illegal character, but is well used in artifactId names.
-			 */
 			def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
 
-			/**
-			 * If the javadoc destinationDir wasn't changed per flavor, the libraryVariants would
-			 * overwrite the javaDoc as all variants would write in the same directory
-			 * before the last javadoc jar would have been built, which would cause the last javadoc
-			 * jar to include classes from other flavors that it doesn't include.
-			 *
-			 * Yes, tricky.
-			 *
-			 * Note that "${buildDir}/docs/javadoc" is the default javadoc destinationDir.
-			 */
 			def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? variantArtifactId : ""}")
 
-			/**
-			 * Includes
-			 */
 			def sourceDirs = variant.sourceSets.collect {
-				it.javaDirectories // Also includes kotlin sources if any.
+				it.javaDirectories
 			}
 			def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
 				description "Generates Javadoc for ${variant.name}."
-				source = variant.javaCompileProvider.get().source // Yes, javaCompile is deprecated,
-				// but I didn't find any working alternative. Please, tweet @Louis_CAD if you find one.
+				source = variant.javaCompileProvider.get().source
 				destinationDir = javaDocDestDir
 				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 				configurations.implementation.setCanBeResolved(true)
@@ -87,7 +62,7 @@ publishing {
 				groupId "com.${variant.flavorName}"
 				version version
 
-				artifact variant.packageLibraryProvider.get() // This is the aar library
+				artifact variant.packageLibraryProvider.get()
 				artifact sourcesJar
 				artifact javadocJar
 
@@ -102,7 +77,7 @@ publishing {
 						def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
 
 						def addDep = {
-							if (it.group == null) return // Avoid empty dependency nodes
+							if (it.group == null) return
 							def dependencyNode = depsNode.appendNode('dependency')
 							dependencyNode.appendNode('groupId', it.group)
 							dependencyNode.appendNode('artifactId', it.name)
@@ -112,32 +87,23 @@ publishing {
 							}
 						}
 
-						// Add deps that everyone has
 						configurations.implementation.allDependencies.each addDep
-						// Add flavor specific deps
 						if (flavored) {
 							configurations["${variant.flavorName}Implementation"].allDependencies.each addDep
 						}
-						// NOTE: This library doesn't use builtTypes specific dependencies, so no need to add them.
 					}
 				}
 			}
 		}
 	}
 	repositories {
-		// The repository to publish to, Sonatype/MavenCentral
 		maven {
-			// This is an arbitrary name, you may also use "mavencentral" or
-			// any other name that's descriptive for you
 			name = "sonatype"
 
 			def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
 			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-			// You only need this if you want to publish snapshots, otherwise just set the URL
-			// to the release repo directly
 			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 
-			// The username and password we've fetched earlier
 			credentials {
 				username ossrhUsername
 				password ossrhPassword
@@ -146,14 +112,13 @@ publishing {
 	}
 }
 
-// Set up Sonatype repository
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
 	nexusPublishing {
 		repositories {
 			android.libraryVariants.all { variant ->
-				if (variant.buildType.name == "debug") return // Prevents publishing debug library
+				if (variant.buildType.name == "debug") return
 
 				"${variant.flavorName}Sonatype" {
 					stagingProfileId = sonatypeIds[variant.flavorName]
