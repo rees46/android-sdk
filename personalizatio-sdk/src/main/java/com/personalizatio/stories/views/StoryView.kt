@@ -14,7 +14,6 @@ import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
-import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
@@ -150,7 +149,6 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         mViewPager.setCurrentItem(story.startPosition, false)
     }
 
-    @UnstableApi
     private fun playVideo() {
         if (storiesStarted) {
             val holder = getHolder(mViewPager.currentItem)
@@ -165,7 +163,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     holder.storyItem.video.visibility = GONE
                     holder.storyItem.image.alpha = 1f
                     holder.storyItem.video.player = player
-                    storiesView.player!!.prepare(slide.background)
+                    storiesView.player?.prepare(slide.background)
                     storiesProgressView.pause()
                     mute.isChecked = storiesView.isMute
                 }
