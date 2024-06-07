@@ -4,12 +4,7 @@ import android.content.Context
 import com.personalizatio.BuildConfig
 import com.personalizatio.SDK
 
-class Personaclick
-/**
- * @param context application context
- * @param shop_id Shop key
- */
-private constructor(context: Context, shop_id: String) : SDK() {
+class Personaclick private constructor() : SDK() {
 
     companion object {
         const val TAG: String = "PERSONACLICK"
@@ -20,11 +15,12 @@ private constructor(context: Context, shop_id: String) : SDK() {
 
         /**
          * Initialize api
-         * @param shop_id Shop key
+         * @param context application context
+         * @param shopId Shop key
          */
-        fun initialize(context: Context, shop_id: String) {
+        fun initialize(context: Context, shopId: String) {
             if (!isInstanced()) {
-                getInstance().initialize(context, shop_id, API_URL, TAG, PREFERENCES_KEY, "android")
+                getInstance().initialize(context, shopId, API_URL, TAG, PREFERENCES_KEY, "android")
             }
         }
     }
