@@ -45,7 +45,8 @@ class SampleApplication: Application() {
         super.onCreate()
 
         //Initialize
-        val sdk = REES46.initialize(applicationContext, SHOP_ID)
+        val sdk = REES46.getInstance()
+        REES46.initialize(applicationContext, SHOP_ID)
 
         //Notification callback
         sdk.setOnMessageListener(object : OnMessageListener {
@@ -64,7 +65,7 @@ class SampleApplication: Application() {
 For On-Premise integration need use initialize with custom api domain:
 
 ```kotlin
-val sdk = REES46.initialize(getApplicationContext(), SHOP_ID, API_DOMAIN)
+REES46.initialize(applicationContext, SHOP_ID, API_DOMAIN)
 ```
 
 Check `AndroidManifest.xml` and add `android:name=".SampleApplication"` to application item.
