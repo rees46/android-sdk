@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -13,11 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.personalizatio.Params
 import com.personalizatio.SDK
-import com.personalizatio.SearchParams
-import com.personalizatio.api.OnApiCallbackListener
-import org.json.JSONObject
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast
 

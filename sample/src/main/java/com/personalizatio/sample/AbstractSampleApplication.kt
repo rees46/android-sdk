@@ -6,6 +6,7 @@ import com.personalizatio.SDK
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notification.NotificationHelper.createNotification
 import com.personalizatio.notification.NotificationHelper.loadBitmaps
+import com.personalizatio.notification.NotificationIntentService
 import java.util.concurrent.Executors
 import kotlin.reflect.KClass
 import kotlin.reflect.safeCast

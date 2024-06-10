@@ -232,17 +232,17 @@ open class SDK {
         get() {
             FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
                 if (!task.isSuccessful) {
-                    error("getInstanceId failed", task.exception)
+                    error("Firebase: getInstanceId failed", task.exception)
                     return@addOnCompleteListener
                 }
                 if (task.result == null) {
-                    error("Firebase result is null")
+                    error("Firebase: result is null")
                     return@addOnCompleteListener
                 }
 
                 // Get new Instance ID token
                 val token = task.result
-                debug("token: $token")
+                debug("Firebase token: $token")
 
                 //Check send token
                 val tokenField = prefs().getString(TOKEN_FIELD, null)
