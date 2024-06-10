@@ -9,14 +9,13 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.personalizatio.R
-import com.personalizatio.SDK
-import com.rees46.sdk.REES46
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
 
 object NotificationHelper {
 
+    private const val TAG = "NotificationHelper"
     private const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
     private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
     private const val NOTIFICATION_CHANNEL = "notification_channel"
@@ -106,7 +105,7 @@ object NotificationHelper {
         if (notificationManager != null) {
             notificationManager.notify(0, notificationBuilder.build())
         } else {
-            Log.e(REES46.TAG, "NotificationManager not allowed")
+            Log.e(TAG, "NotificationManager not allowed")
         }
     }
 
