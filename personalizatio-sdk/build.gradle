@@ -5,7 +5,7 @@ plugins {
 	id 'signing'
 }
 
-version='1.8.17'
+version='2.0.0'
 
 android {
 	compileSdkVersion 34
@@ -37,7 +37,7 @@ android {
 
 	sourceSets {
 		main {
-			java.srcDirs = ['src/main/java']
+			main.java.srcDirs = ['src/main/kotlin']
 		}
 	}
 
@@ -95,7 +95,7 @@ tasks.register('sourcesJar', Jar) {
 }
 
 tasks.register('javadoc', Javadoc) {
-	source = fileTree(dir: 'src/main/java', include: '**/*.kt')
+	source = fileTree(dir: 'src/main/kotlin', include: '**/*.kt')
 	classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
 	failOnError false
 	options.encoding = 'UTF-8'
