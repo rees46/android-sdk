@@ -13,15 +13,17 @@ class Personaclick private constructor() : SDK() {
         protected const val PREFERENCES_KEY: String = "personaclick.sdk"
         protected val API_URL: String = if (BuildConfig.DEBUG) "http://192.168.1.8:8080/" else "https://api.personaclick.com/"
 
+        fun getInstance() : SDK {
+            return SDK.getInstance()
+        }
+
         /**
          * Initialize api
          * @param context application context
          * @param shopId Shop key
          */
         fun initialize(context: Context, shopId: String) {
-            if (!isInstanced()) {
-                getInstance().initialize(context, shopId, API_URL, TAG, PREFERENCES_KEY, "android")
-            }
+            getInstance().initialize(context, shopId, API_URL, TAG, PREFERENCES_KEY, "android")
         }
     }
 }

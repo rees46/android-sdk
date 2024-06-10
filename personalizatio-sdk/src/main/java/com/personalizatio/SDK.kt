@@ -58,7 +58,7 @@ open class SDK {
     /**
      * @param shopId Shop key
      */
-    public fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
+    fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
         this.api = Api.getApi(apiUrl)
 
         this.context = context
@@ -349,14 +349,6 @@ open class SDK {
         onMessageListener = listener
     }
 
-    fun initialize(context: Context?, shop_id: String?) {
-        throw IllegalStateException("You need make static initialize method!")
-    }
-
-    fun initialize(context: Context?, shop_id: String?, stream: String?) {
-        throw IllegalStateException("You need make static initialize method!")
-    }
-
     /**
      * Быстрый поиск
      *
@@ -513,14 +505,14 @@ open class SDK {
      * https://reference.api.rees46.com/?shell#price-drop
      *
      * @param id            Идентификатор товара
-     * @param current_price Текущая цена
+     * @param currentPrice Текущая цена
      * @param email         Email, если есть
      * @param phone         Телефон, если есть
      */
-    fun subscribeForPriceDrop(id: String, current_price: Double, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+    fun subscribeForPriceDrop(id: String, currentPrice: Double, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
         val params = Params()
         params.put(Params.Parameter.ITEM, id)
-        params.put(Params.Parameter.PRICE, current_price.toString())
+        params.put(Params.Parameter.PRICE, currentPrice.toString())
         if (email != null) {
             params.put(InternalParameter.EMAIL, email)
         }
@@ -534,14 +526,14 @@ open class SDK {
      * Отписывает на снижение цены
      * https://reference.api.rees46.com/?shell#price-drop
      *
-     * @param item_ids Идентификаторы товара
+     * @param itemIds Идентификаторы товара
      * @param email    Email, если есть
      * @param phone    Телефон, если есть
      */
-    fun unsubscribeForPriceDrop(item_ids: Array<String>, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+    fun unsubscribeForPriceDrop(itemIds: Array<String>, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
         val params = JSONObject()
         try {
-            params.put("item_ids", java.lang.String.join(", ", *item_ids))
+            params.put("item_ids", java.lang.String.join(", ", *itemIds))
             if (email != null) {
                 params.put(InternalParameter.EMAIL.value, email)
             }
@@ -562,11 +554,7 @@ open class SDK {
      * @param email Email, если есть
      * @param phone Телефон, если есть
      */
-    fun subscribeForBackInStock(id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
-        subscribeForBackInStock(id, null, email, phone, listener)
-    }
-
-    fun subscribeForBackInStock(id: String, properties: JSONObject?, email: String?, phone: String?, listener: OnApiCallbackListener?) {
+    fun subscribeForBackInStock(id: String, email: String? = null, phone: String? = null, properties: JSONObject? = null, listener: OnApiCallbackListener? = null) {
         val params = Params()
         params.put(Params.Parameter.ITEM, id)
         if (properties != null) {
@@ -585,15 +573,15 @@ open class SDK {
      * Отписывает на наличие товара
      * https://reference.api.rees46.com/?shell#back-in-stock
      *
-     * @param item_ids Идентификатор товара
+     * @param itemIds Идентификатор товара
      * @param email    Email, если есть
      * @param phone    Телефон, если есть
      */
     @JvmOverloads
-    fun unsubscribeForBackInStock(item_ids: Array<String>, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+    fun unsubscribeForBackInStock(itemIds: Array<String>, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
         val params = JSONObject()
         try {
-            params.put("item_ids", java.lang.String.join(", ", *item_ids))
+            params.put("item_ids", java.lang.String.join(", ", *itemIds))
             if (email != null) {
                 params.put(InternalParameter.EMAIL.value, email)
             }
@@ -834,10 +822,6 @@ open class SDK {
                 }
             }
             return instance!!
-        }
-
-        fun isInstanced() : Boolean {
-            return instance != null
         }
 
         fun userAgent(): String {

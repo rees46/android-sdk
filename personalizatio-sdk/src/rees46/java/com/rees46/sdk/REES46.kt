@@ -23,19 +23,23 @@ class REES46 private constructor() : SDK() {
         protected const val PREFERENCES_KEY: String = "rees46.sdk"
         protected val API_URL: String = if (BuildConfig.DEBUG) "http://dev.api.rees46.com:8000/" else "https://api.rees46.ru/"
 
+        fun getInstance() : SDK {
+            return SDK.getInstance()
+        }
+
         /**
          * Initialize api
          * @param context application context
          * @param shopId Shop key
          */
-        fun initialize(context: Context, shopId: String, apiHost: String?) {
-            if (!isInstanced()) {
-                val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
-                getInstance().initialize(context, shopId, apiUrl, TAG, PREFERENCES_KEY, "android")
-            }
+        fun initialize(context: Context, shopId: String, apiHost: String? = null) {
+            val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
+
+            val sdk = getInstance()
+            sdk.initialize(context, shopId, apiUrl, TAG, PREFERENCES_KEY, "android")
 
             // Дефолтное отображение сообщения без кастомизации
-            getInstance().setOnMessageListener(object : OnMessageListener {
+            sdk.setOnMessageListener(object : OnMessageListener {
                 @SuppressLint("StaticFieldLeak")
                 override fun onMessage(data: Map<String, String>) {
                     object : AsyncTask<String?, Void?, Bitmap?>() {
@@ -59,16 +63,17 @@ class REES46 private constructor() : SDK() {
                             intent.putExtra(NOTIFICATION_TYPE, data["type"])
                             intent.putExtra(NOTIFICATION_ID, data["id"])
 
-                            val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE)
+                            val pendingIntent = PendingIntent.getActivity(context, 0, intent,
+                                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE)
 
                             val notificationBuilder = NotificationCompat.Builder(context, "notification_channel")
-                                    .setLargeIcon(result)
-                                    .setStyle(NotificationCompat.BigTextStyle().bigText(data["body"]))
-                                    .setContentTitle(data["title"])
-                                    .setContentText(data["body"])
-                                    .setSmallIcon(android.R.drawable.stat_notify_chat)
-                                    .setAutoCancel(true)
-                                    .setContentIntent(pendingIntent)
+                                .setLargeIcon(result)
+                                .setStyle(NotificationCompat.BigTextStyle().bigText(data["body"]))
+                                .setContentTitle(data["title"])
+                                .setContentText(data["body"])
+                                .setSmallIcon(android.R.drawable.stat_notify_chat)
+                                .setAutoCancel(true)
+                                .setContentIntent(pendingIntent)
 
                             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                             notificationManager.notify(0, notificationBuilder.build())

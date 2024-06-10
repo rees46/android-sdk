@@ -14,11 +14,9 @@ import com.personalizatio.OnMessageListener
 import com.personalizatio.SDK
 import java.io.IOException
 import java.net.URL
-import kotlin.reflect.KClass
-import kotlin.reflect.safeCast
 
 abstract class AbstractSampleApplication<out T : SDK> internal constructor(
-    private val classT: KClass<T>
+    private val sdk: SDK
 ): Application() {
     protected abstract val shopId: String?
         get
@@ -28,12 +26,10 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     override fun onCreate() {
         super.onCreate()
 
-        val sdk = classT.safeCast(SDK)
-
         //Demo shop
         initialize()
-        sdk?.getSid { sid -> Log.d("APP", "sid: $sid") }
-        sdk?.setOnMessageListener(object : OnMessageListener {
+        sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
+        sdk.setOnMessageListener(object : OnMessageListener {
             @SuppressLint("StaticFieldLeak")
             override fun onMessage(data: Map<String, String>) {
                 object : AsyncTask<String?, Void?, Bitmap?>() {
