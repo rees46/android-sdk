@@ -8,6 +8,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.personalizatio.R
+import com.personalizatio.SDK
 import com.rees46.sdk.REES46
 import java.io.IOException
 import java.io.InputStream
@@ -16,25 +18,28 @@ import java.net.URL
 object NotificationHelper {
 
     private const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
+    private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
     private const val NOTIFICATION_CHANNEL = "notification_channel"
     private const val CURRENT_IMAGE_INDEX = "current_image_index"
+    private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
     private const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
     private const val NOTIFICATION_TITLE = "title"
     private const val NOTIFICATION_BODY = "body"
     const val NOTIFICATION_IMAGES = "images"
 
-    @JvmStatic
     fun createNotification(
         context: Context,
-        data: Map<String?, String?>,
+        data: Map<String, String?>,
         images: List<Bitmap>?,
         currentIndex: Int
     ) {
         val intent = Intent(context, context::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
             putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
             putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
+            putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
+            putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
             putExtra(CURRENT_IMAGE_INDEX, currentIndex)
         }
 
@@ -56,7 +61,7 @@ object NotificationHelper {
             val currentImage = images[currentIndex]
             notificationBuilder.setLargeIcon(currentImage)
                 .setStyle(
-                    NotificationCompat.BigPictureStyle().bigPicture(currentImage).bigLargeIcon(null)
+                    NotificationCompat.BigPictureStyle().bigPicture(currentImage).bigLargeIcon(null as Bitmap?)
                 )
 
             if (currentIndex > 0) {
@@ -69,7 +74,7 @@ object NotificationHelper {
                 notificationBuilder.addAction(
                     NotificationCompat.Action.Builder(
                         android.R.drawable.ic_media_previous,
-                        "Назад",
+                        context.getString(R.string.notification_button_back),
                         prevPendingIntent
                     ).build()
                 )
@@ -85,7 +90,7 @@ object NotificationHelper {
                 notificationBuilder.addAction(
                     NotificationCompat.Action.Builder(
                         android.R.drawable.ic_media_next,
-                        "Вперед",
+                        context.getString(R.string.notification_button_forward),
                         nextPendingIntent
                     ).build()
                 )
@@ -109,15 +114,17 @@ object NotificationHelper {
         context: Context,
         action: String,
         currentIndex: Int,
-        data: Map<String?, String?>
+        data: Map<String, String?>
     ): PendingIntent {
         val intent = Intent(context, NotificationIntentService::class.java)
 
         intent.action = action
-        intent.putExtra(CURRENT_IMAGE_INDEX, currentIndex)
         intent.putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
         intent.putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
         intent.putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
+        intent.putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
+        intent.putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
+        intent.putExtra(CURRENT_IMAGE_INDEX, currentIndex)
 
         return PendingIntent.getService(
             /* context = */ context,

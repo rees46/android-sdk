@@ -345,7 +345,7 @@ open class SDK {
     /**
      * @param listener Event on message receive
      */
-    fun setOnMessageListener(listener: (Map<String?, String?>) -> Unit) {
+    fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
     }
 
@@ -885,6 +885,7 @@ open class SDK {
 
             instance?.onMessageListener?.let { listener ->
                 val data: MutableMap<String, String> = HashMap(remoteMessage.data)
+
                 remoteMessage.notification?.let { notification ->
                     notification.title?.takeIf { it.isNotEmpty() }?.let { data[TITLE_FIELD] = it }
                     notification.body?.takeIf { it.isNotEmpty() }?.let { data[BODY_FIELD] = it }

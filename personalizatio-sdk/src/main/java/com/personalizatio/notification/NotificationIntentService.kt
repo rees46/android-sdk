@@ -8,57 +8,50 @@ class NotificationIntentService : IntentService("NotificationIntentService") {
 
     override fun onHandleIntent(intent: Intent?) {
 
-        if (intent != null) {
+        intent ?: return
 
-            val action = intent.action
-            val currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0)
-            val imageUrls = intent.getStringExtra(NOTIFICATION_IMAGES)
-            val images = NotificationHelper.loadBitmaps(imageUrls)
+        val action = intent.action
+        val currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0)
+        val imageUrls = intent.getStringExtra(NOTIFICATION_IMAGES)
+        val images = NotificationHelper.loadBitmaps(imageUrls)
 
-            if (action != null) {
-                when (action) {
-                    ACTION_NEXT_IMAGE -> {
-                        if (currentIndex + 1 < images.size) {
-                            val data: MutableMap<String?, String?> = HashMap()
-
-                            data[NOTIFICATION_TYPE] = intent.getStringExtra(NOTIFICATION_TYPE)
-                            data[NOTIFICATION_ID] = intent.getStringExtra(NOTIFICATION_ID)
-                            data[NOTIFICATION_IMAGES] = intent.getStringExtra(NOTIFICATION_IMAGES)
-                            data[NOTIFICATION_TITLE] = intent.getStringExtra(NOTIFICATION_TITLE)
-                            data[NOTIFICATION_BODY] = intent.getStringExtra(NOTIFICATION_BODY)
-
-                            createNotification(
-                                context = this,
-                                data = data,
-                                images = images,
-                                currentIndex = currentIndex + 1
-                            )
-                        }
-                    }
-
-                    ACTION_PREVIOUS_IMAGE -> {
-                        if (currentIndex - 1 >= 0) {
-                            val data: MutableMap<String?, String?> = HashMap()
-
-                            data[NOTIFICATION_TYPE] = intent.getStringExtra(NOTIFICATION_TYPE)
-                            data[NOTIFICATION_ID] = intent.getStringExtra(NOTIFICATION_ID)
-                            data[NOTIFICATION_IMAGES] = intent.getStringExtra(NOTIFICATION_IMAGES)
-                            data[NOTIFICATION_TITLE] = intent.getStringExtra(NOTIFICATION_TITLE)
-                            data[NOTIFICATION_BODY] = intent.getStringExtra(NOTIFICATION_BODY)
-
-                            createNotification(
-                                context = this,
-                                data = data,
-                                images = images,
-                                currentIndex = currentIndex - 1
-                            )
-                        }
-                    }
-
-                    else -> Unit
+        when (action) {
+            ACTION_NEXT_IMAGE -> {
+                if (currentIndex + 1 < images.size) {
+                    val data = intentToMap(intent)
+                    createNotification(
+                        context = this,
+                        data = data,
+                        images = images,
+                        currentIndex = currentIndex + 1
+                    )
                 }
             }
+
+            ACTION_PREVIOUS_IMAGE -> {
+                if (currentIndex - 1 >= 0) {
+                    val data = intentToMap(intent)
+                    createNotification(
+                        context = this,
+                        data = data,
+                        images = images,
+                        currentIndex = currentIndex - 1
+                    )
+                }
+            }
+
+            else -> Unit
         }
+    }
+
+    private fun intentToMap(intent: Intent): MutableMap<String, String> {
+        val data: MutableMap<String, String> = HashMap()
+        data[NOTIFICATION_TYPE] = intent.getStringExtra(NOTIFICATION_TYPE).orEmpty()
+        data[NOTIFICATION_ID] = intent.getStringExtra(NOTIFICATION_ID).orEmpty()
+        data[NOTIFICATION_IMAGES] = intent.getStringExtra(NOTIFICATION_IMAGES).orEmpty()
+        data[NOTIFICATION_TITLE] = intent.getStringExtra(NOTIFICATION_TITLE).orEmpty()
+        data[NOTIFICATION_BODY] = intent.getStringExtra(NOTIFICATION_BODY).orEmpty()
+        return data
     }
 
     companion object {

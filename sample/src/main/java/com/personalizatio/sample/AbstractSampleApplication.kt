@@ -27,7 +27,7 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
         //Demo shop
         initialize()
         sdk?.getSid { sid -> Log.d("APP", "sid: $sid") }
-        sdk?.setOnMessageListener { data: Map<String?, String?> ->
+        sdk?.setOnMessageListener { data: Map<String, String> ->
             executorService.submit {
                 createNotification(
                     context = applicationContext,
