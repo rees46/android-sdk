@@ -1,88 +1,74 @@
-package com.personalizatio.notification;
+package com.personalizatio.notification
 
-import android.app.IntentService;
-import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.app.IntentService
+import android.content.Intent
+import com.personalizatio.notification.NotificationHelper.createNotification
 
-import com.personalizatio.notification.NotificationHelper;
+class NotificationIntentService : IntentService("NotificationIntentService") {
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+    override fun onHandleIntent(intent: Intent?) {
 
-public class NotificationIntentService extends IntentService {
-
-    private static final String NOTIFICATION_TYPE = "type";
-    private static final String NOTIFICATION_ID = "id";
-    private static final String NOTIFICATION_TITLE = "title";
-    private static final String NOTIFICATION_BODY = "body";
-    private static final String NOTIFICATION_IMAGES = "images";
-    private static final String CURRENT_IMAGE_INDEX = "current_image_index";
-
-    private static final String ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE";
-    private static final String ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE";
-
-    public NotificationIntentService() {
-        super("NotificationIntentService");
-    }
-
-    @Override
-    protected void onHandleIntent(Intent intent) {
         if (intent != null) {
-            String action = intent.getAction();
-            int currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0);
-            String imageUrls = intent.getStringExtra(NOTIFICATION_IMAGES);
-            List<Bitmap> images = loadBitmaps(imageUrls);
+
+            val action = intent.action
+            val currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0)
+            val imageUrls = intent.getStringExtra(NOTIFICATION_IMAGES)
+            val images = NotificationHelper.loadBitmaps(imageUrls)
 
             if (action != null) {
-                switch (action) {
-                    case ACTION_NEXT_IMAGE -> {
-                        if (currentIndex + 1 < images.size()) {
-                            Map<String, String> data = new HashMap<>();
-                            data.put(NOTIFICATION_TYPE, intent.getStringExtra(NOTIFICATION_TYPE));
-                            data.put(NOTIFICATION_ID, intent.getStringExtra(NOTIFICATION_ID));
-                            data.put(NOTIFICATION_IMAGES, intent.getStringExtra(NOTIFICATION_IMAGES));
-                            data.put(NOTIFICATION_TITLE, intent.getStringExtra(NOTIFICATION_TITLE));
-                            data.put(NOTIFICATION_BODY, intent.getStringExtra(NOTIFICATION_BODY));
-                            NotificationHelper.createNotification(this, data, images, currentIndex + 1);
+                when (action) {
+                    ACTION_NEXT_IMAGE -> {
+                        if (currentIndex + 1 < images.size) {
+                            val data: MutableMap<String?, String?> = HashMap()
+
+                            data[NOTIFICATION_TYPE] = intent.getStringExtra(NOTIFICATION_TYPE)
+                            data[NOTIFICATION_ID] = intent.getStringExtra(NOTIFICATION_ID)
+                            data[NOTIFICATION_IMAGES] = intent.getStringExtra(NOTIFICATION_IMAGES)
+                            data[NOTIFICATION_TITLE] = intent.getStringExtra(NOTIFICATION_TITLE)
+                            data[NOTIFICATION_BODY] = intent.getStringExtra(NOTIFICATION_BODY)
+
+                            createNotification(
+                                context = this,
+                                data = data,
+                                images = images,
+                                currentIndex = currentIndex + 1
+                            )
                         }
                     }
-                    case ACTION_PREVIOUS_IMAGE -> {
+
+                    ACTION_PREVIOUS_IMAGE -> {
                         if (currentIndex - 1 >= 0) {
-                            Map<String, String> data = new HashMap<>();
-                            data.put(NOTIFICATION_TYPE, intent.getStringExtra(NOTIFICATION_TYPE));
-                            data.put(NOTIFICATION_ID, intent.getStringExtra(NOTIFICATION_ID));
-                            data.put(NOTIFICATION_IMAGES, intent.getStringExtra(NOTIFICATION_IMAGES));
-                            data.put(NOTIFICATION_TITLE, intent.getStringExtra(NOTIFICATION_TITLE));
-                            data.put(NOTIFICATION_BODY, intent.getStringExtra(NOTIFICATION_BODY));
-                            NotificationHelper.createNotification(this, data, images, currentIndex - 1);
+                            val data: MutableMap<String?, String?> = HashMap()
+
+                            data[NOTIFICATION_TYPE] = intent.getStringExtra(NOTIFICATION_TYPE)
+                            data[NOTIFICATION_ID] = intent.getStringExtra(NOTIFICATION_ID)
+                            data[NOTIFICATION_IMAGES] = intent.getStringExtra(NOTIFICATION_IMAGES)
+                            data[NOTIFICATION_TITLE] = intent.getStringExtra(NOTIFICATION_TITLE)
+                            data[NOTIFICATION_BODY] = intent.getStringExtra(NOTIFICATION_BODY)
+
+                            createNotification(
+                                context = this,
+                                data = data,
+                                images = images,
+                                currentIndex = currentIndex - 1
+                            )
                         }
                     }
-                    default -> {
-                    }
+
+                    else -> Unit
                 }
             }
         }
     }
 
-    private List<Bitmap> loadBitmaps(String urls) {
-        List<Bitmap> bitmaps = new ArrayList<>();
-        if (urls != null) {
-            String[] urlArray = urls.split(",");
-            for (String url : urlArray) {
-                try {
-                    InputStream in = new URL(url).openStream();
-                    bitmaps.add(BitmapFactory.decodeStream(in));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return bitmaps;
+    companion object {
+        private const val NOTIFICATION_TYPE = "type"
+        private const val NOTIFICATION_ID = "id"
+        private const val NOTIFICATION_TITLE = "title"
+        private const val NOTIFICATION_BODY = "body"
+        private const val NOTIFICATION_IMAGES = "images"
+        private const val CURRENT_IMAGE_INDEX = "current_image_index"
+        private const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
+        private const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
     }
 }

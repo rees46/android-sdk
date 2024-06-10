@@ -22,13 +22,13 @@ import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.notifications.Source
-import org.json.JSONException
-import org.json.JSONObject
 import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Collections
 import java.util.Locale
 import java.util.TimeZone
+import org.json.JSONException
+import org.json.JSONObject
 
 open class SDK {
     private lateinit var context: Context
@@ -345,7 +345,7 @@ open class SDK {
     /**
      * @param listener Event on message receive
      */
-    fun setOnMessageListener(listener: OnMessageListener) {
+    fun setOnMessageListener(listener: (Map<String?, String?>) -> Unit) {
         onMessageListener = listener
     }
 
@@ -821,6 +821,11 @@ open class SDK {
         private const val TOKEN_FIELD = "token"
         private const val SESSION_CODE_EXPIRE = 2
 
+        private const val TITLE_FIELD = "title"
+        private const val BODY_FIELD = "body"
+        private const val IMAGE_FIELD = "image"
+        private const val IMAGES_FIELD = "images"
+
         @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: SDK? = null
@@ -877,7 +882,19 @@ open class SDK {
          */
         fun onMessage(remoteMessage: RemoteMessage) {
             instance?.notificationReceived(remoteMessage.data)
-            instance?.onMessageListener?.onMessage(remoteMessage.data)
+
+            instance?.onMessageListener?.let { listener ->
+                val data: MutableMap<String, String> = HashMap(remoteMessage.data)
+                remoteMessage.notification?.let { notification ->
+                    notification.title?.takeIf { it.isNotEmpty() }?.let { data[TITLE_FIELD] = it }
+                    notification.body?.takeIf { it.isNotEmpty() }?.let { data[BODY_FIELD] = it }
+                    notification.imageUrl?.let { data[IMAGE_FIELD] = it.toString() }
+                }
+
+                data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
+
+                listener.onMessage(data)
+            }
         }
     }
 }
