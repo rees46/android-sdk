@@ -14,7 +14,7 @@ import com.personalizatio.utils.ViewUtils;
 
 final public class TextBlockView extends androidx.appcompat.widget.AppCompatTextView {
 
-	private final int HORIZONTAL_PADDING_DP = 16;
+	private final int PADDING_DP = 16;
 
 	public TextBlockView(@NonNull Context context) {
 		super(context);
@@ -45,8 +45,8 @@ final public class TextBlockView extends androidx.appcompat.widget.AppCompatText
 		var colorOpacity = GetColorOpacity(element.getTextBackgroundColorOpacity());
 
 		if(colorOpacity > 0) {
-			var horizontalPaddingPx = (int) ViewUtils.dpToPx(HORIZONTAL_PADDING_DP, getContext());
-			setPadding(horizontalPaddingPx, 0, horizontalPaddingPx, 0);
+			var paddingPx = (int) ViewUtils.dpToPx(PADDING_DP, getContext());
+			setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
 		}
 
 		setBackgroundColor(element.getTextBackgroundColor(), colorOpacity);
