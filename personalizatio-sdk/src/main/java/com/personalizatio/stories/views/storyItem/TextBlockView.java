@@ -40,7 +40,7 @@ final public class TextBlockView extends androidx.appcompat.widget.AppCompatText
 
 		setTextAlignment(getTextAlignment(element.getTextAlign()));
 
-		setLineSpacing(getLineHeight(), (float)element.getTextLineSpacing());
+		setLineSpacing(getLineSpacingExtra(), (float)element.getTextLineSpacing());
 
 		var colorOpacity = GetColorOpacity(element.getTextBackgroundColorOpacity());
 
