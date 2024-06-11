@@ -293,6 +293,12 @@ StoriesView storiesView = new StoriesView(this, "STORY BLOCK CODE");
 ((ViewGroup) findViewById(R.id.stories)).addView(storiesView);
 ```
 
+Show story by id:
+
+```java
+REES46.story(STORY_ID);
+```
+
 Customize story settings:
 
 ```java
