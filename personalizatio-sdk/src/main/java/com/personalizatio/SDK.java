@@ -77,6 +77,7 @@ public class SDK {
 
 	public interface ShowStoryRequestListener {
 		void onShowStoryRequest(Story story);
+		boolean onShowStoryRequest(int storyId);
 	}
 
 	public static void initialize(Context context, String shop_id) {
@@ -349,16 +350,20 @@ public class SDK {
 	}
 
 	public static void story(int storyId) {
-		if (instance != null) {
-			instance.getAsync("story/" + storyId, new JSONObject(), new Api.OnApiCallbackListener() {
-				@Override
-				public void onSuccess(JSONObject response) {
-					Log.d("stories", response.toString());
-					var story = new Story(response);
-					instance.showStoryRequestListener.onShowStoryRequest(story);
-				}
-			});
-		}
+		if(instance == null) return;
+
+		var show = instance.showStoryRequestListener.onShowStoryRequest(storyId);
+
+		if(show) return;
+
+		instance.getAsync("story/" + storyId, new JSONObject(), new Api.OnApiCallbackListener() {
+			@Override
+			public void onSuccess(JSONObject response) {
+				Log.d("story", response.toString());
+				var story = new Story(response);
+				instance.showStoryRequestListener.onShowStoryRequest(story);
+			}
+		});
 	}
 
 	/**

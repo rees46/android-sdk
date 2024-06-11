@@ -1,5 +1,6 @@
 package com.personalizatio.stories.views;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -144,20 +145,12 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		SDK.setShowStoryRequestListener(this);
 	}
 
-	@Override
+    @Override
 	public void onStoryClick(int index) {
 		Story story = list.get(index);
+		story.resetStartPosition();
 
-		//Сбрасываем позицию
-		var startPosition = story.getStartPosition();
-		if( startPosition >= story.getSlidesCount() || startPosition < 0 ) {
-			story.setStartPosition(0);
-		}
-
-		StoryDialog dialog = new StoryDialog(this, list, index, () -> {
-			adapter.notifyDataSetChanged();
-		});
-		dialog.show();
+		showStories(list, index, () -> adapter.notifyDataSetChanged());
 	}
 
 	/**
@@ -222,13 +215,35 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 
 	@Override
 	public void onShowStoryRequest(Story story) {
+		showStory(story);
+	}
+
+	@Override
+	public boolean onShowStoryRequest(int storyId) {
+		for (var story: list) {
+			if(storyId == story.getId()) {
+				showStory(story);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private void showStory(Story story) {
+		story.setStartPosition(0);
+
 		var stories = new ArrayList<Story>(1);
 		stories.add(story);
 
-		Handler h = new Handler(getContext().getMainLooper());
-		h.post(() -> {
-			StoryDialog dialog = new StoryDialog(this, stories, 0, () -> {});
-			dialog.show();
-		});
+		Handler handler = new Handler(getContext().getMainLooper());
+		handler.post(() -> showStories(stories, 0, () -> {
+			story.setStartPosition(0);
+		}));
+	}
+
+	private void showStories(List<Story> stories, int startPosition, Runnable completeListener) {
+		StoryDialog dialog = new StoryDialog(this, stories, startPosition, completeListener);
+		dialog.show();
 	}
 }
