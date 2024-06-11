@@ -98,11 +98,9 @@ publishing {
 	}
 	repositories {
 		maven {
-			name = "sonatype"
+			name = "GitHubPackages"
 
-			def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+			url = uri("https://maven.pkg.github.com/rees46/rees46-android-sdk")
 
 			credentials {
 				username ossrhUsername
@@ -112,24 +110,8 @@ publishing {
 	}
 }
 
-def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
-
 afterEvaluate {
-	nexusPublishing {
-		repositories {
-			android.libraryVariants.all { variant ->
-				if (variant.buildType.name == "debug") return
 
-				"${variant.flavorName}Sonatype" {
-					stagingProfileId = sonatypeIds[variant.flavorName]
-					username = ossrhUsername
-					password = ossrhPassword
-					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-				}
-			}
-		}
-	}
 
 	android.libraryVariants.all { variant ->
 		if(variant == 'release') {
