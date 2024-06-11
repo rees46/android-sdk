@@ -16,7 +16,7 @@ import com.personalizatio.SDK
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
-): AppCompatActivity() {
+) : AppCompatActivity() {
     private lateinit var text: EditText
     private lateinit var button: Button
 
@@ -27,8 +27,13 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         //		Log.e("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1
+                )
             }
         }
 

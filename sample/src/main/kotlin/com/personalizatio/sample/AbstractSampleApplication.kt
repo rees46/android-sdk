@@ -3,12 +3,14 @@ package com.personalizatio.sample
 import android.app.Application
 import android.util.Log
 import com.personalizatio.SDK
-import java.io.IOException
-import java.net.URL
+import com.personalizatio.notification.NotificationHelper
+import com.personalizatio.notification.NotificationHelper.createNotification
+import com.personalizatio.notification.NotificationHelper.loadBitmaps
+import java.util.concurrent.Executors
 
 abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     private val sdk: SDK
-): Application() {
+) : Application() {
     protected abstract val shopId: String?
         get
     private val executorService = Executors.newFixedThreadPool(4)
