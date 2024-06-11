@@ -3,44 +3,52 @@ package com.personalizatio.notification
 import android.app.IntentService
 import android.content.Intent
 import com.personalizatio.notification.NotificationHelper.createNotification
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class NotificationIntentService : IntentService("NotificationIntentService") {
+class NotificationIntentService : IntentService(TAG) {
 
     override fun onHandleIntent(intent: Intent?) {
-
         intent ?: return
 
         val action = intent.action
         val currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0)
         val imageUrls = intent.getStringExtra(NOTIFICATION_IMAGES)
-        val images = NotificationHelper.loadBitmaps(imageUrls)
 
-        when (action) {
-            ACTION_NEXT_IMAGE -> {
-                if (currentIndex + 1 < images.size) {
-                    val data = intentToMap(intent)
-                    createNotification(
-                        context = this,
-                        data = data,
-                        images = images,
-                        currentIndex = currentIndex + 1
-                    )
+        CoroutineScope(Dispatchers.IO).launch {
+            val images = NotificationHelper.loadBitmaps(imageUrls)
+
+            withContext(Dispatchers.Main) {
+                when (action) {
+                    ACTION_NEXT_IMAGE -> {
+                        if (currentIndex + 1 < images.size) {
+                            val data = intentToMap(intent)
+                            createNotification(
+                                context = this@NotificationIntentService,
+                                data = data,
+                                images = images,
+                                currentIndex = currentIndex + 1
+                            )
+                        }
+                    }
+
+                    ACTION_PREVIOUS_IMAGE -> {
+                        if (currentIndex - 1 >= 0) {
+                            val data = intentToMap(intent)
+                            createNotification(
+                                context = this@NotificationIntentService,
+                                data = data,
+                                images = images,
+                                currentIndex = currentIndex - 1
+                            )
+                        }
+                    }
+
+                    else -> Unit
                 }
             }
-
-            ACTION_PREVIOUS_IMAGE -> {
-                if (currentIndex - 1 >= 0) {
-                    val data = intentToMap(intent)
-                    createNotification(
-                        context = this,
-                        data = data,
-                        images = images,
-                        currentIndex = currentIndex - 1
-                    )
-                }
-            }
-
-            else -> Unit
         }
     }
 
@@ -55,6 +63,7 @@ class NotificationIntentService : IntentService("NotificationIntentService") {
     }
 
     companion object {
+        private const val TAG = "NotificationIntentService"
         private const val NOTIFICATION_TYPE = "type"
         private const val NOTIFICATION_ID = "id"
         private const val NOTIFICATION_TITLE = "title"

@@ -12,6 +12,8 @@ import com.personalizatio.R
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object NotificationHelper {
 
@@ -127,23 +129,24 @@ object NotificationHelper {
 
         return PendingIntent.getService(
             /* context = */ context,
-            /* requestCode = */ System.currentTimeMillis().toInt(),
+            /* requestCode = */ RequestCodeGenerator.getNextRequestCode(),
             /* intent = */ intent,
             /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 
-    @JvmStatic
-    fun loadBitmaps(urls: String?): List<Bitmap> {
-        val bitmaps = ArrayList<Bitmap>()
+    suspend fun loadBitmaps(urls: String?): List<Bitmap> {
+        val bitmaps = mutableListOf<Bitmap>()
         if (urls != null) {
             val urlArray = urls.split(",").toTypedArray()
-            for (url in urlArray) {
-                try {
-                    val inputStream: InputStream = URL(url).openStream()
-                    bitmaps.add(BitmapFactory.decodeStream(inputStream))
-                } catch (e: IOException) {
-                    e.printStackTrace()
+            withContext(Dispatchers.IO) {
+                for (url in urlArray) {
+                    try {
+                        val inputStream: InputStream = URL(url).openStream()
+                        bitmaps.add(BitmapFactory.decodeStream(inputStream))
+                    } catch (ioException: IOException) {
+                        Log.e(TAG, "Error caught in load bitmaps", ioException)
+                    }
                 }
             }
         }

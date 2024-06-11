@@ -4,6 +4,12 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class MessagingService : FirebaseMessagingService() {
+
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        //TODO Implement if needed
+    }
+
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         // Check if message contains a data payload.
 
