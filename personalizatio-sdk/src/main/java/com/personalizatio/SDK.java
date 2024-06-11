@@ -19,6 +19,7 @@ import androidx.core.util.Consumer;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
+import com.personalizatio.stories.models.Story;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -58,6 +59,7 @@ public class SDK {
 	private String did;
 	private String seance;
 	private OnMessageListener onMessageListener;
+	private ShowStoryRequestListener showStoryRequestListener;
 	@SuppressLint("StaticFieldLeak")
 	protected static SDK instance;
 
@@ -72,6 +74,10 @@ public class SDK {
 	private long source_time = 0;
 
 	private static Params.RecommendedBy last_recommended_by;
+
+	public interface ShowStoryRequestListener {
+		void onShowStoryRequest(Story story);
+	}
 
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
@@ -160,6 +166,10 @@ public class SDK {
 	 */
 	public static void setOnMessageListener(OnMessageListener listener) {
 		instance.onMessageListener = listener;
+	}
+
+	public static void setShowStoryRequestListener(ShowStoryRequestListener listener) {
+		instance.showStoryRequestListener = listener;
 	}
 
 	/**
@@ -335,6 +345,19 @@ public class SDK {
 	public static void stories(String code, Api.OnApiCallbackListener listener) {
 		if( instance != null ) {
 			instance.getAsync("stories/" + code, new JSONObject(), listener);
+		}
+	}
+
+	public static void story(int storyId) {
+		if (instance != null) {
+			instance.getAsync("story/" + storyId, new JSONObject(), new Api.OnApiCallbackListener() {
+				@Override
+				public void onSuccess(JSONObject response) {
+					Log.d("stories", response.toString());
+					var story = new Story(response);
+					instance.showStoryRequestListener.onShowStoryRequest(story);
+				}
+			});
 		}
 	}
 

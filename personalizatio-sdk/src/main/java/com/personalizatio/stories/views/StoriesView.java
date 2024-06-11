@@ -33,7 +33,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
+final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener, SDK.ShowStoryRequestListener {
 
 	private StoriesAdapter adapter;
 	private final List<Story> list = new ArrayList<>();
@@ -140,6 +140,8 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 				}
 			}
 		});
+
+		SDK.setShowStoryRequestListener(this);
 	}
 
 	@Override
@@ -216,5 +218,17 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 
 	public void setMuteListener(Runnable muteListener) {
 		this.muteListener = muteListener;
+	}
+
+	@Override
+	public void onShowStoryRequest(Story story) {
+		var stories = new ArrayList<Story>(1);
+		stories.add(story);
+
+		Handler h = new Handler(getContext().getMainLooper());
+		h.post(() -> {
+			StoryDialog dialog = new StoryDialog(this, stories, 0, () -> {});
+			dialog.show();
+		});
 	}
 }
