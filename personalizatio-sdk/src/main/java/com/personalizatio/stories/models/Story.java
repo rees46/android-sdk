@@ -73,6 +73,12 @@ final public class Story {
 		return slides.size();
 	}
 
+	public void resetStartPosition() {
+		if (startPosition >= getSlidesCount() || startPosition < 0 ) {
+			startPosition = 0;
+		}
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

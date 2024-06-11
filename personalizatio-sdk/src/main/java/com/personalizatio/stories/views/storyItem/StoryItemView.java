@@ -403,6 +403,7 @@ final public class StoryItemView extends ConstraintLayout {
 		button.setVisibility(GONE);
 		buttonProducts.setVisibility(GONE);
 		products.setVisibility(GONE);
+		textBlocksLayout.removeAllViews();
 
 		//Отображаем необходимые элементы
 		for (Element element : slide.getElements()) {

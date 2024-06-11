@@ -1,5 +1,6 @@
 package com.personalizatio.stories.views;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -33,7 +34,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
+final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener, SDK.ShowStoryRequestListener {
 
 	private StoriesAdapter adapter;
 	private final List<Story> list = new ArrayList<>();
@@ -140,22 +141,16 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 				}
 			}
 		});
+
+		SDK.setShowStoryRequestListener(this);
 	}
 
-	@Override
+    @Override
 	public void onStoryClick(int index) {
 		Story story = list.get(index);
+		story.resetStartPosition();
 
-		//Сбрасываем позицию
-		var startPosition = story.getStartPosition();
-		if( startPosition >= story.getSlidesCount() || startPosition < 0 ) {
-			story.setStartPosition(0);
-		}
-
-		StoryDialog dialog = new StoryDialog(this, list, index, () -> {
-			adapter.notifyDataSetChanged();
-		});
-		dialog.show();
+		showStories(list, index, () -> adapter.notifyDataSetChanged());
 	}
 
 	/**
@@ -216,5 +211,39 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 
 	public void setMuteListener(Runnable muteListener) {
 		this.muteListener = muteListener;
+	}
+
+	@Override
+	public void onShowStoryRequest(Story story) {
+		showStory(story);
+	}
+
+	@Override
+	public boolean onShowStoryRequest(int storyId) {
+		for (var story: list) {
+			if(storyId == story.getId()) {
+				showStory(story);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private void showStory(Story story) {
+		story.setStartPosition(0);
+
+		var stories = new ArrayList<Story>(1);
+		stories.add(story);
+
+		Handler handler = new Handler(getContext().getMainLooper());
+		handler.post(() -> showStories(stories, 0, () -> {
+			story.setStartPosition(0);
+		}));
+	}
+
+	private void showStories(List<Story> stories, int startPosition, Runnable completeListener) {
+		StoryDialog dialog = new StoryDialog(this, stories, startPosition, completeListener);
+		dialog.show();
 	}
 }
