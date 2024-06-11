@@ -5,6 +5,7 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.util.DisplayMetrics;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -13,6 +14,10 @@ import androidx.annotation.ColorRes;
 public class ViewUtils {
 
     public static final int MAX_COLOR_CHANNEL_VALUE = 255;
+
+    public static float dpToPx(float dp, Context context){
+        return dp * ((float) context.getResources().getDisplayMetrics().densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+    }
 
     public static int getColor(Context context, String colorString, @ColorRes int defaultColor) {
         if (colorString == null) {

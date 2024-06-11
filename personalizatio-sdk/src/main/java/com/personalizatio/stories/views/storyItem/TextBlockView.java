@@ -14,6 +14,8 @@ import com.personalizatio.utils.ViewUtils;
 
 final public class TextBlockView extends androidx.appcompat.widget.AppCompatTextView {
 
+	private final int HORIZONTAL_PADDING_DP = 16;
+
 	public TextBlockView(@NonNull Context context) {
 		super(context);
 	}
@@ -40,7 +42,14 @@ final public class TextBlockView extends androidx.appcompat.widget.AppCompatText
 
 		setLineSpacing(getLineHeight(), (float)element.getTextLineSpacing());
 
-		setBackgroundColor(element.getTextBackgroundColor(), element.getTextBackgroundColorOpacity());
+		var colorOpacity = GetColorOpacity(element.getTextBackgroundColorOpacity());
+
+		if(colorOpacity > 0) {
+			var horizontalPaddingPx = (int) ViewUtils.dpToPx(HORIZONTAL_PADDING_DP, getContext());
+			setPadding(horizontalPaddingPx, 0, horizontalPaddingPx, 0);
+		}
+
+		setBackgroundColor(element.getTextBackgroundColor(), colorOpacity);
 		ViewUtils.setTextColor(getContext(), this, element.getTextColor(), R.color.white);
 	}
 
@@ -72,12 +81,11 @@ final public class TextBlockView extends androidx.appcompat.widget.AppCompatText
 	}
 
 	@SuppressLint("ResourceAsColor")
-	private void setBackgroundColor(String colorString, String colorOpacityString) {
+	private void setBackgroundColor(String colorString, int colorOpacity) {
 		if( !colorString.startsWith("#") ) {
 			colorString = "#FFFFFF";
 		}
 
-		var colorOpacity = GetColorOpacity(colorOpacityString);
 		var colorOpacityValueString = Integer.toString(colorOpacity,16);
 		if( colorOpacityValueString.length() == 1) colorOpacityValueString = 0 + colorOpacityValueString;
 
