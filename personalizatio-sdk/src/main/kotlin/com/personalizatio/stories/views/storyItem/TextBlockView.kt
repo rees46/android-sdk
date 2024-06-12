@@ -34,7 +34,7 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
 
         textAlignment = getTextAlignment(element.textAlign)
 
-        setLineSpacing(lineHeight.toFloat(), element.textLineSpacing.toFloat())
+        setLineSpacing(lineSpacingExtra, element.textLineSpacing.toFloat())
 
         setBackgroundColor(element.textBackgroundColor, element.textBackgroundColorOpacity)
         ViewUtils.setTextColor(context, this, element.textColor, R.color.white)
