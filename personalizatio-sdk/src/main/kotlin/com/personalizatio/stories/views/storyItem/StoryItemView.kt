@@ -417,6 +417,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         button.visibility = GONE
         buttonProducts.visibility = GONE
         products.visibility = GONE
+        textBlocksLayout.removeAllViews()
 
         //Отображаем необходимые элементы
         for (element in slide.getElements()) {
