@@ -290,6 +290,12 @@ val storiesView = StoriesView(this, "STORY BLOCK CODE")
 findViewById<ViewGroup>(R.id.stories).addView(storiesView)
 ```
 
+Show story by id:
+
+```kotlin
+sdk.story(STORY_ID)
+```
+
 Customize story settings:
 
 ```kotlin

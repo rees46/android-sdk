@@ -17,6 +17,7 @@ import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.listeners.ShowStoryRequestListener
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
@@ -25,7 +26,7 @@ import com.personalizatio.stories.viewAdapters.StoriesAdapter.ClickListener
 import org.json.JSONException
 import org.json.JSONObject
 
-class StoriesView : ConstraintLayout, ClickListener {
+class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
     private var adapter: StoriesAdapter? = null
     private val list: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
@@ -118,22 +119,17 @@ class StoriesView : ConstraintLayout, ClickListener {
                 }
             })
         }
+
+        SDK.getInstance().setShowStoryRequestListener(this);
     }
 
     @SuppressLint("NotifyDataSetChanged")
     override fun onStoryClick(index: Int) {
         val story = list[index]
 
-        //Сбрасываем позицию
-        val startPosition = story.startPosition
-        if (startPosition >= story.slidesCount || startPosition < 0) {
-            story.startPosition = 0
-        }
+        story.resetStartPosition()
 
-        val dialog = StoryDialog(this, list, index) {
-            adapter?.notifyDataSetChanged()
-        }
-        dialog.show()
+        showStories(list, index) { adapter?.notifyDataSetChanged() }
     }
 
     fun muteVideo(mute: Boolean) {
@@ -164,5 +160,39 @@ class StoriesView : ConstraintLayout, ClickListener {
         if (observer != null) {
             context.contentResolver.unregisterContentObserver(observer!!)
         }
+    }
+
+    override fun onShowStoryRequest(story: Story) {
+        showStory(story)
+    }
+
+    override fun onShowStoryRequest(storyId: Int): Boolean {
+        for (story in list) {
+            if (storyId == story.id) {
+                showStory(story)
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private fun showStory(story: Story) {
+        story.startPosition = 0
+
+        val stories = ArrayList<Story>(1)
+        stories.add(story)
+
+        val handler = Handler(context.mainLooper)
+        handler.post {
+            showStories(stories, 0) {
+                story.startPosition = 0
+            }
+        }
+    }
+
+    private fun showStories(stories: List<Story>, startPosition: Int, completeListener: Runnable) {
+        val dialog = StoryDialog(this, stories, startPosition, completeListener)
+        dialog.show()
     }
 }

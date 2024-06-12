@@ -21,7 +21,9 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.listeners.ShowStoryRequestListener
 import com.personalizatio.notifications.Source
+import com.personalizatio.stories.models.Story
 import org.json.JSONException
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -35,6 +37,7 @@ open class SDK {
     private var did: String? = null
     private var seance: String? = null
     private var onMessageListener: OnMessageListener? = null
+    private var showStoryRequestListener: ShowStoryRequestListener? = null
 
     val tag: String
         get() = TAG
@@ -347,6 +350,10 @@ open class SDK {
      */
     fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
+    }
+
+    internal fun setShowStoryRequestListener(listener: ShowStoryRequestListener?) {
+        showStoryRequestListener = listener
     }
 
     /**
@@ -744,12 +751,29 @@ open class SDK {
         sendAsync("mobile_push_tokens", JSONObject(params.toMap()), listener)
     }
 
-
     /**
      * @param listener
      */
     fun stories(code: String, listener: OnApiCallbackListener) {
-        instance?.getAsync("stories/$code", JSONObject(), listener)
+        getAsync("stories/$code", JSONObject(), listener)
+    }
+
+    fun story(storyId: Int) {
+        showStoryRequestListener?.let { listener ->
+            val show = listener.onShowStoryRequest(storyId)
+
+            if (show) return
+
+            getAsync("story/$storyId", JSONObject(), object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    Log.d("story", response.toString())
+                    response?.let {
+                        val story = Story(response)
+                        listener.onShowStoryRequest(story)
+                    }
+                }
+            })
+        }
     }
 
     /**
