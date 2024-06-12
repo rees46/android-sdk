@@ -296,7 +296,7 @@ open class SDK {
     /**
      * @param extras from data notification
      */
-    public fun notificationClicked(extras: Bundle?) {
+    fun notificationClicked(extras: Bundle?) {
         val type = extras?.getString(NOTIFICATION_TYPE, null)
         val code = extras?.getString(NOTIFICATION_ID, null)
         if (type != null && code != null) {
