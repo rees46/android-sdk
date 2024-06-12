@@ -29,9 +29,9 @@ class StoriesView : ConstraintLayout, ClickListener {
     private var adapter: StoriesAdapter? = null
     private val list: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
-	val settings: Settings = Settings()
-	var code: String? = null
-	var player: Player? = null
+    val settings: Settings = Settings()
+    var code: String? = null
+    var player: Player? = null
     var clickListener: OnLinkClickListener? = null
     var isMute: Boolean = true
         private set
@@ -46,7 +46,11 @@ class StoriesView : ConstraintLayout, ClickListener {
         parseAttrs(attrs)
     }
 
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context!!, attrs, defStyleAttr) {
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(
+        context!!,
+        attrs,
+        defStyleAttr
+    ) {
         parseAttrs(attrs)
     }
 
@@ -101,7 +105,7 @@ class StoriesView : ConstraintLayout, ClickListener {
 
         //Запрашиваем сторисы
         this.code?.let {
-            SDK.getInstance().stories(it, object : OnApiCallbackListener() {
+            SDK.instance.stories(it, object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     response?.let { response ->
                         Log.d("stories", response.toString())

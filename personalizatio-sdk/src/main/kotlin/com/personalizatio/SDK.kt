@@ -31,44 +31,46 @@ import org.json.JSONException
 import org.json.JSONObject
 
 open class SDK {
+
+    private lateinit var preferencesKey: String
     private lateinit var context: Context
-    private var did: String? = null
-    private var seance: String? = null
-    private var onMessageListener: OnMessageListener? = null
-
-    val tag: String
-        get() = TAG
-
-    @Volatile
-    private var initialized = false
-
-    @Volatile
-    private var attempt = 0
-    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
-    private var search: Search? = null
     private lateinit var segment: String
     private lateinit var source: Source
     private lateinit var shopId: String
     private lateinit var stream: String
-    private lateinit var preferencesKey: String
-    private var lastRecommendedBy: RecommendedBy? = null
+    private lateinit var api: Api
 
-    private lateinit var api : Api
+    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
+    private var onMessageListener: OnMessageListener? = null
+    private var lastRecommendedBy: RecommendedBy? = null
+    private var seance: String? = null
+    private var search: Search? = null
+    private var did: String? = null
+    private var initialized = false
+    private var attempt = 0
 
     /**
      * @param shopId Shop key
      */
-    fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
+    fun initialize(
+        context: Context,
+        shopId: String,
+        apiUrl: String,
+        preferencesKey: String,
+        stream: String
+    ) {
         this.api = Api.getApi(apiUrl)
 
         this.context = context
         this.shopId = shopId
         this.stream = stream
         this.preferencesKey = preferencesKey
-        TAG = tag
 
         //Инициализируем сегмент
-        segment = prefs().getString("$preferencesKey.segment", arrayOf("A", "B")[Math.round(Math.random()).toInt()]).toString()
+        segment = prefs().getString(
+            "$preferencesKey.segment",
+            arrayOf("A", "B")[Math.round(Math.random()).toInt()]
+        ).toString()
         source = Source.createSource(prefs())
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -77,7 +79,13 @@ open class SDK {
             val channelName = context.getString(R.string.notification_channel_name)
             val notificationManager = context.getSystemService(NotificationManager::class.java)
             if (notificationManager != null) {
-                notificationManager.createNotificationChannel(NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW))
+                notificationManager.createNotificationChannel(
+                    NotificationChannel(
+                        channelId,
+                        channelName,
+                        NotificationManager.IMPORTANCE_LOW
+                    )
+                )
             } else {
                 error("NotificationManager not allowed")
             }
@@ -191,8 +199,9 @@ open class SDK {
             seance = alphanumeric(10)
         }
         updateSidActivity()
-        debug("Device ID: " + did + ", seance: " + seance + ", last act: "
-                + Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0))
+        debug(
+            "Device ID: " + did + ", seance: " + seance + ", last act: "
+                    + Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0))
         )
 
         //Seach
@@ -368,7 +377,12 @@ open class SDK {
      * @param params   Дополнительные параметры к запросу
      * @param listener v
      */
-    fun search(query: String, type: SearchParams.TYPE, params: SearchParams, listener: OnApiCallbackListener) {
+    fun search(
+        query: String,
+        type: SearchParams.TYPE,
+        params: SearchParams,
+        listener: OnApiCallbackListener
+    ) {
         if (search != null) {
             params.put(InternalParameter.SEARCH_TYPE, type.value)
                 .put(InternalParameter.SEARCH_QUERY, query)
@@ -476,7 +490,13 @@ open class SDK {
      * @param value    Event value
      */
     @JvmOverloads
-    fun track(event: String, category: String? = null, label: String? = null, value: Int? = null, listener: OnApiCallbackListener? = null) {
+    fun track(
+        event: String,
+        category: String? = null,
+        label: String? = null,
+        value: Int? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
         val params = Params()
         params.put(InternalParameter.EVENT, event)
         if (category != null) {
@@ -509,7 +529,13 @@ open class SDK {
      * @param email         Email, если есть
      * @param phone         Телефон, если есть
      */
-    fun subscribeForPriceDrop(id: String, currentPrice: Double, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
+    fun subscribeForPriceDrop(
+        id: String,
+        currentPrice: Double,
+        email: String? = null,
+        phone: String? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
         val params = Params()
         params.put(Params.Parameter.ITEM, id)
         params.put(Params.Parameter.PRICE, currentPrice.toString())
@@ -530,7 +556,12 @@ open class SDK {
      * @param email    Email, если есть
      * @param phone    Телефон, если есть
      */
-    fun unsubscribeForPriceDrop(itemIds: Array<String>, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
+    fun unsubscribeForPriceDrop(
+        itemIds: Array<String>,
+        email: String? = null,
+        phone: String? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
         val params = JSONObject()
         try {
             params.put("item_ids", java.lang.String.join(", ", *itemIds))
@@ -554,7 +585,13 @@ open class SDK {
      * @param email Email, если есть
      * @param phone Телефон, если есть
      */
-    fun subscribeForBackInStock(id: String, email: String? = null, phone: String? = null, properties: JSONObject? = null, listener: OnApiCallbackListener? = null) {
+    fun subscribeForBackInStock(
+        id: String,
+        email: String? = null,
+        phone: String? = null,
+        properties: JSONObject? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
         val params = Params()
         params.put(Params.Parameter.ITEM, id)
         if (properties != null) {
@@ -578,7 +615,12 @@ open class SDK {
      * @param phone    Телефон, если есть
      */
     @JvmOverloads
-    fun unsubscribeForBackInStock(itemIds: Array<String>, email: String? = null, phone: String? = null, listener: OnApiCallbackListener? = null) {
+    fun unsubscribeForBackInStock(
+        itemIds: Array<String>,
+        email: String? = null,
+        phone: String? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
         val params = JSONObject()
         try {
             params.put("item_ids", java.lang.String.join(", ", *itemIds))
@@ -611,8 +653,21 @@ open class SDK {
      * @param phone
      * @param subscriptions
      */
-    fun manageSubscription(email: String?, phone: String?, subscriptions: HashMap<String, Boolean>, listener: OnApiCallbackListener? = null) {
-        manageSubscription(email, phone, null, null, null, subscriptions, listener)
+    fun manageSubscription(
+        email: String?,
+        phone: String?,
+        subscriptions: HashMap<String, Boolean>,
+        listener: OnApiCallbackListener? = null
+    ) {
+        manageSubscription(
+            email = email,
+            phone = phone,
+            externalId = null,
+            loyaltyId = null,
+            telegramId = null,
+            subscriptions = subscriptions,
+            listener = listener
+        )
     }
 
     /**
@@ -639,8 +694,15 @@ open class SDK {
      * @param subscriptions
      */
     @JvmOverloads
-    fun manageSubscription(email: String?, phone: String?, externalId: String?, loyaltyId: String?, telegramId: String?,
-                           subscriptions: HashMap<String, Boolean>, listener: OnApiCallbackListener? = null) {
+    fun manageSubscription(
+        email: String?,
+        phone: String?,
+        externalId: String?,
+        loyaltyId: String?,
+        telegramId: String?,
+        subscriptions: HashMap<String, Boolean>,
+        listener: OnApiCallbackListener? = null
+    ) {
         try {
             val params = JSONObject()
             for ((key, value) in subscriptions) {
@@ -670,13 +732,7 @@ open class SDK {
     /**
      * Возвращает текущий сегмент для А/В тестирования
      */
-    fun getSegment(): String {
-        if (instance == null) {
-            throw RuntimeException("You need initialize SDK before request segment")
-        } else {
-            return instance!!.segment
-        }
-    }
+    fun getSegment(): String = instance.segment
 
     /**
      * Add user to a segment
@@ -686,7 +742,12 @@ open class SDK {
      * @param email
      * @param phone
      */
-    fun addToSegment(segment_id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+    fun addToSegment(
+        segment_id: String,
+        email: String?,
+        phone: String?,
+        listener: OnApiCallbackListener? = null
+    ) {
         segmentMethod("add", segment_id, email, phone, listener)
     }
 
@@ -698,7 +759,12 @@ open class SDK {
      * @param email
      * @param phone
      */
-    fun removeFromSegment(segment_id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null) {
+    fun removeFromSegment(
+        segment_id: String,
+        email: String?,
+        phone: String?,
+        listener: OnApiCallbackListener? = null
+    ) {
         segmentMethod("remove", segment_id, email, phone, listener)
     }
 
@@ -712,7 +778,13 @@ open class SDK {
         getAsync("segments/get", JSONObject(), listener)
     }
 
-    private fun segmentMethod(method: String, segmentId: String?, email: String?, phone: String?, listener: OnApiCallbackListener?) {
+    private fun segmentMethod(
+        method: String,
+        segmentId: String?,
+        email: String?,
+        phone: String?,
+        listener: OnApiCallbackListener?
+    ) {
         try {
             val params = JSONObject()
             if (segmentId != null) {
@@ -800,9 +872,9 @@ open class SDK {
     }
 
     companion object {
-        lateinit var TAG: String
-        var NOTIFICATION_TYPE: String = "NOTIFICATION_TYPE"
-        var NOTIFICATION_ID: String = "NOTIFICATION_ID"
+        const val TAG = "SDK"
+        private const val NOTIFICATION_TYPE = "NOTIFICATION_TYPE"
+        private const val NOTIFICATION_ID = "NOTIFICATION_ID"
         private const val SID_FIELD = "sid"
         private const val SID_LAST_ACT_FIELD = "sid_last_act"
         private const val DID_FIELD = "did"
@@ -814,19 +886,8 @@ open class SDK {
         private const val IMAGE_FIELD = "image"
         private const val IMAGES_FIELD = "images"
 
-        @SuppressLint("StaticFieldLeak")
-        @Volatile
-        private var instance: SDK? = null
-
-        fun getInstance(): SDK {
-            if (instance == null) {
-                synchronized(this) {
-                    if (instance == null) {
-                        instance = SDK()
-                    }
-                }
-            }
-            return instance!!
+        val instance: SDK by lazy {
+            SDK()
         }
 
         fun userAgent(): String {
@@ -865,21 +926,30 @@ open class SDK {
          * @param remoteMessage
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance?.notificationReceived(remoteMessage.data)
+            instance.notificationReceived(remoteMessage.data)
 
-            instance?.onMessageListener?.let { listener ->
-                val data: MutableMap<String, String> = HashMap(remoteMessage.data)
-
-                remoteMessage.notification?.let { notification ->
-                    notification.title?.takeIf { it.isNotEmpty() }?.let { data[TITLE_FIELD] = it }
-                    notification.body?.takeIf { it.isNotEmpty() }?.let { data[BODY_FIELD] = it }
-                    notification.imageUrl?.let { data[IMAGE_FIELD] = it.toString() }
-                }
-
-                data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
-
+            instance.onMessageListener?.let { listener ->
+                val data = prepareData(remoteMessage)
                 listener.onMessage(data)
             }
+        }
+
+        private fun prepareData(remoteMessage: RemoteMessage): MutableMap<String, String> {
+            val data: MutableMap<String, String> = HashMap(remoteMessage.data)
+            remoteMessage.notification?.let { notification ->
+                addNotificationData(notification, data)
+            }
+            data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
+            return data
+        }
+
+        private fun addNotificationData(
+            notification: RemoteMessage.Notification,
+            data: MutableMap<String, String>
+        ) {
+            notification.title?.takeIf { it.isNotEmpty() }?.let { data[TITLE_FIELD] = it }
+            notification.body?.takeIf { it.isNotEmpty() }?.let { data[BODY_FIELD] = it }
+            notification.imageUrl?.let { data[IMAGE_FIELD] = it.toString() }
         }
     }
 }

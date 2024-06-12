@@ -11,17 +11,14 @@ import kotlinx.coroutines.*
 class REES46 private constructor() : SDK() {
 
     companion object {
-        const val TAG: String = "REES46"
 
-        protected const val PREFERENCES_KEY: String = "rees46.sdk"
-        protected val API_URL: String = when {
+        private const val PREFERENCES_KEY: String = "rees46.sdk"
+        private val API_URL: String = when {
             BuildConfig.DEBUG -> "http://dev.api.rees46.com:8000/"
             else -> "https://api.rees46.ru/"
         }
 
-        fun getInstance() : SDK {
-            return SDK.getInstance()
-        }
+        fun getInstance() : SDK = instance
 
         /**
          * Initialize api
@@ -33,9 +30,15 @@ class REES46 private constructor() : SDK() {
             val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
 
             val sdk = getInstance()
-            sdk.initialize(context, shopId, apiUrl, TAG, PREFERENCES_KEY, "android")
+            sdk.initialize(
+                context = context,
+                shopId = shopId,
+                apiUrl = apiUrl,
+                preferencesKey = PREFERENCES_KEY,
+                stream = "android"
+            )
 
-            // Дефолтное отображение сообщения без кастомизации
+            // Default message equipment without customization
             getInstance().setOnMessageListener { data: Map<String, String> ->
                 GlobalScope.launch(Dispatchers.Main) {
                     val images = withContext(Dispatchers.IO) {
