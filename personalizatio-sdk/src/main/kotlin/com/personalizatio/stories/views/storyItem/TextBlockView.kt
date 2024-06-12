@@ -36,7 +36,13 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
 
         setLineSpacing(lineSpacingExtra, element.textLineSpacing.toFloat())
 
-        setBackgroundColor(element.textBackgroundColor, element.textBackgroundColorOpacity)
+        val colorOpacity = getColorOpacity(element.textBackgroundColorOpacity)
+        if (colorOpacity > 0) {
+            val paddingPx = ViewUtils.dpToPx(PADDING_DP.toFloat(), context).toInt()
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+        }
+
+        setBackgroundColor(element.textBackgroundColor, colorOpacity)
         ViewUtils.setTextColor(context, this, element.textColor, R.color.white)
     }
 
@@ -66,13 +72,12 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
     }
 
     @SuppressLint("ResourceAsColor")
-    private fun setBackgroundColor(colorString: String, colorOpacityString: String) {
+    private fun setBackgroundColor(colorString: String, colorOpacity: Int) {
         var correctColorString = colorString
         if (!colorString.startsWith("#")) {
             correctColorString = "#FFFFFF"
         }
 
-        val colorOpacity = getColorOpacity(colorOpacityString)
         var colorOpacityValueString = colorOpacity.toString(16)
         if (colorOpacityValueString.length == 1) colorOpacityValueString = "0$colorOpacityValueString"
 
@@ -100,6 +105,8 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
     }
 
     companion object {
+        private const val PADDING_DP = 16
+
         private fun getTextAlignment(textAlign: String): Int {
             return when (textAlign) {
                 "center" -> TEXT_ALIGNMENT_CENTER

@@ -5,6 +5,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
+import android.util.DisplayMetrics
 import android.widget.Button
 import android.widget.TextView
 import androidx.annotation.ColorRes
@@ -75,5 +76,9 @@ object ViewUtils {
         if (bold) return Typeface.BOLD
         if (italic) return Typeface.ITALIC
         return Typeface.NORMAL
+    }
+
+    fun dpToPx(dp: Float, context: Context): Float {
+        return dp * (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)
     }
 }
