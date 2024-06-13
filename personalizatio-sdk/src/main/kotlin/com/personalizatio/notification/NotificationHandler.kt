@@ -1,0 +1,96 @@
+package com.personalizatio.notification
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.SharedPreferences
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import com.google.firebase.messaging.RemoteMessage
+import com.personalizatio.R
+import com.personalizatio.notifications.Source
+import org.json.JSONException
+import org.json.JSONObject
+
+
+class NotificationHandler(
+    private val context: Context,
+    private val prefs: () -> SharedPreferences
+) {
+
+    fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = context.getString(R.string.notification_channel_id)
+            val channelName = context.getString(R.string.notification_channel_name)
+            val notificationManager = context.getSystemService(NotificationManager::class.java)
+            when {
+                notificationManager != null -> notificationManager.createNotificationChannel(
+                    NotificationChannel(
+                        /* id = */ channelId,
+                        /* name = */ channelName,
+                        /* importance = */ NotificationManager.IMPORTANCE_LOW
+                    )
+                )
+
+                else -> error("NotificationManager not allowed")
+            }
+        }
+    }
+
+    fun notificationClicked(
+        extras: Bundle?,
+        sendAsync: (String, JSONObject) -> Unit,
+        source: Source
+    ) {
+        val type = extras?.getString(NOTIFICATION_TYPE, null)
+        val code = extras?.getString(NOTIFICATION_ID, null)
+        if (type != null && code != null) {
+            val params = JSONObject()
+            try {
+                params.put(TYPE_PARAM, type)
+                params.put(CODE_PARAM, code)
+                sendAsync(TRACK_CLICKED, params)
+
+                source.update(type, code, prefs())
+            } catch (e: JSONException) {
+                Log.e(TAG, e.message, e)
+            }
+        }
+    }
+
+    fun prepareData(remoteMessage: RemoteMessage): MutableMap<String, String> {
+        val data: MutableMap<String, String> = HashMap(remoteMessage.data)
+        remoteMessage.notification?.let { notification ->
+            addNotificationData(notification, data)
+        }
+        data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
+        return data
+    }
+
+    private fun addNotificationData(
+        notification: RemoteMessage.Notification,
+        data: MutableMap<String, String>
+    ) {
+        notification.title?.takeIf { it.isNotEmpty() }?.let { data[TITLE_FIELD] = it }
+        notification.body?.takeIf { it.isNotEmpty() }?.let { data[BODY_FIELD] = it }
+        notification.imageUrl?.let { data[IMAGE_FIELD] = it.toString() }
+    }
+
+    private fun error(message: String?, exception: Exception? = null) {
+        Log.e(TAG, message, exception)
+    }
+
+    companion object {
+        private const val NOTIFICATION_TYPE = "NOTIFICATION_TYPE"
+        private const val NOTIFICATION_ID = "NOTIFICATION_ID"
+        private const val TRACK_CLICKED = "track/clicked"
+        private const val TAG = "NotificationHandler"
+        private const val IMAGES_FIELD = "images"
+        private const val TITLE_FIELD = "title"
+        private const val IMAGE_FIELD = "image"
+        private const val BODY_FIELD = "body"
+        private const val TYPE_PARAM = "type"
+        private const val CODE_PARAM = "code"
+    }
+}

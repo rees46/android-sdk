@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+//TODO IntentService was Deprecated, need refactor
 class NotificationIntentService : IntentService(TAG) {
 
     override fun onHandleIntent(intent: Intent?) {

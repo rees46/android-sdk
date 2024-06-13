@@ -13,6 +13,7 @@ class REES46 private constructor() : SDK() {
     companion object {
 
         private const val PREFERENCES_KEY: String = "rees46.sdk"
+        private const val PLATFORM_ANDROID: String = "android"
         private val API_URL: String = when {
             BuildConfig.DEBUG -> "http://dev.api.rees46.com:8000/"
             else -> "https://api.rees46.ru/"
@@ -35,9 +36,8 @@ class REES46 private constructor() : SDK() {
                 shopId = shopId,
                 apiUrl = apiUrl,
                 preferencesKey = PREFERENCES_KEY,
-                stream = "android"
+                stream = PLATFORM_ANDROID
             )
-
             // Default message equipment without customization
             getInstance().setOnMessageListener { data: Map<String, String> ->
                 GlobalScope.launch(Dispatchers.Main) {
