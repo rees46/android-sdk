@@ -26,7 +26,7 @@ class REES46 private constructor() : SDK() {
          * @param shopId Shop key
          */
         @OptIn(DelicateCoroutinesApi::class)
-        fun initialize(context: Context, shopId: String, apiHost: String? = null) {
+        fun initialize(context: Context, shopId: String, apiHost: String? = null, autoSendPushToken: Boolean = true) {
             val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
 
             val sdk = getInstance()
@@ -36,7 +36,8 @@ class REES46 private constructor() : SDK() {
                 apiUrl = apiUrl,
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
-                stream = PLATFORM_ANDROID
+                stream = PLATFORM_ANDROID,
+                autoSendPushToken = autoSendPushToken
             )
             // Default message equipment without customization
             sdk.setOnMessageListener { data: Map<String, String> ->
