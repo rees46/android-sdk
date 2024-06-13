@@ -293,7 +293,7 @@ findViewById<ViewGroup>(R.id.stories).addView(storiesView)
 Show story by id:
 
 ```kotlin
-sdk.story(STORY_ID)
+sdk.showStory(STORY_ID)
 ```
 
 Customize story settings:

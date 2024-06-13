@@ -21,9 +21,10 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.listeners.ShowStoryRequestListener
 import com.personalizatio.notifications.Source
+import com.personalizatio.stories.StoriesManager
 import com.personalizatio.stories.models.Story
+import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -37,7 +38,6 @@ open class SDK {
     private var did: String? = null
     private var seance: String? = null
     private var onMessageListener: OnMessageListener? = null
-    private var showStoryRequestListener: ShowStoryRequestListener? = null
 
     val tag: String
         get() = TAG
@@ -57,12 +57,14 @@ open class SDK {
     private var lastRecommendedBy: RecommendedBy? = null
 
     private lateinit var api : Api
+    private lateinit var storiesManager: StoriesManager
 
     /**
      * @param shopId Shop key
      */
     fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
         this.api = Api.getApi(apiUrl)
+        this.storiesManager = StoriesManager(this)
 
         this.context = context
         this.shopId = shopId
@@ -86,6 +88,10 @@ open class SDK {
             }
         }
         did()
+    }
+
+    fun initializeStoriesView(storiesView: StoriesView) {
+        storiesManager.initialize(storiesView)
     }
 
     /**
@@ -350,10 +356,6 @@ open class SDK {
      */
     fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
-    }
-
-    internal fun setShowStoryRequestListener(listener: ShowStoryRequestListener?) {
-        showStoryRequestListener = listener
     }
 
     /**
@@ -755,25 +757,11 @@ open class SDK {
      * @param listener
      */
     fun stories(code: String, listener: OnApiCallbackListener) {
-        getAsync("stories/$code", JSONObject(), listener)
+        storiesManager.requestStories(code, listener)
     }
 
-    fun story(storyId: Int) {
-        showStoryRequestListener?.let { listener ->
-            val show = listener.onShowStoryRequest(storyId)
-
-            if (show) return
-
-            getAsync("story/$storyId", JSONObject(), object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    Log.d("story", response.toString())
-                    response?.let {
-                        val story = Story(response)
-                        listener.onShowStoryRequest(story)
-                    }
-                }
-            })
-        }
+    fun showStory(storyId: Int) {
+        storiesManager.showStory(storyId)
     }
 
     /**

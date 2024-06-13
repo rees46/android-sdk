@@ -7,28 +7,21 @@ import android.database.ContentObserver
 import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
-import android.os.Looper
-import android.os.Message
 import android.util.AttributeSet
-import android.util.Log
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
 import com.personalizatio.SDK
-import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.listeners.ShowStoryRequestListener
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.viewAdapters.StoriesAdapter
 import com.personalizatio.stories.viewAdapters.StoriesAdapter.ClickListener
-import org.json.JSONException
-import org.json.JSONObject
 
-class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
+class StoriesView : ConstraintLayout, ClickListener {
     private var adapter: StoriesAdapter? = null
-    private val list: MutableList<Story> = ArrayList()
+    private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
 	val settings: Settings = Settings()
 	var code: String? = null
@@ -55,6 +48,17 @@ class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
     constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int)
             : super(context!!, attrs, defStyleAttr, defStyleRes) {
         parseAttrs(attrs)
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    internal fun updateStories(stories: List<Story>) {
+        this.stories.clear()
+        this.stories.addAll(stories)
+
+        Handler(context.mainLooper).post {
+            registerObserver()
+            adapter?.notifyDataSetChanged()
+        }
     }
 
     /**
@@ -84,52 +88,22 @@ class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
         val view = inflate(context, R.layout.stories, this)
         val stories = view.findViewById<RecyclerView>(R.id.stories)
 
-        adapter = StoriesAdapter(this, list, this)
+        adapter = StoriesAdapter(this, this.stories, this)
         stories.adapter = adapter
-
-        val handler: Handler = object : Handler(Looper.getMainLooper()) {
-            @SuppressLint("NotifyDataSetChanged")
-            override fun handleMessage(msg: Message) {
-                registerObserver()
-                adapter?.notifyDataSetChanged()
-            }
-        }
 
         //Плеер для просмотра видео
         player = Player(context)
 
         settings.failed_load_text = resources.getString(R.string.failed_load_text)
-
-        //Запрашиваем сторисы
-        this.code?.let {
-            SDK.getInstance().stories(it, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    response?.let { response ->
-                        Log.d("stories", response.toString())
-                        try {
-                            val jsonStories = response.getJSONArray("stories")
-                            for (i in 0 until jsonStories.length()) {
-                                list.add(Story(jsonStories.getJSONObject(i)))
-                            }
-                            handler.sendEmptyMessage(1)
-                        } catch (e: JSONException) {
-                            Log.e(SDK.TAG, e.message, e)
-                        }
-                    }
-                }
-            })
-        }
-
-        SDK.getInstance().setShowStoryRequestListener(this);
     }
 
     @SuppressLint("NotifyDataSetChanged")
     override fun onStoryClick(index: Int) {
-        val story = list[index]
+        val story = stories[index]
 
         story.resetStartPosition()
 
-        showStories(list, index) { adapter?.notifyDataSetChanged() }
+        showStories(stories, index) { adapter?.notifyDataSetChanged() }
     }
 
     fun muteVideo(mute: Boolean) {
@@ -162,12 +136,8 @@ class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
         }
     }
 
-    override fun onShowStoryRequest(story: Story) {
-        showStory(story)
-    }
-
-    override fun onShowStoryRequest(storyId: Int): Boolean {
-        for (story in list) {
+    internal fun showStory(storyId: Int): Boolean {
+        for (story in stories) {
             if (storyId == story.id) {
                 showStory(story)
                 return true
@@ -177,7 +147,7 @@ class StoriesView : ConstraintLayout, ClickListener, ShowStoryRequestListener {
         return false
     }
 
-    private fun showStory(story: Story) {
+    internal fun showStory(story: Story) {
         story.startPosition = 0
 
         val stories = ArrayList<Story>(1)

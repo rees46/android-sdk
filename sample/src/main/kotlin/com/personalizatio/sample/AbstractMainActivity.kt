@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.personalizatio.SDK
+import com.personalizatio.stories.views.StoriesView
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
@@ -31,6 +32,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
             }
         }
+
+        val storiesView = findViewById<StoriesView>(R.id.stories_view)
+        sdk.initializeStoriesView(storiesView)
 
         if (intent.extras != null) {
             sdk.notificationClicked(intent.extras)
