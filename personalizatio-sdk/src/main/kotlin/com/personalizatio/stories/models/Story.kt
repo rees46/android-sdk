@@ -28,12 +28,6 @@ class Story(json: JSONObject) {
     val slidesCount: Int
         get() = slides.size
 
-    fun resetStartPosition() {
-        if (startPosition >= slidesCount || startPosition < 0) {
-            startPosition = 0
-        }
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Story) return false

@@ -115,7 +115,9 @@ class StoriesView : ConstraintLayout, ClickListener {
     override fun onStoryClick(id: Int) {
         val story = stories[id]
 
-        story.resetStartPosition()
+        if (story.startPosition >= story.slidesCount || story.startPosition < 0) {
+            story.startPosition = 0
+        }
 
         showStories(stories, id, { adapter.notifyDataSetChanged() }, {})
     }

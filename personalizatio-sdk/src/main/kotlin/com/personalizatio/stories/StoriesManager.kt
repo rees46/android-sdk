@@ -39,21 +39,19 @@ internal class StoriesManager(val sdk: SDK) {
     }
 
     private fun updateStories() {
-        storiesView.code?.let { code ->
-            requestStories(code, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        Log.d("stories", response.toString())
-                        try {
-                            val stories = getStories(response)
-                            storiesView.updateStories(stories)
-                        } catch (e: JSONException) {
-                            Log.e(SDK.TAG, e.message, e)
-                        }
+        requestStories(storiesView.code, object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    Log.d("stories", response.toString())
+                    try {
+                        val stories = getStories(response)
+                        storiesView.updateStories(stories)
+                    } catch (e: JSONException) {
+                        Log.e(SDK.TAG, e.message, e)
                     }
                 }
-            })
-        }
+            }
+        })
     }
 
     private fun getStories(json: JSONObject): List<Story> {
