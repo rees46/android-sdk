@@ -56,6 +56,7 @@ open class SDK {
         context: Context,
         shopId: String,
         apiUrl: String,
+        tag: String,
         preferencesKey: String,
         stream: String
     ) {
@@ -65,6 +66,7 @@ open class SDK {
         this.shopId = shopId
         this.stream = stream
         this.preferencesKey = preferencesKey
+        TAG = tag
 
         segment = prefs().getString(
             "$preferencesKey.segment",
@@ -853,7 +855,7 @@ open class SDK {
 
     companion object {
 
-        const val TAG = "SDK"
+        var TAG = "SDK"
 
         private const val SUBSCRIPTION_UNSUBSCRIBE_PRICE = "subscriptions/unsubscribe_from_product_price"
         private const val SUBSCRIPTION_UNSUBSCRIBE = "subscriptions/unsubscribe_from_product_available"

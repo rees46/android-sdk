@@ -1,8 +1,6 @@
 package com.rees46.sdk
 
 import android.content.Context
-import com.google.android.gms.tasks.Task
-import com.google.firebase.messaging.FirebaseMessaging
 import com.personalizatio.BuildConfig
 import com.personalizatio.SDK
 import com.personalizatio.notification.NotificationHelper
@@ -12,6 +10,7 @@ class REES46 private constructor() : SDK() {
 
     companion object {
 
+        private const val TAG: String = "REES46"
         private const val PREFERENCES_KEY: String = "rees46.sdk"
         private const val PLATFORM_ANDROID: String = "android"
         private val API_URL: String = when {
@@ -35,11 +34,12 @@ class REES46 private constructor() : SDK() {
                 context = context,
                 shopId = shopId,
                 apiUrl = apiUrl,
+                tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID
             )
             // Default message equipment without customization
-            getInstance().setOnMessageListener { data: Map<String, String> ->
+            sdk.setOnMessageListener { data: Map<String, String> ->
                 GlobalScope.launch(Dispatchers.Main) {
                     val images = withContext(Dispatchers.IO) {
                         NotificationHelper.loadBitmaps(urls = data[NotificationHelper.NOTIFICATION_IMAGES])
