@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="failed_load_text">Не удалось загрузить данные. Проверьте подключение и повторите попытку.</string>
+    <string name="notification_button_forward">Вперёд</string>
+    <string name="notification_button_back">Назад</string>
 </resources>

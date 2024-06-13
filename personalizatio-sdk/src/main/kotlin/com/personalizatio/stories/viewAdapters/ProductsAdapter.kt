@@ -35,7 +35,9 @@ class ProductsAdapter(private val storiesView: StoriesView) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.product, parent, false))
+        return ViewHolder(
+            LayoutInflater.from(parent.context).inflate(R.layout.product, parent, false)
+        )
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -79,11 +81,14 @@ class ProductsAdapter(private val storiesView: StoriesView) :
                 Log.d(SDK.TAG, "click: " + product.name + ", " + product.url)
                 try {
                     if (storiesView.itemClickListener?.onClick(product) == true) {
-                        itemView.context.startActivity(Intent(
+                        itemView.context.startActivity(
+                            Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(if (Strings.isNullOrEmpty(product.deeplink)) product.url else product.deeplink)))
+                                Uri.parse(if (Strings.isNullOrEmpty(product.deeplink)) product.url else product.deeplink)
+                            )
+                        )
                     }
-                    SDK.getInstance().trackStory("click", storiesView.code, storyId, slideId)
+                    SDK.instance.trackStory("click", storiesView.code, storyId, slideId)
                 } catch (e: ActivityNotFoundException) {
                     Log.e(SDK.TAG, e.message, e)
                     Toast.makeText(itemView.context, "Unknown error", Toast.LENGTH_SHORT).show()

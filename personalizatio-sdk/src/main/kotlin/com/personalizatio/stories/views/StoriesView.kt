@@ -44,7 +44,11 @@ class StoriesView : ConstraintLayout, ClickListener {
         parseAttrs(attrs)
     }
 
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context!!, attrs, defStyleAttr) {
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(
+        context!!,
+        attrs,
+        defStyleAttr
+    ) {
         parseAttrs(attrs)
     }
 

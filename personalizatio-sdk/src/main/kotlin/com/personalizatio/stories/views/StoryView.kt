@@ -29,7 +29,8 @@ import com.personalizatio.stories.views.storyItem.StoryItemView.OnPageListener
 @SuppressLint("ViewConstructor")
 internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor(
     private val storiesView: StoriesView, //Heading
-    private val stateListener: OnProgressState) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
+    private val stateListener: OnProgressState
+) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
     private var story: Story? = null
 
     private var pressTime = 0L
@@ -110,7 +111,12 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                 }
                 if (storiesStarted) {
                     story?.let { story ->
-                        SDK.getInstance().trackStory("view", storiesView.code, story.id, story.getSlide(position).id)
+                        SDK.instance.trackStory(
+                            event = "view",
+                            code = storiesView.code,
+                            storyId = story.id,
+                            slideId = story.getSlide(position).id
+                        )
                         playVideo()
                     }
                 }
@@ -193,8 +199,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     override fun onTracksChanged(tracks: Tracks) {
         val player = com.personalizatio.stories.Player.player
         var contentDuration = 0L
-        if(player != null)
-        {
+        if (player != null) {
             contentDuration = player.contentDuration
         }
 
@@ -280,7 +285,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
             holders[position] = this
             mute.visibility = GONE
             slide?.let { storyItem.update(slide, position, storiesView.code!!, story!!.id) }
-            onTouchListener?.let { listener -> storyItem.setOnTouchListener(listener)  }
+            onTouchListener?.let { listener -> storyItem.setOnTouchListener(listener) }
 
             //Устанавливаем загрузку видео, если биндим текущий элемент
             if (position == mViewPager.currentItem) {
@@ -418,7 +423,12 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
             if (!storiesStarted) {
                 storiesStarted = true
                 playVideo()
-                SDK.getInstance().trackStory("view", storiesView.code, story.id, story.getSlide(startPosition).id)
+                SDK.instance.trackStory(
+                    event = "view",
+                    code = storiesView.code,
+                    storyId = story.id,
+                    slideId = story.getSlide(startPosition).id
+                )
             }
 
             if (!locked) {
