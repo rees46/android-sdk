@@ -23,7 +23,6 @@ import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.notifications.Source
 import com.personalizatio.stories.StoriesManager
-import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
 import org.json.JSONObject
@@ -54,7 +53,7 @@ open class SDK {
     private lateinit var shopId: String
     private lateinit var stream: String
     private lateinit var preferencesKey: String
-    private var lastRecommendedBy: RecommendedBy? = null
+    internal var lastRecommendedBy: RecommendedBy? = null
 
     private lateinit var api : Api
 
@@ -774,21 +773,8 @@ open class SDK {
      * @param storyId Идентификатор сториса
      * @param slideId Идентификатор слайда
      */
-    fun trackStory(event: String, code: String?, storyId: Int, slideId: String) {
-        try {
-            val params = JSONObject()
-            params.put("event", event)
-            params.put("story_id", storyId)
-            params.put("slide_id", slideId)
-            params.put("code", code)
-
-            //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
-            lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
-
-            sendAsync("track/stories", params, null)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
+    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
+        storiesManager.trackStory(event, code, storyId, slideId)
     }
 
     /**

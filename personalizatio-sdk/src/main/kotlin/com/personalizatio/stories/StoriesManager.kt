@@ -1,6 +1,7 @@
 package com.personalizatio.stories
 
 import android.util.Log
+import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.stories.models.Story
@@ -23,7 +24,7 @@ internal class StoriesManager(val sdk: SDK) {
 
         if (show) return
 
-        sdk.getAsync("story/$storyId", JSONObject(), object : OnApiCallbackListener() {
+        sdk.getAsync(String.format(REQUEST_STORY_METHOD, storyId), JSONObject(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 Log.d("story", response.toString())
                 response?.let {
@@ -35,7 +36,24 @@ internal class StoriesManager(val sdk: SDK) {
     }
 
     internal fun requestStories(code: String, listener: OnApiCallbackListener) {
-        sdk.getAsync("stories/$code", JSONObject(), listener)
+        sdk.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
+    }
+
+    internal fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
+        try {
+            val params = JSONObject()
+            params.put("event", event)
+            params.put("story_id", storyId)
+            params.put("slide_id", slideId)
+            params.put("code", code)
+
+            //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
+            sdk.lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
+
+            sdk.sendAsync(TRACK_STORIES_METHOD, params, null)
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
     }
 
     private fun updateStories() {
@@ -64,5 +82,11 @@ internal class StoriesManager(val sdk: SDK) {
         }
 
         return stories
+    }
+
+    companion object {
+        private const val TRACK_STORIES_METHOD = "track/stories"
+        private const val REQUEST_STORIES_METHOD = "stories/%s"
+        private const val REQUEST_STORY_METHOD = "story/%s"
     }
 }
