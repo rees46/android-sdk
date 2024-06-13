@@ -7,13 +7,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import androidx.core.util.Consumer
-import com.google.android.gms.tasks.Task
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.Params.InternalParameter
 import com.personalizatio.Params.RecommendedBy
@@ -28,11 +23,9 @@ import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Collections
 import java.util.Locale
-import java.util.TimeZone
 
 open class SDK {
-    private lateinit var context: Context
-    private var did: String? = null
+    internal lateinit var context: Context
     private var seance: String? = null
     private var onMessageListener: OnMessageListener? = null
 
@@ -42,8 +35,6 @@ open class SDK {
     @Volatile
     private var initialized = false
 
-    @Volatile
-    private var attempt = 0
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private var search: Search? = null
     private lateinit var segment: String
@@ -54,6 +45,10 @@ open class SDK {
     private var lastRecommendedBy: RecommendedBy? = null
 
     private lateinit var api : Api
+
+    private val registerManager: RegisterManager by lazy {
+        RegisterManager(this)
+    }
 
     /**
      * @param shopId Shop key
@@ -82,88 +77,19 @@ open class SDK {
                 error("NotificationManager not allowed")
             }
         }
-        did()
+
+        registerManager.initialize()
     }
 
     /**
      * @return preferences
      */
-    private fun prefs(): SharedPreferences {
+    internal fun prefs(): SharedPreferences {
         return context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
     }
 
-    /**
-     * Get did from properties or generate a new did
-     */
-    @SuppressLint("HardwareIds")
-    private fun did() {
-        if (did == null) {
-            val preferences = prefs()
-            did = preferences.getString(DID_FIELD, null)
-            if (did == null) {
-                //get unique device id
-                did = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            }
-
-            //Добавляем запрос токена в очередь
-            queue.add(Thread { this.token })
-
-            //Если еще ни разу не вызывали init
-            if (preferences.getString(DID_FIELD, null) == null) {
-                init()
-            } else {
-                initialized(null)
-            }
-        }
-    }
-
-    private val isTestDevice: Boolean
-        get() = "true" == Settings.System.getString(context.contentResolver, "firebase.test.lab")
-
-    /**
-     * Connect to init script
-     */
-    private fun init() {
-        //Disable working Google Play Pre-Launch report devices
-
-        if (isTestDevice) {
-            Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
-            return
-        }
-
-        try {
-            val params = JSONObject()
-            params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            send(ApiMethod.GET("init"), params, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    try {
-                        // Сохраняем данные в память
-                        val edit = prefs().edit()
-                        did = response!!.getString("did")
-                        edit.putString(DID_FIELD, did)
-                        edit.apply()
-
-                        // Выполняем таски из очереди
-                        initialized(response.getString("seance"))
-                    } catch (e: JSONException) {
-                        error(e.message, e)
-                    }
-                }
-
-                override fun onError(code: Int, msg: String?) {
-                    if (code >= 500 || code <= 0) {
-                        Log.e(TAG, "code: $code, $msg")
-                        if (attempt < 5) {
-                            attempt++
-                        }
-                        val handler = Handler(Looper.getMainLooper())
-                        handler.postDelayed({ init() }, 1000L * attempt)
-                    }
-                }
-            })
-        } catch (e: JSONException) {
-            error(e.message, e)
-        }
+    internal fun addToQueue(thread: Thread) {
+        queue.add(thread)
     }
 
     /**
@@ -171,7 +97,7 @@ open class SDK {
      *
      * @param sid String
      */
-    private fun initialized(sid: String?) {
+    internal fun initialized(sid: String?) {
         initialized = true
         seance = sid
 
@@ -191,7 +117,7 @@ open class SDK {
             seance = alphanumeric(10)
         }
         updateSidActivity()
-        debug("Device ID: " + did + ", seance: " + seance + ", last act: "
+        debug("Device ID: " + registerManager.did + ", seance: " + seance + ", last act: "
                 + Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0))
         )
 
@@ -224,41 +150,6 @@ open class SDK {
         }
         return sb.toString()
     }
-
-    private val token: Unit
-        /**
-         * Get device token
-         */
-        get() {
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
-                if (!task.isSuccessful) {
-                    error("getInstanceId failed", task.exception)
-                    return@addOnCompleteListener
-                }
-                if (task.result == null) {
-                    error("Firebase result is null")
-                    return@addOnCompleteListener
-                }
-
-                // Get new Instance ID token
-                val token = task.result
-                debug("token: $token")
-
-                //Check send token
-                val tokenField = prefs().getString(TOKEN_FIELD, null)
-                if (tokenField == null || tokenField != token) {
-                    //Send token
-
-                    setPushTokenNotification(token, object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            val edit = prefs().edit()
-                            edit.putString(TOKEN_FIELD, token)
-                            edit.apply()
-                        }
-                    })
-                }
-            }
-        }
 
     /**
      * Update profile data
@@ -308,10 +199,10 @@ open class SDK {
     /**
      * Прямое выполенение запроса
      */
-    private fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+    internal fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         updateSidActivity()
 
-        api.send(apiMethod, params, listener, shopId, did, seance, segment, stream, source)
+        api.send(apiMethod, params, listener, shopId, registerManager.did, seance, segment, stream, source)
     }
 
     private fun sendAsync(method: String, params: JSONObject) {
@@ -323,7 +214,7 @@ open class SDK {
      */
     fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val thread = Thread { send(ApiMethod.POST(method), params, listener) }
-        if (did != null && initialized) {
+        if (registerManager.did != null && initialized) {
             thread.start()
         } else {
             queue.add(thread)
@@ -335,7 +226,7 @@ open class SDK {
      */
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val thread = Thread { send(ApiMethod.GET(method), params, listener) }
-        if (did != null && initialized) {
+        if (registerManager.did != null && initialized) {
             thread.start()
         } else {
             queue.add(thread)
@@ -497,7 +388,7 @@ open class SDK {
      * @return String
      */
     fun getDid(): String? {
-        return did
+        return registerManager.did
     }
 
     /**
@@ -805,8 +696,6 @@ open class SDK {
         var NOTIFICATION_ID: String = "NOTIFICATION_ID"
         private const val SID_FIELD = "sid"
         private const val SID_LAST_ACT_FIELD = "sid_last_act"
-        private const val DID_FIELD = "did"
-        private const val TOKEN_FIELD = "token"
         private const val SESSION_CODE_EXPIRE = 2
 
         @SuppressLint("StaticFieldLeak")
