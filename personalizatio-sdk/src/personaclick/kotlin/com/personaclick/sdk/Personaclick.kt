@@ -23,7 +23,12 @@ class Personaclick private constructor() : SDK() {
          * @param shopId Shop key
          */
         fun initialize(context: Context, shopId: String) {
-            getInstance().initialize(context, shopId, API_URL, TAG, PREFERENCES_KEY, "android")
+            getInstance().initialize(
+                context = context,
+                shopId = shopId,
+                apiUrl = API_URL,
+                preferencesKey = PREFERENCES_KEY,
+            )
         }
     }
 }
