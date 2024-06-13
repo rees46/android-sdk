@@ -127,9 +127,10 @@ object NotificationHelper {
         intent.putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
         intent.putExtra(CURRENT_IMAGE_INDEX, currentIndex)
 
+        val requestCode = RequestCodeGenerator.generateRequestCode(action, currentIndex)
         return PendingIntent.getService(
             /* context = */ context,
-            /* requestCode = */ RequestCodeGenerator.getNextRequestCode(),
+            /* requestCode = */ requestCode,
             /* intent = */ intent,
             /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

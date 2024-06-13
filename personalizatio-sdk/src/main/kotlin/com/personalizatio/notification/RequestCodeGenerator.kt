@@ -1,11 +1,14 @@
 package com.personalizatio.notification
 
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 object RequestCodeGenerator {
-    private val counter = AtomicInteger(0)
 
-    fun getNextRequestCode(): Int {
-        return counter.getAndIncrement()
+    /**
+     * Create a unique requestCode based on the hashcode of the combination of action and currentIndex
+     * */
+    fun generateRequestCode(action: String, currentIndex: Int): Int {
+        val uniqueKey = "${action}_${currentIndex}".hashCode()
+        return if (uniqueKey != Int.MIN_VALUE) abs(uniqueKey) else 0
     }
 }
