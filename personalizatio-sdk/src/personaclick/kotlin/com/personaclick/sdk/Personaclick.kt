@@ -11,7 +11,7 @@ class Personaclick private constructor() : SDK() {
         const val NOTIFICATION_TYPE: String = "PERSONACLICK_NOTIFICATION_TYPE"
         const val NOTIFICATION_ID: String = "PERSONACLICK_NOTIFICATION_ID"
         protected const val PREFERENCES_KEY: String = "personaclick.sdk"
-        protected val API_URL: String = if (BuildConfig.DEBUG) "http://192.168.1.8:8080/" else "https://api.personaclick.com/"
+        protected val API_URL: String = if (BuildConfig.DEBUG) "https://api.rees46.ru/" else "https://api.personaclick.com/"
 
         fun getInstance() : SDK {
             return SDK.getInstance()

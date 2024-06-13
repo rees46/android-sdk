@@ -7,11 +7,13 @@ import android.database.ContentObserver
 import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
+import com.personalizatio.SDK
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
@@ -19,20 +21,23 @@ import com.personalizatio.stories.viewAdapters.StoriesAdapter
 import com.personalizatio.stories.viewAdapters.StoriesAdapter.ClickListener
 
 class StoriesView : ConstraintLayout, ClickListener {
-    private var adapter: StoriesAdapter? = null
+    private lateinit var storiesRecyclerView: RecyclerView
+    private lateinit var adapter: StoriesAdapter
+    private lateinit var player: Player
+
+    lateinit var code: String
+
     private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
-	val settings: Settings = Settings()
-	var code: String? = null
-	var player: Player? = null
-    var clickListener: OnLinkClickListener? = null
+
+    val settings: Settings = Settings()
+    var itemClickListener: OnLinkClickListener? = null
     var isMute: Boolean = true
         private set
     var muteListener: Runnable? = null
 
-    constructor(context: Context?, code: String?) : super(context!!) {
+    constructor(context: Context?, code: String) : super(context!!) {
         this.code = code
-        initialize()
     }
 
     constructor(context: Context?, attrs: AttributeSet?) : super(context!!, attrs) {
@@ -49,6 +54,36 @@ class StoriesView : ConstraintLayout, ClickListener {
         parseAttrs(attrs)
     }
 
+    init {
+        inflate(context, R.layout.stories, this)
+
+        initViews()
+        setupViews()
+    }
+
+    private fun initViews() {
+        storiesRecyclerView = findViewById(R.id.stories)
+    }
+
+    private fun setupViews() {
+        adapter = StoriesAdapter(this, stories, this)
+        storiesRecyclerView.adapter = adapter
+
+        player = Player(context)
+
+        settings.failed_load_text = resources.getString(R.string.failed_load_text)
+    }
+
+    private fun parseAttrs(attrs: AttributeSet?) {
+        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
+        val code = typedArray.getString(R.styleable.StoriesView_code)
+        if (code == null) {
+            SDK.error("Code is set incorrectly")
+            return
+        }
+        this.code = code
+    }
+
     @SuppressLint("NotifyDataSetChanged")
     internal fun updateStories(stories: List<Story>) {
         this.stories.clear()
@@ -56,7 +91,7 @@ class StoriesView : ConstraintLayout, ClickListener {
 
         Handler(context.mainLooper).post {
             registerObserver()
-            adapter?.notifyDataSetChanged()
+            adapter.notifyDataSetChanged()
         }
     }
 
@@ -64,7 +99,11 @@ class StoriesView : ConstraintLayout, ClickListener {
      * Вызывать, когда объект сторисов удален с экрана и больше не нужен
      */
     fun release() {
-        player?.release()
+        player.release()
+    }
+
+    internal fun preparePlayer(url: String) {
+        player.prepare(url)
     }
 
     override fun onDetachedFromWindow() {
@@ -72,67 +111,17 @@ class StoriesView : ConstraintLayout, ClickListener {
         unregisterObserver()
     }
 
-    override fun onFinishInflate() {
-        super.onFinishInflate()
-        initialize()
-    }
-
-    private fun parseAttrs(attrs: AttributeSet?) {
-        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
-        this.code = typedArray.getString(R.styleable.StoriesView_code)
-    }
-
-    //Инициализация
-    private fun initialize() {
-        val view = inflate(context, R.layout.stories, this)
-        val stories = view.findViewById<RecyclerView>(R.id.stories)
-
-        adapter = StoriesAdapter(this, this.stories, this)
-        stories.adapter = adapter
-
-        //Плеер для просмотра видео
-        player = Player(context)
-
-        settings.failed_load_text = resources.getString(R.string.failed_load_text)
-    }
-
     @SuppressLint("NotifyDataSetChanged")
-    override fun onStoryClick(index: Int) {
-        val story = stories[index]
+    override fun onStoryClick(id: Int) {
+        val story = stories[id]
 
         story.resetStartPosition()
 
-        showStories(stories, index, { adapter?.notifyDataSetChanged() }, {})
+        showStories(stories, id, { adapter.notifyDataSetChanged() }, {})
     }
 
     fun muteVideo(mute: Boolean) {
         this.isMute = mute
-    }
-
-    fun registerObserver() {
-        observer = object : ContentObserver(Handler()) {
-            override fun onChange(selfChange: Boolean) {
-                super.onChange(selfChange)
-                val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    isMute = manager.isStreamMute(AudioManager.STREAM_MUSIC)
-                    if (muteListener != null) {
-                        muteListener!!.run()
-                    }
-                }
-            }
-        }
-        context.contentResolver.registerContentObserver(
-            android.provider.Settings.System.CONTENT_URI,
-            true,
-            observer as ContentObserver
-        )
-    }
-
-    fun unregisterObserver() {
-        if (observer != null) {
-            context.contentResolver.unregisterContentObserver(observer!!)
-        }
     }
 
     internal fun showStory(storyId: Int): Boolean {
@@ -172,5 +161,29 @@ class StoriesView : ConstraintLayout, ClickListener {
     ) {
         val dialog = StoryDialog(this, stories, startPosition, completeShowStory, cancelShowStory)
         dialog.show()
+    }
+
+    private fun registerObserver() {
+        observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                super.onChange(selfChange)
+                val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    isMute = manager.isStreamMute(AudioManager.STREAM_MUSIC)
+                    muteListener?.run()
+                }
+            }
+        }
+        context.contentResolver.registerContentObserver(
+            android.provider.Settings.System.CONTENT_URI,
+            true,
+            observer as ContentObserver
+        )
+    }
+
+    private fun unregisterObserver() {
+        if (observer != null) {
+            context.contentResolver.unregisterContentObserver(observer!!)
+        }
     }
 }

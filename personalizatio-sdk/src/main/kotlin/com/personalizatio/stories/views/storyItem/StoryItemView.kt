@@ -290,7 +290,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
                 }
                 Log.d(SDK.TAG, "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else ""))
                 //Вызываем колбек клика
-                val clickListener = storiesView.clickListener
+                val clickListener = storiesView.itemClickListener
                 if (clickListener == null
                     || product == null && link != null && clickListener.onClick(link)
                     || product != null && clickListener.onClick(product)) {

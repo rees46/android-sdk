@@ -57,14 +57,16 @@ open class SDK {
     private var lastRecommendedBy: RecommendedBy? = null
 
     private lateinit var api : Api
-    private lateinit var storiesManager: StoriesManager
+
+    private val storiesManager: StoriesManager by lazy {
+        StoriesManager(this)
+    }
 
     /**
      * @param shopId Shop key
      */
     fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
         this.api = Api.getApi(apiUrl)
-        this.storiesManager = StoriesManager(this)
 
         this.context = context
         this.shopId = shopId

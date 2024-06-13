@@ -163,7 +163,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     holder.storyItem.video.visibility = GONE
                     holder.storyItem.image.alpha = 1f
                     holder.storyItem.video.player = player
-                    storiesView.player?.prepare(slide.background)
+                    storiesView.preparePlayer(slide.background)
                     storiesProgressView.pause()
                     mute.isChecked = storiesView.isMute
                 }
