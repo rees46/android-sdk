@@ -53,7 +53,15 @@ open class SDK {
     /**
      * @param shopId Shop key
      */
-    fun initialize(context: Context, shopId: String, apiUrl: String, tag: String, preferencesKey: String, stream: String) {
+    fun initialize(
+        context: Context,
+        shopId: String,
+        apiUrl: String,
+        tag: String,
+        preferencesKey: String,
+        stream: String,
+        autoSendPushToken: Boolean = true
+    ) {
         this.api = Api.getApi(apiUrl)
 
         this.context = context
@@ -78,7 +86,7 @@ open class SDK {
             }
         }
 
-        registerManager.initialize()
+        registerManager.initialize(autoSendPushToken)
     }
 
     /**

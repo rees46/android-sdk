@@ -13,9 +13,12 @@ import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.Date
 import java.util.TimeZone
 
 class RegisterManager(val sdk: SDK) {
+    private var autoSendPushToken: Boolean = false
+
     internal var did: String? = null
         private set
 
@@ -23,21 +26,23 @@ class RegisterManager(val sdk: SDK) {
      * Get did from properties or generate a new did
      */
     @SuppressLint("HardwareIds")
-    internal fun initialize() {
+    internal fun initialize(autoSendPushToken: Boolean) {
+        this.autoSendPushToken = autoSendPushToken
+
+        if(did != null) return
+
+        sdk.addToQueue(Thread { this.token })
+
+        did = getDid()
+
         if (did == null) {
-            sdk.addToQueue(Thread { this.token })
+            //get unique device id
+            did = Settings.Secure.getString(sdk.context.contentResolver, Settings.Secure.ANDROID_ID)
 
-            did = getDid()
-
-            if (did == null) {
-                //get unique device id
-                did = Settings.Secure.getString(sdk.context.contentResolver, Settings.Secure.ANDROID_ID)
-
-                init()
-            }
-            else{
-                sdk.initialized(null)
-            }
+            init()
+        }
+        else{
+            sdk.initialized(null)
         }
     }
 
@@ -62,10 +67,16 @@ class RegisterManager(val sdk: SDK) {
 
                 //Check send token
                 val tokenField = getToken()
-                if (tokenField == null || tokenField != token) {
+
+                val currentDate = Date()
+
+                if (tokenField == null
+                    || tokenField != token
+                    || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS) {
                     //Send token
                     sdk.setPushTokenNotification(token, object : OnApiCallbackListener() {
                         override fun onSuccess(response: JSONObject?) {
+                            saveLastPushTokenDate(currentDate)
                             saveToken(token)
                         }
                     })
@@ -139,8 +150,21 @@ class RegisterManager(val sdk: SDK) {
         edit.apply()
     }
 
+    private fun getLastPushTokenMilliseconds() : Long {
+        return sdk.prefs().getLong(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0)
+    }
+
+    private fun saveLastPushTokenDate(date: Date) {
+        val edit = sdk.prefs().edit()
+        edit.putLong(LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
+        edit.apply()
+    }
+
     companion object {
         private const val DID_PREFS_KEY = "did"
         private const val TOKEN_PREFS_KEY = "token"
+        private const val LAST_PUSH_TOKEN_DATE_PREFS_KEY = "last_push_token_date"
+
+        private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60
     }
 }
