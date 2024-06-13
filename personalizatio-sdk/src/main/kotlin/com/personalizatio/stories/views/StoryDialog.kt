@@ -18,16 +18,17 @@ import com.personalizatio.R
 import com.personalizatio.stories.models.Story
 import kotlin.math.abs
 
-class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition: Int, completeListener: Runnable)
-    : Dialog(storiesView.context, android.R.style.Theme_Translucent_NoTitleBar), PullDismissLayout.Listener {
-    private val stories: List<Story>
+class StoryDialog(
+    private val storiesView: StoriesView,
+    private val stories: List<Story>,
+    private val startPosition: Int,
+    private val completeShowStory: () -> Unit,
+    private val cancelShowStory: () -> Unit
+) : Dialog(storiesView.context, android.R.style.Theme_Translucent_NoTitleBar), PullDismissLayout.Listener {
+
     private val storyViews = HashMap<Int, StoryView>()
     private val adapter: ViewPagerAdapter
     private var mViewPager: ViewPager2
-
-    private val completeListener: Runnable
-    private val startPosition: Int
-    private val storiesView: StoriesView
 
     fun interface OnProgressState {
         fun onState(running: Boolean)
@@ -46,11 +47,6 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
 
         mViewPager = findViewById(R.id.view_pager)
 
-        this.storiesView = storiesView
-        this.stories = stories
-        this.startPosition = startPosition
-        this.completeListener = completeListener
-
         adapter = ViewPagerAdapter { running: Boolean ->
             mViewPager.isUserInputEnabled = running
         }
@@ -59,6 +55,8 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
             for (i in stories.indices) {
                 getHolder(i)?.release()
             }
+
+            cancelShowStory()
         }
 
         setupViews()
@@ -174,7 +172,8 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
                 } else {
                     mViewPager.currentItem = position + 1
                 }
-                completeListener.run()
+
+                completeShowStory()
             }, {
                 if (position == 0) {
                     cancel()

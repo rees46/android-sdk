@@ -12,7 +12,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
-import com.personalizatio.SDK
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
@@ -103,7 +102,7 @@ class StoriesView : ConstraintLayout, ClickListener {
 
         story.resetStartPosition()
 
-        showStories(stories, index) { adapter?.notifyDataSetChanged() }
+        showStories(stories, index, { adapter?.notifyDataSetChanged() }, {})
     }
 
     fun muteVideo(mute: Boolean) {
@@ -148,21 +147,30 @@ class StoriesView : ConstraintLayout, ClickListener {
     }
 
     internal fun showStory(story: Story) {
+        val previousPosition = story.startPosition
+
         story.startPosition = 0
 
         val stories = ArrayList<Story>(1)
         stories.add(story)
 
+        val returnStartPosition = {
+            story.startPosition = previousPosition
+        }
+
         val handler = Handler(context.mainLooper)
         handler.post {
-            showStories(stories, 0) {
-                story.startPosition = 0
-            }
+            showStories(stories, 0, returnStartPosition, returnStartPosition)
         }
     }
 
-    private fun showStories(stories: List<Story>, startPosition: Int, completeListener: Runnable) {
-        val dialog = StoryDialog(this, stories, startPosition, completeListener)
+    private fun showStories(
+        stories: List<Story>,
+        startPosition: Int,
+        completeShowStory: () -> Unit,
+        cancelShowStory: () -> Unit
+    ) {
+        val dialog = StoryDialog(this, stories, startPosition, completeShowStory, cancelShowStory)
         dialog.show()
     }
 }
