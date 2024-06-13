@@ -128,7 +128,7 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private val isTestDevice: Boolean
-        get() = "true" == Settings.System.getString(sdk.context.contentResolver, "firebase.test.lab")
+        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(sdk.context.contentResolver, FIREBASE_TEST_LAB)
 
     private fun getDid() : String? {
         return sdk.prefs().getString(DID_PREFS_KEY, null)
@@ -164,6 +164,8 @@ class RegisterManager(val sdk: SDK) {
         private const val DID_PREFS_KEY = "did"
         private const val TOKEN_PREFS_KEY = "token"
         private const val LAST_PUSH_TOKEN_DATE_PREFS_KEY = "last_push_token_date"
+        private const val IS_TEST_DEVICE_FIELD = "true"
+        private const val FIREBASE_TEST_LAB = "firebase.test.lab"
 
         private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60
     }

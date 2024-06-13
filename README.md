@@ -314,3 +314,57 @@ stories.settings.pin_symbol = "📌"
 stories.settings.close_color = "#FD7C50"
 stories.settings.icon_display_format = Settings.ICON_DISPLAY_FORMAT.RECTANGLE
 ```
+
+## Handling Mobile Push Notifications
+
+To provide a comprehensive answer and cover all methods for handling mobile push notifications from your code, here's an extended response:
+
+**User received on mobile push**:
+The `notificationReceived` method in the `SDK` class handles the event of receiving a push notification on a mobile device. This method is called upon receiving a notification, and it sends an asynchronous request to track this event.
+
+```kotlin
+/**
+ * Handles the event of receiving a push notification on a mobile device.
+ * @param data Data from the notification
+ */
+
+fun notificationReceived(data: Map<String, String>) {
+    val params = JSONObject()
+    try {
+        val type = data["type"]
+        if (type != null) {
+            params.put("type", type)
+        }
+        val id = data["id"]
+        if (id != null) {
+            params.put("code", id)
+        }
+        if (params.length() > 0) {
+            sendAsync("track/received", params)
+        }
+    } catch (e: JSONException) {
+        Log.e(TAG, e.message, e)
+    }
+}
+
+/**
+ * Handles the event of a user clicking on a push notification.
+ * @param extras Additional data from the notification
+ */
+
+fun notificationClicked(extras: Bundle?) {
+    val type = extras?.getString(NOTIFICATION_TYPE, null)
+    val code = extras?.getString(NOTIFICATION_ID, null)
+    if (type != null && code != null) {
+        val params = JSONObject()
+        try {
+            params.put("type", type)
+            params.put("code", code)
+            sendAsync("track/clicked", params)
+            source.update(type, code, prefs())
+        } catch (e: JSONException) {
+            Log.e(TAG, e.message, e)
+        }
+    }
+}
+```

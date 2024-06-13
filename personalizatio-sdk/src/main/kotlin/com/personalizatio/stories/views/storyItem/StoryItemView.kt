@@ -296,7 +296,12 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
                     || product != null && clickListener.onClick(product)) {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
                 }
-                SDK.getInstance().trackStory("click", code, storyId, slide.id)
+                SDK.instance.trackStory(
+                    event = "click",
+                    code = code,
+                    storyId = storyId,
+                    slideId = slide.id
+                )
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
@@ -391,7 +396,12 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         header.setOnTouchListener { _: View?, event: MotionEvent ->
             if (event.action == MotionEvent.ACTION_UP) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(element.link)))
-                SDK.getInstance().trackStory("click", code, storyId, slideId)
+                SDK.instance.trackStory(
+                    event = "click",
+                    code = code,
+                    storyId = storyId,
+                    slideId = slideId
+                )
             }
             true
         }

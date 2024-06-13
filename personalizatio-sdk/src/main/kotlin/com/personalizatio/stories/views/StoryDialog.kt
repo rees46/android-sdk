@@ -18,8 +18,16 @@ import com.personalizatio.R
 import com.personalizatio.stories.models.Story
 import kotlin.math.abs
 
-class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition: Int, completeListener: Runnable)
-    : Dialog(storiesView.context, android.R.style.Theme_Translucent_NoTitleBar), PullDismissLayout.Listener {
+class StoryDialog(
+    storiesView: StoriesView,
+    stories: List<Story>,
+    startPosition: Int,
+    completeListener: Runnable
+) : Dialog(
+    storiesView.context,
+    android.R.style.Theme_Translucent_NoTitleBar
+), PullDismissLayout.Listener {
+
     private val stories: List<Story>
     private val storyViews = HashMap<Int, StoryView>()
     private val adapter: ViewPagerAdapter
@@ -79,7 +87,8 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
         if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             val dm = context.resources.displayMetrics
             val nextItemVisiblePx = (dm.widthPixels - dm.heightPixels * 9f / 16) / 2f
-            val currentItemHorizontalMarginPx = nextItemVisiblePx + context.resources.getDimension(R.dimen.viewpager_current_item_horizontal_margin)
+            val currentItemHorizontalMarginPx =
+                nextItemVisiblePx + context.resources.getDimension(R.dimen.viewpager_current_item_horizontal_margin)
             val pageTranslationX = nextItemVisiblePx + currentItemHorizontalMarginPx
             mViewPager.setPageTransformer { page: View, position: Float ->
                 val absPosition = abs(position.toDouble())
@@ -90,7 +99,12 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
                 page.alpha = (1 - (0.7f * absPosition)).toFloat()
             }
             mViewPager.addItemDecoration(object : ItemDecoration() {
-                override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                override fun getItemOffsets(
+                    outRect: Rect,
+                    view: View,
+                    parent: RecyclerView,
+                    state: RecyclerView.State
+                ) {
                     super.getItemOffsets(outRect, view, parent, state)
                     val margin = currentItemHorizontalMarginPx.toInt()
                     outRect.right = margin
@@ -111,7 +125,7 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
                         getHolder(i)?.stopStories()
                     }
                 }
-               getHolder(position)?.startStories()
+                getHolder(position)?.startStories()
             }
 
             override fun onPageScrollStateChanged(state: Int) {
@@ -152,7 +166,8 @@ class StoryDialog(storiesView: StoriesView, stories: List<Story>, startPosition:
 
     internal class PagerHolder(itemView: StoryView) : RecyclerView.ViewHolder(itemView)
 
-    internal inner class ViewPagerAdapter(private val stateListener: OnProgressState) : RecyclerView.Adapter<PagerHolder>() {
+    internal inner class ViewPagerAdapter(private val stateListener: OnProgressState) :
+        RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
             return PagerHolder(StoryView(storiesView, stateListener))
         }
