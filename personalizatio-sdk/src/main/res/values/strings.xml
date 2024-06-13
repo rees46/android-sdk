@@ -13,4 +13,6 @@
 	<color name="product_promocode_color">#17AADF</color>
 
 	<string name="failed_load_text">Failed to retrieve data. Please check your connection and try again.</string>
+	<string name="notification_button_back">Previous</string>
+	<string name="notification_button_forward">Next</string>
 </resources>
