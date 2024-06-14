@@ -29,15 +29,17 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
 
         GlobalScope.launch {
             when (action) {
-                ACTION_NEXT_IMAGE -> {
-                    val newIndex = currentIndex
-                    updateNotification(context, data, newIndex)
-                }
+                ACTION_NEXT_IMAGE -> updateNotification(
+                    context = context,
+                    data = data,
+                    newIndex = currentIndex
+                )
 
-                ACTION_PREVIOUS_IMAGE -> {
-                    val newIndex = currentIndex
-                    updateNotification(context, data, newIndex)
-                }
+                ACTION_PREVIOUS_IMAGE -> updateNotification(
+                    context = context,
+                    data = data,
+                    newIndex = currentIndex
+                )
 
                 else -> Unit
             }
@@ -51,11 +53,10 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
     ) {
         try {
             val urls = data[NotificationHelper.NOTIFICATION_IMAGES]
-            val bitmaps = NotificationHelper.loadBitmaps(urls)
             NotificationHelper.createNotification(
                 context = context,
                 data = data,
-                images = bitmaps,
+                images = NotificationHelper.loadBitmaps(urls),
                 currentIndex = newIndex
             )
         } catch (e: IOException) {

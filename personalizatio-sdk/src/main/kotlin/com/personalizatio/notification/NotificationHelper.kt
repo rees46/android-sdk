@@ -39,11 +39,14 @@ object NotificationHelper {
     ) {
         val intent = createNotificationIntent(context, data, currentIndex)
 
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            requestCodeGenerator.generateRequestCode(intent.action.orEmpty(), currentIndex),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val pendingIntent = PendingIntent.getActivity(
+            /* context = */ context,
+            /* requestCode = */requestCodeGenerator.generateRequestCode(
+                action = intent.action.orEmpty(),
+                currentIndex = currentIndex
+            ),
+            /* intent = */intent,
+            /* flags = */PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
@@ -55,9 +58,11 @@ object NotificationHelper {
 
         if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
             val currentImage = images[currentIndex]
+
             notificationBuilder.setLargeIcon(currentImage)
                 .setStyle(
-                    NotificationCompat.BigPictureStyle().bigPicture(currentImage)
+                    NotificationCompat.BigPictureStyle()
+                        .bigPicture(currentImage)
                         .bigLargeIcon(null as Bitmap?)
                 )
 
@@ -116,10 +121,13 @@ object NotificationHelper {
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        if (notificationManager != null) {
-            notificationManager.notify(0, notificationBuilder.build())
-        } else {
-            Log.e(TAG, "NotificationManager not allowed")
+        when {
+            notificationManager != null -> notificationManager.notify(
+                /* id = */ 0,
+                /* notification = */ notificationBuilder.build()
+            )
+
+            else -> Log.e(TAG, "NotificationManager not allowed")
         }
     }
 
