@@ -1,12 +1,14 @@
 package com.rees46.sdk
 
 import android.content.Context
-import com.google.android.gms.tasks.Task
-import com.google.firebase.messaging.FirebaseMessaging
 import com.personalizatio.BuildConfig
 import com.personalizatio.SDK
 import com.personalizatio.notification.NotificationHelper
-import kotlinx.coroutines.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class REES46 private constructor() : SDK() {
 
@@ -20,7 +22,7 @@ class REES46 private constructor() : SDK() {
             else -> "https://api.rees46.ru/"
         }
 
-        fun getInstance() : SDK = instance
+        fun getInstance(): SDK = instance
 
         /**
          * Initialize api
@@ -32,9 +34,7 @@ class REES46 private constructor() : SDK() {
             val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
 
             val sdk = getInstance()
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
-                println("****DETEKT LOG**** : ${task.result }")
-            }
+
             sdk.initialize(
                 context = context,
                 shopId = shopId,

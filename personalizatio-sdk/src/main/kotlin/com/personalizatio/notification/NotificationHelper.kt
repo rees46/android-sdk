@@ -6,9 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.personalizatio.R
+import com.personalizatio.SDK
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
@@ -37,7 +37,11 @@ object NotificationHelper {
         images: List<Bitmap>?,
         currentIndex: Int
     ) {
-        val intent = createNotificationIntent(context, data, currentIndex)
+        val intent = createNotificationIntent(
+            context = context,
+            data = data,
+            currentIndex = currentIndex
+        )
 
         val pendingIntent = PendingIntent.getActivity(
             /* context = */ context,
@@ -61,9 +65,7 @@ object NotificationHelper {
 
             notificationBuilder.setLargeIcon(currentImage)
                 .setStyle(
-                    NotificationCompat.BigPictureStyle()
-                        .bigPicture(currentImage)
-                        .bigLargeIcon(null as Bitmap?)
+                    NotificationCompat.BigPictureStyle().bigPicture(currentImage)
                 )
 
             if (currentIndex > 0) {
@@ -123,11 +125,11 @@ object NotificationHelper {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
         when {
             notificationManager != null -> notificationManager.notify(
-                /* id = */ 0,
+                /* id = */ NOTIFICATION_ID.hashCode(),
                 /* notification = */ notificationBuilder.build()
             )
 
-            else -> Log.e(TAG, "NotificationManager not allowed")
+            else -> SDK.error("NotificationManager not allowed")
         }
     }
 
@@ -159,7 +161,7 @@ object NotificationHelper {
                         val inputStream: InputStream = URL(url).openStream()
                         bitmaps.add(BitmapFactory.decodeStream(inputStream))
                     } catch (ioException: IOException) {
-                        Log.e(TAG, "Error caught in load bitmaps", ioException)
+                        SDK.error("Error caught in load bitmaps", ioException)
                     }
                 }
             }
