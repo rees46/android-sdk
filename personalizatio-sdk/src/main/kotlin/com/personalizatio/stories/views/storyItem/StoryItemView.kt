@@ -51,9 +51,9 @@ import com.personalizatio.stories.models.elements.ProductsElement
 import com.personalizatio.stories.models.elements.TextBlockElement
 import com.personalizatio.stories.viewAdapters.ProductsAdapter
 import com.personalizatio.stories.views.StoriesView
-import com.personalizatio.utils.ViewUtils.getColor
-import com.personalizatio.utils.ViewUtils.setBackgroundColor
-import com.personalizatio.utils.ViewUtils.setTextColor
+import com.personalizatio.ui.utils.ColorUtils
+import com.personalizatio.ui.utils.TextUtils
+import com.personalizatio.ui.utils.ViewUtils
 
 @SuppressLint("ViewConstructor")
 class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(storiesView.context) {
@@ -87,7 +87,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     private lateinit var prev: View
     private lateinit var next: View
 
-    //Элементы управления
     private lateinit var button: Button
     private lateinit var textBlocksLayout: FrameLayout
 	lateinit var reload: ImageButton
@@ -118,11 +117,9 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         image = findViewById(android.R.id.background)
         video = findViewById(android.R.id.widget_frame)
 
-        //Переключение слайда
         prev = findViewById(R.id.reverse)
         next = findViewById(R.id.skip)
 
-        //Элементы управления
         button = findViewById(android.R.id.button1)
         textBlocksLayout = findViewById(R.id.text_blocks_layout)
         reload = findViewById(R.id.reload)
@@ -138,7 +135,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
 
         products = findViewById(android.R.id.list)
 
-        //Товарный слайд
         product = findViewById(R.id.product)
 
         productPriceBox = findViewById(R.id.product_price_box)
@@ -156,7 +152,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         image.visibility = GONE
         video.visibility = GONE
 
-        //Переключение слайда
         prev.setOnClickListener {
             pageListener?.onPrev()
         }
@@ -171,8 +166,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     }
 
     /**
-     * Слушатель переключения слайда
-     * @param listener OnPageListener
+     * @param listener Event on slide switch message
      */
     fun setOnPageListener(listener: OnPageListener?) {
         pageListener = listener
@@ -191,15 +185,18 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     }
 
     /**
-     * Обновляет данные слайда
+     * Updates slide data
      *
      * @param slide Story.Slide
+     * @param position Story position
+     * @param code Stories block code
+     * @param storyId Story ID
      */
     @SuppressLint("ResourceAsColor")
     fun update(slide: Slide, position: Int, code: String, storyId: Int) {
         slide.isPrepared = false
 
-        setBackgroundColor(getColor(context, slide.backgroundColor, android.R.color.black))
+        setBackgroundColor(ColorUtils.getColor(context, slide.backgroundColor, android.R.color.black))
 
         video.visibility = GONE
 
@@ -207,7 +204,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
 
         setButtonOnClickListener(slide, code, storyId)
 
-        //Загуражем картинку
         if (slide.type == "image") {
             loadImage(slide.background, object : RequestListener<Drawable> {
                 override fun onLoadFailed(
@@ -233,11 +229,9 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             })
         }
 
-        //Загружаем видео
         if (slide.type == "video") {
             video.visibility = VISIBLE
 
-            //Загружаем превью
             val preview = slide.preview
             if (preview.isNotEmpty()) {
                 loadImage(preview, object : RequestListener<Drawable> {
@@ -263,7 +257,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             }
         }
 
-        //Обновляем элементы слайда
         setupElements(slide, code, storyId, position)
     }
 
@@ -281,7 +274,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             try {
                 var product: Product? = null
                 var link: String? = null
-                //Сначала ищем элемент с товаром
+
                 for (element in slide.getElements()) {
                     when(element) {
                         is ProductElement -> product = element.item
@@ -289,8 +282,8 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
                     }
                 }
                 Log.d(SDK.TAG, "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else ""))
-                //Вызываем колбек клика
-                val clickListener = storiesView.clickListener
+
+                val clickListener = storiesView.itemClickListener
                 if (clickListener == null
                     || product == null && link != null && clickListener.onClick(link)
                     || product != null && clickListener.onClick(product)) {
@@ -313,11 +306,11 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     }
 
     /**
-     * Загружает изображение слайда
+     * Loads a slide image
      *
      * @param url      String
      * @param listener RequestListener<Drawable>
-    </Drawable> */
+     */
     private fun loadImage(url: String, listener: RequestListener<Drawable>) {
         image.visibility = VISIBLE
         Glide.with(context).load(url).listener(listener).into(image)
@@ -341,7 +334,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         productOldPrice.paintFlags = productOldPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
         productDiscountBox.visibility = if (item.discountPercent.isEmpty() &&  item.promocode.isEmpty()) GONE else VISIBLE
 
-        //Указываем закругления
         val radius = resources.getDimension(R.dimen.product_price_box_radius)
         val shapeBox = ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, radius).build()
         val shapeBoxDrawable = MaterialShapeDrawable(shapeBox)
@@ -351,11 +343,9 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             .build()
         val shapeDiscountDrawable = MaterialShapeDrawable(shapeDiscount)
 
-        //Заполняем
         shapeBoxDrawable.fillColor = ContextCompat.getColorStateList(context, android.R.color.white)
         ViewCompat.setBackground(productPriceBox, shapeBoxDrawable)
 
-        //Блок скидки или промокода
         var productDiscountText = ""
         var shapeDiscountColor = 0
         if (!Strings.isNullOrEmpty(item.promocode)) {
@@ -422,13 +412,12 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     }
 
     private fun setupElements(slide: Slide, code: String, storyId: Int, position: Int) {
-        //Скрываем все элементы
         header.visibility = GONE
         button.visibility = GONE
         buttonProducts.visibility = GONE
         products.visibility = GONE
+        textBlocksLayout.removeAllViews()
 
-        //Отображаем необходимые элементы
         for (element in slide.getElements()) {
             when (element) {
                 is HeaderElement -> updateHeader(element, slide.id, code, storyId)
@@ -474,7 +463,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             buttonProducts.isActivated = !buttonProducts.isActivated
             buttonProducts.text = if (buttonProducts.isActivated) element.labelHide else element.labelShow
 
-            //Анимация появления товаров
             val set = ConstraintSet()
             set.clone(elementsLayout as ConstraintLayout?)
 
@@ -492,7 +480,6 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             TransitionManager.beginDelayedTransition(elementsLayout, transitions)
             products.visibility = if (buttonProducts.isActivated) VISIBLE else GONE
 
-            //--->
             pageListener?.onLocked(buttonProducts.isActivated)
         }
 
@@ -504,8 +491,8 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         button.visibility = VISIBLE
         button.text = element.title
 
-        setBackgroundColor(context, button, element.background, R.color.primary)
-        setTextColor(context, button, element.color, R.color.white)
+        ColorUtils.setBackgroundButtonColor(context, button, element.background, R.color.primary)
+        TextUtils.setTextColor(context, button, element.color, R.color.white)
 
         button.typeface = Typeface.create(
             storiesView.settings.button_font_family,
