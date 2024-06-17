@@ -4,9 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.res.ResourcesCompat
 import com.personalizatio.R
 import com.personalizatio.stories.models.elements.TextBlockElement
+import com.personalizatio.ui.utils.ColorUtils
+import com.personalizatio.ui.utils.TextUtils
 import com.personalizatio.ui.utils.ViewUtils
 
 class TextBlockView(context: Context) : AppCompatTextView(context) {
@@ -21,23 +22,19 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
         y = parentHeight * element.yOffset / 100f + parentTopOffset
         textSize = element.fontSize.toFloat()
 
-        val typeface = ResourcesCompat.getFont(
-            context,
-            ViewUtils.getFontRes(element.fontType, element.isBold, element.isItalic)
-        )
-        setTypeface(typeface, ViewUtils.getTypefaceStyle(element.isBold, element.isItalic))
+        TextUtils.setTypeface(context, this, element.fontType, element.isBold, element.isItalic)
 
         textAlignment = getTextAlignment(element.textAlign)
         setLineSpacing(lineSpacingExtra, element.textLineSpacing.toFloat())
 
-        val colorOpacity = ViewUtils.getColorOpacity(element.textBackgroundColorOpacity)
+        val colorOpacity = ColorUtils.getColorOpacity(element.textBackgroundColorOpacity)
         if (colorOpacity > 0) {
             val paddingPx = ViewUtils.dpToPx(PADDING_DP.toFloat(), context).toInt()
             setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
         }
 
-        ViewUtils.setBackgroundColor(this, element.textBackgroundColor, colorOpacity, context)
-        ViewUtils.setTextColor(context, this, element.textColor, R.color.white)
+        ColorUtils.setBackgroundTextColor(context, this, element.textBackgroundColor, colorOpacity)
+        TextUtils.setTextColor(context, this, element.textColor, R.color.white)
     }
 
     companion object {

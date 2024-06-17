@@ -51,6 +51,8 @@ import com.personalizatio.stories.models.elements.ProductsElement
 import com.personalizatio.stories.models.elements.TextBlockElement
 import com.personalizatio.stories.viewAdapters.ProductsAdapter
 import com.personalizatio.stories.views.StoriesView
+import com.personalizatio.ui.utils.ColorUtils
+import com.personalizatio.ui.utils.TextUtils
 import com.personalizatio.ui.utils.ViewUtils
 
 @SuppressLint("ViewConstructor")
@@ -194,7 +196,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     fun update(slide: Slide, position: Int, code: String, storyId: Int) {
         slide.isPrepared = false
 
-        setBackgroundColor(ViewUtils.getColor(context, slide.backgroundColor, android.R.color.black))
+        setBackgroundColor(ColorUtils.getColor(context, slide.backgroundColor, android.R.color.black))
 
         video.visibility = GONE
 
@@ -489,8 +491,8 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         button.visibility = VISIBLE
         button.text = element.title
 
-        ViewUtils.setBackgroundColor(context, button, element.background, R.color.primary)
-        ViewUtils.setTextColor(context, button, element.color, R.color.white)
+        ColorUtils.setBackgroundButtonColor(context, button, element.background, R.color.primary)
+        TextUtils.setTextColor(context, button, element.color, R.color.white)
 
         button.typeface = Typeface.create(
             storiesView.settings.button_font_family,
