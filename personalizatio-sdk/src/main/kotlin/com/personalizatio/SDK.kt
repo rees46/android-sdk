@@ -176,7 +176,7 @@ open class SDK {
     }
 
     /**
-     * Инициализация SDK
+     * Initializing SDK
      *
      * @param sid String
      */

@@ -103,14 +103,15 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                         player.pause()
                     }
                 }
-                //При изменении слайда останавливаем видео на скрытых
-                for (i in 0 until story!!.slidesCount) {
-                    if (i != position) {
-                        getHolder(i)?.release()
+
+                story?.let { story ->
+                    for (i in 0 until story.slidesCount) {
+                        if (i != position) {
+                            getHolder(i)?.release()
+                        }
                     }
-                }
-                if (storiesStarted) {
-                    story?.let { story ->
+
+                    if (storiesStarted) {
                         SDK.instance.trackStory(
                             event = "view",
                             code = storiesView.code,
@@ -130,7 +131,6 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     innerPlayer.volume = 1f
                 }
 
-                //Управление звуком
                 mute.setOnClickListener {
                     storiesView.muteVideo(mute.isChecked)
                     innerPlayer.volume = if (mute.isChecked) 0f else 1f
@@ -149,9 +149,10 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         val slidesCount = story.slidesCount
         storiesProgressView.setStoriesCount(slidesCount)
         mViewPager.adapter = ViewPagerAdapter()
-        //Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
+
+        // Hack to prevent onPageSelected from triggering when opening the first campaign
         mViewPager.setCurrentItem(if (story.startPosition == 0) slidesCount else 0, false)
-        //Устанавливаем позицию
+
         mViewPager.setCurrentItem(story.startPosition, false)
     }
 
@@ -163,7 +164,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                 val slide = story?.getSlide(mViewPager.currentItem)
                 if (slide?.type == "video") {
                     slide.isPrepared = false
-                    //Подготавливаем плеер
+
                     val player = com.personalizatio.stories.Player.player
                     player?.addListener(this)
                     holder.storyItem.video.visibility = GONE
@@ -230,7 +231,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     }
                 }
             }
-            //Добавляем авто-обновление
+
             storyItem.reload.postDelayed({ holder.storyItem.reload.callOnClick() }, 15000L)
         }
     }
@@ -284,10 +285,9 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         fun bind(slide: Slide?, position: Int) {
             holders[position] = this
             mute.visibility = GONE
-            slide?.let { storyItem.update(slide, position, storiesView.code!!, story!!.id) }
+            slide?.let { storyItem.update(slide, position, storiesView.code, story!!.id) }
             onTouchListener?.let { listener -> storyItem.setOnTouchListener(listener) }
 
-            //Устанавливаем загрузку видео, если биндим текущий элемент
             if (position == mViewPager.currentItem) {
                 playVideo()
             }
@@ -314,7 +314,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
     override fun onWindowFocusChanged(state: Boolean) {
         super.onWindowFocusChanged(state)
-        //Когда окно сворачивается, нужно остановить видео и прогресс
+
         if (storiesStarted && prevFocusState != state) {
             prevFocusState = state
             if (state) {
@@ -379,10 +379,9 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     override fun onStart(position: Int) {
-        //Для текущего слайда
         if (position == mViewPager.currentItem) {
             val slide = story?.getSlide(position)
-            //Если видео еще подгружается, приостанавливаем таймер анимации
+
             if (slide?.isPrepared != true) {
                 storiesProgressView.pause()
             }
@@ -441,7 +440,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
     fun stopStories() {
         storiesStarted = false
-        //Если кампания сториса не активна на экране, удаляем листенеры
+
         com.personalizatio.stories.Player.player?.removeListener(this)
         pause()
         storiesProgressView.destroy()

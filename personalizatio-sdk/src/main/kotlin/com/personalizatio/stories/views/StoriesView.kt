@@ -100,7 +100,7 @@ class StoriesView : ConstraintLayout, ClickListener {
     }
 
     /**
-     * Вызывать, когда объект сторисов удален с экрана и больше не нужен
+     * Called when the story object has been removed from the screen and is no longer needed
      */
     fun release() {
         player.release()

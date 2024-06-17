@@ -76,7 +76,6 @@ android.R.style.Theme_Translucent_NoTitleBar
         mViewPager.clipChildren = false
         mViewPager.offscreenPageLimit = 1
 
-        //Превью слайдов только в горизонтальном экране
         if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             val dm = context.resources.displayMetrics
             val nextItemVisiblePx = (dm.widthPixels - dm.heightPixels * 9f / 16) / 2f
@@ -107,9 +106,10 @@ android.R.style.Theme_Translucent_NoTitleBar
         }
 
         mViewPager.adapter = adapter
-        //Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
+
+        //Hack to prevent onPageSelected from triggering when opening the first campaign
         mViewPager.setCurrentItem(if (startPosition == 0) stories.size else 0, false)
-        //Устанавливаем позицию
+
         mViewPager.setCurrentItem(startPosition, false)
         mViewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -137,7 +137,6 @@ android.R.style.Theme_Translucent_NoTitleBar
     }
 
     override fun onDetachedFromWindow() {
-        //При закрытии диалогового окна, возвращаем все метки в исходное
         for (story in stories) {
             for (i in 0 until story.slidesCount) {
                 story.getSlide(i).isPrepared = false

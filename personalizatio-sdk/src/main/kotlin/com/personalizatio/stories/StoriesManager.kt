@@ -39,15 +39,23 @@ internal class StoriesManager(val sdk: SDK) {
         sdk.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
     }
 
+    /**
+     * Triggers a story event
+     * Also remember the last click in stories in order to add it when calling the product view event
+     *
+     * @param event Event
+     * @param code Stories block code
+     * @param storyId Story ID
+     * @param slideId Slide ID
+     */
     internal fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
         try {
             val params = JSONObject()
-            params.put("event", event)
-            params.put("story_id", storyId)
-            params.put("slide_id", slideId)
-            params.put("code", code)
+            params.put(EVENT_PARAMS_NAME, event)
+            params.put(STORY_ID_PARAMS_NAME, storyId)
+            params.put(SLIDE_ID_PARAMS_NAME, slideId)
+            params.put(CODE_PARAMS_NAME, code)
 
-            //Запоминаем последний клик в сторис, чтобы при вызове события просмотра товара добавить
             sdk.lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
 
             sdk.sendAsync(TRACK_STORIES_METHOD, params, null)
@@ -88,5 +96,10 @@ internal class StoriesManager(val sdk: SDK) {
         private const val TRACK_STORIES_METHOD = "track/stories"
         private const val REQUEST_STORIES_METHOD = "stories/%s"
         private const val REQUEST_STORY_METHOD = "story/%s"
+
+        private const val EVENT_PARAMS_NAME = "event"
+        private const val STORY_ID_PARAMS_NAME = "story_id"
+        private const val SLIDE_ID_PARAMS_NAME = "slide_id"
+        private const val CODE_PARAMS_NAME = "code"
     }
 }
