@@ -1,17 +1,26 @@
-package com.personalizatio.utils
+package com.personalizatio.ui.utils
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Build
+import android.widget.Button
+import android.widget.TextView
+import androidx.annotation.ColorRes
 import androidx.annotation.FontRes
-import androidx.core.content.res.ResourcesCompat
 import com.personalizatio.R
 
 object ViewUtils {
 
-    const val MAX_COLOR_CHANNEL_VALUE = 255
+    private const val MAX_COLOR_CHANNEL_VALUE = 255
 
     @FontRes
-    fun getFontRes(fontType: String, bold: Boolean, italic: Boolean): Int {
+    fun getFontRes(
+        fontType: String,
+        bold: Boolean,
+        italic: Boolean
+    ): Int {
         return when (fontType) {
             "serif" -> {
                 when {
@@ -54,7 +63,12 @@ object ViewUtils {
         return MAX_COLOR_CHANNEL_VALUE * percents / 100
     }
 
-    fun setBackgroundColor(view: AppCompatTextView, colorString: String, colorOpacity: Int, context: Context) {
+    fun setBackgroundColor(
+        view: TextView,
+        colorString: String,
+        colorOpacity: Int,
+        context: Context
+    ) {
         var correctColorString = colorString
         if (!colorString.startsWith("#")) {
             correctColorString = "#FFFFFF"
@@ -69,11 +83,64 @@ object ViewUtils {
         view.setBackgroundColor(color)
     }
 
-    fun getColor(context: Context, colorString: String, defaultColorRes: Int): Int {
+    fun setBackgroundColor(
+        context: Context,
+        button: Button,
+        colorString: String?,
+        @ColorRes defaultColor: Int
+    ) {
+        val backgroundColor = getColor(context, colorString, defaultColor)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            button.backgroundTintList = ColorStateList.valueOf(backgroundColor)
+        } else {
+            button.setBackgroundColor(backgroundColor)
+        }
+    }
+
+    fun getColor(
+        context: Context,
+        colorString: String?,
+        @ColorRes defaultColorRes: Int
+    ): Int {
         return try {
-            android.graphics.Color.parseColor(colorString)
+            Color.parseColor(colorString)
         } catch (e: IllegalArgumentException) {
-            context.getColor(defaultColorRes)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                context.getColor(defaultColorRes)
+            } else {
+                context.resources.getColor(defaultColorRes)
+            }
+        }
+    }
+
+    fun setTextColor(
+        context: Context,
+        textView: TextView,
+        colorString: String?,
+        @ColorRes defaultColor: Int
+    ) {
+        val color = getColor(context, colorString, defaultColor)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            textView.setTextColor(ColorStateList.valueOf(color))
+        } else {
+            textView.setTextColor(color)
+        }
+    }
+
+    fun setTextColor(
+        context: Context,
+        button: Button,
+        colorString: String?,
+        @ColorRes defaultColor: Int
+    ) {
+        val color = getColor(context, colorString, defaultColor)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            button.setTextColor(ColorStateList.valueOf(color))
+        } else {
+            button.setTextColor(color)
         }
     }
 

@@ -4,9 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.res.ResourcesCompat
 import com.personalizatio.R
 import com.personalizatio.stories.models.elements.TextBlockElement
-import com.personalizatio.utils.ViewUtils
+import com.personalizatio.ui.utils.ViewUtils
 
 class TextBlockView(context: Context) : AppCompatTextView(context) {
 
