@@ -42,12 +42,10 @@ class StoriesAdapter (
         fun setRow(story: Story, position: Int) {
             val scale = itemView.resources.displayMetrics.density
 
-            //Загружаем иконку
             Glide.with(image.context).load(story.avatar).into(image)
 
             val settings = storiesView.settings
 
-            //Изменяем иконку на квадратную
             if (settings.icon_display_format == Settings.ICON_DISPLAY_FORMAT.RECTANGLE) {
                 val shape = image.shapeAppearanceModel.toBuilder()
                     .setAllCorners(CornerFamily.ROUNDED, 0f)
@@ -56,7 +54,6 @@ class StoriesAdapter (
                 border.shapeAppearanceModel = shape
             }
 
-            //Загружаем в кеш картинку первого слайда
             val firstSlide = story.getSlide(story.startPosition)
             if (firstSlide.type == "image") {
                 Glide.with(image.context).load(firstSlide.background).preload()
@@ -74,20 +71,19 @@ class StoriesAdapter (
                 border.strokeWidth = if (story.isViewed) 0f else border.context.resources.getDimension(R.dimen.story_avatar_border)
             }
             itemView.alpha = if (story.isViewed) settings.visited_campaign_transparency else 1f
-            //Размер аватарки
+
             val layoutParams = avatarSize.layoutParams
             val layoutParamsSize = (settings.icon_size * scale + 0.5f).toInt()
             layoutParams.width = layoutParamsSize
             layoutParams.height = layoutParamsSize
             avatarSize.layoutParams = layoutParams
-            //Устанавливаем отступы
             itemView.setPadding(
                 if (settings.icon_padding_x != null) (settings.icon_padding_x!! * scale).toInt() else itemView.paddingLeft,
                 if (settings.icon_padding_top != null) (settings.icon_padding_top!! * scale).toInt() else itemView.paddingTop,
                 if (settings.icon_padding_x != null) (settings.icon_padding_x!! * scale).toInt() else itemView.paddingRight,
                 if (settings.icon_padding_bottom != null) (settings.icon_padding_bottom!! * scale).toInt() else itemView.paddingBottom
             )
-            //Позиция
+
             storyIndex = position
             image.setOnClickListener(this)
             name.text = story.name
@@ -95,7 +91,7 @@ class StoriesAdapter (
             name.textSize = settings.label_font_size.toFloat()
             name.typeface = settings.label_font_family
             name.width = ((if (settings.label_width != null) settings.label_width!! else settings.icon_size) * scale).toInt()
-            //Пин
+
             pin.visibility = if (story.isPinned) View.VISIBLE else View.GONE
             pin.text = settings.pin_symbol
             val shapeAppearanceModel = ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, 50f).build()

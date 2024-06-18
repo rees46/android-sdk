@@ -19,23 +19,19 @@ import com.personalizatio.stories.models.Story
 import kotlin.math.abs
 
 class StoryDialog(
-    storiesView: StoriesView,
-    stories: List<Story>,
-    startPosition: Int,
-    completeListener: Runnable
+    private val storiesView: StoriesView,
+    private val stories: List<Story>,
+    private val startPosition: Int,
+    private val completeShowStory: () -> Unit,
+    private val cancelShowStory: () -> Unit
 ) : Dialog(
-    storiesView.context,
-    android.R.style.Theme_Translucent_NoTitleBar
+    storiesView.context, 
+android.R.style.Theme_Translucent_NoTitleBar
 ), PullDismissLayout.Listener {
 
-    private val stories: List<Story>
     private val storyViews = HashMap<Int, StoryView>()
     private val adapter: ViewPagerAdapter
     private var mViewPager: ViewPager2
-
-    private val completeListener: Runnable
-    private val startPosition: Int
-    private val storiesView: StoriesView
 
     fun interface OnProgressState {
         fun onState(running: Boolean)
@@ -54,11 +50,6 @@ class StoryDialog(
 
         mViewPager = findViewById(R.id.view_pager)
 
-        this.storiesView = storiesView
-        this.stories = stories
-        this.startPosition = startPosition
-        this.completeListener = completeListener
-
         adapter = ViewPagerAdapter { running: Boolean ->
             mViewPager.isUserInputEnabled = running
         }
@@ -67,6 +58,8 @@ class StoryDialog(
             for (i in stories.indices) {
                 getHolder(i)?.release()
             }
+
+            cancelShowStory()
         }
 
         setupViews()
@@ -83,7 +76,6 @@ class StoryDialog(
         mViewPager.clipChildren = false
         mViewPager.offscreenPageLimit = 1
 
-        //Превью слайдов только в горизонтальном экране
         if (context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
             val dm = context.resources.displayMetrics
             val nextItemVisiblePx = (dm.widthPixels - dm.heightPixels * 9f / 16) / 2f
@@ -114,9 +106,10 @@ class StoryDialog(
         }
 
         mViewPager.adapter = adapter
-        //Хак, чтобы не срабатывал onPageSelected при открытии первой кампании
+
+        //Hack to prevent onPageSelected from triggering when opening the first campaign
         mViewPager.setCurrentItem(if (startPosition == 0) stories.size else 0, false)
-        //Устанавливаем позицию
+
         mViewPager.setCurrentItem(startPosition, false)
         mViewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
@@ -144,7 +137,6 @@ class StoryDialog(
     }
 
     override fun onDetachedFromWindow() {
-        //При закрытии диалогового окна, возвращаем все метки в исходное
         for (story in stories) {
             for (i in 0 until story.slidesCount) {
                 story.getSlide(i).isPrepared = false
@@ -189,7 +181,8 @@ class StoryDialog(
                 } else {
                     mViewPager.currentItem = position + 1
                 }
-                completeListener.run()
+
+                completeShowStory()
             }, {
                 if (position == 0) {
                     cancel()

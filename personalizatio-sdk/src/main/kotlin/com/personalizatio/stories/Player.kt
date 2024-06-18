@@ -21,7 +21,6 @@ class Player(context: Context) {
             player?.setHandleAudioBecomingNoisy(true)
         }
 
-        //Подготавливаем кеш
         if (cache == null) {
             val file = File(context.cacheDir, "stories")
             val limit = LeastRecentlyUsedCacheEvictor((50 * 1024 * 1024).toLong())

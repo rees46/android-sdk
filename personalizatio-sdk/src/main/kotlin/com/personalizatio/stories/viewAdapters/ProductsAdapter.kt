@@ -80,7 +80,7 @@ class ProductsAdapter(private val storiesView: StoriesView) :
             itemView.setOnClickListener {
                 Log.d(SDK.TAG, "click: " + product.name + ", " + product.url)
                 try {
-                    if (storiesView.clickListener?.onClick(product) == true) {
+                    if (storiesView.itemClickListener?.onClick(product) == true) {
                         itemView.context.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,

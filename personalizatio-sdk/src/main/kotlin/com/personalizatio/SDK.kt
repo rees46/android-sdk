@@ -14,13 +14,15 @@ import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notifications.Source
+import com.personalizatio.stories.StoriesManager
+import com.personalizatio.stories.views.StoriesView
+import org.json.JSONException
+import org.json.JSONObject
 import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Collections
 import java.util.Locale
 import kotlin.math.roundToInt
-import org.json.JSONException
-import org.json.JSONObject
 
 open class SDK {
 
@@ -35,7 +37,7 @@ open class SDK {
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private lateinit var notificationHandler: NotificationHandler
     private var onMessageListener: OnMessageListener? = null
-    private var lastRecommendedBy: RecommendedBy? = null
+    internal var lastRecommendedBy: RecommendedBy? = null
     private var seance: String? = null
     private var search: Search? = null
     private var did: String? = null
@@ -43,6 +45,10 @@ open class SDK {
 
     private val registerManager: RegisterManager by lazy {
         RegisterManager(this)
+    }
+
+    private val storiesManager: StoriesManager by lazy {
+        StoriesManager(this)
     }
 
     /**
@@ -78,6 +84,10 @@ open class SDK {
         registerManager.initialize(autoSendPushToken)
     }
 
+    fun initializeStoriesView(storiesView: StoriesView) {
+        storiesManager.initialize(storiesView)
+    }
+
     /**
      * @return preferences
      */
@@ -90,7 +100,7 @@ open class SDK {
     }
 
     /**
-     * Инициализация SDK
+     * Initializing SDK
      *
      * @param sid String
      */
@@ -687,12 +697,15 @@ open class SDK {
         sendAsync(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
-
     /**
      * @param listener
      */
     fun stories(code: String, listener: OnApiCallbackListener) {
-        instance.getAsync("$STORIES_FIELD/$code", JSONObject(), listener)
+        storiesManager.requestStories(code, listener)
+    }
+
+    fun showStory(storyId: Int) {
+        storiesManager.showStory(storyId)
     }
 
     /**
@@ -703,21 +716,8 @@ open class SDK {
      * @param storyId Story ID
      * @param slideId Slide ID
      */
-    fun trackStory(event: String, code: String?, storyId: Int, slideId: String) {
-        try {
-            val params = JSONObject()
-            params.put(TRACK_EVENT_FIELD, event)
-            params.put(TRACK_STORY_ID_FIELD, storyId)
-            params.put(TRACK_SLIDE_ID_FIELD, slideId)
-            params.put(TRACK_CODE_FIELD, code)
-
-            //Remember the last click in stories so that when the product viewing event is called, add
-            lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
-
-            sendAsync(TRACK_STORIES_FIELD, params, null)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
+    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
+        storiesManager.trackStory(event, code, storyId, slideId)
     }
 
     /**
