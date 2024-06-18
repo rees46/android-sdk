@@ -95,10 +95,6 @@ open class SDK {
         return context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
     }
 
-    internal fun addToQueue(thread: Thread) {
-        queue.add(thread)
-    }
-
     /**
      * Initializing SDK
      *
