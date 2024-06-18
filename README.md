@@ -396,3 +396,9 @@ fun notificationClicked(extras: Bundle?) {
     }
 }
 ```
+
+Auto send push token (true by default):
+
+```kotlin
+REES46.initialize(applicationContext, SHOP_ID, AUTO_SEND_PUSH_TOKEN)
+```
