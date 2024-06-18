@@ -1,8 +1,6 @@
 package com.personalizatio
 
 import android.annotation.SuppressLint
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import com.google.android.gms.tasks.Task
@@ -11,10 +9,12 @@ import com.personalizatio.SDK.Companion.TAG
 import com.personalizatio.SDK.Companion.debug
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
-import org.json.JSONException
+import com.personalizatio.utils.PreferencesUtils
 import org.json.JSONObject
 import java.util.Date
 import java.util.TimeZone
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class RegisterManager(val sdk: SDK) {
     private var autoSendPushToken: Boolean = false
@@ -31,62 +31,55 @@ class RegisterManager(val sdk: SDK) {
 
         if(did != null) return
 
-        sdk.addToQueue(Thread { this.token })
-
         did = getDid()
 
         if (did == null) {
-            //get unique device id
             did = Settings.Secure.getString(sdk.context.contentResolver, Settings.Secure.ANDROID_ID)
 
             init()
         }
-        else{
-            sdk.initialized(null)
+        else {
+            initializeSdk(null)
         }
     }
 
     /**
-     * Get device token
+     * Init device token
      */
-    private val token: Unit
-        get() {
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
-                if (!task.isSuccessful) {
-                    SDK.error("getInstanceId failed", task.exception)
-                    return@addOnCompleteListener
-                }
-                if (task.result == null) {
-                    SDK.error("Firebase result is null")
-                    return@addOnCompleteListener
-                }
+    private fun initToken()
+    {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
+            if (!task.isSuccessful) {
+                SDK.error("getInstanceId failed", task.exception)
+                return@addOnCompleteListener
+            }
+            if (task.result == null) {
+                SDK.error("Firebase result is null")
+                return@addOnCompleteListener
+            }
 
-                // Get new Instance ID token
-                val token = task.result
-                debug("token: $token")
+            val token = task.result
+            debug("token: $token")
 
-                //Check send token
-                val tokenField = getToken()
+            val tokenField = getToken()
 
-                val currentDate = Date()
+            val currentDate = Date()
 
-                if (tokenField == null
-                    || tokenField != token
-                    || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS) {
-                    //Send token
-                    sdk.setPushTokenNotification(token, object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            saveLastPushTokenDate(currentDate)
-                            saveToken(token)
-                        }
-                    })
-                }
+            if (tokenField == null
+                || tokenField != token
+                || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS) {
+
+                sdk.setPushTokenNotification(token, object : OnApiCallbackListener() {
+                    override fun onSuccess(response: JSONObject?) {
+                        saveLastPushTokenDate(currentDate)
+                        saveToken(token)
+                    }
+                })
             }
         }
+    }
 
     private fun init() {
-        //Disable working Google Play Pre-Launch report devices
-
         if (isTestDevice) {
             Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
             return
@@ -100,15 +93,26 @@ class RegisterManager(val sdk: SDK) {
                 private var attempt = 0
 
                 override fun onSuccess(response: JSONObject?) {
-                    try {
-                        did = response!!.getString("did")
-                        saveDid()
-
-                        // Выполняем таски из очереди
-                        sdk.initialized(response.getString("seance"))
-                    } catch (e: JSONException) {
-                        SDK.error(e.message, e)
+                    if(response == null) {
+                        SDK.error("Init response is not correct.")
+                        return
                     }
+
+                    did = response.optString("did")
+                    if(did.isNullOrEmpty()) {
+                        SDK.error("Init response does not contain the correct did field.")
+                        return
+                    }
+
+                    saveDid()
+
+                    val seance = response.optString("seance")
+                    if(seance.isNullOrEmpty()) {
+                        SDK.error("Init response does not contain the correct seance field.")
+                        return
+                    }
+
+                    initializeSdk(seance)
                 }
 
                 override fun onError(code: Int, msg: String?) {
@@ -117,14 +121,23 @@ class RegisterManager(val sdk: SDK) {
                         if (attempt < 5) {
                             attempt++
                         }
-                        val handler = Handler(Looper.getMainLooper())
-                        handler.postDelayed({ init() }, 1000L * attempt)
+                        Executors.newSingleThreadScheduledExecutor()
+                            .schedule({ init() }, 1L * attempt, TimeUnit.SECONDS)
+                    }
+                    else {
+                        SDK.error("Init error: code: $code, $msg")
                     }
                 }
             })
-        } catch (e: JSONException) {
+        } catch (e: Exception) {
             SDK.error(e.message, e)
         }
+    }
+
+    private fun initializeSdk(sid: String?) {
+        sdk.initialized(sid)
+
+        initToken()
     }
 
     private val isTestDevice: Boolean
@@ -135,9 +148,9 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private fun saveDid() {
-        val edit = sdk.prefs().edit()
-        edit.putString(DID_PREFS_KEY, did)
-        edit.apply()
+        did?.let { did ->
+            PreferencesUtils.saveField(sdk.prefs(), DID_PREFS_KEY, did)
+        }
     }
 
     private fun getToken() : String? {
@@ -145,9 +158,7 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private fun saveToken(token: String) {
-        val edit = sdk.prefs().edit()
-        edit.putString(TOKEN_PREFS_KEY, token)
-        edit.apply()
+        PreferencesUtils.saveField(sdk.prefs(), TOKEN_PREFS_KEY, token)
     }
 
     private fun getLastPushTokenMilliseconds() : Long {
@@ -155,9 +166,7 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private fun saveLastPushTokenDate(date: Date) {
-        val edit = sdk.prefs().edit()
-        edit.putLong(LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
-        edit.apply()
+        PreferencesUtils.saveField(sdk.prefs(), LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
     }
 
     companion object {
