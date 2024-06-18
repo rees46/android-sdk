@@ -10,11 +10,13 @@ import com.personalizatio.SDK.Companion.debug
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.utils.PreferencesUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.Date
 import java.util.TimeZone
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 class RegisterManager(val sdk: SDK) {
     private var autoSendPushToken: Boolean = false
@@ -121,8 +123,10 @@ class RegisterManager(val sdk: SDK) {
                         if (attempt < 5) {
                             attempt++
                         }
-                        Executors.newSingleThreadScheduledExecutor()
-                            .schedule({ init() }, 1L * attempt, TimeUnit.SECONDS)
+                        CoroutineScope(Dispatchers.Main).launch {
+                            delay(1000L * attempt)
+                            init()
+                        }
                     }
                     else {
                         SDK.error("Init error: code: $code, $msg")
