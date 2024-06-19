@@ -282,12 +282,40 @@ Add code to your layout:
     android:layout_height="wrap_content"
     app:code="STORY BLOCK CODE" />
 ```
+```kotlin
+val storiesView = findViewById<StoriesView>(R.id.stories_view)
+sdk.initializeStoriesView(storiesView)
+```
 
 Or programmatically:
 
 ```kotlin
 val storiesView = StoriesView(this, "STORY BLOCK CODE")
 findViewById<ViewGroup>(R.id.stories).addView(storiesView)
+sdk.initializeStoriesView(storiesView)
+```
+
+Set item click listener:
+
+```kotlin
+val storiesView = findViewById<StoriesView>(R.id.stories_view)
+storiesView.itemClickListener = object : OnLinkClickListener {
+    override fun onClick(url: String): Boolean {
+        // return true if need to opening using the SDK
+        return false
+    }
+
+    override fun onClick(product: Product): Boolean {
+        // return true if need to opening using the SDK
+        return false
+    }
+}
+```
+
+Show story by id:
+
+```kotlin
+sdk.showStory(STORY_ID)
 ```
 
 Customize story settings:
@@ -367,4 +395,10 @@ fun notificationClicked(extras: Bundle?) {
         }
     }
 }
+```
+
+Auto send push token (true by default):
+
+```kotlin
+REES46.initialize(applicationContext, SHOP_ID, AUTO_SEND_PUSH_TOKEN)
 ```

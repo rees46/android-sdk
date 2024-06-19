@@ -1,16 +1,10 @@
 package com.personalizatio
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import androidx.core.util.Consumer
-import com.google.android.gms.tasks.Task
-import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.Params.InternalParameter
 import com.personalizatio.Params.RecommendedBy
@@ -20,19 +14,20 @@ import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notifications.Source
+import com.personalizatio.stories.StoriesManager
+import com.personalizatio.stories.views.StoriesView
+import org.json.JSONException
+import org.json.JSONObject
 import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Collections
 import java.util.Locale
-import java.util.TimeZone
 import kotlin.math.roundToInt
-import org.json.JSONException
-import org.json.JSONObject
 
 open class SDK {
 
+    internal lateinit var context: Context
     private lateinit var preferencesKey: String
-    private lateinit var context: Context
     private lateinit var segment: String
     private lateinit var source: Source
     private lateinit var shopId: String
@@ -42,12 +37,19 @@ open class SDK {
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private lateinit var notificationHandler: NotificationHandler
     private var onMessageListener: OnMessageListener? = null
-    private var lastRecommendedBy: RecommendedBy? = null
+    internal var lastRecommendedBy: RecommendedBy? = null
     private var seance: String? = null
     private var search: Search? = null
     private var did: String? = null
     private var initialized = false
-    private var attempt = 0
+
+    private val registerManager: RegisterManager by lazy {
+        RegisterManager(this)
+    }
+
+    private val storiesManager: StoriesManager by lazy {
+        StoriesManager(this)
+    }
 
     /**
      * @param shopId Shop key
@@ -58,7 +60,8 @@ open class SDK {
         apiUrl: String,
         tag: String,
         preferencesKey: String,
-        stream: String
+        stream: String,
+        autoSendPushToken: Boolean = true
     ) {
         this.api = Api.getApi(apiUrl)
 
@@ -77,100 +80,27 @@ open class SDK {
         notificationHandler = NotificationHandler(context) { prefs() }
         notificationHandler.createNotificationChannel()
 
-        did()
+
+        registerManager.initialize(autoSendPushToken)
+    }
+
+    fun initializeStoriesView(storiesView: StoriesView) {
+        storiesManager.initialize(storiesView)
     }
 
     /**
      * @return preferences
      */
-    private fun prefs(): SharedPreferences {
+    internal fun prefs(): SharedPreferences {
         return context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
     }
 
     /**
-     * Get did from properties or generate a new did
-     */
-    @SuppressLint("HardwareIds")
-    private fun did() {
-        if (did == null) {
-            val preferences = prefs()
-            did = preferences.getString(DID_FIELD, null)
-            if (did == null) {
-                //get unique device id
-                did = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            }
-
-            //Add the token request to the queue
-            queue.add(Thread { this.token })
-
-            //If you have never called init before
-            if (preferences.getString(DID_FIELD, null) == null) {
-                init()
-            } else {
-                initialized(null)
-            }
-        }
-    }
-
-    private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
-            context.contentResolver,
-            FIREBASE_TEST_LAB
-        )
-
-    /**
-     * Connect to init script
-     */
-    private fun init() {
-        //Disable working Google Play Pre-Launch report devices
-
-        if (isTestDevice) {
-            Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
-            return
-        }
-
-        try {
-            val params = JSONObject()
-
-            params.put(TZ_FIELD, (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            send(ApiMethod.GET(INIT_FIELD), params, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    try {
-                        // Saving data to memory
-                        val edit = prefs().edit()
-                        did = response?.getString(DID_FIELD).orEmpty()
-                        edit.putString(DID_FIELD, did)
-                        edit.apply()
-
-                        // Execute tasks from the queue
-                        initialized(response?.getString(SEANCE_FIELD))
-                    } catch (e: JSONException) {
-                        error(e.message, e)
-                    }
-                }
-
-                override fun onError(code: Int, msg: String?) {
-                    if (code >= 500 || code <= 0) {
-                        Log.e(TAG, "$CODE_FIELD: $code, $msg")
-                        if (attempt < 5) {
-                            attempt++
-                        }
-                        val handler = Handler(Looper.getMainLooper())
-                        handler.postDelayed({ init() }, 1000L * attempt)
-                    }
-                }
-            })
-        } catch (e: JSONException) {
-            error(e.message, e)
-        }
-    }
-
-    /**
-     * Инициализация SDK
+     * Initializing SDK
      *
      * @param sid String
      */
-    private fun initialized(sid: String?) {
+    internal fun initialized(sid: String?) {
         initialized = true
         seance = sid
 
@@ -225,41 +155,6 @@ open class SDK {
         return sb.toString()
     }
 
-    private val token: Unit
-        /**
-         * Get device token
-         */
-        get() {
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
-                if (!task.isSuccessful) {
-                    error("Firebase: getInstanceId failed", task.exception)
-                    return@addOnCompleteListener
-                }
-                if (task.result == null) {
-                    error("Firebase: result is null")
-                    return@addOnCompleteListener
-                }
-
-                // Get new Instance ID token
-                val token = task.result
-                debug("Firebase token: $token")
-
-                //Check send token
-                val tokenField = prefs().getString(TOKEN_FIELD, null)
-                if (tokenField == null || tokenField != token) {
-                    //Send token
-
-                    setPushTokenNotification(token, object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            val edit = prefs().edit()
-                            edit.putString(TOKEN_FIELD, token)
-                            edit.apply()
-                        }
-                    })
-                }
-            }
-        }
-
     /**
      * Update profile data
      * https://reference.api.rees46.com/#save-profile-settings
@@ -298,10 +193,10 @@ open class SDK {
     /**
      * Direct query execution
      */
-    private fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+    internal fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         updateSidActivity()
 
-        api.send(apiMethod, params, listener, shopId, did, seance, segment, stream, source)
+        api.send(apiMethod, params, listener, shopId, registerManager.did, seance, segment, stream, source)
     }
 
     private fun sendAsync(method: String, params: JSONObject) {
@@ -313,7 +208,7 @@ open class SDK {
      */
     fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val thread = Thread { send(ApiMethod.POST(method), params, listener) }
-        if (did != null && initialized) {
+        if (registerManager.did != null && initialized) {
             thread.start()
         } else {
             queue.add(thread)
@@ -325,7 +220,7 @@ open class SDK {
      */
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val thread = Thread { send(ApiMethod.GET(method), params, listener) }
-        if (did != null && initialized) {
+        if (registerManager.did != null && initialized) {
             thread.start()
         } else {
             queue.add(thread)
@@ -499,7 +394,7 @@ open class SDK {
      * @return String
      */
     fun getDid(): String? {
-        return did
+        return registerManager.did
     }
 
     /**
@@ -791,19 +686,22 @@ open class SDK {
      * @param token
      * @param listener
      */
-    private fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+    internal fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
         sendAsync(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
-
     /**
      * @param listener
      */
     fun stories(code: String, listener: OnApiCallbackListener) {
-        instance.getAsync("$STORIES_FIELD/$code", JSONObject(), listener)
+        storiesManager.requestStories(code, listener)
+    }
+
+    fun showStory(storyId: Int) {
+        storiesManager.showStory(storyId)
     }
 
     /**
@@ -814,21 +712,8 @@ open class SDK {
      * @param storyId Story ID
      * @param slideId Slide ID
      */
-    fun trackStory(event: String, code: String?, storyId: Int, slideId: String) {
-        try {
-            val params = JSONObject()
-            params.put(TRACK_EVENT_FIELD, event)
-            params.put(TRACK_STORY_ID_FIELD, storyId)
-            params.put(TRACK_SLIDE_ID_FIELD, slideId)
-            params.put(TRACK_CODE_FIELD, code)
-
-            //Remember the last click in stories so that when the product viewing event is called, add
-            lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
-
-            sendAsync(TRACK_STORIES_FIELD, params, null)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
+    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
+        storiesManager.trackStory(event, code, storyId, slideId)
     }
 
     /**
@@ -865,7 +750,6 @@ open class SDK {
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
         private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
-        private const val FIREBASE_TEST_LAB = "firebase.test.lab"
         private const val TRACK_STORIES_FIELD = "track/stories"
         private const val SID_LAST_ACT_FIELD = "sid_last_act"
         private const val BLANK_SEARCH_FIELD = "search/blank"
@@ -879,7 +763,6 @@ open class SDK {
         private const val SEGMENT_ID_FIELD = "segment_id"
         private const val SEGMENT_EMAIL_FIELD = "email"
         private const val SEGMENT_PHONE_FIELD = "email"
-        private const val IS_TEST_DEVICE_FIELD = "true"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
         private const val PLATFORM_FIELD = "platform"

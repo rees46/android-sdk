@@ -8,38 +8,36 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.Message
 import android.util.AttributeSet
-import android.util.Log
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
 import com.personalizatio.OnLinkClickListener
 import com.personalizatio.R
 import com.personalizatio.SDK
-import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.stories.Player
 import com.personalizatio.stories.Settings
 import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.viewAdapters.StoriesAdapter
 import com.personalizatio.stories.viewAdapters.StoriesAdapter.ClickListener
-import org.json.JSONException
-import org.json.JSONObject
 
 class StoriesView : ConstraintLayout, ClickListener {
-    private var adapter: StoriesAdapter? = null
-    private val list: MutableList<Story> = ArrayList()
+    private lateinit var storiesRecyclerView: RecyclerView
+    private lateinit var adapter: StoriesAdapter
+    private lateinit var player: Player
+
+    lateinit var code: String
+
+    private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
+
     val settings: Settings = Settings()
-    var code: String? = null
-    var player: Player? = null
-    var clickListener: OnLinkClickListener? = null
+    var itemClickListener: OnLinkClickListener? = null
     var isMute: Boolean = true
         private set
     var muteListener: Runnable? = null
 
-    constructor(context: Context?, code: String?) : super(context!!) {
+    constructor(context: Context?, code: String) : super(context!!) {
         this.code = code
-        initialize()
     }
 
     constructor(context: Context?, attrs: AttributeSet?) : super(context!!, attrs) {
@@ -60,11 +58,56 @@ class StoriesView : ConstraintLayout, ClickListener {
         parseAttrs(attrs)
     }
 
+    init {
+        inflate(context, R.layout.stories, this)
+
+        initViews()
+        setupViews()
+    }
+
+    private fun initViews() {
+        storiesRecyclerView = findViewById(R.id.stories)
+    }
+
+    private fun setupViews() {
+        adapter = StoriesAdapter(this, stories, this)
+        storiesRecyclerView.adapter = adapter
+
+        player = Player(context)
+
+        settings.failed_load_text = resources.getString(R.string.failed_load_text)
+    }
+
+    private fun parseAttrs(attrs: AttributeSet?) {
+        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
+        val code = typedArray.getString(R.styleable.StoriesView_code)
+        if (code == null) {
+            SDK.error("Code is set incorrectly")
+            return
+        }
+        this.code = code
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    internal fun updateStories(stories: List<Story>) {
+        this.stories.clear()
+        this.stories.addAll(stories)
+
+        Handler(context.mainLooper).post {
+            registerObserver()
+            adapter.notifyDataSetChanged()
+        }
+    }
+
     /**
-     * Вызывать, когда объект сторисов удален с экрана и больше не нужен
+     * Called when the story object has been removed from the screen and is no longer needed
      */
     fun release() {
-        player?.release()
+        player.release()
+    }
+
+    internal fun preparePlayer(url: String) {
+        player.prepare(url)
     }
 
     override fun onDetachedFromWindow() {
@@ -72,88 +115,68 @@ class StoriesView : ConstraintLayout, ClickListener {
         unregisterObserver()
     }
 
-    override fun onFinishInflate() {
-        super.onFinishInflate()
-        initialize()
-    }
-
-    private fun parseAttrs(attrs: AttributeSet?) {
-        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
-        this.code = typedArray.getString(R.styleable.StoriesView_code)
-    }
-
-    //Инициализация
-    private fun initialize() {
-        val view = inflate(context, R.layout.stories, this)
-        val stories = view.findViewById<RecyclerView>(R.id.stories)
-
-        adapter = StoriesAdapter(this, list, this)
-        stories.adapter = adapter
-
-        val handler: Handler = object : Handler(Looper.getMainLooper()) {
-            @SuppressLint("NotifyDataSetChanged")
-            override fun handleMessage(msg: Message) {
-                registerObserver()
-                adapter?.notifyDataSetChanged()
-            }
-        }
-
-        //Плеер для просмотра видео
-        player = Player(context)
-
-        settings.failed_load_text = resources.getString(R.string.failed_load_text)
-
-        //Запрашиваем сторисы
-        this.code?.let {
-            SDK.instance.stories(it, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    response?.let { response ->
-                        Log.d("stories", response.toString())
-                        try {
-                            val jsonStories = response.getJSONArray("stories")
-                            for (i in 0 until jsonStories.length()) {
-                                list.add(Story(jsonStories.getJSONObject(i)))
-                            }
-                            handler.sendEmptyMessage(1)
-                        } catch (e: JSONException) {
-                            Log.e(SDK.TAG, e.message, e)
-                        }
-                    }
-                }
-            })
-        }
-    }
-
     @SuppressLint("NotifyDataSetChanged")
-    override fun onStoryClick(index: Int) {
-        val story = list[index]
+    override fun onStoryClick(id: Int) {
+        val story = stories[id]
 
-        //Сбрасываем позицию
-        val startPosition = story.startPosition
-        if (startPosition >= story.slidesCount || startPosition < 0) {
+        if (story.startPosition >= story.slidesCount || story.startPosition < 0) {
             story.startPosition = 0
         }
 
-        val dialog = StoryDialog(this, list, index) {
-            adapter?.notifyDataSetChanged()
-        }
-        dialog.show()
+        showStories(stories, id, { adapter.notifyDataSetChanged() }, {})
     }
 
     fun muteVideo(mute: Boolean) {
         this.isMute = mute
     }
 
-    fun registerObserver() {
-        observer = object : ContentObserver(Handler()) {
+    internal fun showStory(storyId: Int): Boolean {
+        for (story in stories) {
+            if (storyId == story.id) {
+                showStory(story)
+                return true
+            }
+        }
+
+        return false
+    }
+
+    internal fun showStory(story: Story) {
+        val previousPosition = story.startPosition
+
+        story.startPosition = 0
+
+        val stories = ArrayList<Story>(1)
+        stories.add(story)
+
+        val returnStartPosition = {
+            story.startPosition = previousPosition
+        }
+
+        val handler = Handler(context.mainLooper)
+        handler.post {
+            showStories(stories, 0, returnStartPosition, returnStartPosition)
+        }
+    }
+
+    private fun showStories(
+        stories: List<Story>,
+        startPosition: Int,
+        completeShowStory: () -> Unit,
+        cancelShowStory: () -> Unit
+    ) {
+        val dialog = StoryDialog(this, stories, startPosition, completeShowStory, cancelShowStory)
+        dialog.show()
+    }
+
+    private fun registerObserver() {
+        observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
                 super.onChange(selfChange)
                 val manager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     isMute = manager.isStreamMute(AudioManager.STREAM_MUSIC)
-                    if (muteListener != null) {
-                        muteListener!!.run()
-                    }
+                    muteListener?.run()
                 }
             }
         }
@@ -164,7 +187,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         )
     }
 
-    fun unregisterObserver() {
+    private fun unregisterObserver() {
         if (observer != null) {
             context.contentResolver.unregisterContentObserver(observer!!)
         }

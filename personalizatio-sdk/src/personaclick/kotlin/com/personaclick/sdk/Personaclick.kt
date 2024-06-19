@@ -24,7 +24,7 @@ class Personaclick private constructor() : SDK() {
          * @param context application context
          * @param shopId Shop key
          */
-        fun initialize(context: Context, shopId: String) {
+        fun initialize(context: Context, shopId: String, autoSendPushToken: Boolean = true) {
             val sdk = getInstance()
             sdk.initialize(
                 context = context,
@@ -32,7 +32,8 @@ class Personaclick private constructor() : SDK() {
                 apiUrl = API_URL,
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
-                stream = PLATFORM_ANDROID
+                stream = PLATFORM_ANDROID,
+                autoSendPushToken = autoSendPushToken
             )
         }
     }
