@@ -3,14 +3,16 @@ package com.personalizatio.notification
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.personalizatio.SDK
 import com.personalizatio.notification.NotificationHelper.ACTION_NEXT_IMAGE
 import com.personalizatio.notification.NotificationHelper.ACTION_PREVIOUS_IMAGE
 import com.personalizatio.notification.NotificationHelper.CURRENT_IMAGE_INDEX
-import java.io.IOException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import com.personalizatio.notification.NotificationHelper.NOTIFICATION_BODY
+import com.personalizatio.notification.NotificationHelper.NOTIFICATION_IMAGES
+import com.personalizatio.notification.NotificationHelper.NOTIFICATION_TITLE
 
 class NotificationBroadcastReceiver : BroadcastReceiver() {
 
@@ -18,43 +20,31 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
         val action = intent.action
 
         val currentIndex = intent.getIntExtra(CURRENT_IMAGE_INDEX, 0)
-        val images = intent.getStringExtra(NotificationHelper.NOTIFICATION_IMAGES)
-        val title = intent.getStringExtra(NotificationHelper.NOTIFICATION_TITLE)
-        val body = intent.getStringExtra(NotificationHelper.NOTIFICATION_BODY)
+        val images = intent.getStringExtra(NOTIFICATION_IMAGES)
+        val title = intent.getStringExtra(NOTIFICATION_TITLE)
+        val body = intent.getStringExtra(NOTIFICATION_BODY)
 
-        CoroutineScope(Dispatchers.Main).launch {
-            when (action) {
-                ACTION_NEXT_IMAGE, ACTION_PREVIOUS_IMAGE -> updateNotification(
-                    context = context,
-                    data = mapOf(
-                        NotificationHelper.NOTIFICATION_IMAGES to images,
-                        NotificationHelper.NOTIFICATION_TITLE to title,
-                        NotificationHelper.NOTIFICATION_BODY to body
-                    ),
-                    newIndex = currentIndex
-                )
+        when (action) {
+            ACTION_NEXT_IMAGE, ACTION_PREVIOUS_IMAGE -> {
+                if (!images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
+                    val inputData = Data.Builder()
+                        .putString(NOTIFICATION_IMAGES, images)
+                        .putString(NOTIFICATION_TITLE, title)
+                        .putString(NOTIFICATION_BODY, body)
+                        .putInt(CURRENT_IMAGE_INDEX, currentIndex)
+                        .build()
 
-                else -> Unit
+                    val updateNotificationWork = OneTimeWorkRequest.Builder(
+                        workerClass = UpdateNotificationWorker::class.java
+                    ).setInputData(inputData).build()
+
+                    WorkManager.getInstance(context).enqueue(updateNotificationWork)
+                } else {
+                    SDK.error("Error caught in onReceive because one of the fields is empty or null")
+                }
             }
-        }
-    }
 
-    private suspend fun updateNotification(
-        context: Context,
-        data: Map<String, String?>,
-        newIndex: Int
-    ) {
-        try {
-            NotificationHelper.createNotification(
-                context = context,
-                data = data,
-                images = NotificationHelper.loadBitmaps(
-                    urls = data[NotificationHelper.NOTIFICATION_IMAGES]
-                ),
-                currentIndex = newIndex
-            )
-        } catch (ioException: IOException) {
-            SDK.error("Error caught in load bitmaps", ioException)
+            else -> SDK.error("Error caught in onReceive due to unknown action $action")
         }
     }
 }

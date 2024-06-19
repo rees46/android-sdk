@@ -48,8 +48,7 @@ class RegisterManager(val sdk: SDK) {
     /**
      * Init device token
      */
-    private fun initToken()
-    {
+    private fun initToken() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
             if (!task.isSuccessful) {
                 SDK.error("getInstanceId failed", task.exception)

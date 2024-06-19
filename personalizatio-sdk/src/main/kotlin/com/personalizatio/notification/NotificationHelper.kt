@@ -19,11 +19,11 @@ object NotificationHelper {
 
     const val TAG = "NotificationHelper"
 
+    private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
+    private const val NOTIFICATION_CHANNEL = "notification_channel"
+    private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
     const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
-    const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
-    const val NOTIFICATION_CHANNEL = "notification_channel"
     const val CURRENT_IMAGE_INDEX = "current_image_index"
-    const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
     const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
     const val NOTIFICATION_IMAGES = "images"
     const val NOTIFICATION_TITLE = "title"
@@ -45,12 +45,12 @@ object NotificationHelper {
 
         val pendingIntent = PendingIntent.getActivity(
             /* context = */ context,
-            /* requestCode = */requestCodeGenerator.generateRequestCode(
+            /* requestCode = */ requestCodeGenerator.generateRequestCode(
                 action = intent.action.orEmpty(),
                 currentIndex = currentIndex
             ),
-            /* intent = */intent,
-            /* flags = */PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            /* intent = */ intent,
+            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
@@ -85,9 +85,9 @@ object NotificationHelper {
                 )
                 notificationBuilder.addAction(
                     /* action = */ NotificationCompat.Action.Builder(
-                        android.R.drawable.ic_media_previous,
-                        context.getString(R.string.notification_button_back),
-                        prevPendingIntent
+                        /* icon = */ android.R.drawable.ic_media_previous,
+                        /* title = */ context.getString(R.string.notification_button_back),
+                        /* intent = */ prevPendingIntent
                     ).build()
                 )
             }
@@ -109,9 +109,9 @@ object NotificationHelper {
                 )
                 notificationBuilder.addAction(
                     /* action = */ NotificationCompat.Action.Builder(
-                        android.R.drawable.ic_media_next,
-                        context.getString(R.string.notification_button_forward),
-                        nextPendingIntent
+                        /* icon = */ android.R.drawable.ic_media_next,
+                        /* title = */ context.getString(R.string.notification_button_forward),
+                        /* intent = */ nextPendingIntent
                     ).build()
                 )
             }
@@ -128,8 +128,7 @@ object NotificationHelper {
                 /* id = */ NOTIFICATION_ID.hashCode(),
                 /* notification = */ notificationBuilder.build()
             )
-
-            else -> SDK.error("NotificationManager not allowed")
+            else -> SDK.error("NotificationManager not available")
         }
     }
 
