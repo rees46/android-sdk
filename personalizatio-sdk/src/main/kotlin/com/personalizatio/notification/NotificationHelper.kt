@@ -6,9 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.personalizatio.R
+import com.personalizatio.SDK
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
@@ -17,16 +17,19 @@ import kotlinx.coroutines.withContext
 
 object NotificationHelper {
 
-    private const val TAG = "NotificationHelper"
-    private const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
+    const val TAG = "NotificationHelper"
+
     private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
     private const val NOTIFICATION_CHANNEL = "notification_channel"
-    private const val CURRENT_IMAGE_INDEX = "current_image_index"
     private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
-    private const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
-    private const val NOTIFICATION_TITLE = "title"
-    private const val NOTIFICATION_BODY = "body"
+    const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
+    const val CURRENT_IMAGE_INDEX = "current_image_index"
+    const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
     const val NOTIFICATION_IMAGES = "images"
+    const val NOTIFICATION_TITLE = "title"
+    const val NOTIFICATION_BODY = "body"
+
+    private val requestCodeGenerator = RequestCodeGenerator
 
     fun createNotification(
         context: Context,
@@ -34,21 +37,20 @@ object NotificationHelper {
         images: List<Bitmap>?,
         currentIndex: Int
     ) {
-        val intent = Intent(context, context::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
-            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
-            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-            putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
-            putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
-            putExtra(CURRENT_IMAGE_INDEX, currentIndex)
-        }
+        val intent = createNotificationIntent(
+            context = context,
+            data = data,
+            currentIndex = currentIndex
+        )
 
         val pendingIntent = PendingIntent.getActivity(
             /* context = */ context,
-            /* requestCode = */ 0,
+            /* requestCode = */ requestCodeGenerator.generateRequestCode(
+                action = intent.action.orEmpty(),
+                currentIndex = currentIndex
+            ),
             /* intent = */ intent,
-            /* flags = */ PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
@@ -58,41 +60,58 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
 
-        if (!images.isNullOrEmpty()) {
+        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
             val currentImage = images[currentIndex]
+
             notificationBuilder.setLargeIcon(currentImage)
                 .setStyle(
-                    NotificationCompat.BigPictureStyle().bigPicture(currentImage).bigLargeIcon(null as Bitmap?)
+                    NotificationCompat.BigPictureStyle().bigPicture(currentImage)
                 )
 
             if (currentIndex > 0) {
-                val prevPendingIntent = createPendingIntent(
+                val prevIntent = createNotificationIntent(
                     context = context,
-                    action = ACTION_PREVIOUS_IMAGE,
-                    currentIndex = currentIndex,
-                    data = data
+                    data = data,
+                    currentIndex = currentIndex - 1
+                )
+                val prevPendingIntent = PendingIntent.getBroadcast(
+                    /* context = */ context,
+                    /* requestCode = */ requestCodeGenerator.generateRequestCode(
+                        action = prevIntent.action.orEmpty(),
+                        currentIndex = currentIndex - 1
+                    ),
+                    /* intent = */ prevIntent,
+                    /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 notificationBuilder.addAction(
-                    NotificationCompat.Action.Builder(
-                        android.R.drawable.ic_media_previous,
-                        context.getString(R.string.notification_button_back),
-                        prevPendingIntent
+                    /* action = */ NotificationCompat.Action.Builder(
+                        /* icon = */ android.R.drawable.ic_media_previous,
+                        /* title = */ context.getString(R.string.notification_button_back),
+                        /* intent = */ prevPendingIntent
                     ).build()
                 )
             }
 
             if (currentIndex < images.size - 1) {
-                val nextPendingIntent = createPendingIntent(
+                val nextIntent = createNotificationIntent(
                     context = context,
-                    action = ACTION_NEXT_IMAGE,
-                    currentIndex = currentIndex,
-                    data = data
+                    data = data,
+                    currentIndex = currentIndex + 1
+                )
+                val nextPendingIntent = PendingIntent.getBroadcast(
+                    /* context = */ context,
+                    /* requestCode = */ requestCodeGenerator.generateRequestCode(
+                        action = nextIntent.action.orEmpty(),
+                        currentIndex = currentIndex + 1
+                    ),
+                    /* intent = */ nextIntent,
+                    /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 notificationBuilder.addAction(
-                    NotificationCompat.Action.Builder(
-                        android.R.drawable.ic_media_next,
-                        context.getString(R.string.notification_button_forward),
-                        nextPendingIntent
+                    /* action = */ NotificationCompat.Action.Builder(
+                        /* icon = */ android.R.drawable.ic_media_next,
+                        /* title = */ context.getString(R.string.notification_button_forward),
+                        /* intent = */ nextPendingIntent
                     ).build()
                 )
             }
@@ -104,36 +123,31 @@ object NotificationHelper {
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        if (notificationManager != null) {
-            notificationManager.notify(0, notificationBuilder.build())
-        } else {
-            Log.e(TAG, "NotificationManager not allowed")
+        when {
+            notificationManager != null -> notificationManager.notify(
+                /* id = */ NOTIFICATION_ID.hashCode(),
+                /* notification = */ notificationBuilder.build()
+            )
+            else -> SDK.error("NotificationManager not available")
         }
     }
 
-    private fun createPendingIntent(
+    private fun createNotificationIntent(
         context: Context,
-        action: String,
-        currentIndex: Int,
-        data: Map<String, String?>
-    ): PendingIntent {
-        val intent = Intent(context, NotificationIntentService::class.java)
+        data: Map<String, String?>,
+        currentIndex: Int
+    ): Intent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
+        putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
+        putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
+        putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
+        putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
+        putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
+        putExtra(CURRENT_IMAGE_INDEX, currentIndex)
 
-        intent.action = action
-        intent.putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
-        intent.putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
-        intent.putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-        intent.putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
-        intent.putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
-        intent.putExtra(CURRENT_IMAGE_INDEX, currentIndex)
-
-        val requestCode = RequestCodeGenerator.generateRequestCode(action, currentIndex)
-        return PendingIntent.getService(
-            /* context = */ context,
-            /* requestCode = */ requestCode,
-            /* intent = */ intent,
-            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        action = when (currentIndex) {
+            0 -> ACTION_NEXT_IMAGE
+            else -> ACTION_PREVIOUS_IMAGE
+        }
     }
 
     suspend fun loadBitmaps(urls: String?): List<Bitmap> {
@@ -146,7 +160,7 @@ object NotificationHelper {
                         val inputStream: InputStream = URL(url).openStream()
                         bitmaps.add(BitmapFactory.decodeStream(inputStream))
                     } catch (ioException: IOException) {
-                        Log.e(TAG, "Error caught in load bitmaps", ioException)
+                        SDK.error("Error caught in load bitmaps", ioException)
                     }
                 }
             }

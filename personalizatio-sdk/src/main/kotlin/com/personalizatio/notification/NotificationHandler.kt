@@ -23,18 +23,16 @@ class NotificationHandler(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = context.getString(R.string.notification_channel_id)
             val channelName = context.getString(R.string.notification_channel_name)
-            val notificationManager = context.getSystemService(NotificationManager::class.java)
-            when {
-                notificationManager != null -> notificationManager.createNotificationChannel(
-                    NotificationChannel(
-                        /* id = */ channelId,
-                        /* name = */ channelName,
-                        /* importance = */ NotificationManager.IMPORTANCE_LOW
-                    )
+            val notificationManager = context.getSystemService(
+                NotificationManager::class.java
+            )
+            notificationManager?.createNotificationChannel(
+                /* channel = */ NotificationChannel(
+                    /* id = */ channelId,
+                    /* name = */ channelName,
+                    /* importance = */ NotificationManager.IMPORTANCE_LOW
                 )
-
-                else -> error("NotificationManager not allowed")
-            }
+            )
         }
     }
 
@@ -43,18 +41,27 @@ class NotificationHandler(
         sendAsync: (String, JSONObject) -> Unit,
         source: Source
     ) {
-        val type = extras?.getString(NOTIFICATION_TYPE, null)
-        val code = extras?.getString(NOTIFICATION_ID, null)
-        if (type != null && code != null) {
-            val params = JSONObject()
-            try {
-                params.put(TYPE_PARAM, type)
-                params.put(CODE_PARAM, code)
-                sendAsync(TRACK_CLICKED, params)
+        if (extras == null) {
+            return
+        } else {
+            val type = extras.getString(NOTIFICATION_TYPE, null)
+            val code = extras.getString(NOTIFICATION_ID, null)
 
-                source.update(type, code, prefs())
-            } catch (e: JSONException) {
-                Log.e(TAG, e.message, e)
+            if (type != null && code != null) {
+                val params = JSONObject()
+                try {
+                    params.put(TYPE_PARAM, type)
+                    params.put(CODE_PARAM, code)
+                    sendAsync(TRACK_CLICKED, params)
+
+                    source.update(
+                        type = type,
+                        id = code,
+                        preferences = prefs()
+                    )
+                } catch (e: JSONException) {
+                    Log.e(TAG, e.message, e)
+                }
             }
         }
     }
@@ -62,7 +69,7 @@ class NotificationHandler(
     fun prepareData(remoteMessage: RemoteMessage): MutableMap<String, String> {
         val data: MutableMap<String, String> = HashMap(remoteMessage.data)
         remoteMessage.notification?.let { notification ->
-            addNotificationData(notification, data)
+            addNotificationData(notification = notification, data = data)
         }
         data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
         return data
