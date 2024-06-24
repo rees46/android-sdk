@@ -100,19 +100,25 @@ publishing {
 		maven {
 			name = "GitHubPackages"
 
-			url = uri("https://maven.pkg.github.com/rees46/rees46-android-sdk")
-
 			credentials {
 				username ossrhUsername
 				password ossrhPassword
+			}
+
+			android.libraryVariants.all { variant ->
+				if (variant.buildType.name == "debug") return
+				if(variant.flavorName == "personaclick") {
+					url = uri("https://maven.pkg.github.com/PersonaClick/android-sdk")
+				}
+				else {
+					url = uri("https://maven.pkg.github.com/rees46/rees46-android-sdk")
+				}
 			}
 		}
 	}
 }
 
 afterEvaluate {
-
-
 	android.libraryVariants.all { variant ->
 		if(variant == 'release') {
 			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
