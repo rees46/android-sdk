@@ -19,15 +19,16 @@ object NotificationHelper {
 
     const val TAG = "NotificationHelper"
 
-    private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
     private const val NOTIFICATION_CHANNEL = "notification_channel"
-    private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
     const val ACTION_PREVIOUS_IMAGE = "ACTION_PREVIOUS_IMAGE"
     const val CURRENT_IMAGE_INDEX = "current_image_index"
     const val ACTION_NEXT_IMAGE = "ACTION_NEXT_IMAGE"
     const val NOTIFICATION_IMAGES = "images"
     const val NOTIFICATION_TITLE = "title"
     const val NOTIFICATION_BODY = "body"
+
+    var notificationType: String = "NOTIFICATION_TYPE"
+    var notificationId: String = "NOTIFICATION_ID"
 
     private val requestCodeGenerator = RequestCodeGenerator
 
@@ -125,7 +126,7 @@ object NotificationHelper {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
         when {
             notificationManager != null -> notificationManager.notify(
-                /* id = */ NOTIFICATION_ID.hashCode(),
+                /* id = */ notificationId.hashCode(),
                 /* notification = */ notificationBuilder.build()
             )
             else -> SDK.error("NotificationManager not available")
@@ -140,8 +141,8 @@ object NotificationHelper {
         putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
         putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
         putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-        putExtra(NOTIFICATION_TYPE, data[NOTIFICATION_TYPE])
-        putExtra(NOTIFICATION_ID, data[NOTIFICATION_ID])
+        putExtra(notificationType, data[notificationType])
+        putExtra(notificationId, data[notificationId])
         putExtra(CURRENT_IMAGE_INDEX, currentIndex)
 
         action = when (currentIndex) {

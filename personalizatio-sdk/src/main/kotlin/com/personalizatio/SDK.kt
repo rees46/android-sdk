@@ -13,6 +13,7 @@ import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.notification.NotificationHandler
+import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
 import com.personalizatio.stories.StoriesManager
 import com.personalizatio.stories.views.StoriesView
@@ -61,6 +62,8 @@ open class SDK {
         tag: String,
         preferencesKey: String,
         stream: String,
+        notificationType: String,
+        notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
         this.api = Api.getApi(apiUrl)
@@ -70,6 +73,9 @@ open class SDK {
         this.stream = stream
         this.preferencesKey = preferencesKey
         TAG = tag
+
+        NotificationHelper.notificationType = notificationType
+        NotificationHelper.notificationId = notificationId
 
         segment = prefs().getString(
             "$preferencesKey.segment",
