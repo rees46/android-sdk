@@ -5,9 +5,7 @@ import org.json.JSONException
 import org.json.JSONObject
 
 class SearchParams : AbstractParams<SearchParams>() {
-    /**
-     * https://reference.api.rees46.com/#full-search
-     */
+
     enum class Parameter(override var value: String) : ParamInterface {
         PAGE("page"),
         LIMIT("limit"),

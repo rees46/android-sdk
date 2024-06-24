@@ -157,7 +157,6 @@ open class SDK {
 
     /**
      * Update profile data
-     * https://reference.api.rees46.com/#save-profile-settings
      *
      * @param data profile data
      */
@@ -399,7 +398,6 @@ open class SDK {
 
     /**
      * Signs up for price reduction
-     * https://reference.api.rees46.com/?shell#price-drop
      *
      * @param id Product ID
      * @param currentPrice Current price
@@ -427,7 +425,6 @@ open class SDK {
 
     /**
      * Subscribes for price reduction
-     * https://reference.api.rees46.com/?shell#price-drop
      *
      * @param itemIds Product identifiers
      * @param email Email, if available
@@ -456,7 +453,6 @@ open class SDK {
 
     /**
      * Signs for product availability
-     * https://reference.api.rees46.com/?shell#back-in-stock
      *
      * @param id Product ID
      * @param email Email, if available
@@ -485,7 +481,6 @@ open class SDK {
 
     /**
      * Subscribes to product availability
-     * https://reference.api.rees46.com/?shell#back-in-stock
      *
      * @param itemIds Product ID
      * @param email Email, if available
@@ -515,7 +510,6 @@ open class SDK {
 
     /**
      * Manage subscriptions
-     * https://reference.api.rees46.com/?java#manage-subscriptions
      *
      * @param email
      * @param phone
@@ -524,7 +518,6 @@ open class SDK {
      */
     /**
      * Manage subscriptions
-     * https://reference.api.rees46.com/?java#manage-subscriptions
      *
      * @param email
      * @param phone
@@ -549,7 +542,6 @@ open class SDK {
 
     /**
      * Manage subscriptions
-     * https://reference.api.rees46.com/?java#manage-subscriptions
      *
      * @param email
      * @param phone
@@ -561,7 +553,6 @@ open class SDK {
      */
     /**
      * Manage subscriptions
-     * https://reference.api.rees46.com/?java#manage-subscriptions
      *
      * @param email
      * @param phone
@@ -613,7 +604,6 @@ open class SDK {
 
     /**
      * Add user to a segment
-     * https://reference.api.rees46.com/?java#add-user-to-a-segment
      *
      * @param segmentId
      * @param email
@@ -630,7 +620,6 @@ open class SDK {
 
     /**
      * Remove user from a segment
-     * https://reference.api.rees46.com/?swift#remove-user-from-a-segment
      *
      * @param segment_id
      * @param email
@@ -647,7 +636,6 @@ open class SDK {
 
     /**
      * Get user segments
-     * https://reference.api.rees46.com/?swift#get-user-segments
      *
      * @param listener
      */
@@ -681,7 +669,6 @@ open class SDK {
 
     /**
      * Send notification token
-     * https://reference.api.rees46.com/?java#create-new-token
      *
      * @param token
      * @param listener
