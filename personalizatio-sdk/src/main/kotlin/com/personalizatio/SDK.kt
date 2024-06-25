@@ -12,9 +12,12 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.entities.recommended.RecommendedEntity
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
+import com.personalizatio.recommended.OnRecommendedListener
+import com.personalizatio.recommended.RecommendedManager
 import com.personalizatio.stories.StoriesManager
 import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
@@ -50,6 +53,10 @@ open class SDK {
 
     private val storiesManager: StoriesManager by lazy {
         StoriesManager(this)
+    }
+
+    private val recommendedManager: RecommendedManager by lazy {
+        RecommendedManager(this)
     }
 
     /**
@@ -299,22 +306,32 @@ open class SDK {
     /**
      * Request a dynamic block of recommendations
      *
-     * @param recommender_code Recommendation block code
+     * @param recommenderCode Recommendation block code
      * @param listener Callback
      */
-    fun recommend(recommender_code: String, listener: OnApiCallbackListener) {
-        recommend(recommender_code, Params(), listener)
+    fun recommend(recommenderCode: String, listener: OnApiCallbackListener) {
+        recommendedManager.recommend(recommenderCode, listener)
     }
 
     /**
      * Request a dynamic block of recommendations
      *
-     * @param code Code of the dynamic block of recommendations
+     * @param recommenderCode Code of the dynamic block of recommendations
      * @param params Parameters for the request
      * @param listener Callback
      */
-    fun recommend(code: String, params: Params, listener: OnApiCallbackListener) {
-        getAsync("recommend/$code", params.build(), listener)
+    fun recommend(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
+        recommendedManager.recommend(recommenderCode, params, listener)
+    }
+
+    /**
+     * Request a dynamic block of recommendations
+     *
+     * @param recommenderCode Recommendation block code
+     * @param listener Callback
+     */
+    fun recommend(recommenderCode: String, listener: OnRecommendedListener) {
+        recommendedManager.recommend(recommenderCode, listener)
     }
 
     /**
