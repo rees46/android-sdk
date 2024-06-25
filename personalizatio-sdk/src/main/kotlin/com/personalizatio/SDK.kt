@@ -16,6 +16,8 @@ import com.personalizatio.entities.recommended.RecommendedEntity
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
+import com.personalizatio.products.OnProductsListener
+import com.personalizatio.products.ProductsManager
 import com.personalizatio.recommended.OnRecommendedListener
 import com.personalizatio.recommended.RecommendedManager
 import com.personalizatio.stories.StoriesManager
@@ -57,6 +59,10 @@ open class SDK {
 
     private val recommendedManager: RecommendedManager by lazy {
         RecommendedManager(this)
+    }
+
+    private val productsManager: ProductsManager by lazy {
+        ProductsManager(this)
     }
 
     /**
@@ -332,6 +338,26 @@ open class SDK {
      */
     fun recommend(recommenderCode: String, listener: OnRecommendedListener) {
         recommendedManager.recommend(recommenderCode, listener)
+    }
+
+    /**
+     * Request a product info
+     *
+     * @param productId Product ID
+     * @param listener Callback
+     */
+    fun getProductInfo(productId: String, listener: OnApiCallbackListener) {
+        productsManager.getProductInfo(productId, listener)
+    }
+
+    /**
+     * Request a product info
+     *
+     * @param productId Product ID
+     * @param listener Callback
+     */
+    fun getProductInfo(productId: String, listener: OnProductsListener) {
+        productsManager.getProductInfo(productId, listener)
     }
 
     /**
