@@ -13,7 +13,7 @@ def pomConfig = {
 		url "https://github.com:rees46/rees46-android-sdk/tree/master"
 	}
 }
-def urls = [rees46: "https://github.com/rees46/rees46-android-sdk", personaclick: "https://personaclick.com"]
+def urls = [rees46: "https://github.com/rees46/rees46-android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 
 def publicationNames = []
 publishing {

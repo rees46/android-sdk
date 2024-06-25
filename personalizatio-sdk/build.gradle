@@ -54,7 +54,7 @@ android {
 			ext.set("group", "com.personaclick")
 			ext.set("libraryName", "com.personaclick.sdk")
 			ext.set("webSite", "https://personaclick.com")
-			ext.set("vcsUrl", "https://personaclick.com")
+			ext.set("vcsUrl", "https://github.com/PersonaClick/android-sdk")
 		}
 	}
 
