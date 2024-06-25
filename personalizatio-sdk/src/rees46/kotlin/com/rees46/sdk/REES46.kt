@@ -19,6 +19,8 @@ class REES46 private constructor() : SDK() {
         private const val RELEASE_API_URL: String = "https://api.rees46.ru/"
         private const val PREFERENCES_KEY: String = "rees46.sdk"
         private const val PLATFORM_ANDROID: String = "android"
+        private const val NOTIFICATION_TYPE = "REES46_NOTIFICATION_TYPE"
+        private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
 
         private val API_URL: String = when {
             BuildConfig.DEBUG -> DEBUG_API_URL
@@ -50,6 +52,8 @@ class REES46 private constructor() : SDK() {
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID,
+                notificationType = NOTIFICATION_TYPE,
+                notificationId =  NOTIFICATION_ID,
                 autoSendPushToken = autoSendPushToken
             )
 
