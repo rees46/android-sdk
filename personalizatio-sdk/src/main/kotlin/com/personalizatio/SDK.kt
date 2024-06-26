@@ -341,6 +341,16 @@ open class SDK {
     }
 
     /**
+     * Request a dynamic block of recommendations
+     *
+     * @param recommenderCode Recommendation block code
+     * @param listener Callback
+     */
+    fun recommend(recommenderCode: String, params: Params, listener: OnRecommendedListener) {
+        recommendedManager.recommend(recommenderCode, params, listener)
+    }
+
+    /**
      * Request a product info
      *
      * @param productId Product ID

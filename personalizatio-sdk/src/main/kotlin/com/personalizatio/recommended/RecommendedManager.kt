@@ -1,10 +1,12 @@
 package com.personalizatio.recommended
 
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.personalizatio.Params
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.entities.recommended.RecommendedEntity
+import com.personalizatio.entities.recommended.RecommendedFullEntity
 import org.json.JSONObject
 
 internal class RecommendedManager(val sdk: SDK) {
@@ -25,8 +27,14 @@ internal class RecommendedManager(val sdk: SDK) {
         recommend(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val recommendedEntity = Gson().fromJson(it.toString(), RecommendedEntity::class.java)
-                    listener.onGetRecommended(recommendedEntity)
+                    try {
+                        val recommendedEntity = Gson().fromJson(it.toString(), RecommendedEntity::class.java)
+                        listener.onGetRecommended(recommendedEntity)
+                    }
+                    catch (e: JsonSyntaxException) {
+                        val recommendedFullEntity = Gson().fromJson(it.toString(), RecommendedFullEntity::class.java)
+                        listener.onGetRecommended(recommendedFullEntity)
+                    }
                 }
             }
         })
