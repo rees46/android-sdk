@@ -15,12 +15,13 @@ jobs:
       SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalizatio-sdk
       GOOGLE_SERVICES_FILE_LOCATION: ./sample
       GOOGLE_SERVICES_FILE_NAME: google-services.json
+      OSSRH_USERNAME: 'github-bot@rees46.com'
+      VARIANT_NAME: rees46
+      URL: https://github.com/rees46/rees46-android-sdk
+      MAVEN_REPOSITORY_URL: https://maven.pkg.github.com/rees46/rees46-android-sdk
     secrets:
-      OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
-      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
       GOOGLE_SERVICES_FILE_AS_BASE64_STRING: ${{ secrets.GOOGLE_SERVICES_FILE_AS_BASE64_STRING }}
