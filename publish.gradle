@@ -13,13 +13,14 @@ def pomConfig = {
 		url "https://github.com:rees46/rees46-android-sdk/tree/master"
 	}
 }
-def urls = [rees46: "https://github.com/rees46/rees46-android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 
 def publicationNames = []
 publishing {
 	publications {
 		android.libraryVariants.all { variant ->
 			if (variant.buildType.name == "debug") return // Prevents publishing debug library
+
+			if (variant.flavorName != variantName) return
 
 			def flavored = !variant.flavorName.isEmpty()
 
@@ -72,7 +73,7 @@ publishing {
 						def root = asNode()
 						root.appendNode("name", variantArtifactId)
 						root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
-						root.appendNode("url", urls[variant.flavorName])
+						root.appendNode("url", url)
 						root.children().last() + pomConfig
 						def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
 
@@ -105,15 +106,7 @@ publishing {
 				password ossrhPassword
 			}
 
-			android.libraryVariants.all { variant ->
-				if (variant.buildType.name == "debug") return
-				if(variant.flavorName == "personaclick") {
-					url = uri("https://maven.pkg.github.com/PersonaClick/android-sdk")
-				}
-				else {
-					url = uri("https://maven.pkg.github.com/rees46/rees46-android-sdk")
-				}
-			}
+			url = uri(publishUrl)
 		}
 	}
 }
@@ -131,6 +124,9 @@ ext["signing.password"] = signing_password
 ext["signing.secretKeyRingFile"] = signing_secretKeyRingFile
 ext["ossrhUsername"] = ossrhUsername
 ext["ossrhPassword"] = ossrhPassword
+ext["variantName"] = variantName
+ext["url"] = url
+ext["publishUrl"] = publishUrl
 
 signing {
 	sign publishing.publications
