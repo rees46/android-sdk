@@ -371,6 +371,24 @@ open class SDK {
     }
 
     /**
+     * Request a cart
+     *
+     * @param listener Callback
+     */
+    fun getCart(listener: OnApiCallbackListener) {
+        productsManager.getCart(listener)
+    }
+
+    /**
+     * Request a cart
+     *
+     * @param listener Callback
+     */
+    fun getCart(listener: OnProductsListener) {
+        productsManager.getCart(listener)
+    }
+
+    /**
      * Event tracking
      *
      * @param event Event type
