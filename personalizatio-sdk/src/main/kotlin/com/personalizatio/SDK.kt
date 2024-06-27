@@ -389,6 +389,27 @@ open class SDK {
     }
 
     /**
+     * Remove product from cart
+     *
+     * @param productId Product ID
+     * @param quantity Quantity for remove
+     * @param listener Callback
+     */
+    fun removeProductFromCart(productId: String, quantity: Int, listener: OnApiCallbackListener? = null) {
+        productsManager.removeFromCart(productId, quantity, listener)
+    }
+
+    /**
+     * Remove products from cart
+     *
+     * @param products Product ID and Quantity pair map
+     * @param listener Callback
+     */
+    fun removeProductsFromCart(products: Map<String, Int>, listener: OnApiCallbackListener? = null) {
+        productsManager.removeFromCart(products, listener)
+    }
+
+    /**
      * Event tracking
      *
      * @param event Event type
