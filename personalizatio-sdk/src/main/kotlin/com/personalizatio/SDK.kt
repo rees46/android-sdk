@@ -12,16 +12,17 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.entities.recommended.RecommendedEntity
+import com.personalizatio.api.managers.CartManager
+import com.personalizatio.cart.CartManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
-import com.personalizatio.products.OnProductsListener
-import com.personalizatio.products.ProductsManager
-import com.personalizatio.recommended.OnRecommendedListener
-import com.personalizatio.recommended.RecommendedManager
-import com.personalizatio.stories.StoriesManager
-import com.personalizatio.stories.views.StoriesView
+import com.personalizatio.api.managers.ProductsManager
+import com.personalizatio.products.ProductsManagerImpl
+import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.api.managers.StoriesManager
+import com.personalizatio.recommendation.RecommendationManagerImpl
+import com.personalizatio.stories.StoriesManagerImpl
 import org.json.JSONException
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -53,16 +54,20 @@ open class SDK {
         RegisterManager(this)
     }
 
-    private val storiesManager: StoriesManager by lazy {
-        StoriesManager(this)
+    val storiesManager: StoriesManager by lazy {
+        StoriesManagerImpl(this)
     }
 
-    private val recommendedManager: RecommendedManager by lazy {
-        RecommendedManager(this)
+    val recommendationManager: RecommendationManager by lazy {
+        RecommendationManagerImpl(this)
     }
 
-    private val productsManager: ProductsManager by lazy {
-        ProductsManager(this)
+    val productsManager: ProductsManager by lazy {
+        ProductsManagerImpl(this)
+    }
+
+    val cartManager: CartManager by lazy {
+        CartManagerImpl(this)
     }
 
     /**
@@ -101,10 +106,6 @@ open class SDK {
 
 
         registerManager.initialize(autoSendPushToken)
-    }
-
-    fun initializeStoriesView(storiesView: StoriesView) {
-        storiesManager.initialize(storiesView)
     }
 
     /**
@@ -307,106 +308,6 @@ open class SDK {
         } else {
             warn("Search not initialized")
         }
-    }
-
-    /**
-     * Request a dynamic block of recommendations
-     *
-     * @param recommenderCode Recommendation block code
-     * @param listener Callback
-     */
-    fun recommend(recommenderCode: String, listener: OnApiCallbackListener) {
-        recommendedManager.recommend(recommenderCode, listener)
-    }
-
-    /**
-     * Request a dynamic block of recommendations
-     *
-     * @param recommenderCode Code of the dynamic block of recommendations
-     * @param params Parameters for the request
-     * @param listener Callback
-     */
-    fun recommend(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
-        recommendedManager.recommend(recommenderCode, params, listener)
-    }
-
-    /**
-     * Request a dynamic block of recommendations
-     *
-     * @param recommenderCode Recommendation block code
-     * @param listener Callback
-     */
-    fun recommend(recommenderCode: String, listener: OnRecommendedListener) {
-        recommendedManager.recommend(recommenderCode, listener)
-    }
-
-    /**
-     * Request a dynamic block of recommendations
-     *
-     * @param recommenderCode Recommendation block code
-     * @param listener Callback
-     */
-    fun recommend(recommenderCode: String, params: Params, listener: OnRecommendedListener) {
-        recommendedManager.recommend(recommenderCode, params, listener)
-    }
-
-    /**
-     * Request a product info
-     *
-     * @param productId Product ID
-     * @param listener Callback
-     */
-    fun getProductInfo(productId: String, listener: OnApiCallbackListener) {
-        productsManager.getProductInfo(productId, listener)
-    }
-
-    /**
-     * Request a product info
-     *
-     * @param productId Product ID
-     * @param listener Callback
-     */
-    fun getProductInfo(productId: String, listener: OnProductsListener) {
-        productsManager.getProductInfo(productId, listener)
-    }
-
-    /**
-     * Request a cart
-     *
-     * @param listener Callback
-     */
-    fun getCart(listener: OnApiCallbackListener) {
-        productsManager.getCart(listener)
-    }
-
-    /**
-     * Request a cart
-     *
-     * @param listener Callback
-     */
-    fun getCart(listener: OnProductsListener) {
-        productsManager.getCart(listener)
-    }
-
-    /**
-     * Remove product from cart
-     *
-     * @param productId Product ID
-     * @param quantity Quantity for remove
-     * @param listener Callback
-     */
-    fun removeProductFromCart(productId: String, quantity: Int, listener: OnApiCallbackListener? = null) {
-        productsManager.removeFromCart(productId, quantity, listener)
-    }
-
-    /**
-     * Remove products from cart
-     *
-     * @param products Product ID and Quantity pair map
-     * @param listener Callback
-     */
-    fun removeProductsFromCart(products: Map<String, Int>, listener: OnApiCallbackListener? = null) {
-        productsManager.removeFromCart(products, listener)
     }
 
     /**
@@ -776,29 +677,6 @@ open class SDK {
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
         sendAsync(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
-    }
-
-    /**
-     * @param listener
-     */
-    fun stories(code: String, listener: OnApiCallbackListener) {
-        storiesManager.requestStories(code, listener)
-    }
-
-    fun showStory(storyId: Int) {
-        storiesManager.showStory(storyId)
-    }
-
-    /**
-     * Triggers a story event
-     *
-     * @param event Event
-     * @param code Stories block code
-     * @param storyId Story ID
-     * @param slideId Slide ID
-     */
-    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
-        storiesManager.trackStory(event, code, storyId, slideId)
     }
 
     /**
