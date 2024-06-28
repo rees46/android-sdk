@@ -26,21 +26,48 @@ internal class CartManagerImpl(val sdk: SDK) : CartManager {
         sdk.getAsync(GET_CART_REQUEST, Params().build(), listener)
     }
 
+    override fun addToCart(productId: String, quantity: Int) {
+        val params = createProductParams(productId, quantity)
+        addToCart(params)
+    }
+
+    override fun addToCart(products: Map<String, Int>) {
+        val params = createProductsParams(products)
+        addToCart(params)
+    }
+
+    override fun addToCart(params: Params) {
+        sdk.track(Params.TrackEvent.CART, params)
+    }
+
     override fun removeFromCart(productId: String, quantity: Int, listener: OnApiCallbackListener?) {
-        val params = Params().put(createProductItem(productId, quantity))
-        sdk.track(Params.TrackEvent.REMOVE_FROM_CART, params, listener)
+        val params = createProductParams(productId, quantity)
+        removeFromCart(params, listener)
     }
 
     override fun removeFromCart(products: Map<String, Int>, listener: OnApiCallbackListener?) {
-        val params = Params()
-        for (product in products) {
-            params.put(createProductItem(product.key, product.value))
-        }
+        val params = createProductsParams(products)
+        removeFromCart(params, listener)
+    }
+
+    override fun removeFromCart(params: Params, listener: OnApiCallbackListener?) {
         sdk.track(Params.TrackEvent.REMOVE_FROM_CART, params, listener)
     }
 
     private fun createProductItem(productId: String, quantity: Int) : Params.Item {
         return Params.Item(productId).set(Params.Item.COLUMN.AMOUNT, quantity)
+    }
+
+    private fun createProductParams(productId: String, quantity: Int) : Params {
+        return Params().put(createProductItem(productId, quantity))
+    }
+
+    private fun createProductsParams(products: Map<String, Int>) : Params {
+        val params = Params()
+        for (product in products) {
+            params.put(createProductItem(product.key, product.value))
+        }
+        return params
     }
 
     companion object {
