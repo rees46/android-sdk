@@ -285,12 +285,16 @@ Add code to your layout:
     android:layout_height="wrap_content"
     app:code="STORY BLOCK CODE" />
 ```
-
+```java
+StoriesView storiesView = findViewById(R.id.story_view);
+REES46.initializeStoriesView(storiesView);
+```
 Or programmatically:
 
 ```java
 StoriesView storiesView = new StoriesView(this, "STORY BLOCK CODE");
 ((ViewGroup) findViewById(R.id.stories)).addView(storiesView);
+REES46.initializeStoriesView(storiesView);
 ```
 
 Show block stories by code:

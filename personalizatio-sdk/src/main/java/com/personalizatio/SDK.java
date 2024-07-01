@@ -19,8 +19,8 @@ import androidx.core.util.Consumer;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
-import com.personalizatio.stories.StoriesUtils;
-import com.personalizatio.stories.models.Story;
+import com.personalizatio.stories.StoriesManager;
+import com.personalizatio.stories.views.StoriesView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,7 +57,6 @@ public class SDK {
 	private String did;
 	private String seance;
 	private OnMessageListener onMessageListener;
-	private ShowStoriesRequestListener showStoriesRequestListener;
 	@SuppressLint("StaticFieldLeak")
 	protected static SDK instance;
 
@@ -73,9 +72,7 @@ public class SDK {
 
 	private static Params.RecommendedBy last_recommended_by;
 
-	public interface ShowStoriesRequestListener {
-		void onShowStoriesRequest(List<Story> stories);
-	}
+	private final StoriesManager storiesManager = new StoriesManager(this);
 
 	public static void initialize(Context context, String shop_id) {
 		throw new IllegalStateException("You need make static initialize method!");
@@ -164,10 +161,6 @@ public class SDK {
 	 */
 	public static void setOnMessageListener(OnMessageListener listener) {
 		instance.onMessageListener = listener;
-	}
-
-	public static void setShowStoriesRequestListener(ShowStoriesRequestListener listener) {
-		instance.showStoriesRequestListener = listener;
 	}
 
 	/**
@@ -337,29 +330,26 @@ public class SDK {
 		instance.sendAsync("push/custom", params.build(), listener);
 	}
 
-	/**
-	 * @param listener
-	 */
-	public static void stories(String code, Api.OnApiCallbackListener listener) {
-		if( instance != null ) {
-			instance.getAsync("stories/" + code, new JSONObject(), listener);
-		}
+	public static void initializeStoriesView(StoriesView storiesView) {
+		instance.storiesManager.initialize(storiesView);
 	}
 
+	/**
+	 * Request stories by code
+	 *
+	 * @param code Stories block code
+	 */
+	public static void requestStories(String code, Api.OnApiCallbackListener listener) {
+		instance.storiesManager.requestStories(code, listener);
+	}
+
+	/**
+	 * Show stories by code
+	 *
+	 * @param code Stories block code
+	 */
 	public static void showStories(String code) {
-		stories(code, new Api.OnApiCallbackListener() {
-			@Override
-			public void onSuccess(JSONObject response) {
-				Log.d("show stories", response.toString());
-
-				var stories = StoriesUtils.GetStories(response);
-				for (var story: stories) {
-					story.setStartPosition(0);
-				}
-
-				instance.showStoriesRequestListener.onShowStoriesRequest(stories);
-			}
-		});
+		instance.storiesManager.showStories(code);
 	}
 
 	/**
@@ -972,7 +962,7 @@ public class SDK {
 	/**
 	 * Асинхронное выполенение запросе, если did не указан и не выполнена инициализация
 	 */
-	void getAsync(final String method, final JSONObject params, final @Nullable Api.OnApiCallbackListener listener) {
+    public void getAsync(final String method, final JSONObject params, final @Nullable Api.OnApiCallbackListener listener) {
 		Thread thread = new Thread(() -> send("get", method, params, listener));
 		if( did != null && initialized ) {
 			thread.start();
