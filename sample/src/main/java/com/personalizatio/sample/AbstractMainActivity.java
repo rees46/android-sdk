@@ -14,6 +14,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.personalizatio.Params;
 import com.personalizatio.SDK;
+import com.personalizatio.stories.views.StoriesView;
 
 import java.util.HashMap;
 
@@ -37,6 +38,9 @@ public abstract class AbstractMainActivity<T extends SDK> extends AppCompatActiv
 		if( getIntent().getExtras() != null ) {
 			T.notificationClicked(getIntent().getExtras());
 		}
+
+		StoriesView storiesView = findViewById(R.id.story_view);
+		T.initializeStoriesView(storiesView);
 
 		button = findViewById(R.id.button);
 		text = findViewById(R.id.email);

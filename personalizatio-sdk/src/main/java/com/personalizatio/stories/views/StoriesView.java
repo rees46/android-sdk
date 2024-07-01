@@ -9,32 +9,24 @@ import android.media.AudioManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.Message;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.personalizatio.Api;
 import com.personalizatio.OnLinkClickListener;
 import com.personalizatio.R;
-import com.personalizatio.SDK;
 import com.personalizatio.stories.Player;
 import com.personalizatio.stories.Settings;
 import com.personalizatio.stories.viewAdapters.StoriesAdapter;
 import com.personalizatio.stories.models.Story;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
-final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener, SDK.ShowStoryRequestListener {
+final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener {
 
 	private StoriesAdapter adapter;
 	private final List<Story> list = new ArrayList<>();
@@ -112,39 +104,24 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		adapter = new StoriesAdapter(this, list, this);
 		stories.setAdapter(adapter);
 
-		Handler handler = new Handler(Looper.getMainLooper()) {
-			@Override
-			public void handleMessage(Message msg) {
-				registerObserver();
-				adapter.notifyDataSetChanged();
-			}
-		};
-
 		//Плеер для просмотра видео
 		setPlayer(new Player(getContext()));
 
 		getSettings().failed_load_text = getResources().getString(R.string.failed_load_text);
-
-		//Запрашиваем сторисы
-		SDK.stories(getCode(), new Api.OnApiCallbackListener() {
-			@Override
-			public void onSuccess(JSONObject response) {
-				Log.d("stories", response.toString());
-				try {
-					JSONArray json_stories = response.getJSONArray("stories");
-					for( int i = 0; i < json_stories.length(); i++ ) {
-						list.add(new Story(json_stories.getJSONObject(i)));
-					}
-					handler.sendEmptyMessage(1);
-				} catch(JSONException e) {
-					Log.e(SDK.TAG, e.getMessage(), e);
-				}
-			}
-		});
-
-		SDK.setShowStoryRequestListener(this);
 	}
 
+	@SuppressLint("NotifyDataSetChanged")
+    public void updateStories(List<Story> stories) {
+		list.addAll(stories);
+
+		Handler handler = new Handler(Looper.getMainLooper());
+		handler.post(() -> {
+			registerObserver();
+			adapter.notifyDataSetChanged();
+		});
+	}
+
+    @SuppressLint("NotifyDataSetChanged")
     @Override
 	public void onStoryClick(int index) {
 		Story story = list.get(index);
@@ -213,36 +190,7 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		this.muteListener = muteListener;
 	}
 
-	@Override
-	public void onShowStoryRequest(Story story) {
-		showStory(story);
-	}
-
-	@Override
-	public boolean onShowStoryRequest(int storyId) {
-		for (var story: list) {
-			if(storyId == story.getId()) {
-				showStory(story);
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private void showStory(Story story) {
-		story.setStartPosition(0);
-
-		var stories = new ArrayList<Story>(1);
-		stories.add(story);
-
-		Handler handler = new Handler(getContext().getMainLooper());
-		handler.post(() -> showStories(stories, 0, () -> {
-			story.setStartPosition(0);
-		}));
-	}
-
-	private void showStories(List<Story> stories, int startPosition, Runnable completeListener) {
+	public void showStories(List<Story> stories, int startPosition, Runnable completeListener) {
 		StoryDialog dialog = new StoryDialog(this, stories, startPosition, completeListener);
 		dialog.show();
 	}
