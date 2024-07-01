@@ -19,6 +19,7 @@ import androidx.core.util.Consumer;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
 import com.personalizatio.Params.InternalParameter;
+import com.personalizatio.stories.StoriesUtils;
 import com.personalizatio.stories.models.Story;
 
 import org.json.JSONException;
@@ -26,13 +27,10 @@ import org.json.JSONObject;
 
 import java.security.SecureRandom;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -59,7 +57,7 @@ public class SDK {
 	private String did;
 	private String seance;
 	private OnMessageListener onMessageListener;
-	private ShowStoryRequestListener showStoryRequestListener;
+	private ShowStoriesRequestListener showStoriesRequestListener;
 	@SuppressLint("StaticFieldLeak")
 	protected static SDK instance;
 
@@ -75,9 +73,8 @@ public class SDK {
 
 	private static Params.RecommendedBy last_recommended_by;
 
-	public interface ShowStoryRequestListener {
-		void onShowStoryRequest(Story story);
-		boolean onShowStoryRequest(int storyId);
+	public interface ShowStoriesRequestListener {
+		void onShowStoriesRequest(List<Story> stories);
 	}
 
 	public static void initialize(Context context, String shop_id) {
@@ -169,8 +166,8 @@ public class SDK {
 		instance.onMessageListener = listener;
 	}
 
-	public static void setShowStoryRequestListener(ShowStoryRequestListener listener) {
-		instance.showStoryRequestListener = listener;
+	public static void setShowStoriesRequestListener(ShowStoriesRequestListener listener) {
+		instance.showStoriesRequestListener = listener;
 	}
 
 	/**
@@ -349,19 +346,18 @@ public class SDK {
 		}
 	}
 
-	public static void story(int storyId) {
-		if(instance == null) return;
-
-		var show = instance.showStoryRequestListener.onShowStoryRequest(storyId);
-
-		if(show) return;
-
-		instance.getAsync("story/" + storyId, new JSONObject(), new Api.OnApiCallbackListener() {
+	public static void showStories(String code) {
+		stories(code, new Api.OnApiCallbackListener() {
 			@Override
 			public void onSuccess(JSONObject response) {
-				Log.d("story", response.toString());
-				var story = new Story(response);
-				instance.showStoryRequestListener.onShowStoryRequest(story);
+				Log.d("show stories", response.toString());
+
+				var stories = StoriesUtils.GetStories(response);
+				for (var story: stories) {
+					story.setStartPosition(0);
+				}
+
+				instance.showStoriesRequestListener.onShowStoriesRequest(stories);
 			}
 		});
 	}

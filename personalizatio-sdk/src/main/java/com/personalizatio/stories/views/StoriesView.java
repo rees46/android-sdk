@@ -1,6 +1,5 @@
 package com.personalizatio.stories.views;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -24,6 +23,7 @@ import com.personalizatio.R;
 import com.personalizatio.SDK;
 import com.personalizatio.stories.Player;
 import com.personalizatio.stories.Settings;
+import com.personalizatio.stories.StoriesUtils;
 import com.personalizatio.stories.viewAdapters.StoriesAdapter;
 import com.personalizatio.stories.models.Story;
 
@@ -34,7 +34,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener, SDK.ShowStoryRequestListener {
+final public class StoriesView extends ConstraintLayout implements StoriesAdapter.ClickListener, SDK.ShowStoriesRequestListener {
 
 	private StoriesAdapter adapter;
 	private final List<Story> list = new ArrayList<>();
@@ -130,19 +130,17 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 			@Override
 			public void onSuccess(JSONObject response) {
 				Log.d("stories", response.toString());
-				try {
-					JSONArray json_stories = response.getJSONArray("stories");
-					for( int i = 0; i < json_stories.length(); i++ ) {
-						list.add(new Story(json_stories.getJSONObject(i)));
-					}
+				var stories = StoriesUtils.GetStories(response);
+
+				if(!stories.isEmpty()) {
 					handler.sendEmptyMessage(1);
-				} catch(JSONException e) {
-					Log.e(SDK.TAG, e.getMessage(), e);
+
+					list.addAll(stories);
 				}
 			}
 		});
 
-		SDK.setShowStoryRequestListener(this);
+		SDK.setShowStoriesRequestListener(this);
 	}
 
     @Override
@@ -214,32 +212,9 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	@Override
-	public void onShowStoryRequest(Story story) {
-		showStory(story);
-	}
-
-	@Override
-	public boolean onShowStoryRequest(int storyId) {
-		for (var story: list) {
-			if(storyId == story.getId()) {
-				showStory(story);
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private void showStory(Story story) {
-		story.setStartPosition(0);
-
-		var stories = new ArrayList<Story>(1);
-		stories.add(story);
-
+	public void onShowStoriesRequest(List<Story> stories) {
 		Handler handler = new Handler(getContext().getMainLooper());
-		handler.post(() -> showStories(stories, 0, () -> {
-			story.setStartPosition(0);
-		}));
+		handler.post(() -> showStories(stories, 0, () -> {}));
 	}
 
 	private void showStories(List<Story> stories, int startPosition, Runnable completeListener) {
