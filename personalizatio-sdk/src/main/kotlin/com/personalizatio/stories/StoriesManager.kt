@@ -1,5 +1,6 @@
 package com.personalizatio.stories
 
+import android.os.Handler
 import android.util.Log
 import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.SDK
@@ -19,17 +20,22 @@ internal class StoriesManager(val sdk: SDK) {
         updateStories()
     }
 
-    internal fun showStory(storyId: Int) {
-        val show = storiesView.showStory(storyId)
-
-        if (show) return
-
-        sdk.getAsync(String.format(REQUEST_STORY_METHOD, storyId), JSONObject(), object : OnApiCallbackListener() {
+    internal fun showStories(code: String) {
+        requestStories(code, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                Log.d("story", response.toString())
                 response?.let {
-                    val story = Story(response)
-                    storiesView.showStory(story)
+                    Log.d("stories", response.toString())
+                    try {
+                        val stories = getStories(response)
+
+                        if(stories.isEmpty()) return
+
+                        resetStoriesStartPositions(stories)
+
+                        showStories(stories)
+                    } catch (e: JSONException) {
+                        Log.e(SDK.TAG, e.message, e)
+                    }
                 }
             }
         })
@@ -92,10 +98,22 @@ internal class StoriesManager(val sdk: SDK) {
         return stories
     }
 
+    private fun resetStoriesStartPositions(stories: List<Story>) {
+        for (story in stories) {
+            story.startPosition = 0
+        }
+    }
+
+    private fun showStories(stories: List<Story>, startPosition: Int = 0) {
+        val handler = Handler(sdk.context.mainLooper)
+        handler.post {
+            storiesView.showStories(stories, startPosition)
+        }
+    }
+
     companion object {
         private const val TRACK_STORIES_METHOD = "track/stories"
         private const val REQUEST_STORIES_METHOD = "stories/%s"
-        private const val REQUEST_STORY_METHOD = "story/%s"
 
         private const val EVENT_PARAMS_NAME = "event"
         private const val STORY_ID_PARAMS_NAME = "story_id"

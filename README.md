@@ -312,10 +312,10 @@ storiesView.itemClickListener = object : OnLinkClickListener {
 }
 ```
 
-Show story by id:
+Show block stories by code:
 
 ```kotlin
-sdk.showStory(STORY_ID)
+sdk.showStories(CODE)
 ```
 
 Customize story settings:
