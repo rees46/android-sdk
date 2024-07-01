@@ -693,8 +693,13 @@ open class SDK {
         storiesManager.requestStories(code, listener)
     }
 
-    fun showStory(storyId: Int) {
-        storiesManager.showStory(storyId)
+    /**
+     * Show stories block by code
+     *
+     * @param code Stories block code
+     */
+    fun showStories(code: String) {
+        storiesManager.showStories(code)
     }
 
     /**

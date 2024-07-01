@@ -130,40 +130,11 @@ class StoriesView : ConstraintLayout, ClickListener {
         this.isMute = mute
     }
 
-    internal fun showStory(storyId: Int): Boolean {
-        for (story in stories) {
-            if (storyId == story.id) {
-                showStory(story)
-                return true
-            }
-        }
-
-        return false
-    }
-
-    internal fun showStory(story: Story) {
-        val previousPosition = story.startPosition
-
-        story.startPosition = 0
-
-        val stories = ArrayList<Story>(1)
-        stories.add(story)
-
-        val returnStartPosition = {
-            story.startPosition = previousPosition
-        }
-
-        val handler = Handler(context.mainLooper)
-        handler.post {
-            showStories(stories, 0, returnStartPosition, returnStartPosition)
-        }
-    }
-
-    private fun showStories(
+    internal fun showStories(
         stories: List<Story>,
         startPosition: Int,
-        completeShowStory: () -> Unit,
-        cancelShowStory: () -> Unit
+        completeShowStory: () -> Unit = { },
+        cancelShowStory: () -> Unit = { }
     ) {
         val dialog = StoryDialog(this, stories, startPosition, completeShowStory, cancelShowStory)
         dialog.show()
