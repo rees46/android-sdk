@@ -1,11 +1,11 @@
 package com.personalizatio.api.listeners
 
-import com.personalizatio.entities.recommended.RecommendedEntity
-import com.personalizatio.entities.recommended.RecommendedFullEntity
+import com.personalizatio.entities.recommendation.RecommendationEntity
+import com.personalizatio.entities.recommendation.ExtendedRecommendationEntity
 
 interface OnRecommendationListener {
 
-    fun onGetRecommended(recommendedEntity: RecommendedEntity) {}
+    fun onGetRecommendation(recommendationEntity: RecommendationEntity) {}
 
-    fun onGetRecommended(recommendedFullEntity: RecommendedFullEntity) {}
+    fun onGetExtendedRecommendation(extendedRecommendationEntity: ExtendedRecommendationEntity) {}
 }

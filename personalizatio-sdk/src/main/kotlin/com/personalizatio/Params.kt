@@ -156,6 +156,10 @@ class Params : AbstractParams<Params>() {
         return this
     }
 
+    internal fun contains(name: String) : Boolean {
+        return params.has(name)
+    }
+
     //---------------Private---------->
     internal enum class InternalParameter(override val value: String) : ParamInterface {
         SEARCH_TYPE("type"),

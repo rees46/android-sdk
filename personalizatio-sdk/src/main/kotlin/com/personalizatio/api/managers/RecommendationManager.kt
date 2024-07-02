@@ -12,7 +12,7 @@ interface RecommendationManager {
      * @param recommenderCode Recommendation block code
      * @param listener Callback
      */
-    fun recommend(recommenderCode: String, listener: OnApiCallbackListener)
+    fun getRecommendation(recommenderCode: String, listener: OnApiCallbackListener)
 
     /**
      * Request a dynamic block of recommendations
@@ -21,7 +21,7 @@ interface RecommendationManager {
      * @param params Parameters for the request
      * @param listener Callback
      */
-    fun recommend(recommenderCode: String, params: Params, listener: OnApiCallbackListener)
+    fun getRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener)
 
     /**
      * Request a dynamic block of recommendations
@@ -29,7 +29,7 @@ interface RecommendationManager {
      * @param recommenderCode Recommendation block code
      * @param listener Callback
      */
-    fun recommend(recommenderCode: String, listener: OnRecommendationListener)
+    fun getRecommendation(recommenderCode: String, listener: OnRecommendationListener)
 
     /**
      * Request a dynamic block of recommendations
@@ -37,5 +37,40 @@ interface RecommendationManager {
      * @param recommenderCode Recommendation block code
      * @param listener Callback
      */
-    fun recommend(recommenderCode: String, params: Params, listener: OnRecommendationListener)
+    fun getRecommendation(recommenderCode: String, params: Params, listener: OnRecommendationListener)
+
+    /**
+     * Request a dynamic block of recommendations with all information about recommended products
+     *
+     * @param recommenderCode Recommendation block code
+     * @param listener Callback
+     */
+    fun getExtendedRecommendation(recommenderCode: String, listener: OnApiCallbackListener)
+
+    /**
+     * Request a dynamic block of recommendations with all information about recommended products
+     *
+     *
+     * @param recommenderCode Recommendation block code
+     * @param params Params
+     * @param listener Callback
+     */
+    fun getExtendedRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener)
+
+    /**
+     * Request a dynamic block of recommendations with all information about recommended products
+     *
+     * @param recommenderCode Recommendation block code
+     * @param listener Callback
+     */
+    fun getExtendedRecommendation(recommenderCode: String, listener: OnRecommendationListener)
+
+    /**
+     * Request a dynamic block of recommendations with all information about recommended products
+     *
+     * @param recommenderCode Recommendation block code
+     * @param params Params
+     * @param listener Callback
+     */
+    fun getExtendedRecommendation(recommenderCode: String, params: Params, listener: OnRecommendationListener)
 }
