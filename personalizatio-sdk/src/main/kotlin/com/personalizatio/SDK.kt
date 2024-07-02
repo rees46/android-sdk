@@ -22,7 +22,9 @@ import com.personalizatio.api.managers.ProductsManager
 import com.personalizatio.products.ProductsManagerImpl
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.StoriesManager
+import com.personalizatio.api.params.ProductItemParams
 import com.personalizatio.categories.CategoriesManagerImpl
+import com.personalizatio.entities.products.Product
 import com.personalizatio.recommendation.RecommendationManagerImpl
 import com.personalizatio.stories.StoriesManagerImpl
 import org.json.JSONException
@@ -339,10 +341,10 @@ open class SDK {
      * Event tracking
      *
      * @param event Event type
-     * @param itemId Product ID
+     * @param productId Product ID
      */
-    fun track(event: TrackEvent, itemId: String) {
-        track(event, Params().put(Params.Item(itemId)), null)
+    fun track(event: TrackEvent, productId: String) {
+        track(event, Params().put(ProductItemParams(productId)), null)
     }
 
     /**

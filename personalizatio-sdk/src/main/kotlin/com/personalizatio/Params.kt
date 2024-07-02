@@ -1,6 +1,7 @@
 package com.personalizatio
 
 import android.util.Log
+import com.personalizatio.api.params.ProductItemParams
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -66,41 +67,6 @@ class Params : AbstractParams<Params>() {
         }
     }
 
-    /**
-     * Товар
-     */
-    class Item(id: String) {
-        enum class COLUMN(val value: String) {
-            ID("id"),
-            AMOUNT("amount"),
-            PRICE("price"),
-            FASHION_SIZE("fashion_size"),
-        }
-
-        val columns: HashMap<String, String> = HashMap()
-
-        init {
-            columns[COLUMN.ID.value] = id
-        }
-
-        fun set(column: COLUMN, value: String): Item {
-            columns[column.value] = value
-            return this
-        }
-
-        fun set(column: COLUMN, value: Int): Item {
-            return set(column, value.toString())
-        }
-
-        fun set(column: COLUMN, value: Double): Item {
-            return set(column, value.toString())
-        }
-
-        fun set(column: COLUMN, value: Boolean): Item {
-            return set(column, if (value) "1" else "0")
-        }
-    }
-
     class CustomOrderParameters {
         val parameters: HashMap<String, String> = HashMap()
 
@@ -149,9 +115,9 @@ class Params : AbstractParams<Params>() {
     }
 
     /**
-     * Вставка товара
+     * Add product
      */
-    fun put(item: Item): Params {
+    fun put(productParams: ProductItemParams): Params {
         try {
             val array: JSONArray
             if (params.has("items")) {
@@ -161,7 +127,7 @@ class Params : AbstractParams<Params>() {
                 params.put("items", array)
             }
             val jsonObject = JSONObject()
-            for ((key, value) in item.columns) {
+            for ((key, value) in productParams.columns) {
                 jsonObject.put(key, value)
             }
             array.put(jsonObject)

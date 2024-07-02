@@ -23,14 +23,43 @@ interface CartManager {
     /**
      * Add product to cart
      *
-     * @param listener Callback
+     * @param productId Product ID
+     * @param amount Amount
      */
-    fun addToCart(productId: String, quantity: Int)
+    fun addToCart(productId: String, amount: Int)
+
+    /**
+     * Add product to cart
+     *
+     * @param productId Product ID
+     * @param amount Amount
+     * @param price Price
+     */
+    fun addToCart(productId: String, amount: Int, price: Double)
+
+    /**
+     * Add product to cart
+     *
+     * @param productId Product ID
+     * @param amount Amount
+     * @param fashionSize Fashion size
+     */
+    fun addToCart(productId: String, amount: Int, fashionSize: String)
+
+    /**
+     * Add product to cart
+     *
+     * @param productId Product ID
+     * @param amount Amount
+     * @param price Price
+     * @param fashionSize Fashion size
+     */
+    fun addToCart(productId: String, amount: Int, price: Double, fashionSize: String)
 
     /**
      * Add products to cart
      *
-     * @param products Product ID and Quantity pair map
+     * @param products Product ID and Amount pair map
      */
     fun addToCart(products: Map<String, Int>)
 
@@ -45,10 +74,10 @@ interface CartManager {
      * Remove product from cart
      *
      * @param productId Product ID
-     * @param quantity Quantity for remove
+     * @param amount Amount
      * @param listener Callback
      */
-    fun removeFromCart(productId: String, quantity: Int, listener: OnApiCallbackListener? = null)
+    fun removeFromCart(productId: String, amount: Int, listener: OnApiCallbackListener? = null)
 
     /**
      * Remove products from cart
