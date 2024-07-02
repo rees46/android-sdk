@@ -1,8 +1,8 @@
-package com.personalizatio.entities.recommended
+package com.personalizatio.entities.products
 
 import com.google.gson.annotations.SerializedName
 
-data class Recommend(
+data class Product(
     @SerializedName("brand")
     val brand: String,
     @SerializedName("categories")
@@ -28,11 +28,11 @@ data class Recommend(
     @SerializedName("picture")
     val picture: String,
     @SerializedName("price")
-    val price: Int,
+    val price: Double,
     @SerializedName("price_formatted")
     val priceFormatted: String,
     @SerializedName("price_full")
-    val priceFull: Int,
+    val priceFull: Double,
     @SerializedName("price_full_formatted")
     val priceFullFormatted: String,
     @SerializedName("relative_sales_rate")

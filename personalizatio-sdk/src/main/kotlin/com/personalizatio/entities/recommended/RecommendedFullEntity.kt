@@ -1,6 +1,7 @@
 package com.personalizatio.entities.recommended
 
 import com.google.gson.annotations.SerializedName
+import com.personalizatio.entities.products.Product
 
 data class RecommendedFullEntity(
     @SerializedName("html")
@@ -8,7 +9,7 @@ data class RecommendedFullEntity(
     @SerializedName("id")
     val id: Int,
     @SerializedName("recommends")
-    val recommends: List<Recommend>,
+    val products: List<Product>,
     @SerializedName("title")
     val title: String
 )

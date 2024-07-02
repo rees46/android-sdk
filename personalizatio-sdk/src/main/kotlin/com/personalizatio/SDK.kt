@@ -13,6 +13,7 @@ import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.CartManager
+import com.personalizatio.api.managers.CategoriesManager
 import com.personalizatio.cart.CartManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
@@ -21,6 +22,7 @@ import com.personalizatio.api.managers.ProductsManager
 import com.personalizatio.products.ProductsManagerImpl
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.StoriesManager
+import com.personalizatio.categories.CategoriesManagerImpl
 import com.personalizatio.recommendation.RecommendationManagerImpl
 import com.personalizatio.stories.StoriesManagerImpl
 import org.json.JSONException
@@ -37,7 +39,6 @@ open class SDK {
     private lateinit var preferencesKey: String
     private lateinit var segment: String
     private lateinit var source: Source
-    private lateinit var shopId: String
     private lateinit var stream: String
     private lateinit var api: Api
 
@@ -70,12 +71,17 @@ open class SDK {
         CartManagerImpl(this)
     }
 
+    val categoriesManager : CategoriesManager by lazy {
+        CategoriesManagerImpl(this)
+    }
+
     /**
      * @param shopId Shop key
      */
     fun initialize(
         context: Context,
         shopId: String,
+        shopSecretKey: String,
         apiUrl: String,
         tag: String,
         preferencesKey: String,
@@ -84,10 +90,9 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        this.api = Api.getApi(apiUrl)
+        this.api = Api.getApi(apiUrl, shopId, shopSecretKey)
 
         this.context = context
-        this.shopId = shopId
         this.stream = stream
         this.preferencesKey = preferencesKey
         TAG = tag
@@ -215,7 +220,16 @@ open class SDK {
     internal fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         updateSidActivity()
 
-        api.send(apiMethod, params, listener, shopId, registerManager.did, seance, segment, stream, source)
+        api.send(apiMethod, params, listener, registerManager.did, seance, segment, stream, source)
+    }
+
+    /**
+     * Direct query execution with shop secret key
+     */
+    internal fun sendSecret(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+        updateSidActivity()
+
+        api.sendSecret(apiMethod, params, listener, registerManager.did, seance, segment, stream, source)
     }
 
     private fun sendAsync(method: String, params: JSONObject) {
@@ -238,7 +252,18 @@ open class SDK {
      * Asynchronous execution of a request if did is not specified and initialization has not been completed
      */
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        val thread = Thread { send(ApiMethod.GET(method), params, listener) }
+        getAsync { send(ApiMethod.GET(method), params, listener) }
+    }
+
+    /**
+     * Asynchronous execution of a request with shop secret key if did is not specified and initialization has not been completed
+     */
+    fun getSecretAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        getAsync { sendSecret(ApiMethod.GET(method), params, listener) }
+    }
+
+    private fun getAsync(sendFunction: () -> Unit) {
+        val thread = Thread(sendFunction)
         if (registerManager.did != null && initialized) {
             thread.start()
         } else {

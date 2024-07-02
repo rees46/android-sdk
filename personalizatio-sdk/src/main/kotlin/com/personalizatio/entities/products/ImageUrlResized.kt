@@ -1,4 +1,4 @@
-package com.personalizatio.entities.recommended
+package com.personalizatio.entities.products
 
 import com.google.gson.annotations.SerializedName
 

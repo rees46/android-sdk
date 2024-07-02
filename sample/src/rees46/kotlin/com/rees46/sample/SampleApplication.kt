@@ -6,6 +6,9 @@ import com.rees46.sdk.REES46
 
 class SampleApplication : AbstractSampleApplication<REES46>(REES46.getInstance()) {
 
+    override val shopSecretKey: String
+        get() = "secret_key"
+
     override val shopId: String
         get() = when {
             BuildConfig.DEBUG -> DEBUG_SHOP_IP
@@ -16,6 +19,7 @@ class SampleApplication : AbstractSampleApplication<REES46>(REES46.getInstance()
         REES46.initialize(
             context = applicationContext,
             shopId = shopId,
+            shopSecretKey = shopSecretKey,
             apiHost = null
         )
     }

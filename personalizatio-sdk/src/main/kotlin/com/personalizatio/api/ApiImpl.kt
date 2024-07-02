@@ -19,14 +19,20 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 
 class ApiImpl(
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val shopId: String,
+    private val shopSecretKey: String
 ): Api {
 
-    /**
-     * Прямое выполенение запроса
-     */
+    override fun sendSecret(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?,
+                      did: String?, seance: String?, segment: String, stream: String, source: Source
+    ) {
+        params.put("shop_secret", shopSecretKey)
+        send(apiMethod, params, listener, did, seance, segment, stream, source)
+    }
+
     override fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?,
-             shopId: String, did: String?, seance: String?, segment: String, stream: String, source: Source
+             did: String?, seance: String?, segment: String, stream: String, source: Source
     ) {
         try {
             params.put("shop_id", shopId)

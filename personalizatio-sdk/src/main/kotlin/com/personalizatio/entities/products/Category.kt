@@ -1,14 +1,12 @@
-package com.personalizatio.entities.products.productInfo
+package com.personalizatio.entities.products
 
 import com.google.gson.annotations.SerializedName
 
 data class Category(
-    @SerializedName("branch")
-    val branch: Int,
     @SerializedName("id")
     val id: String,
     @SerializedName("level")
-    val level: Int,
+    val level: String,
     @SerializedName("name")
     val name: String,
     @SerializedName("name_with_parent")
