@@ -52,12 +52,12 @@ internal class CategoriesManagerImpl(val sdk: SDK) : CategoriesManager {
     }
 
     override fun getCategory(categoryId: String, params: Params,listener: OnApiCallbackListener) {
-        val request = "$GET_CATEGORY_REQUEST=$categoryId"
+        val request = "$GET_CATEGORY_REQUEST/$categoryId"
         sdk.getAsync(request, params.build(), listener)
     }
 
     companion object {
         const val GET_CATEGORIES_INFO_REQUEST = "products/categories"
-        const val GET_CATEGORY_REQUEST = "category/{0}"
+        const val GET_CATEGORY_REQUEST = "category"
     }
 }
