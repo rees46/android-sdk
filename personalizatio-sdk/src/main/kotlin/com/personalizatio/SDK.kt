@@ -14,8 +14,10 @@ import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.CartManager
 import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.features.cart.CartManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
+import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
@@ -62,6 +64,10 @@ open class SDK {
 
     val cartManager: CartManager by lazy {
         CartManagerImpl(this)
+    }
+
+    val searchManager: SearchManager by lazy {
+        SearchManagerImpl(this)
     }
 
     /**
@@ -258,6 +264,12 @@ open class SDK {
      * @param type Search type
      * @param listener Callback
      */
+    @Deprecated(
+        "This class will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "searchManager.searchInstant(query, listener) or searchManager.searchFull(query, listener)"
+        )
+    )
     fun search(query: String, type: SearchParams.TYPE, listener: OnApiCallbackListener) {
         search(query, type, SearchParams(), listener)
     }
@@ -270,6 +282,12 @@ open class SDK {
      * @param params Additional parameters for the request
      * @param listener v
      */
+    @Deprecated(
+        "This class will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "searchManager.searchInstant(query, params, listener) or searchManager.searchFull(query, params, listener)"
+        )
+    )
     fun search(
         query: String,
         type: SearchParams.TYPE,
@@ -285,6 +303,12 @@ open class SDK {
         }
     }
 
+    @Deprecated(
+        "This class will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "searchManager.searchBlank(listener)"
+        )
+    )
     fun searchBlank(listener: OnApiCallbackListener) {
         if (search != null) {
             if (search?.blank == null) {
