@@ -132,21 +132,7 @@ class Params : AbstractParams<Params>() {
     enum class TrackEvent(@JvmField var value: String) {
         VIEW("view"),
         CATEGORY("category"),
-        @Deprecated(
-            "This method will be removed in future versions.",
-            level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-                "sdk.cartManager.addToCart()",
-                "com.personalizatio.api.managers.CartManager"
-            )
-        )
         CART("cart"),
-        @Deprecated(
-            "This method will be removed in future versions.",
-            level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-                "sdk.cartManager.removeFromCart()",
-                "com.personalizatio.api.managers.CartManager"
-            )
-        )
         REMOVE_FROM_CART("remove_from_cart"),
         PURCHASE("purchase"),
         SEARCH("search"),

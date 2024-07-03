@@ -12,10 +12,10 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.managers.CartManager
+import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
-import com.personalizatio.features.cart.CartManagerImpl
+import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.notification.NotificationHandler
@@ -58,12 +58,12 @@ open class SDK {
         StoriesManager(this)
     }
 
-    val recommendationManager: RecommendationManager by lazy {
-        RecommendationManagerImpl(this)
+    val trackEventManager: TrackEventManager by lazy {
+        TrackEventManagerImpl(this)
     }
 
-    val cartManager: CartManager by lazy {
-        CartManagerImpl(this)
+    val recommendationManager: RecommendationManager by lazy {
+        RecommendationManagerImpl(this)
     }
 
     val searchManager: SearchManager by lazy {
@@ -371,8 +371,14 @@ open class SDK {
      * @param event Event type
      * @param itemId Product ID
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "trackEventManager.track(event, itemId)"
+        )
+    )
     fun track(event: TrackEvent, itemId: String) {
-        track(event, Params().put(Params.Item(itemId)), null)
+        trackEventManager.track(event, itemId)
     }
 
     /**
@@ -382,19 +388,14 @@ open class SDK {
      * @param params Parameters for the request
      * @param listener Callback
      */
-    /**
-     * Event tracking
-     *
-     * @param event Event type
-     * @param params Parameters
-     */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "trackEventManager.track(event, params, listener)"
+        )
+    )
     fun track(event: TrackEvent, params: Params, listener: OnApiCallbackListener? = null) {
-        params.put(InternalParameter.EVENT, event.value)
-        if (lastRecommendedBy != null) {
-            params.put(lastRecommendedBy!!)
-            lastRecommendedBy = null
-        }
-        sendAsync(PUSH_FIELD, params.build(), listener)
+        trackEventManager.track(event, params, listener)
     }
 
     /**
@@ -406,20 +407,12 @@ open class SDK {
      * @param value Event value
      * @param listener Callback
      */
-    /**
-     * Tracking custom events
-     *
-     * @param event Event key
-     */
-    /**
-     * Tracking custom events
-     *
-     * @param event Event key
-     * @param category Event category
-     * @param label Event label
-     * @param value Event value
-     */
-    @JvmOverloads
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "trackEventManager.track(event, category, label, value, listener)"
+        )
+    )
     fun track(
         event: String,
         category: String? = null,
@@ -427,18 +420,7 @@ open class SDK {
         value: Int? = null,
         listener: OnApiCallbackListener? = null
     ) {
-        val params = Params()
-        params.put(InternalParameter.EVENT, event)
-        if (category != null) {
-            params.put(InternalParameter.CATEGORY, category)
-        }
-        if (label != null) {
-            params.put(InternalParameter.LABEL, label)
-        }
-        if (value != null) {
-            params.put(InternalParameter.VALUE, value)
-        }
-        sendAsync(CUSTOM_PUSH_FIELD, params.build(), listener)
+        trackEventManager.track(event, category, label, value, listener)
     }
 
     /**
@@ -804,7 +786,6 @@ open class SDK {
         private const val TRACK_STORY_ID_FIELD = "story_id"
         private const val TRACK_SLIDE_ID_FIELD = "slide_id"
         private const val TRACK_RECEIVED = "track/received"
-        private const val CUSTOM_PUSH_FIELD = "push/custom"
         private const val SET_PROFILE_FIELD = "profile/set"
         private const val SEGMENT_ID_FIELD = "segment_id"
         private const val SEGMENT_EMAIL_FIELD = "email"
@@ -823,7 +804,6 @@ open class SDK {
         private const val CODE_FIELD = "code"
         private const val INIT_FIELD = "init"
         private const val TYPE_FIELD = "type"
-        private const val PUSH_FIELD = "push"
         private const val ADD_FIELD = "add"
         private const val DID_FIELD = "did"
         private const val SID_FIELD = "sid"
