@@ -1,6 +1,7 @@
 package com.personalizatio
 
 import android.util.Log
+import com.personalizatio.api.params.ProductItemParams
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -66,8 +67,15 @@ class Params : AbstractParams<Params>() {
     }
 
     /**
-     * Товар
+     * Product
      */
+    @Deprecated(
+        "This class will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "ProductItemParams",
+            "com.personalizatio.api.params.ProductItemParams"
+        )
+    )
     class Item(id: String) {
         enum class COLUMN(val value: String) {
             ID("id"),
@@ -124,7 +132,21 @@ class Params : AbstractParams<Params>() {
     enum class TrackEvent(@JvmField var value: String) {
         VIEW("view"),
         CATEGORY("category"),
+        @Deprecated(
+            "This method will be removed in future versions.",
+            level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+                "sdk.cartManager.addToCart()",
+                "com.personalizatio.api.managers.CartManager"
+            )
+        )
         CART("cart"),
+        @Deprecated(
+            "This method will be removed in future versions.",
+            level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+                "sdk.cartManager.removeFromCart()",
+                "com.personalizatio.api.managers.CartManager"
+            )
+        )
         REMOVE_FROM_CART("remove_from_cart"),
         PURCHASE("purchase"),
         SEARCH("search"),
@@ -148,9 +170,27 @@ class Params : AbstractParams<Params>() {
     }
 
     /**
-     * Вставка товара
+     * Add item
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "put(productItemParams)",
+            "com.personalizatio.api.params.ProductItemParams"
+        )
+    )
     fun put(item: Item): Params {
+        return putProductParameters(item.columns)
+    }
+
+    /**
+     * Add product
+     */
+    fun put(productItemParams: ProductItemParams): Params {
+        return putProductParameters(productItemParams.parameters)
+    }
+
+    private fun putProductParameters(parameters: HashMap<String, String>): Params {
         try {
             val array: JSONArray
             if (params.has("items")) {
@@ -160,7 +200,7 @@ class Params : AbstractParams<Params>() {
                 params.put("items", array)
             }
             val jsonObject = JSONObject()
-            for ((key, value) in item.columns) {
+            for ((key, value) in parameters) {
                 jsonObject.put(key, value)
             }
             array.put(jsonObject)

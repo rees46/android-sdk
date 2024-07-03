@@ -12,7 +12,9 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.CartManager
 import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.features.cart.CartManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
@@ -56,6 +58,10 @@ open class SDK {
 
     val recommendationManager: RecommendationManager by lazy {
         RecommendationManagerImpl(this)
+    }
+
+    val cartManager: CartManager by lazy {
+        CartManagerImpl(this)
     }
 
     /**
