@@ -12,6 +12,8 @@ import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.Api
 import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
@@ -50,6 +52,10 @@ open class SDK {
 
     private val storiesManager: StoriesManager by lazy {
         StoriesManager(this)
+    }
+
+    val recommendationManager: RecommendationManager by lazy {
+        RecommendationManagerImpl(this)
     }
 
     /**
@@ -302,8 +308,14 @@ open class SDK {
      * @param recommender_code Recommendation block code
      * @param listener Callback
      */
+    @Deprecated(
+        "This method will be removed in future versions. Use recommendationManager.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "recommendationManager.getRecommendation(recommender_code, listener)"
+        )
+    )
     fun recommend(recommender_code: String, listener: OnApiCallbackListener) {
-        recommend(recommender_code, Params(), listener)
+        recommendationManager.getRecommendation(recommender_code, listener)
     }
 
     /**
@@ -313,8 +325,14 @@ open class SDK {
      * @param params Parameters for the request
      * @param listener Callback
      */
+    @Deprecated(
+        "This method will be removed in future versions. Use recommendationManager.",
+        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+            "recommendationManager.getRecommendation(code, params, listener)"
+        )
+    )
     fun recommend(code: String, params: Params, listener: OnApiCallbackListener) {
-        getAsync("recommend/$code", params.build(), listener)
+        recommendationManager.getRecommendation(code, params, listener)
     }
 
     /**
