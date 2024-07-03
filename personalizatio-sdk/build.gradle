@@ -88,7 +88,6 @@ dependencies {
 }
 
 group = 'com.personalizatio'
-apply from: '../publish.gradle'
 
 tasks.register('sourcesJar', Jar) {
 	archiveClassifier.set('sources')
