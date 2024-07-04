@@ -1,4 +1,4 @@
-package com.personalizatio.api.entities.search
+package com.personalizatio.api.entities.product
 
 import com.google.gson.annotations.SerializedName
 
