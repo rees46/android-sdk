@@ -10,11 +10,13 @@ import com.personalizatio.Params.InternalParameter
 import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.CartManager
 import com.personalizatio.api.managers.CategoriesManager
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
+import com.personalizatio.features.cart.CartManagerImpl
 import com.personalizatio.features.categories.CategoriesManagerImpl
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
@@ -75,6 +77,10 @@ open class SDK {
 
     val categoriesManager: CategoriesManager by lazy {
         CategoriesManagerImpl(networkManager)
+    }
+
+    val cartManager: CartManager by lazy {
+        CartManagerImpl(networkManager)
     }
 
     /**
