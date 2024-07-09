@@ -1,8 +1,8 @@
-package com.personalizatio.api.entities.search
+package com.personalizatio.api.responses.search
 
 import com.google.gson.annotations.SerializedName
 
-data class PriceRangesEntity(
+data class PriceRanges(
     @SerializedName("count")
     val count: Int,
     @SerializedName("from")
