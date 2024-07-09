@@ -3,7 +3,7 @@ package com.personalizatio.features.cart
 import com.google.gson.Gson
 import com.personalizatio.Params
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.entities.cart.CartEntity
+import com.personalizatio.api.responses.cart.GetCartResponse
 import com.personalizatio.api.managers.CartManager
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.params.CartParams
@@ -12,14 +12,14 @@ import org.json.JSONObject
 internal class CartManagerImpl(private val networkManager: NetworkManager) : CartManager {
 
     override fun getCart(
-        onGetCart: (CartEntity) -> Unit,
+        onGetCart: (GetCartResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getCart(object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val cartEntity = Gson().fromJson(it.toString(), CartEntity::class.java)
-                    onGetCart(cartEntity)
+                    val getCartResponse = Gson().fromJson(it.toString(), GetCartResponse::class.java)
+                    onGetCart(getCartResponse)
                 }
             }
 

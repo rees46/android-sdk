@@ -1,7 +1,7 @@
 package com.personalizatio.api.managers
 
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.entities.cart.CartEntity
+import com.personalizatio.api.responses.cart.GetCartResponse
 
 interface CartManager {
 
@@ -12,7 +12,7 @@ interface CartManager {
      * @param onError Callback for error
      */
     fun getCart(
-        onGetCart: (CartEntity) -> Unit,
+        onGetCart: (GetCartResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 

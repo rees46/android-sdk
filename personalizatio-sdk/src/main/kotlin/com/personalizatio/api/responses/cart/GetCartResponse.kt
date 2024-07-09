@@ -1,10 +1,10 @@
-package com.personalizatio.api.entities.cart
+package com.personalizatio.api.responses.cart
 
 import com.google.gson.annotations.SerializedName
 
-data class CartEntity(
+data class GetCartResponse(
     @SerializedName("data")
-    val data: DataEntity,
+    val data: Data,
     @SerializedName("status")
     val status: String
 )

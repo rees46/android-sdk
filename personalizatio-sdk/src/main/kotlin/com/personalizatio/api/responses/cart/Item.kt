@@ -1,8 +1,8 @@
-package com.personalizatio.api.entities.cart
+package com.personalizatio.api.responses.cart
 
 import com.google.gson.annotations.SerializedName
 
-data class ItemEntity(
+data class Item(
     @SerializedName("quantity")
     val quantity: Int,
     @SerializedName("uniqid")
