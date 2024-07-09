@@ -1,18 +1,14 @@
-package com.personalizatio.api.entities.product
+package com.personalizatio.api.responses.categories.category
 
 import com.google.gson.annotations.SerializedName
 
-data class CategoryEntity(
+data class Category(
+    @SerializedName("count")
+    val count: Int,
     @SerializedName("id")
     val id: String,
-    @SerializedName("level")
-    val level: String,
     @SerializedName("name")
     val name: String,
-    @SerializedName("name_with_parent")
-    val nameWithParent: String,
-    @SerializedName("parent_id")
-    val parentId: String,
     @SerializedName("url")
     val url: String,
     @SerializedName("url_handle")

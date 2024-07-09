@@ -5,15 +5,15 @@ import com.personalizatio.Params
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.CategoriesManager
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.api.entities.categories.categories.CategoriesEntity
-import com.personalizatio.api.entities.categories.category.CategoryEntity
+import com.personalizatio.api.responses.categories.categories.GetCategoriesResponse
+import com.personalizatio.api.responses.categories.category.GetCategoryResponse
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal class CategoriesManagerImpl(private val networkManager: NetworkManager) : CategoriesManager {
 
     override fun getCategories(
-        onGetCategories: (CategoriesEntity) -> Unit,
+        onGetCategories: (GetCategoriesResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getCategories(Params(), onGetCategories, onError)
@@ -21,13 +21,13 @@ internal class CategoriesManagerImpl(private val networkManager: NetworkManager)
 
     override fun getCategories(
         params: Params,
-        onGetCategories: (CategoriesEntity) -> Unit,
+        onGetCategories: (GetCategoriesResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getCategories(params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONArray) {
-                val categoriesEntity = Gson().fromJson(response.toString(), CategoriesEntity::class.java)
-                onGetCategories(categoriesEntity)
+                val getCategoriesResponse = Gson().fromJson(response.toString(), GetCategoriesResponse::class.java)
+                onGetCategories(getCategoriesResponse)
             }
 
             override fun onError(code: Int, msg: String?) {
@@ -51,7 +51,7 @@ internal class CategoriesManagerImpl(private val networkManager: NetworkManager)
 
     override fun getCategory(
         categoryId: String,
-        onGetCategory: (CategoryEntity) -> Unit,
+        onGetCategory: (GetCategoryResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getCategory(categoryId, Params(), onGetCategory, onError)
@@ -60,13 +60,13 @@ internal class CategoriesManagerImpl(private val networkManager: NetworkManager)
     override fun getCategory(
         categoryId: String,
         params: Params,
-        onGetCategory: (CategoryEntity) -> Unit,
+        onGetCategory: (GetCategoryResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getCategory(categoryId, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                val categoryEntity = Gson().fromJson(response.toString(), CategoryEntity::class.java)
-                onGetCategory(categoryEntity)
+                val getCategoryResponse = Gson().fromJson(response.toString(), GetCategoryResponse::class.java)
+                onGetCategory(getCategoryResponse)
             }
 
             override fun onError(code: Int, msg: String?) {

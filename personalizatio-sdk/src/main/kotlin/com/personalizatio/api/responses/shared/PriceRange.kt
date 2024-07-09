@@ -1,8 +1,8 @@
-package com.personalizatio.api.entities.search
+package com.personalizatio.api.responses.shared
 
 import com.google.gson.annotations.SerializedName
 
-data class PriceRangeEntity(
+data class PriceRange(
     @SerializedName("max")
     val max: Double,
     @SerializedName("min")

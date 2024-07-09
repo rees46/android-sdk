@@ -2,8 +2,8 @@ package com.personalizatio.api.managers
 
 import com.personalizatio.Params
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.entities.categories.categories.CategoriesEntity
-import com.personalizatio.api.entities.categories.category.CategoryEntity
+import com.personalizatio.api.responses.categories.categories.GetCategoriesResponse
+import com.personalizatio.api.responses.categories.category.GetCategoryResponse
 
 interface CategoriesManager {
 
@@ -34,7 +34,7 @@ interface CategoriesManager {
      * @param onError Callback for error
      */
     fun getCategories(
-        onGetCategories: (CategoriesEntity) -> Unit,
+        onGetCategories: (GetCategoriesResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -47,7 +47,7 @@ interface CategoriesManager {
      */
     fun getCategories(
         params: Params,
-        onGetCategories: (CategoriesEntity) -> Unit,
+        onGetCategories: (GetCategoriesResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -84,7 +84,7 @@ interface CategoriesManager {
      */
     fun getCategory(
         categoryId: String,
-        onGetCategory: (CategoryEntity) -> Unit,
+        onGetCategory: (GetCategoryResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -99,7 +99,7 @@ interface CategoriesManager {
     fun getCategory(
         categoryId: String,
         params: Params,
-        onGetCategory: (CategoryEntity) -> Unit,
+        onGetCategory: (GetCategoryResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 }

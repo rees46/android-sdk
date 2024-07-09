@@ -1,4 +1,4 @@
-package com.personalizatio.api.entities.categories.categories
+package com.personalizatio.api.responses.categories.categories
 
 import com.google.gson.annotations.SerializedName
 

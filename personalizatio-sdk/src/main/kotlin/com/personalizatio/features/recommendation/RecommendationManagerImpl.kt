@@ -5,15 +5,15 @@ import com.personalizatio.Params
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.RecommendationManager
-import com.personalizatio.api.entities.recommendation.RecommendationEntity
-import com.personalizatio.api.entities.recommendation.ExtendedRecommendationEntity
+import com.personalizatio.api.responses.recommendation.GetRecommendationResponse
+import com.personalizatio.api.responses.recommendation.GetExtendedRecommendationResponse
 import org.json.JSONObject
 
 internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationManager {
 
     override fun getRecommendation(
         recommenderCode: String,
-        onGetRecommendation: (RecommendationEntity) -> Unit,
+        onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         val params = getRecommendationParams()
@@ -28,14 +28,14 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
     override fun getRecommendation(
         recommenderCode: String,
         params: Params,
-        onGetRecommendation: (RecommendationEntity) -> Unit,
+        onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val recommendationEntity = Gson().fromJson(it.toString(), RecommendationEntity::class.java)
-                    onGetRecommendation(recommendationEntity)
+                    val getRecommendationResponse = Gson().fromJson(it.toString(), GetRecommendationResponse::class.java)
+                    onGetRecommendation(getRecommendationResponse)
                 }
             }
 
@@ -47,7 +47,7 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
 
     override fun getExtendedRecommendation(
         recommenderCode: String,
-        onGetExtendedRecommendation: (ExtendedRecommendationEntity) -> Unit,
+        onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         val params = getRecommendationParams(extended = true)
@@ -57,14 +57,14 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
     override fun getExtendedRecommendation(
         recommenderCode: String,
         params: Params,
-        onGetExtendedRecommendation: (ExtendedRecommendationEntity) -> Unit,
+        onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         getExtendedRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val extendedRecommendationEntity = Gson().fromJson(it.toString(), ExtendedRecommendationEntity::class.java)
-                    onGetExtendedRecommendation.invoke(extendedRecommendationEntity)
+                    val getExtendedRecommendationResponse = Gson().fromJson(it.toString(), GetExtendedRecommendationResponse::class.java)
+                    onGetExtendedRecommendation.invoke(getExtendedRecommendationResponse)
                 }
             }
 
