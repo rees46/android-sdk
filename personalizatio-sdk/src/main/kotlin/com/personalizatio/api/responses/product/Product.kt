@@ -1,12 +1,12 @@
-package com.personalizatio.api.entities.product
+package com.personalizatio.api.responses.product
 
 import com.google.gson.annotations.SerializedName
 
-data class ProductEntity(
+data class Product(
     @SerializedName("brand")
     val brand: String,
     @SerializedName("categories")
-    val categories: List<CategoryEntity>,
+    val categories: List<Category>,
     @SerializedName("category_ids")
     val categoryIds: List<String>,
     @SerializedName("currency")
@@ -22,7 +22,7 @@ data class ProductEntity(
     @SerializedName("image_url_handle")
     val imageUrlHandle: String,
     @SerializedName("image_url_resized")
-    val imageUrlResized: ImageUrlResizedEntity,
+    val imageUrlResized: ImageUrlResized,
     @SerializedName("name")
     val name: String,
     @SerializedName("picture")

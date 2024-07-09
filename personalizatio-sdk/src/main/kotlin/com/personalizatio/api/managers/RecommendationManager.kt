@@ -2,8 +2,8 @@ package com.personalizatio.api.managers
 
 import com.personalizatio.Params
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.entities.recommendation.ExtendedRecommendationEntity
-import com.personalizatio.api.entities.recommendation.RecommendationEntity
+import com.personalizatio.api.responses.recommendation.GetExtendedRecommendationResponse
+import com.personalizatio.api.responses.recommendation.GetRecommendationResponse
 
 interface RecommendationManager {
 
@@ -41,7 +41,7 @@ interface RecommendationManager {
      */
     fun getRecommendation(
         recommenderCode: String,
-        onGetRecommendation: (RecommendationEntity) -> Unit,
+        onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -55,7 +55,7 @@ interface RecommendationManager {
     fun getRecommendation(
         recommenderCode: String,
         params: Params,
-        onGetRecommendation: (RecommendationEntity) -> Unit,
+        onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -97,7 +97,7 @@ interface RecommendationManager {
      */
     fun getExtendedRecommendation(
         recommenderCode: String,
-        onGetExtendedRecommendation: (ExtendedRecommendationEntity) -> Unit,
+        onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -112,7 +112,7 @@ interface RecommendationManager {
     fun getExtendedRecommendation(
         recommenderCode: String,
         params: Params,
-        onGetExtendedRecommendation: (ExtendedRecommendationEntity) -> Unit,
+        onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 }

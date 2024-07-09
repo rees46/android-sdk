@@ -1,15 +1,14 @@
-package com.personalizatio.api.entities.recommendation
+package com.personalizatio.api.responses.recommendation
 
 import com.google.gson.annotations.SerializedName
-import com.personalizatio.api.entities.product.ProductEntity
 
-data class ExtendedRecommendationEntity(
+data class GetRecommendationResponse(
     @SerializedName("html")
     val html: String,
     @SerializedName("id")
     val id: Int,
     @SerializedName("recommends")
-    val products: List<ProductEntity>,
+    val productIds: List<Int>,
     @SerializedName("title")
     val title: String
 )

@@ -1,14 +1,16 @@
-package com.personalizatio.api.entities.search
+package com.personalizatio.api.responses.search
 
 import com.google.gson.annotations.SerializedName
-import com.personalizatio.api.entities.product.BrandEntity
-import com.personalizatio.api.entities.product.ProductEntity
+import com.personalizatio.api.responses.product.Product
+import com.personalizatio.api.responses.shared.Brand
+import com.personalizatio.api.responses.shared.PriceRange
+import com.personalizatio.api.responses.shared.PriceRanges
 
-data class SearchFullEntity(
+data class SearchFullResponse(
     @SerializedName("brands")
-    val brands: List<BrandEntity>,
+    val brands: List<Brand>,
     @SerializedName("categories")
-    val categories: List<CategoryEntity>,
+    val categories: List<Category>,
     @SerializedName("clarification")
     val clarification: Boolean,
     @SerializedName("collections")
@@ -18,11 +20,11 @@ data class SearchFullEntity(
     @SerializedName("price_median")
     val priceMedian: Double,
     @SerializedName("price_range")
-    val priceRange: PriceRangeEntity,
+    val priceRange: PriceRange,
     @SerializedName("price_ranges")
-    val priceRanges: List<PriceRangesEntity>,
+    val priceRanges: List<PriceRanges>,
     @SerializedName("products")
-    val products: List<ProductEntity>,
+    val products: List<Product>,
     @SerializedName("products_total")
     val productsTotal: Int,
     @SerializedName("requests_count")
