@@ -1,9 +1,9 @@
 package com.personalizatio.api.managers
 
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.api.entities.search.SearchBlankEntity
-import com.personalizatio.api.entities.search.SearchFullEntity
-import com.personalizatio.api.entities.search.SearchInstantEntity
+import com.personalizatio.api.responses.search.SearchBlankResponse
+import com.personalizatio.api.responses.search.SearchFullResponse
+import com.personalizatio.api.responses.search.SearchInstantResponse
 import com.personalizatio.api.params.SearchParams
 
 interface SearchManager {
@@ -17,7 +17,7 @@ interface SearchManager {
      */
     fun searchFull(
         query: String,
-        onGetSearchFull: (SearchFullEntity) -> Unit,
+        onGetSearchFull: (SearchFullResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -37,13 +37,13 @@ interface SearchManager {
      *
      * @param query Search phrase
      * @param searchParams SearchParams
-     * @param onGetSearchFull Callback for search full
+     * @param onSearchFull Callback for search full
      * @param onError Callback for error
      */
     fun searchFull(
         query: String,
         searchParams: SearchParams,
-        onGetSearchFull: (SearchFullEntity) -> Unit,
+        onSearchFull: (SearchFullResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -64,12 +64,12 @@ interface SearchManager {
      * Search instant
      *
      * @param query Search phrase
-     * @param onGetSearchInstant Callback for search instant
+     * @param onSearchInstant Callback for search instant
      * @param onError Callback for error
      */
     fun searchInstant(
         query: String,
-        onGetSearchInstant: (SearchInstantEntity) -> Unit,
+        onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -89,13 +89,13 @@ interface SearchManager {
      *
      * @param query Search phrase
      * @param searchParams SearchParams
-     * @param onGetSearchInstant Callback for search instant
+     * @param onSearchInstant Callback for search instant
      * @param onError Callback for error
      */
     fun searchInstant(
         query: String,
         searchParams: SearchParams,
-        onGetSearchInstant: (SearchInstantEntity) -> Unit,
+        onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 
@@ -124,11 +124,11 @@ interface SearchManager {
     /**
      * Search blank
      *
-     * @param onGetSearchBlank Callback for search blank
+     * @param onSearchBlank Callback for search blank
      * @param onError Callback for error
      */
     fun searchBlank(
-        onGetSearchBlank: (SearchBlankEntity) -> Unit,
+        onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
 }

@@ -1,4 +1,4 @@
-package com.personalizatio.api.entities.categories.category
+package com.personalizatio.api.responses.search
 
 import com.google.gson.annotations.SerializedName
 
@@ -9,6 +9,8 @@ data class Category(
     val id: String,
     @SerializedName("name")
     val name: String,
+    @SerializedName("parent")
+    val parent: String,
     @SerializedName("url")
     val url: String,
     @SerializedName("url_handle")

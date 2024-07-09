@@ -1,12 +1,14 @@
-package com.personalizatio.api.entities.categories.category
+package com.personalizatio.api.responses.categories.category
 
 import com.google.gson.annotations.SerializedName
-import com.personalizatio.api.entities.product.BrandEntity
-import com.personalizatio.api.entities.product.ProductEntity
+import com.personalizatio.api.responses.product.Product
+import com.personalizatio.api.responses.shared.Brand
+import com.personalizatio.api.responses.shared.PriceRange
+import com.personalizatio.api.responses.shared.PriceRanges
 
-data class CategoryEntity(
+data class GetCategoryResponse(
     @SerializedName("brands")
-    val brands: List<BrandEntity>,
+    val brands: List<Brand>,
     @SerializedName("categories")
     val categories: List<Category>,
     @SerializedName("html")
@@ -18,7 +20,7 @@ data class CategoryEntity(
     @SerializedName("price_ranges")
     val priceRanges: List<PriceRanges>,
     @SerializedName("products")
-    val products: List<ProductEntity>,
+    val products: List<Product>,
     @SerializedName("products_total")
     val productsTotal: Int
 )

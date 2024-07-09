@@ -6,16 +6,16 @@ import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.params.SearchParams
 import com.personalizatio.api.managers.SearchManager
-import com.personalizatio.api.entities.search.SearchBlankEntity
-import com.personalizatio.api.entities.search.SearchFullEntity
-import com.personalizatio.api.entities.search.SearchInstantEntity
+import com.personalizatio.api.responses.search.SearchBlankResponse
+import com.personalizatio.api.responses.search.SearchFullResponse
+import com.personalizatio.api.responses.search.SearchInstantResponse
 import org.json.JSONObject
 
 internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
 
     override fun searchFull(
         query: String,
-        onGetSearchFull: (SearchFullEntity) -> Unit,
+        onGetSearchFull: (SearchFullResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         searchFull(query, SearchParams(), onGetSearchFull, onError)
@@ -24,14 +24,14 @@ internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
     override fun searchFull(
         query: String,
         searchParams: SearchParams,
-        onGetSearchFull: (SearchFullEntity) -> Unit,
+        onSearchFull: (SearchFullResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         searchFull(query, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val searchFullEntity = Gson().fromJson(it.toString(), SearchFullEntity::class.java)
-                    onGetSearchFull(searchFullEntity)
+                    val searchFullResponse = Gson().fromJson(it.toString(), SearchFullResponse::class.java)
+                    onSearchFull(searchFullResponse)
                 }
             }
 
@@ -55,23 +55,23 @@ internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
 
     override fun searchInstant(
         query: String,
-        onGetSearchInstant: (SearchInstantEntity) -> Unit,
+        onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        searchInstant(query, SearchParams(), onGetSearchInstant, onError)
+        searchInstant(query, SearchParams(), onSearchInstant, onError)
     }
 
     override fun searchInstant(
         query: String,
         searchParams: SearchParams,
-        onGetSearchInstant: (SearchInstantEntity) -> Unit,
+        onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         searchInstant(query, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val searchInstantEntity = Gson().fromJson(it.toString(), SearchInstantEntity::class.java)
-                    onGetSearchInstant(searchInstantEntity)
+                    val searchInstantResponse = Gson().fromJson(it.toString(), SearchInstantResponse::class.java)
+                    onSearchInstant(searchInstantResponse)
                 }
             }
 
@@ -98,14 +98,14 @@ internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
     }
 
     override fun searchBlank(
-        onGetSearchBlank: (SearchBlankEntity) -> Unit,
+        onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         searchBlank(object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val searchBlankEntity = Gson().fromJson(it.toString(), SearchBlankEntity::class.java)
-                    onGetSearchBlank(searchBlankEntity)
+                    val searchBlankResponse = Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
+                    onSearchBlank(searchBlankResponse)
                 }
             }
 

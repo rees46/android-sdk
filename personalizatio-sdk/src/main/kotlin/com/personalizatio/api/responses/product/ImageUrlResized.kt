@@ -1,8 +1,8 @@
-package com.personalizatio.api.entities.product
+package com.personalizatio.api.responses.product
 
 import com.google.gson.annotations.SerializedName
 
-data class ImageUrlResizedEntity(
+data class ImageUrlResized(
     @SerializedName("120")
     val x120: String,
     @SerializedName("140")
