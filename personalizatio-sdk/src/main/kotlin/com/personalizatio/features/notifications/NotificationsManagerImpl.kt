@@ -4,10 +4,33 @@ import com.google.gson.Gson
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.NotificationsManager
+import com.personalizatio.api.params.NotificationChannels
+import com.personalizatio.api.params.NotificationTypes
 import com.personalizatio.api.responses.notifications.GetAllNotificationsResponse
 import org.json.JSONObject
+import java.util.EnumSet
 
-internal class NotificationsManagerImpl(private val networkManager: NetworkManager) : NotificationsManager {
+internal class NotificationsManagerImpl(private val networkManager: NetworkManager) :
+    NotificationsManager {
+
+    override fun getAllNotifications(
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int?,
+        limit: Int?,
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit
+    ) {
+        val type = getEnumsString(types)
+        val channel = getEnumsString(channels)
+
+        getAllNotifications(email, phone, loyaltyId, externalId, dateFrom, type, channel, page, limit, onGetAllNotifications, onError)
+    }
 
     override fun getAllNotifications(
         email: String?,
@@ -72,6 +95,21 @@ internal class NotificationsManagerImpl(private val networkManager: NetworkManag
         }
 
         networkManager.getSecretAsync(GET_ALL_NOTIFICATIONS_REQUEST, params.build(), listener)
+    }
+
+    private inline fun <reified T : Enum<T>> getEnumsString(enums: EnumSet<T>): String {
+        val string = StringBuilder()
+
+        for (enum in enumValues<T>()) {
+            if(enums.contains(enum)) {
+                if(string.isNotEmpty()) {
+                    string.append(',')
+                }
+                string.append(enum.toString())
+            }
+        }
+
+        return string.toString()
     }
 
     companion object {
