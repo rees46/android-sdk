@@ -1,10 +1,40 @@
 package com.personalizatio.features.notifications
 
+import com.google.gson.Gson
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.NotificationsManager
+import com.personalizatio.api.responses.notifications.GetAllNotificationsResponse
+import org.json.JSONObject
 
 internal class NotificationsManagerImpl(private val networkManager: NetworkManager) : NotificationsManager {
+
+    override fun getAllNotifications(
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        dateFrom: String,
+        type: String,
+        channel: String,
+        page: Int?,
+        limit: Int?,
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit
+    ) {
+        getAllNotifications(email, phone, loyaltyId, externalId, dateFrom, type, channel, page, limit, object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    val getAllNotificationsResponse = Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
+                    onGetAllNotifications(getAllNotificationsResponse)
+                }
+            }
+
+            override fun onError(code: Int, msg: String?) {
+                onError(code, msg)
+            }
+        })
+    }
 
     override fun getAllNotifications(
         email: String?,
