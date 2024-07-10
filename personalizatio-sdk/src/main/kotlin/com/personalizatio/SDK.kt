@@ -409,9 +409,8 @@ open class SDK {
      */
     @Deprecated(
         "This method will be removed in future versions.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "trackEventManager.track(event, category, label, value, listener)"
-        )
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("trackEventManager.customTrack(event, category, label, value = value, listener = listener)")
     )
     fun track(
         event: String,
@@ -420,7 +419,7 @@ open class SDK {
         value: Int? = null,
         listener: OnApiCallbackListener? = null
     ) {
-        trackEventManager.track(event, category, label, value, listener)
+        trackEventManager.customTrack(event, category, label, value = value, listener = listener)
     }
 
     /**

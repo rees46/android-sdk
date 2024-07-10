@@ -31,13 +31,21 @@ interface TrackEventManager {
      * Tracking custom events
      *
      * @param event Event key
+     * @param email Email
+     * @param phone Phone
+     * @param loyaltyId Loyalty ID
+     * @param externalId External ID
      * @param category Event category
      * @param label Event label
      * @param value Event value
      * @param listener Callback
      */
-    fun track(
+    fun customTrack(
         event: String,
+        email: String? = null,
+        phone: String? = null,
+        loyaltyId: String? = null,
+        externalId: String? = null,
         category: String? = null,
         label: String? = null,
         value: Int? = null,
