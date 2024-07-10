@@ -27,11 +27,6 @@ class SearchParams : AbstractParams<SearchParams>() {
         NO_CLARIFICATION("no_clarification")
     }
 
-    enum class TYPE(var value: String) {
-        INSTANT("instant_search"),
-        FULL("full_search")
-    }
-
     class SearchFilters {
         private val filters = HashMap<String, Array<String>>()
 

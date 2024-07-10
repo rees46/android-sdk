@@ -265,9 +265,9 @@ open class SDK {
      * @param listener Callback
      */
     @Deprecated(
-        "This class will be removed in future versions.",
+        "This class will be removed in future versions. Use searchManager.",
         level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "searchManager.searchInstant(query, listener) or searchManager.searchFull(query, listener)"
+            "searchManager.searchInstant(...) or searchManager.searchFull(...)"
         )
     )
     fun search(query: String, type: SearchParams.TYPE, listener: OnApiCallbackListener) {
@@ -283,9 +283,9 @@ open class SDK {
      * @param listener v
      */
     @Deprecated(
-        "This class will be removed in future versions.",
+        "This class will be removed in future versions. Use searchManager.",
         level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "searchManager.searchInstant(query, params, listener) or searchManager.searchFull(query, params, listener)"
+            "searchManager.searchInstant(...) or searchManager.searchFull(...)"
         )
     )
     fun search(
@@ -304,9 +304,9 @@ open class SDK {
     }
 
     @Deprecated(
-        "This class will be removed in future versions.",
+        "This class will be removed in future versions. Use searchManager.",
         level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "searchManager.searchBlank(listener)"
+            "searchManager.searchBlank(...)"
         )
     )
     fun searchBlank(listener: OnApiCallbackListener) {
