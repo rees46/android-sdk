@@ -9,15 +9,15 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.Params.InternalParameter
 import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.Params.TrackEvent
-import com.personalizatio.api.Api
-import com.personalizatio.api.ApiMethod
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
+import com.personalizatio.network.NetworkManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
@@ -39,7 +39,6 @@ open class SDK {
     private lateinit var source: Source
     private lateinit var shopId: String
     private lateinit var stream: String
-    private lateinit var api: Api
 
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private lateinit var notificationHandler: NotificationHandler
@@ -48,9 +47,9 @@ open class SDK {
     private var seance: String? = null
     private var search: Search? = null
     private var did: String? = null
-    private var initialized = false
+    var initialized = false
 
-    private val registerManager: RegisterManager by lazy {
+    val registerManager: RegisterManager by lazy {
         RegisterManager(this)
     }
 
@@ -70,6 +69,8 @@ open class SDK {
         SearchManagerImpl(this)
     }
 
+    lateinit var networkManager: NetworkManager
+
     /**
      * @param shopId Shop key
      */
@@ -84,8 +85,6 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        this.api = Api.getApi(apiUrl)
-
         this.context = context
         this.shopId = shopId
         this.stream = stream
@@ -104,6 +103,7 @@ open class SDK {
         notificationHandler = NotificationHandler(context) { prefs() }
         notificationHandler.createNotificationChannel()
 
+        networkManager = NetworkManagerImpl(this, apiUrl, shopId, seance, segment, stream, source)
 
         registerManager.initialize(autoSendPushToken)
     }
@@ -163,7 +163,7 @@ open class SDK {
     /**
      * Update last activity time
      */
-    private fun updateSidActivity() {
+    fun updateSidActivity() {
         val edit = prefs().edit()
         edit.putString(SID_FIELD, seance)
         edit.putLong(SID_LAST_ACT_FIELD, System.currentTimeMillis())
@@ -208,46 +208,33 @@ open class SDK {
     fun notificationClicked(extras: Bundle?) {
         notificationHandler.notificationClicked(
             extras = extras,
-            sendAsync = { method, params -> sendAsync(method, params) },
+            sendAsync = { method, params -> networkManager.postAsync(method, params) },
             source = source
         )
     }
 
     /**
-     * Direct query execution
-     */
-    internal fun send(apiMethod: ApiMethod, params: JSONObject, listener: OnApiCallbackListener?) {
-        updateSidActivity()
-
-        api.send(apiMethod, params, listener, shopId, registerManager.did, seance, segment, stream, source)
-    }
-
-    private fun sendAsync(method: String, params: JSONObject) {
-        sendAsync(method, params, null)
-    }
-
-    /**
      * Asynchronous execution of a request if did is not specified and initialization has not been completed
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("networkManager.postAsync(method, params, listener)")
+    )
     fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        val thread = Thread { send(ApiMethod.POST(method), params, listener) }
-        if (registerManager.did != null && initialized) {
-            thread.start()
-        } else {
-            queue.add(thread)
-        }
+        networkManager.postAsync(method, params, listener)
     }
 
     /**
      * Asynchronous execution of a request if did is not specified and initialization has not been completed
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("networkManager.getAsync(method, params, listener)")
+    )
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        val thread = Thread { send(ApiMethod.GET(method), params, listener) }
-        if (registerManager.did != null && initialized) {
-            thread.start()
-        } else {
-            queue.add(thread)
-        }
+        networkManager.getAsync(method, params, listener)
     }
 
     /**
@@ -758,7 +745,7 @@ open class SDK {
                 params.put(CODE_FIELD, id)
             }
             if (params.length() > 0) {
-                sendAsync(TRACK_RECEIVED, params)
+                networkManager.postAsync(TRACK_RECEIVED, params)
             }
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
