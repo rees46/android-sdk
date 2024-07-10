@@ -341,11 +341,11 @@ open class SDK {
     @Deprecated(
         "This method will be removed in future versions. Use recommendationManager.",
         level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "recommendationManager.getRecommendation(recommender_code, listener)"
+            "recommendationManager.getRecommendation(recommender_code, ...)"
         )
     )
     fun recommend(recommender_code: String, listener: OnApiCallbackListener) {
-        recommendationManager.getRecommendation(recommender_code, listener)
+        recommendationManager.getRecommendation(recommender_code, Params(), listener)
     }
 
     /**
@@ -358,7 +358,7 @@ open class SDK {
     @Deprecated(
         "This method will be removed in future versions. Use recommendationManager.",
         level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
-            "recommendationManager.getRecommendation(code, params, listener)"
+            "recommendationManager.getRecommendation(code, ...)"
         )
     )
     fun recommend(code: String, params: Params, listener: OnApiCallbackListener) {

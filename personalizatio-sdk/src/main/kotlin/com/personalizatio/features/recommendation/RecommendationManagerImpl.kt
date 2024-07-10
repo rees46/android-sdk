@@ -13,24 +13,13 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
 
     override fun getRecommendation(
         recommenderCode: String,
+        imageSize: Int?,
+        withLocations: Boolean?,
         onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        val params = getRecommendationParams()
-        getRecommendation(recommenderCode, params, onGetRecommendation, onError)
-    }
+        val params = getRecommendationParams(false, imageSize, withLocations)
 
-    override fun getRecommendation(recommenderCode: String, listener: OnApiCallbackListener) {
-        val params = getRecommendationParams()
-        getRecommendation(recommenderCode, params, listener)
-    }
-
-    override fun getRecommendation(
-        recommenderCode: String,
-        params: Params,
-        onGetRecommendation: (GetRecommendationResponse) -> Unit,
-        onError: (Int, String?) -> Unit
-    ) {
         getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
@@ -47,20 +36,14 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
 
     override fun getExtendedRecommendation(
         recommenderCode: String,
+        imageSize: Int?,
+        withLocations: Boolean?,
         onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        val params = getRecommendationParams(extended = true)
-        getExtendedRecommendation(recommenderCode, params, onGetExtendedRecommendation, onError)
-    }
+        val params = getRecommendationParams(true, imageSize, withLocations)
 
-    override fun getExtendedRecommendation(
-        recommenderCode: String,
-        params: Params,
-        onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
-        onError: (Int, String?) -> Unit
-    ) {
-        getExtendedRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
+        getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
                     val getExtendedRecommendationResponse = Gson().fromJson(it.toString(), GetExtendedRecommendationResponse::class.java)
@@ -74,29 +57,28 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
         })
     }
 
-    override fun getExtendedRecommendation(recommenderCode: String, listener: OnApiCallbackListener) {
-        val params = getRecommendationParams(extended = true)
-        getRecommendation(recommenderCode, params, listener)
-    }
-
-    override fun getExtendedRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
-        params.put(GetRecommendationParameter.EXTENDED, true)
-        getRecommendation(recommenderCode, params, listener)
-    }
-
     override fun getRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
         sdk.getAsync("$GET_RECOMMENDATION_REQUEST/$recommenderCode", params.build(), listener)
     }
 
-    private fun getRecommendationParams(extended: Boolean? = null) : Params {
+    private fun getRecommendationParams(
+        extended: Boolean?,
+        imageSize: Int?,
+        withLocations: Boolean?) : Params {
         val params = Params()
 
-        if(extended != null) params.put(GetRecommendationParameter.EXTENDED, extended)
+        if(extended != null) params.put(EXTENDED_PARAMETER, extended)
+        if(imageSize != null) params.put(IMAGE_SIZE_PARAMETER, imageSize)
+        if(withLocations != null) params.put(WITH_LOCATIONS_PARAMETER, withLocations)
 
         return params
     }
 
     companion object {
         const val GET_RECOMMENDATION_REQUEST = "recommend"
+
+        const val EXTENDED_PARAMETER = "extended"
+        const val IMAGE_SIZE_PARAMETER = "resize_image"
+        const val WITH_LOCATIONS_PARAMETER = "with_locations"
     }
 }
