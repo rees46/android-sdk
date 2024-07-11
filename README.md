@@ -157,12 +157,14 @@ if (intent.extras != null) {
 
 ```kotlin
 val params = Params()
-params.put(Params.Parameter.EXTENDED, true)
 params.put(Params.Parameter.ITEM, "37")
-sdk.recommend("RECOMMENDER_CODE", params, object : OnApiCallbackListener() {
-    fun onSuccess(response: JSONObject) {
-        Log.i(TAG, "Recommender response: $response")
-    }
+// get recommendation with product ids
+sdk.recommendationManager.getRecommendation("RECOMMENDER_CODE", params, { getRecommendationResponse ->
+	Log.i(TAG, "Get recommandation response: $getRecommendationResponse")
+})
+// get recommendation with products info
+sdk.recommendationManager.getExtendedRecommendation("RECOMMENDER_CODE", params, { getExtendedRecommendationResponse ->
+    Log.i(TAG, "Get extended recommandation response: $getExtendedRecommendationResponse")
 })
 ```
 
@@ -170,34 +172,25 @@ sdk.recommend("RECOMMENDER_CODE", params, object : OnApiCallbackListener() {
 
 ```kotlin
 //Instant search
-val params = SearchParams()
-params.put(SearchParams.Parameter.LOCATIONS, "location")
-sdk.search("SEARCH_QUERY", SearchParams.TYPE.INSTANT, params, object : OnApiCallbackListener() {
-    fun onSuccess(response: JSONObject) {
-        Log.i(TAG, "Search response: $response")
-    }
+sdk.searchManager.searchInstant("SEARCH_QUERY", "locations", { searchInstantResponse ->
+    Log.i(TAG, "Search instant response: $searchInstantResponse")
 })
 
 //Full search
 val params = SearchParams()
 params.put(SearchParams.Parameter.LOCATIONS, "location")
 //Additional filters
-val filters = SearchFilters()
+val filters = SearchParams.SearchFilters()
 filters.put("voltage", arrayOf("11.1", "14.8"))
 params.put(SearchParams.Parameter.FILTERS, filters)
-//Disable clarification search
-params.put(SearchParams.Parameter.NO_CLARIFICATION, true)
-sdk.search("SEARCH_QUERY", SearchParams.TYPE.FULL, params, object : OnApiCallbackListener() {
-    fun onSuccess(response: JSONObject) {
-        Log.i(TAG, "Search response: $response")
-    }
+params.put(SearchParams.Parameter.NO_CLARIFICATION, true) //Disable clarification search
+sdk.searchManager.searchFull("SEARCH_QUERY", params, { searchInstantResponse ->
+    Log.i(TAG, "Search full response: $searchInstantResponse")
 })
 
 //Search blank request
-sdk.searchBlank(object : OnApiCallbackListener() {
-    fun onSuccess(response: JSONObject) {
-        Log.i(TAG, "Search response: $response")
-    }
+sdk.searchManager.searchBlank({ searchBlankResponse ->
+    Log.i(TAG, "Search blank response: $searchBlankResponse")
 })
 ```
 
@@ -205,10 +198,10 @@ sdk.searchBlank(object : OnApiCallbackListener() {
 
 ```kotlin
 //Product view
-sdk.track(Params.TrackEvent.VIEW, "37")
+sdk.trackEventManager.track(Params.TrackEvent.VIEW, "37")
 
 //Add to cart (simple)
-sdk.track(Params.TrackEvent.CART, "37")
+sdk.trackEventManager.track(Params.TrackEvent.CART, "37")
 
 //Add to cart (extended)
 val cart = Params()
@@ -217,7 +210,7 @@ cart.put(Params.Item("37")
     .set(Params.Item.COLUMN.AMOUNT, 2)
     )
     .put(Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"))
-sdk.track(Params.TrackEvent.CART, cart)
+sdk.trackEventManager.track(Params.TrackEvent.CART, cart)
 
 //Tracking full cart
 val fullCart = Params()
@@ -231,7 +224,7 @@ fullCart
         .set(Params.Item.COLUMN.AMOUNT, 1)
         .set(Params.Item.COLUMN.FASHION_SIZE, "M")
     )
-sdk.track(Params.TrackEvent.CART, fullCart)
+sdk.trackEventManager.track(Params.TrackEvent.CART, fullCart)
 
 //Purchase
 val purchase = Params()
@@ -243,20 +236,25 @@ purchase
     .put(Params.Parameter.ORDER_ID, "100234")
     .put(Params.Parameter.ORDER_PRICE, 100500)
     .put(Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"))
-sdk.track(Params.TrackEvent.PURCHASE, purchase)
+sdk.trackEventManager.track(Params.TrackEvent.PURCHASE, purchase)
 
 //Category view
-sdk.track(Params.TrackEvent.CATEGORY, Params().put(Params.Parameter.CATEGORY_ID, "100"))
+sdk.trackEventManager.track(Params.TrackEvent.CATEGORY, Params().put(Params.Parameter.CATEGORY_ID, "100"))
 
 //Wish
-sdk.track(Params.TrackEvent.WISH, "37")
-sdk.track(Params.TrackEvent.REMOVE_FROM_WISH, "37")
+sdk.trackEventManager.track(Params.TrackEvent.WISH, "37")
+sdk.trackEventManager.track(Params.TrackEvent.REMOVE_FROM_WISH, "37")
 
 //Custom events simple
-sdk.track("my_event")
+sdk.trackEventManager.customTrack("my_event")
 
 //Tracking with custom parameters
-sdk.track("my_event", "event category", "event label", 100)
+sdk.trackEventManager.customTrack(
+    event = "my_event",
+    category = "event category",
+    label = "event label",
+    value = 100
+)
 
 //Price drop
 sdk.subscribeForPriceDrop("37", 100.0)
