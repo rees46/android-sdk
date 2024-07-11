@@ -59,6 +59,21 @@ abstract class AbstractParams<P : AbstractParams<P>> {
         return this as P
     }
 
+    internal fun put(param: String, value: String): P {
+        params.put(param, value)
+        return this as P
+    }
+
+    internal fun put(param: String, value: Int): P {
+        params.put(param, value)
+        return this as P
+    }
+
+    internal fun put(param: String, value: Boolean): P {
+        params.put(param, value)
+        return this as P
+    }
+
     fun build(): JSONObject {
         return params
     }
