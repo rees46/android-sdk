@@ -13,12 +13,11 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
 
     override fun getRecommendation(
         recommenderCode: String,
-        imageSize: Int?,
-        withLocations: Boolean?,
+        params: Params,
         onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        val params = getRecommendationParams(false, imageSize, withLocations)
+        params.put(EXTENDED_PARAMETER, false)
 
         getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
@@ -36,12 +35,11 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
 
     override fun getExtendedRecommendation(
         recommenderCode: String,
-        imageSize: Int?,
-        withLocations: Boolean?,
+        params: Params,
         onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        val params = getRecommendationParams(true, imageSize, withLocations)
+        params.put(EXTENDED_PARAMETER, true)
 
         getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
@@ -61,24 +59,9 @@ internal class RecommendationManagerImpl(private val sdk: SDK) : RecommendationM
         sdk.getAsync("$GET_RECOMMENDATION_REQUEST/$recommenderCode", params.build(), listener)
     }
 
-    private fun getRecommendationParams(
-        extended: Boolean?,
-        imageSize: Int?,
-        withLocations: Boolean?) : Params {
-        val params = Params()
-
-        if(extended != null) params.put(EXTENDED_PARAMETER, extended)
-        if(imageSize != null) params.put(IMAGE_SIZE_PARAMETER, imageSize)
-        if(withLocations != null) params.put(WITH_LOCATIONS_PARAMETER, withLocations)
-
-        return params
-    }
-
     companion object {
         const val GET_RECOMMENDATION_REQUEST = "recommend"
 
         const val EXTENDED_PARAMETER = "extended"
-        const val IMAGE_SIZE_PARAMETER = "resize_image"
-        const val WITH_LOCATIONS_PARAMETER = "with_locations"
     }
 }

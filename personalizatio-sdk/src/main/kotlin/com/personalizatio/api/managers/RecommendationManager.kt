@@ -11,15 +11,13 @@ interface RecommendationManager {
      * Request a dynamic block of recommendations
      *
      * @param recommenderCode Recommendation block code
-     * @param imageSize Image size (px)
-     * @param withLocations With locations
+     * @param params Parameters for the request
      * @param onGetRecommendation Callback for get recommendation
      * @param onError Callback for error
      */
     fun getRecommendation(
         recommenderCode: String,
-        imageSize: Int? = null,
-        withLocations: Boolean? = null,
+        params: Params = Params(),
         onGetRecommendation: (GetRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
@@ -28,15 +26,13 @@ interface RecommendationManager {
      * Request a dynamic block of recommendations with all information about recommended products
      *
      * @param recommenderCode Recommendation block code
+     * @param params Parameters for the request
      * @param onGetExtendedRecommendation Callback for get extended recommendation
-     * @param imageSize Image size (px)
-     * @param withLocations With locations
      * @param onError Callback for error
      */
     fun getExtendedRecommendation(
         recommenderCode: String,
-        imageSize: Int? = null,
-        withLocations: Boolean? = null,
+        params: Params = Params(),
         onGetExtendedRecommendation: (GetExtendedRecommendationResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
