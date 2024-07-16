@@ -16,7 +16,6 @@ import com.personalizatio.di.DaggerSdkComponent
 import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
 import com.personalizatio.domain.features.preferences.usecase.InitPreferencesUseCase
 import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
-import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
@@ -51,10 +50,8 @@ open class SDK {
     lateinit var storiesManager: StoriesManager
     @Inject
     lateinit var recommendationManager: RecommendationManager
-
-    val trackEventManager: TrackEventManager by lazy {
-        TrackEventManagerImpl(this)
-    }
+    @Inject
+    lateinit var trackEventManager: TrackEventManager
 
     val searchManager: SearchManager by lazy {
         SearchManagerImpl(this)

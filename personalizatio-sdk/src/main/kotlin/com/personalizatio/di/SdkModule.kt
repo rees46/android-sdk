@@ -3,7 +3,9 @@ package com.personalizatio.di
 import com.personalizatio.RegisterManager
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
+import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.network.NetworkManagerImpl
 import com.personalizatio.stories.StoriesManager
 import dagger.Binds
@@ -30,6 +32,12 @@ class SdkModule {
     @Provides
     fun provideRecommendationManager(): RecommendationManager {
         return RecommendationManagerImpl()
+    }
+
+    @Singleton
+    @Provides
+    fun provideTrackEventManager(): TrackEventManager {
+        return TrackEventManagerImpl()
     }
 
     @Singleton
