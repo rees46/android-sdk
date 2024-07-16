@@ -20,7 +20,6 @@ import com.personalizatio.domain.features.preferences.usecase.SavePreferencesVal
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
-import com.personalizatio.network.NetworkManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
@@ -28,9 +27,6 @@ import com.personalizatio.stories.StoriesManager
 import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
 import org.json.JSONObject
-import java.security.SecureRandom
-import java.sql.Timestamp
-import java.util.Collections
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.roundToInt
@@ -44,18 +40,16 @@ open class SDK {
     private lateinit var shopId: String
     private lateinit var stream: String
 
-    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
     private lateinit var notificationHandler: NotificationHandler
     private var onMessageListener: OnMessageListener? = null
     internal var lastRecommendedBy: RecommendedBy? = null
     private var seance: String? = null
-    private var search: Search? = null
-    private var did: String? = null
-    var initialized = false
+    private var search: Search = Search(JSONObject())
 
-    val registerManager: RegisterManager by lazy {
-        RegisterManager(this)
-    }
+    @Inject
+    lateinit var registerManager: RegisterManager
+    @Inject
+    lateinit var networkManager: NetworkManager
 
     private val storiesManager: StoriesManager by lazy {
         StoriesManager(this)
@@ -72,8 +66,6 @@ open class SDK {
     val searchManager: SearchManager by lazy {
         SearchManagerImpl(this)
     }
-
-    lateinit var networkManager: NetworkManager
 
     @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
@@ -99,6 +91,9 @@ open class SDK {
         val sdkComponent = DaggerSdkComponent.factory().create()
         sdkComponent.inject(this)
         sdkComponent.inject(registerManager)
+        sdkComponent.inject(networkManager)
+
+        initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
 
         this.context = context
         this.shopId = shopId
@@ -106,87 +101,24 @@ open class SDK {
         this.preferencesKey = preferencesKey
         TAG = tag
 
-        NotificationHelper.notificationType = notificationType
-        NotificationHelper.notificationId = notificationId
-
-        initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
-
         segment = getPreferencesValueUseCase(
             "$preferencesKey.segment",
             arrayOf("A", "B")[Math.random().roundToInt()]
         ).toString()
         source = Source.createSource(getPreferencesValueUseCase)
 
+        NotificationHelper.notificationType = notificationType
+        NotificationHelper.notificationId = notificationId
+
         notificationHandler = NotificationHandler(context, savePreferencesValueUseCase)
         notificationHandler.createNotificationChannel()
 
-        networkManager = NetworkManagerImpl(this, apiUrl, shopId, seance, segment, stream, source)
-
-        registerManager.initialize(autoSendPushToken)
+        networkManager.initialize(apiUrl, shopId, seance, segment, stream, source)
+        registerManager.initialize(context.contentResolver, autoSendPushToken)
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {
         storiesManager.initialize(storiesView)
-    }
-
-    /**
-     * Initializing SDK
-     *
-     * @param sid String
-     */
-    internal fun initialized(sid: String?) {
-        initialized = true
-        seance = sid
-
-        //If there is no session, try to find it in the storage
-        //We need to separate sessions by time.
-        //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
-
-        if (seance == null && getPreferencesValueUseCase.invoke(SID_FIELD, null) != null
-            && getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0)
-            >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
-        ) {
-            seance = getPreferencesValueUseCase.invoke(SID_FIELD, null)
-        }
-
-        //If there is no session, generate a new one
-        if (seance == null) {
-            debug("Generate new seance")
-            seance = alphanumeric(10)
-        }
-        updateSidActivity()
-        debug(
-            "Device ID: " + did + ", seance: " + seance + ", last act: "
-                    + Timestamp(getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0))
-        )
-
-        //Seach
-        search = Search(JSONObject())
-
-        // Execute tasks from the queue
-        for (thread in queue) {
-            thread.start()
-        }
-        queue.clear()
-    }
-
-    /**
-     * Update last activity time
-     */
-    fun updateSidActivity() {
-        seance?.let {  seance ->
-            savePreferencesValueUseCase(SID_FIELD, seance)
-        }
-        savePreferencesValueUseCase(SID_LAST_ACT_FIELD, System.currentTimeMillis())
-    }
-
-    private fun alphanumeric(length: Int): String {
-        val sb = StringBuilder(length)
-        val secureRandom = SecureRandom()
-        for (i in 0 until length) {
-            sb.append(SOURCE[secureRandom.nextInt(SOURCE.length)])
-        }
-        return sb.toString()
     }
 
     /**
@@ -205,10 +137,10 @@ open class SDK {
         val thread = Thread {
             listener.accept(seance)
         }
-        if (initialized) {
+        if (registerManager.isInitialized) {
             thread.start()
         } else {
-            queue.add(thread)
+            networkManager.addTaskToQueue(thread)
         }
     }
 
@@ -700,19 +632,6 @@ open class SDK {
     }
 
     /**
-     * Send notification token
-     *
-     * @param token
-     * @param listener
-     */
-    internal fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        val params = HashMap<String, String>()
-        params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
-        params[TOKEN_FIELD] = token
-        sendAsync(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
-    }
-
-    /**
      * @param listener
      */
     fun stories(code: String, listener: OnApiCallbackListener) {
@@ -770,14 +689,10 @@ open class SDK {
         private const val SUBSCRIPTION_UNSUBSCRIBE = "subscriptions/unsubscribe_from_product_available"
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
-        private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
-        private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
         private const val TRACK_STORIES_FIELD = "track/stories"
-        private const val SID_LAST_ACT_FIELD = "sid_last_act"
         private const val BLANK_SEARCH_FIELD = "search/blank"
-        private const val PLATFORM_ANDROID_FIELD = "android"
         private const val SEGMENT_GET_FIELD = "segments/get"
         private const val TRACK_STORY_ID_FIELD = "story_id"
         private const val TRACK_SLIDE_ID_FIELD = "slide_id"
@@ -788,21 +703,17 @@ open class SDK {
         private const val SEGMENT_PHONE_FIELD = "email"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
-        private const val PLATFORM_FIELD = "platform"
         private const val TRACK_EVENT_FIELD = "event"
         private const val TRACK_CODE_FIELD = "code"
         private const val STORIES_FIELD = "stories"
-        private const val SESSION_CODE_EXPIRE = 2
         private const val SEANCE_FIELD = "seance"
         private const val SEARCH_FIELD = "search"
         private const val REMOVE_FIELD = "remove"
-        private const val TOKEN_FIELD = "token"
         private const val CODE_FIELD = "code"
         private const val INIT_FIELD = "init"
         private const val TYPE_FIELD = "type"
         private const val ADD_FIELD = "add"
         private const val DID_FIELD = "did"
-        private const val SID_FIELD = "sid"
         private const val ID_FIELD = "id"
         private const val TZ_FIELD = "tz"
 

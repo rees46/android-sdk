@@ -1,9 +1,19 @@
 package com.personalizatio.api.managers
 
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.notifications.Source
 import org.json.JSONObject
 
 interface NetworkManager {
+
+    fun initialize(
+        baseUrl: String,
+        shopId: String,
+        seance: String?,
+        segment: String,
+        stream: String,
+        source: Source
+    )
 
     /**
      * Direct query execution
