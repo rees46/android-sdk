@@ -5,6 +5,7 @@ import com.personalizatio.SDK
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.data.di.DataModule
 import com.personalizatio.domain.features.preferences.di.PreferencesComponent
+import com.personalizatio.stories.StoriesManager
 import dagger.Component
 import javax.inject.Singleton
 
@@ -24,4 +25,5 @@ interface SdkComponent {
     fun inject(sdk: SDK)
     fun inject(registerManager: RegisterManager)
     fun inject(networkManager: NetworkManager)
+    fun inject(storiesManager: StoriesManager)
 }

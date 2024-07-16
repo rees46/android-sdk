@@ -6,8 +6,16 @@ import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.params.ProductItemParams
+import com.personalizatio.domain.features.recommendation.usecase.GetRecommendedByUseCase
+import com.personalizatio.domain.features.recommendation.usecase.SetRecommendedByUseCase
+import javax.inject.Inject
 
 internal class TrackEventManagerImpl(val sdk: SDK) : TrackEventManager {
+
+    @Inject
+    lateinit var getRecommendedByUseCase: GetRecommendedByUseCase
+    @Inject
+    lateinit var setRecommendedByUseCase: SetRecommendedByUseCase
 
     override fun track(event: TrackEvent, productId: String) {
         track(event, Params().put(ProductItemParams(productId)), null)
@@ -19,9 +27,10 @@ internal class TrackEventManagerImpl(val sdk: SDK) : TrackEventManager {
         listener: OnApiCallbackListener?
     ) {
         params.put(EVENT_PARAMETER, event.value)
-        if (sdk.lastRecommendedBy != null) {
-            params.put(sdk.lastRecommendedBy!!)
-            sdk.lastRecommendedBy = null
+        val lastRecommendedBy = getRecommendedByUseCase()
+        if (lastRecommendedBy != null) {
+            params.put(lastRecommendedBy)
+            setRecommendedByUseCase(null)
         }
         sdk.sendAsync(PUSH_REQUEST, params.build(), listener)
     }

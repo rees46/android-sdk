@@ -50,9 +50,6 @@ internal class NetworkManagerImpl @Inject constructor(
         this.source = source
     }
 
-//    @Inject
-//    lateinit var registerManager: RegisterManager
-
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
     override fun post(method: String, params: JSONObject, listener: OnApiCallbackListener?) {

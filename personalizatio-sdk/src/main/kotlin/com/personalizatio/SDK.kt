@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.core.util.Consumer
 import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.Params.InternalParameter
-import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.Params.TrackEvent
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
@@ -18,7 +17,6 @@ import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValu
 import com.personalizatio.domain.features.preferences.usecase.InitPreferencesUseCase
 import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import com.personalizatio.features.track_event.TrackEventManagerImpl
-import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
@@ -42,7 +40,6 @@ open class SDK {
 
     private lateinit var notificationHandler: NotificationHandler
     private var onMessageListener: OnMessageListener? = null
-    internal var lastRecommendedBy: RecommendedBy? = null
     private var seance: String? = null
     private var search: Search = Search(JSONObject())
 
@@ -50,17 +47,13 @@ open class SDK {
     lateinit var registerManager: RegisterManager
     @Inject
     lateinit var networkManager: NetworkManager
-
-    private val storiesManager: StoriesManager by lazy {
-        StoriesManager(this)
-    }
+    @Inject
+    lateinit var storiesManager: StoriesManager
+    @Inject
+    lateinit var recommendationManager: RecommendationManager
 
     val trackEventManager: TrackEventManager by lazy {
         TrackEventManagerImpl(this)
-    }
-
-    val recommendationManager: RecommendationManager by lazy {
-        RecommendationManagerImpl(this)
     }
 
     val searchManager: SearchManager by lazy {
@@ -92,6 +85,7 @@ open class SDK {
         sdkComponent.inject(this)
         sdkComponent.inject(registerManager)
         sdkComponent.inject(networkManager)
+        sdkComponent.inject(storiesManager)
 
         initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
 
@@ -644,7 +638,7 @@ open class SDK {
      * @param code Stories block code
      */
     fun showStories(code: String) {
-        storiesManager.showStories(code)
+        storiesManager.showStories(context.mainLooper, code)
     }
 
     /**
