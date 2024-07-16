@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.R
+import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import com.personalizatio.notifications.Source
 import org.json.JSONException
 import org.json.JSONObject
@@ -16,7 +17,7 @@ import org.json.JSONObject
 
 class NotificationHandler(
     private val context: Context,
-    private val prefs: () -> SharedPreferences
+    private val savePreferencesValueUseCase: SavePreferencesValueUseCase
 ) {
 
     fun createNotificationChannel() {
@@ -57,7 +58,7 @@ class NotificationHandler(
                     source.update(
                         type = type,
                         id = code,
-                        preferences = prefs()
+                        savePreferencesValueUseCase = savePreferencesValueUseCase
                     )
                 } catch (e: JSONException) {
                     Log.e(TAG, e.message, e)

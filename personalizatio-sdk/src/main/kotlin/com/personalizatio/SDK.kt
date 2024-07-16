@@ -1,7 +1,6 @@
 package com.personalizatio
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.core.util.Consumer
@@ -15,7 +14,9 @@ import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.di.DaggerSdkComponent
-import com.personalizatio.di.SdkComponent
+import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
+import com.personalizatio.domain.features.preferences.usecase.InitPreferencesUseCase
+import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
@@ -31,6 +32,7 @@ import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Collections
 import java.util.Locale
+import javax.inject.Inject
 import kotlin.math.roundToInt
 
 open class SDK {
@@ -50,10 +52,6 @@ open class SDK {
     private var search: Search? = null
     private var did: String? = null
     var initialized = false
-
-    private val sdkComponent: SdkComponent by lazy {
-        DaggerSdkComponent.factory().create()
-    }
 
     val registerManager: RegisterManager by lazy {
         RegisterManager(this)
@@ -77,6 +75,13 @@ open class SDK {
 
     lateinit var networkManager: NetworkManager
 
+    @Inject
+    lateinit var initPreferencesUseCase: InitPreferencesUseCase
+    @Inject
+    lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
+    @Inject
+    lateinit var savePreferencesValueUseCase: SavePreferencesValueUseCase
+
     /**
      * @param shopId Shop key
      */
@@ -91,6 +96,10 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
+        val sdkComponent = DaggerSdkComponent.factory().create()
+        sdkComponent.inject(this)
+        sdkComponent.inject(registerManager)
+
         this.context = context
         this.shopId = shopId
         this.stream = stream
@@ -100,13 +109,15 @@ open class SDK {
         NotificationHelper.notificationType = notificationType
         NotificationHelper.notificationId = notificationId
 
-        segment = prefs().getString(
+        initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
+
+        segment = getPreferencesValueUseCase(
             "$preferencesKey.segment",
             arrayOf("A", "B")[Math.random().roundToInt()]
         ).toString()
-        source = Source.createSource(prefs())
+        source = Source.createSource(getPreferencesValueUseCase)
 
-        notificationHandler = NotificationHandler(context) { prefs() }
+        notificationHandler = NotificationHandler(context, savePreferencesValueUseCase)
         notificationHandler.createNotificationChannel()
 
         networkManager = NetworkManagerImpl(this, apiUrl, shopId, seance, segment, stream, source)
@@ -116,13 +127,6 @@ open class SDK {
 
     fun initializeStoriesView(storiesView: StoriesView) {
         storiesManager.initialize(storiesView)
-    }
-
-    /**
-     * @return preferences
-     */
-    internal fun prefs(): SharedPreferences {
-        return context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
     }
 
     /**
@@ -138,11 +142,11 @@ open class SDK {
         //We need to separate sessions by time.
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
-        if (seance == null && prefs().getString(SID_FIELD, null) != null
-            && prefs().getLong(SID_LAST_ACT_FIELD, 0)
+        if (seance == null && getPreferencesValueUseCase.invoke(SID_FIELD, null) != null
+            && getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0)
             >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
         ) {
-            seance = prefs().getString(SID_FIELD, null)
+            seance = getPreferencesValueUseCase.invoke(SID_FIELD, null)
         }
 
         //If there is no session, generate a new one
@@ -153,7 +157,7 @@ open class SDK {
         updateSidActivity()
         debug(
             "Device ID: " + did + ", seance: " + seance + ", last act: "
-                    + Timestamp(prefs().getLong(SID_LAST_ACT_FIELD, 0))
+                    + Timestamp(getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0))
         )
 
         //Seach
@@ -170,10 +174,10 @@ open class SDK {
      * Update last activity time
      */
     fun updateSidActivity() {
-        val edit = prefs().edit()
-        edit.putString(SID_FIELD, seance)
-        edit.putLong(SID_LAST_ACT_FIELD, System.currentTimeMillis())
-        edit.apply()
+        seance?.let {  seance ->
+            savePreferencesValueUseCase(SID_FIELD, seance)
+        }
+        savePreferencesValueUseCase(SID_LAST_ACT_FIELD, System.currentTimeMillis())
     }
 
     private fun alphanumeric(length: Int): String {
@@ -807,7 +811,7 @@ open class SDK {
         }
 
         private val notificationHandler: NotificationHandler by lazy {
-            NotificationHandler(instance.context) { instance.prefs() }
+            NotificationHandler(instance.context, instance.savePreferencesValueUseCase)
         }
 
         fun userAgent(): String {

@@ -8,6 +8,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.personalizatio.SDK.Companion.TAG
 import com.personalizatio.SDK.Companion.debug
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
+import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import com.personalizatio.utils.PreferencesUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,9 +18,15 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.Date
 import java.util.TimeZone
+import javax.inject.Inject
 
 class RegisterManager(val sdk: SDK) {
     private var autoSendPushToken: Boolean = false
+
+    @Inject
+    lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
+    @Inject
+    lateinit var savePreferencesValueUseCase: SavePreferencesValueUseCase
 
     internal var did: String? = null
         private set
@@ -30,7 +38,7 @@ class RegisterManager(val sdk: SDK) {
     internal fun initialize(autoSendPushToken: Boolean) {
         this.autoSendPushToken = autoSendPushToken
 
-        if(did != null) return
+        if (did != null) return
 
         did = getDid()
 
@@ -38,8 +46,7 @@ class RegisterManager(val sdk: SDK) {
             did = Settings.Secure.getString(sdk.context.contentResolver, Settings.Secure.ANDROID_ID)
 
             init()
-        }
-        else {
+        } else {
             initializeSdk(null)
         }
     }
@@ -67,7 +74,8 @@ class RegisterManager(val sdk: SDK) {
 
             if (tokenField == null
                 || tokenField != token
-                || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS) {
+                || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS
+            ) {
 
                 sdk.setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
@@ -93,13 +101,13 @@ class RegisterManager(val sdk: SDK) {
                 private var attempt = 0
 
                 override fun onSuccess(response: JSONObject?) {
-                    if(response == null) {
+                    if (response == null) {
                         SDK.error("Init response is not correct.")
                         return
                     }
 
                     did = response.optString("did")
-                    if(did.isNullOrEmpty()) {
+                    if (did.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct did field.")
                         return
                     }
@@ -107,7 +115,7 @@ class RegisterManager(val sdk: SDK) {
                     saveDid()
 
                     val seance = response.optString("seance")
-                    if(seance.isNullOrEmpty()) {
+                    if (seance.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct seance field.")
                         return
                     }
@@ -125,8 +133,7 @@ class RegisterManager(val sdk: SDK) {
                             delay(1000L * attempt)
                             init()
                         }
-                    }
-                    else {
+                    } else {
                         SDK.error("Init error: code: $code, $msg")
                     }
                 }
@@ -143,32 +150,35 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(sdk.context.contentResolver, FIREBASE_TEST_LAB)
+        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
+            sdk.context.contentResolver,
+            FIREBASE_TEST_LAB
+        )
 
-    private fun getDid() : String? {
-        return sdk.prefs().getString(DID_PREFS_KEY, null)
+    private fun getDid(): String? {
+        return getPreferencesValueUseCase(DID_PREFS_KEY, null)
     }
 
     private fun saveDid() {
         did?.let { did ->
-            PreferencesUtils.saveField(sdk.prefs(), DID_PREFS_KEY, did)
+            savePreferencesValueUseCase(DID_PREFS_KEY, did)
         }
     }
 
-    private fun getToken() : String? {
-        return sdk.prefs().getString(TOKEN_PREFS_KEY, null)
+    private fun getToken(): String? {
+        return getPreferencesValueUseCase(TOKEN_PREFS_KEY, null)
     }
 
     private fun saveToken(token: String) {
-        PreferencesUtils.saveField(sdk.prefs(), TOKEN_PREFS_KEY, token)
+        savePreferencesValueUseCase(TOKEN_PREFS_KEY, token)
     }
 
-    private fun getLastPushTokenMilliseconds() : Long {
-        return sdk.prefs().getLong(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0)
+    private fun getLastPushTokenMilliseconds(): Long {
+        return getPreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0)
     }
 
     private fun saveLastPushTokenDate(date: Date) {
-        PreferencesUtils.saveField(sdk.prefs(), LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
+        savePreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
     }
 
     companion object {

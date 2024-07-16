@@ -1,6 +1,7 @@
 package com.personalizatio.notifications
 
-import android.content.SharedPreferences
+import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
+import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import org.json.JSONObject
 
 data class Source(private var type: String?, private var id: String?,  var time: Long) {
@@ -22,16 +23,14 @@ data class Source(private var type: String?, private var id: String?,  var time:
      * @param type тип источника: bulk, chain, transactional
      * @param id   идентификатор сообщения
      */
-    fun update(type: String, id: String, preferences: SharedPreferences) {
+    fun update(type: String, id: String, savePreferencesValueUseCase: SavePreferencesValueUseCase) {
         this.type = type
         this.id = id
         this.time = System.currentTimeMillis()
 
-        preferences.edit()
-            .putString(SOURCE_TYPE_PREFS_KEY, type)
-            .putString(SOURCE_ID_PREFS_KEY, id)
-            .putLong(SOURCE_TIME_PREFS_KEY, time)
-            .apply()
+        savePreferencesValueUseCase.invoke(SOURCE_TYPE_PREFS_KEY, type)
+        savePreferencesValueUseCase.invoke(SOURCE_ID_PREFS_KEY, id)
+        savePreferencesValueUseCase.invoke(SOURCE_TIME_PREFS_KEY, time)
     }
 
     private fun isTimeCorrect(timeDuration: Int) : Boolean {
@@ -43,10 +42,10 @@ data class Source(private var type: String?, private var id: String?,  var time:
         private const val SOURCE_ID_PREFS_KEY: String = "source_id"
         private const val SOURCE_TIME_PREFS_KEY: String = "source_time"
 
-        fun createSource(preferences: SharedPreferences) : Source {
-            val type = preferences.getString(SOURCE_TYPE_PREFS_KEY, null)
-            val id = preferences.getString(SOURCE_ID_PREFS_KEY, null)
-            val time = preferences.getLong(SOURCE_TIME_PREFS_KEY, 0)
+        fun createSource(getPreferencesValueUseCase: GetPreferencesValueUseCase) : Source {
+            val type = getPreferencesValueUseCase.invoke(SOURCE_TYPE_PREFS_KEY, null)
+            val id = getPreferencesValueUseCase.invoke(SOURCE_ID_PREFS_KEY, null)
+            val time = getPreferencesValueUseCase.invoke(SOURCE_TIME_PREFS_KEY, 0)
             return Source(type, id, time)
         }
     }
