@@ -14,6 +14,8 @@ import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
+import com.personalizatio.di.DaggerSdkComponent
+import com.personalizatio.di.SdkComponent
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
@@ -48,6 +50,10 @@ open class SDK {
     private var search: Search? = null
     private var did: String? = null
     var initialized = false
+
+    private val sdkComponent: SdkComponent by lazy {
+        DaggerSdkComponent.factory().create()
+    }
 
     val registerManager: RegisterManager by lazy {
         RegisterManager(this)
