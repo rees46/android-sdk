@@ -3,8 +3,10 @@ package com.personalizatio.di
 import com.personalizatio.RegisterManager
 import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.RecommendationManager
+import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
+import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.features.track_event.TrackEventManagerImpl
 import com.personalizatio.network.NetworkManagerImpl
 import com.personalizatio.stories.StoriesManager
@@ -44,5 +46,11 @@ class SdkModule {
     @Provides
     fun provideStoriesManager(): StoriesManager {
         return StoriesManager()
+    }
+
+    @Singleton
+    @Provides
+    fun provideSearchManager(): SearchManager {
+        return SearchManagerImpl()
     }
 }

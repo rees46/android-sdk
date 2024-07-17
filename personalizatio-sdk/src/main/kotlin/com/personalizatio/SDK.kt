@@ -16,7 +16,6 @@ import com.personalizatio.di.DaggerSdkComponent
 import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
 import com.personalizatio.domain.features.preferences.usecase.InitPreferencesUseCase
 import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
-import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
 import com.personalizatio.notifications.Source
@@ -52,10 +51,8 @@ open class SDK {
     lateinit var recommendationManager: RecommendationManager
     @Inject
     lateinit var trackEventManager: TrackEventManager
-
-    val searchManager: SearchManager by lazy {
-        SearchManagerImpl(this)
-    }
+    @Inject
+    lateinit var searchManager: SearchManager
 
     @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
@@ -83,6 +80,7 @@ open class SDK {
         sdkComponent.inject(registerManager)
         sdkComponent.inject(networkManager)
         sdkComponent.inject(storiesManager)
+        sdkComponent.inject(searchManager)
 
         initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
 
