@@ -10,14 +10,11 @@ import com.personalizatio.domain.features.recommendation.usecase.GetRecommendedB
 import com.personalizatio.domain.features.recommendation.usecase.SetRecommendedByUseCase
 import javax.inject.Inject
 
-internal class TrackEventManagerImpl : TrackEventManager {
-
-    @Inject
-    lateinit var networkManager: NetworkManager
-    @Inject
-    lateinit var getRecommendedByUseCase: GetRecommendedByUseCase
-    @Inject
-    lateinit var setRecommendedByUseCase: SetRecommendedByUseCase
+internal class TrackEventManagerImpl @Inject constructor(
+    val networkManager: NetworkManager,
+    val getRecommendedByUseCase: GetRecommendedByUseCase,
+    val setRecommendedByUseCase: SetRecommendedByUseCase
+) : TrackEventManager {
 
     override fun track(event: TrackEvent, productId: String) {
         track(event, Params().put(ProductItemParams(productId)), null)

@@ -12,10 +12,9 @@ import com.personalizatio.api.responses.search.SearchInstantResponse
 import org.json.JSONObject
 import javax.inject.Inject
 
-internal class SearchManagerImpl : SearchManager {
-
-    @Inject
-    lateinit var networkManager: NetworkManager
+internal class SearchManagerImpl @Inject constructor(
+    val networkManager: NetworkManager
+) : SearchManager {
 
     override fun searchFull(
         query: String,

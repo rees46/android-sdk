@@ -14,16 +14,12 @@ import org.json.JSONException
 import org.json.JSONObject
 import javax.inject.Inject
 
-class StoriesManager {
+class StoriesManager @Inject constructor(
+    val networkManager: NetworkManager,
+    val setRecommendedByUseCase: SetRecommendedByUseCase
+) {
 
     private lateinit var storiesView: StoriesView
-
-    @Inject
-    lateinit var networkManager: NetworkManager
-    @Inject
-    lateinit var setRecommendedByTypeUseCase: SetRecommendedByUseCase
-
-    internal fun initialize() {}
 
     internal fun initialize(storiesView: StoriesView) {
         this.storiesView = storiesView
@@ -73,7 +69,7 @@ class StoriesManager {
             params.put(SLIDE_ID_PARAMS_NAME, slideId)
             params.put(CODE_PARAMS_NAME, code)
 
-            setRecommendedByTypeUseCase(RecommendedBy(RecommendedBy.TYPE.STORIES, code))
+            setRecommendedByUseCase(RecommendedBy(RecommendedBy.TYPE.STORIES, code))
 
             networkManager.postAsync(TRACK_STORIES_METHOD, params, null)
         } catch (e: JSONException) {

@@ -10,10 +10,9 @@ import com.personalizatio.api.responses.recommendation.GetExtendedRecommendation
 import org.json.JSONObject
 import javax.inject.Inject
 
-internal class RecommendationManagerImpl : RecommendationManager {
-
-    @Inject
-    lateinit var networkManager: NetworkManager
+internal class RecommendationManagerImpl @Inject constructor(
+    val networkManager: NetworkManager
+) : RecommendationManager {
 
     override fun getRecommendation(
         recommenderCode: String,

@@ -24,8 +24,4 @@ interface SdkComponent {
     fun preferencesComponent(): PreferencesComponent.Factory
 
     fun inject(sdk: SDK)
-    fun inject(registerManager: RegisterManager)
-    fun inject(networkManager: NetworkManager)
-    fun inject(storiesManager: StoriesManager)
-    fun inject(searchManager: SearchManager)
 }

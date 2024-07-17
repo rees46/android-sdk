@@ -77,10 +77,6 @@ open class SDK {
     ) {
         val sdkComponent = DaggerSdkComponent.factory().create()
         sdkComponent.inject(this)
-        sdkComponent.inject(registerManager)
-        sdkComponent.inject(networkManager)
-        sdkComponent.inject(storiesManager)
-        sdkComponent.inject(searchManager)
 
         initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
 
