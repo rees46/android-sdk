@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView.ItemDecoration
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.personalizatio.R
+import com.personalizatio.stories.StoryState
 import com.personalizatio.stories.models.Story
 import kotlin.math.abs
 
@@ -33,8 +34,8 @@ android.R.style.Theme_Translucent_NoTitleBar
     private val adapter: ViewPagerAdapter
     private var mViewPager: ViewPager2
 
-    fun interface OnProgressState {
-        fun onState(running: Boolean)
+    fun interface OnStoryStateListener {
+        fun onStoryStateChanged(storyState: StoryState)
     }
 
     init {
@@ -50,8 +51,12 @@ android.R.style.Theme_Translucent_NoTitleBar
 
         mViewPager = findViewById(R.id.view_pager)
 
-        adapter = ViewPagerAdapter { running: Boolean ->
-            mViewPager.isUserInputEnabled = running
+        adapter = ViewPagerAdapter { storyState ->
+            when (storyState) {
+                StoryState.RUNNING -> mViewPager.isUserInputEnabled = true
+                StoryState.PAUSE -> mViewPager.isUserInputEnabled = false
+                StoryState.CLOSE -> cancel()
+            }
         }
 
         setOnCancelListener {
@@ -158,10 +163,12 @@ android.R.style.Theme_Translucent_NoTitleBar
 
     internal class PagerHolder(itemView: StoryView) : RecyclerView.ViewHolder(itemView)
 
-    internal inner class ViewPagerAdapter(private val stateListener: OnProgressState) :
+    internal inner class ViewPagerAdapter(
+        private val storyStateListener: OnStoryStateListener
+    ) :
         RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
-            return PagerHolder(StoryView(storiesView, stateListener))
+            return PagerHolder(StoryView(storiesView, storyStateListener))
         }
 
         override fun onViewAttachedToWindow(holder: PagerHolder) {

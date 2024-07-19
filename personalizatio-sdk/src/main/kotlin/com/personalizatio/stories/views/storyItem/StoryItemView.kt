@@ -46,6 +46,7 @@ import com.personalizatio.Product
 import com.personalizatio.R
 import com.personalizatio.SDK
 import com.personalizatio.stories.Settings
+import com.personalizatio.stories.StoryState
 import com.personalizatio.stories.models.Slide
 import com.personalizatio.stories.models.elements.ButtonElement
 import com.personalizatio.stories.models.elements.HeaderElement
@@ -53,15 +54,17 @@ import com.personalizatio.stories.models.elements.ProductElement
 import com.personalizatio.stories.models.elements.ProductsElement
 import com.personalizatio.stories.models.elements.TextBlockElement
 import com.personalizatio.stories.viewAdapters.ProductsAdapter
+import com.personalizatio.stories.views.StoryDialog
 import com.personalizatio.ui.utils.ColorUtils
 import com.personalizatio.ui.utils.TextUtils
 
 @SuppressLint("ViewConstructor")
 class StoryItemView(
     private val context: Context,
-    private val itemClickListener: OnLinkClickListener?,
     private val code: String,
-    private val settings: Settings
+    private val settings: Settings,
+    private val itemClickListener: OnLinkClickListener?,
+    private val storyStateListener: StoryDialog.OnStoryStateListener
 ) : ConstraintLayout(context) {
 
     interface OnPageListener {
@@ -293,11 +296,8 @@ class StoryItemView(
                 }
                 Log.d(SDK.TAG, "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else ""))
 
-                if (itemClickListener == null
-                    || product == null && link != null && itemClickListener.onClick(link)
-                    || product != null && itemClickListener.onClick(product)) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
-                }
+                storyStateListener.onStoryStateChanged(StoryState.CLOSE)
+
                 SDK.instance.trackStory(
                     event = "click",
                     code = code,
@@ -305,6 +305,11 @@ class StoryItemView(
                     slideId = slide.id
                 )
 
+                if (itemClickListener == null
+                    || product == null && link != null && itemClickListener.onClick(link)
+                    || product != null && itemClickListener.onClick(product)) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                }
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
