@@ -15,12 +15,17 @@ import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.common.base.Strings
+import com.personalizatio.OnLinkClickListener
 import com.personalizatio.Product
 import com.personalizatio.R
 import com.personalizatio.SDK
-import com.personalizatio.stories.views.StoriesView
+import com.personalizatio.stories.Settings
 
-class ProductsAdapter(private val storiesView: StoriesView) :
+internal class ProductsAdapter(
+    private val itemClickListener: OnLinkClickListener?,
+    private val code: String,
+    private val settings: Settings
+) :
     RecyclerView.Adapter<ProductsAdapter.ViewHolder>() {
     private var products: List<Product> = ArrayList()
     private var storyId = 0
@@ -62,7 +67,6 @@ class ProductsAdapter(private val storiesView: StoriesView) :
         fun bind(product: Product) {
             Glide.with(image.context).load(product.image).into(image)
             name.text = product.name
-            val settings = storiesView.settings
             name.typeface = settings.font_family
             discount.typeface = settings.font_family
             oldPrice.typeface = settings.font_family
@@ -80,7 +84,7 @@ class ProductsAdapter(private val storiesView: StoriesView) :
             itemView.setOnClickListener {
                 Log.d(SDK.TAG, "click: " + product.name + ", " + product.url)
                 try {
-                    if (storiesView.itemClickListener?.onClick(product) == true) {
+                    if (itemClickListener?.onClick(product) == true) {
                         itemView.context.startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
@@ -88,7 +92,7 @@ class ProductsAdapter(private val storiesView: StoriesView) :
                             )
                         )
                     }
-                    SDK.instance.trackStory("click", storiesView.code, storyId, slideId)
+                    SDK.instance.trackStory("click", code, storyId, slideId)
                 } catch (e: ActivityNotFoundException) {
                     Log.e(SDK.TAG, e.message, e)
                     Toast.makeText(itemView.context, "Unknown error", Toast.LENGTH_SHORT).show()

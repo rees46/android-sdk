@@ -300,7 +300,12 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
     internal inner class ViewPagerAdapter : RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
-            return PagerHolder(StoryItemView(storiesView))
+            return PagerHolder(StoryItemView(
+                context = storiesView.context,
+                itemClickListener = storiesView.itemClickListener,
+                code = storiesView.code,
+                settings = storiesView.settings)
+            )
         }
 
         override fun onBindViewHolder(holder: PagerHolder, position: Int) {
