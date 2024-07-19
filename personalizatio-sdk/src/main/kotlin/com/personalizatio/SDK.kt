@@ -15,10 +15,8 @@ import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.di.DaggerSdkComponent
 import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
 import com.personalizatio.domain.features.preferences.usecase.InitPreferencesUseCase
-import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
 import com.personalizatio.notification.NotificationHandler
 import com.personalizatio.notification.NotificationHelper
-import com.personalizatio.notifications.Source
 import com.personalizatio.stories.StoriesManager
 import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
@@ -30,17 +28,14 @@ import kotlin.math.roundToInt
 open class SDK {
 
     internal lateinit var context: Context
-    private lateinit var preferencesKey: String
     private lateinit var segment: String
-    private lateinit var source: Source
-    private lateinit var shopId: String
-    private lateinit var stream: String
 
-    private lateinit var notificationHandler: NotificationHandler
     private var onMessageListener: OnMessageListener? = null
     private var seance: String? = null
     private var search: Search = Search(JSONObject())
 
+    @Inject
+    lateinit var notificationHandler: NotificationHandler
     @Inject
     lateinit var registerManager: RegisterManager
     @Inject
@@ -58,8 +53,6 @@ open class SDK {
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
     @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
-    @Inject
-    lateinit var savePreferencesValueUseCase: SavePreferencesValueUseCase
 
     /**
      * @param shopId Shop key
@@ -81,24 +74,18 @@ open class SDK {
         initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
 
         this.context = context
-        this.shopId = shopId
-        this.stream = stream
-        this.preferencesKey = preferencesKey
         TAG = tag
 
         segment = getPreferencesValueUseCase(
             "$preferencesKey.segment",
             arrayOf("A", "B")[Math.random().roundToInt()]
         ).toString()
-        source = Source.createSource(getPreferencesValueUseCase)
 
         NotificationHelper.notificationType = notificationType
         NotificationHelper.notificationId = notificationId
 
-        notificationHandler = NotificationHandler(context, savePreferencesValueUseCase)
-        notificationHandler.createNotificationChannel()
-
-        networkManager.initialize(apiUrl, shopId, seance, segment, stream, source)
+        notificationHandler.initialize(context)
+        networkManager.initialize(apiUrl, shopId, seance, segment, stream)
         registerManager.initialize(context.contentResolver, autoSendPushToken)
     }
 
@@ -135,8 +122,7 @@ open class SDK {
     fun notificationClicked(extras: Bundle?) {
         notificationHandler.notificationClicked(
             extras = extras,
-            sendAsync = { method, params -> networkManager.postAsync(method, params) },
-            source = source
+            sendAsync = { method, params -> networkManager.postAsync(method, params) }
         )
     }
 
@@ -666,6 +652,15 @@ open class SDK {
         }
     }
 
+    private fun receiveMessage(remoteMessage: RemoteMessage) {
+        notificationReceived(remoteMessage.data)
+
+        onMessageListener?.let { listener ->
+            val data = notificationHandler.prepareData(remoteMessage)
+            listener.onMessage(data)
+        }
+    }
+
     companion object {
 
         var TAG = "SDK"
@@ -676,11 +671,8 @@ open class SDK {
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
-        private const val TRACK_STORIES_FIELD = "track/stories"
         private const val BLANK_SEARCH_FIELD = "search/blank"
         private const val SEGMENT_GET_FIELD = "segments/get"
-        private const val TRACK_STORY_ID_FIELD = "story_id"
-        private const val TRACK_SLIDE_ID_FIELD = "slide_id"
         private const val TRACK_RECEIVED = "track/received"
         private const val SET_PROFILE_FIELD = "profile/set"
         private const val SEGMENT_ID_FIELD = "segment_id"
@@ -688,26 +680,15 @@ open class SDK {
         private const val SEGMENT_PHONE_FIELD = "email"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
-        private const val TRACK_EVENT_FIELD = "event"
-        private const val TRACK_CODE_FIELD = "code"
-        private const val STORIES_FIELD = "stories"
-        private const val SEANCE_FIELD = "seance"
         private const val SEARCH_FIELD = "search"
         private const val REMOVE_FIELD = "remove"
         private const val CODE_FIELD = "code"
-        private const val INIT_FIELD = "init"
         private const val TYPE_FIELD = "type"
         private const val ADD_FIELD = "add"
-        private const val DID_FIELD = "did"
         private const val ID_FIELD = "id"
-        private const val TZ_FIELD = "tz"
 
         val instance: SDK by lazy {
             SDK()
-        }
-
-        private val notificationHandler: NotificationHandler by lazy {
-            NotificationHandler(instance.context, instance.savePreferencesValueUseCase)
         }
 
         fun userAgent(): String {
@@ -746,12 +727,7 @@ open class SDK {
          * @param remoteMessage
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance.notificationReceived(remoteMessage.data)
-
-            instance.onMessageListener?.let { listener ->
-                val data = notificationHandler.prepareData(remoteMessage)
-                listener.onMessage(data)
-            }
+            instance.receiveMessage(remoteMessage)
         }
     }
 }

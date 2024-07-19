@@ -24,15 +24,12 @@ import java.util.Date
 import java.util.TimeZone
 import javax.inject.Inject
 
-class RegisterManager {
+class RegisterManager @Inject constructor(
+    private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
+    private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
+    private val networkManager: Lazy<NetworkManager>,
+){
     private var autoSendPushToken: Boolean = false
-
-    @Inject
-    lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
-    @Inject
-    lateinit var savePreferencesValueUseCase: SavePreferencesValueUseCase
-    @Inject
-    lateinit var networkManager: Lazy<NetworkManager>
 
     private lateinit var contentResolver: ContentResolver
 

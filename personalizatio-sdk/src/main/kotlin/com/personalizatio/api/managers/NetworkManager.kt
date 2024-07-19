@@ -1,7 +1,6 @@
 package com.personalizatio.api.managers
 
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.notifications.Source
 import org.json.JSONObject
 
 interface NetworkManager {
@@ -11,8 +10,7 @@ interface NetworkManager {
         shopId: String,
         seance: String?,
         segment: String,
-        stream: String,
-        source: Source
+        stream: String
     )
 
     /**

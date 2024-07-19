@@ -5,7 +5,7 @@ import com.personalizatio.RegisterManager
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.notifications.Source
+import com.personalizatio.domain.features.notification.usecase.GetSourceObjectUseCase
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -24,7 +24,8 @@ import java.util.Collections
 import javax.inject.Inject
 
 internal class NetworkManagerImpl @Inject constructor(
-    private val registerManager: RegisterManager
+    private val registerManager: RegisterManager,
+    private val getSourceObjectUseCase: GetSourceObjectUseCase
 ): NetworkManager {
 
     private lateinit var baseUrl: String
@@ -32,22 +33,19 @@ internal class NetworkManagerImpl @Inject constructor(
     private var seance: String? = null
     private lateinit var segment: String
     private lateinit var stream: String
-    private lateinit var source: Source
 
     override fun initialize(
         baseUrl: String,
         shopId: String,
         seance: String?,
         segment: String,
-        stream: String,
-        source: Source
+        stream: String
     ) {
         this.baseUrl = baseUrl
         this.shopId = shopId
         this.seance = seance
         this.segment = segment
         this.stream = stream
-        this.source = source
     }
 
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
@@ -107,7 +105,7 @@ internal class NetworkManagerImpl @Inject constructor(
             params.put(SEGMENT_PARAMS_FIELD, segment)
             params.put(STREAM_PARAMS_FIELD, stream)
 
-            val sourceJson = source.getJsonObject(sourceTimeDuration)
+            val sourceJson = getSourceObjectUseCase(sourceTimeDuration)
             if (sourceJson != null) {
                 params.put(SOURCE_PARAMS_FIELD, sourceJson)
             }

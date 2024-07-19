@@ -1,5 +1,6 @@
 package com.personalizatio.data.di
 
+import com.personalizatio.data.repository.notification.SourceRepository
 import com.personalizatio.data.repository.preferences.PreferencesRepository
 import com.personalizatio.data.repository.recommendation.RecommendationRepository
 import dagger.Module
@@ -19,5 +20,11 @@ class DataModule {
     @Provides
     fun provideRecommendationRepository(): RecommendationRepository {
         return RecommendationRepository()
+    }
+
+    @Singleton
+    @Provides
+    fun provideSourceRepository(preferencesRepository: PreferencesRepository): SourceRepository {
+        return SourceRepository(preferencesRepository)
     }
 }
