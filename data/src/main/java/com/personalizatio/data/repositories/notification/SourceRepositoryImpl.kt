@@ -1,13 +1,15 @@
-package com.personalizatio.data.repository.notification
+package com.personalizatio.data.repositories.notification
 
-import com.personalizatio.data.repository.preferences.PreferencesRepository
+import com.personalizatio.data.repositories.preferences.PreferencesRepositoryImpl
+import com.personalizatio.domain.repositories.SourceRepository
 import org.json.JSONObject
 import javax.inject.Inject
 
-class SourceRepository @Inject constructor(
-    private val preferencesRepository: PreferencesRepository
-) {
-    fun getJsonObject(timeDuration: Int): JSONObject? {
+class SourceRepositoryImpl @Inject constructor(
+    private val preferencesRepository: PreferencesRepositoryImpl
+) : SourceRepository {
+
+    override fun getJsonObject(timeDuration: Int): JSONObject? {
         val type = preferencesRepository.getValue(SOURCE_TYPE_PREFS_KEY, null)
 
         if (type == null || !isTimeCorrect(timeDuration)) {
@@ -22,7 +24,7 @@ class SourceRepository @Inject constructor(
         return jsonObject
     }
 
-    fun update(type: String, id: String) {
+    override fun update(type: String, id: String) {
         preferencesRepository.saveValue(SOURCE_TYPE_PREFS_KEY, type)
         preferencesRepository.saveValue(SOURCE_ID_PREFS_KEY, id)
         preferencesRepository.saveValue(SOURCE_TIME_PREFS_KEY, System.currentTimeMillis())

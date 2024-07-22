@@ -1,6 +1,6 @@
 package com.personalizatio.domain.features.preferences.usecase
 
-import com.personalizatio.data.repository.preferences.PreferencesRepository
+import com.personalizatio.domain.repositories.PreferencesRepository
 import javax.inject.Inject
 
 class SavePreferencesValueUseCase @Inject constructor(

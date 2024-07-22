@@ -1,4 +1,4 @@
-package com.personalizatio.data.model
+package com.personalizatio.domain.models
 
 class RecommendedBy {
     enum class TYPE(val value: String) {

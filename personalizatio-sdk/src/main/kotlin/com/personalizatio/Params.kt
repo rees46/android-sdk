@@ -147,7 +147,7 @@ class Params : AbstractParams<Params>() {
         return putRecommendedBy(recommendedBy.type, recommendedBy.code)
     }
 
-    internal fun put(recommendedBy: com.personalizatio.data.model.RecommendedBy): Params {
+    internal fun put(recommendedBy: com.personalizatio.domain.models.RecommendedBy): Params {
         return putRecommendedBy(recommendedBy.type, recommendedBy.code)
     }
 

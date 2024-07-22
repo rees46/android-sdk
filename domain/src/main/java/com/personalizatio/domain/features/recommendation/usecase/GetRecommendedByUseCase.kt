@@ -1,7 +1,7 @@
 package com.personalizatio.domain.features.recommendation.usecase
 
-import com.personalizatio.data.model.RecommendedBy
-import com.personalizatio.data.repository.recommendation.RecommendationRepository
+import com.personalizatio.domain.models.RecommendedBy
+import com.personalizatio.domain.repositories.RecommendationRepository
 import javax.inject.Inject
 
 class GetRecommendedByUseCase @Inject constructor(
@@ -9,6 +9,6 @@ class GetRecommendedByUseCase @Inject constructor(
 ) {
 
     operator fun invoke() : RecommendedBy? {
-        return recommendationRepository.recommendedBy
+        return recommendationRepository.getRecommendedBy()
     }
 }

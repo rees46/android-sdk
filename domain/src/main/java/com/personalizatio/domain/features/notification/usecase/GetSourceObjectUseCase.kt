@@ -1,6 +1,6 @@
 package com.personalizatio.domain.features.notification.usecase
 
-import com.personalizatio.data.repository.notification.SourceRepository
+import com.personalizatio.domain.repositories.SourceRepository
 import javax.inject.Inject
 
 class GetSourceObjectUseCase @Inject constructor(

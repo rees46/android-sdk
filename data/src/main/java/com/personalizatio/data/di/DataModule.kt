@@ -1,30 +1,27 @@
 package com.personalizatio.data.di
 
-import com.personalizatio.data.repository.notification.SourceRepository
-import com.personalizatio.data.repository.preferences.PreferencesRepository
-import com.personalizatio.data.repository.recommendation.RecommendationRepository
+import com.personalizatio.data.repositories.notification.SourceRepositoryImpl
+import com.personalizatio.data.repositories.preferences.PreferencesRepositoryImpl
+import com.personalizatio.data.repositories.recommendation.RecommendationRepositoryImpl
+import com.personalizatio.domain.repositories.PreferencesRepository
+import com.personalizatio.domain.repositories.RecommendationRepository
+import com.personalizatio.domain.repositories.SourceRepository
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import javax.inject.Singleton
 
 @Module
-class DataModule {
+abstract class DataModule {
 
+    @Binds
     @Singleton
-    @Provides
-    fun providePreferencesRepository(): PreferencesRepository {
-        return PreferencesRepository()
-    }
+    abstract fun preferencesRepository(impl: PreferencesRepositoryImpl): PreferencesRepository
 
+    @Binds
     @Singleton
-    @Provides
-    fun provideRecommendationRepository(): RecommendationRepository {
-        return RecommendationRepository()
-    }
+    abstract fun recommendationRepository(impl: RecommendationRepositoryImpl): RecommendationRepository
 
+    @Binds
     @Singleton
-    @Provides
-    fun provideSourceRepository(preferencesRepository: PreferencesRepository): SourceRepository {
-        return SourceRepository(preferencesRepository)
-    }
+    abstract fun sourceRepository(impl: SourceRepositoryImpl): SourceRepository
 }
