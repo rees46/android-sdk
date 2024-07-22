@@ -5,11 +5,11 @@ import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.api.managers.TrackEventManager
-import com.personalizatio.domain.features.notification.usecase.GetSourceObjectUseCase
-import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
-import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
-import com.personalizatio.domain.features.recommendation.usecase.GetRecommendedByUseCase
-import com.personalizatio.domain.features.recommendation.usecase.SetRecommendedByUseCase
+import com.personalizatio.domain.usecases.notification.GetSourceObjectUseCase
+import com.personalizatio.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalizatio.domain.usecases.preferences.SavePreferencesValueUseCase
+import com.personalizatio.domain.usecases.recommendation.GetRecommendedByUseCase
+import com.personalizatio.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalizatio.features.recommendation.RecommendationManagerImpl
 import com.personalizatio.features.search.SearchManagerImpl
 import com.personalizatio.features.track_event.TrackEventManagerImpl

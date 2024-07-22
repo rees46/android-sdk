@@ -1,4 +1,4 @@
-package com.personalizatio.domain.features.preferences.usecase
+package com.personalizatio.domain.usecases.preferences
 
 import android.content.SharedPreferences
 import com.personalizatio.domain.repositories.PreferencesRepository

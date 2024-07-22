@@ -1,4 +1,4 @@
-package com.personalizatio.domain.features.recommendation.usecase
+package com.personalizatio.domain.usecases.recommendation
 
 import com.personalizatio.domain.models.RecommendedBy
 import com.personalizatio.domain.repositories.RecommendationRepository

@@ -1,4 +1,4 @@
-package com.personalizatio.domain.features.preferences.usecase
+package com.personalizatio.domain.usecases.preferences
 
 import com.personalizatio.domain.repositories.PreferencesRepository
 import javax.inject.Inject

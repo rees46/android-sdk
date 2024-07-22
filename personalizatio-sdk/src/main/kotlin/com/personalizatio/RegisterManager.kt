@@ -10,8 +10,8 @@ import com.personalizatio.SDK.Companion.TAG
 import com.personalizatio.SDK.Companion.debug
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.domain.features.preferences.usecase.GetPreferencesValueUseCase
-import com.personalizatio.domain.features.preferences.usecase.SavePreferencesValueUseCase
+import com.personalizatio.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalizatio.domain.usecases.preferences.SavePreferencesValueUseCase
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -163,11 +163,11 @@ class RegisterManager @Inject constructor(
         //We need to separate sessions by time.
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
-        if (seance == null && getPreferencesValueUseCase.invoke(SID_FIELD, null) != null
-            && getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0)
+        if (seance == null && getPreferencesValueUseCase.invoke(SID_FIELD, null) as String? != null
+            && getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0) as Long
             >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
         ) {
-            seance = getPreferencesValueUseCase.invoke(SID_FIELD, null)
+            seance = getPreferencesValueUseCase.invoke(SID_FIELD, null) as String
         }
 
         //If there is no session, generate a new one
@@ -180,7 +180,7 @@ class RegisterManager @Inject constructor(
 
         debug(
             "Device ID: " + did + ", seance: " + seance + ", last act: "
-                    + Timestamp(getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0))
+                    + Timestamp(getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0) as Long)
         )
 
         networkManager.get().executeQueueTasks()
@@ -200,7 +200,7 @@ class RegisterManager @Inject constructor(
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(contentResolver, FIREBASE_TEST_LAB)
 
     private fun getDid(): String? {
-        return getPreferencesValueUseCase(DID_PREFS_KEY, null)
+        return getPreferencesValueUseCase(DID_PREFS_KEY, null) as String?
     }
 
     private fun saveDid() {
@@ -210,7 +210,7 @@ class RegisterManager @Inject constructor(
     }
 
     private fun getToken(): String? {
-        return getPreferencesValueUseCase(TOKEN_PREFS_KEY, null)
+        return getPreferencesValueUseCase(TOKEN_PREFS_KEY, null) as String?
     }
 
     private fun saveToken(token: String) {
@@ -218,7 +218,7 @@ class RegisterManager @Inject constructor(
     }
 
     private fun getLastPushTokenMilliseconds(): Long {
-        return getPreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0)
+        return getPreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0) as Long
     }
 
     private fun saveLastPushTokenDate(date: Date) {

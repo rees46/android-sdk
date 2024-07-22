@@ -6,11 +6,7 @@ interface PreferencesRepository {
 
     fun init(sharedPreferences: SharedPreferences)
 
-    fun saveValue(field: String, value: String)
+    fun<T> getValue(field: String, defaultValue: T?): Any?
 
-    fun saveValue(field: String, value: Long)
-
-    fun getValue(field: String, defaultValue: String?) : String?
-
-    fun getValue(field: String, defaultValue: Long = 0) : Long
+    fun<T> saveValue(field: String, value: T)
 }

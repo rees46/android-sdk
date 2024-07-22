@@ -1,6 +1,7 @@
 package com.personalizatio.data.di
 
 import com.personalizatio.data.repositories.notification.SourceRepositoryImpl
+import com.personalizatio.data.repositories.preferences.PreferencesDataSource
 import com.personalizatio.data.repositories.preferences.PreferencesRepositoryImpl
 import com.personalizatio.data.repositories.recommendation.RecommendationRepositoryImpl
 import com.personalizatio.domain.repositories.PreferencesRepository
@@ -8,6 +9,7 @@ import com.personalizatio.domain.repositories.RecommendationRepository
 import com.personalizatio.domain.repositories.SourceRepository
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import javax.inject.Singleton
 
 @Module

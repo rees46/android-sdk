@@ -31,7 +31,7 @@ class SourceRepositoryImpl @Inject constructor(
     }
 
     private fun isTimeCorrect(timeDuration: Int): Boolean {
-        val time = preferencesRepository.getValue(SOURCE_TIME_PREFS_KEY, 0)
+        val time = preferencesRepository.getValue(SOURCE_TIME_PREFS_KEY, 0) as Long
 
         return time > 0 && time + timeDuration > System.currentTimeMillis()
     }

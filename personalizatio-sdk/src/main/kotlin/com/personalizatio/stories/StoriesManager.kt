@@ -6,7 +6,7 @@ import android.util.Log
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.domain.features.recommendation.usecase.SetRecommendedByUseCase
+import com.personalizatio.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalizatio.domain.models.RecommendedBy
 import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.views.StoriesView

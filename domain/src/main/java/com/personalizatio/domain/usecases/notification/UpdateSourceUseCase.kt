@@ -1,4 +1,4 @@
-package com.personalizatio.domain.features.notification.usecase
+package com.personalizatio.domain.usecases.notification
 
 import com.personalizatio.domain.repositories.SourceRepository
 import javax.inject.Inject

@@ -4,26 +4,19 @@ import android.content.SharedPreferences
 import com.personalizatio.domain.repositories.PreferencesRepository
 import javax.inject.Inject
 
-class PreferencesRepositoryImpl @Inject constructor()
-    : PreferencesRepository {
-
-    private lateinit var sharedPreferences: SharedPreferences
+class PreferencesRepositoryImpl @Inject constructor(
+    private val preferencesDataSource: PreferencesDataSource
+) : PreferencesRepository {
 
     override fun init(sharedPreferences: SharedPreferences) {
-        this.sharedPreferences = sharedPreferences
+        preferencesDataSource.init(sharedPreferences)
     }
 
-    override fun saveValue(field: String, value: String) {
-        sharedPreferences.edit().putString(field, value).apply()
+    override fun<T> getValue(field: String, defaultValue: T?): Any? {
+        return preferencesDataSource.getValue(field, defaultValue)
     }
 
-    override fun saveValue(field: String, value: Long) {
-        sharedPreferences.edit().putLong(field, value).apply()
+    override fun<T> saveValue(field: String, value: T) {
+        preferencesDataSource.saveValue(field, value)
     }
-
-    override fun getValue(field: String, defaultValue: String?) : String? =
-        sharedPreferences.getString(field, defaultValue)
-
-    override fun getValue(field: String, defaultValue: Long) : Long =
-        sharedPreferences.getLong(field, defaultValue)
 }
