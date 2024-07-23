@@ -4,9 +4,25 @@ import android.content.SharedPreferences
 
 interface PreferencesRepository {
 
-    fun init(sharedPreferences: SharedPreferences)
+    fun initialize(
+        sharedPreferences: SharedPreferences,
+        preferencesKey: String
+    )
 
-    fun<T> getValue(field: String, defaultValue: T?): Any?
+    fun getSidLastActTime(defaultValue: Long): Long
+    fun saveSidLastActTime(value: Long)
 
-    fun<T> saveValue(field: String, value: T)
+    fun getSid(defaultValue: String?):  String?
+    fun saveSid(value: String)
+
+    fun getDid(defaultValue: String?): String?
+    fun saveDid(value: String)
+
+    fun getToken(defaultValue: String?): String?
+    fun saveToken(value: String)
+
+    fun getLastPushTokenDate(defaultValue: Long): Long
+    fun saveLastPushTokenDate(value: Long)
+
+    fun getSegment(defaultValue: String): String
 }

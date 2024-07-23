@@ -8,15 +8,38 @@ class PreferencesRepositoryImpl @Inject constructor(
     private val preferencesDataSource: PreferencesDataSource
 ) : PreferencesRepository {
 
-    override fun init(sharedPreferences: SharedPreferences) {
-        preferencesDataSource.init(sharedPreferences)
+    override fun initialize(
+        sharedPreferences: SharedPreferences,
+        preferencesKey: String
+    ) = preferencesDataSource.initialize(
+        sharedPreferences = sharedPreferences,
+        preferencesKey = preferencesKey
+    )
+
+    override fun getSidLastActTime(defaultValue: Long) = preferencesDataSource.getSidLastActTime(defaultValue)
+    override fun saveSidLastActTime(value: Long) {
+        preferencesDataSource.saveSidLastActTime(value)
     }
 
-    override fun<T> getValue(field: String, defaultValue: T?): Any? {
-        return preferencesDataSource.getValue(field, defaultValue)
+    override fun getSid(defaultValue: String?) = preferencesDataSource.getSid(defaultValue)
+    override fun saveSid(value: String) {
+        preferencesDataSource.saveSid(value)
     }
 
-    override fun<T> saveValue(field: String, value: T) {
-        preferencesDataSource.saveValue(field, value)
+    override fun getDid(defaultValue: String?) = preferencesDataSource.getDid(defaultValue)
+    override fun saveDid(value: String) {
+        preferencesDataSource.saveDid(value)
     }
+
+    override fun getToken(defaultValue: String?) = preferencesDataSource.getToken(defaultValue)
+    override fun saveToken(value: String) {
+        preferencesDataSource.saveToken(value)
+    }
+
+    override fun getLastPushTokenDate(defaultValue: Long) = preferencesDataSource.getLastPushTokenDate(defaultValue)
+    override fun saveLastPushTokenDate(value: Long) {
+        preferencesDataSource.saveLastPushTokenDate(value)
+    }
+
+    override fun getSegment(defaultValue: String) = preferencesDataSource.getSegment(defaultValue)
 }

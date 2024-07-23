@@ -7,11 +7,13 @@ class SavePreferencesValueUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    operator fun invoke(field: String, defaultValue: String) {
-        preferencesRepository.saveValue(field, defaultValue)
-    }
+    fun saveSid(value: String) = preferencesRepository.saveSid(value)
 
-    operator fun invoke(field: String, defaultValue: Long) {
-        preferencesRepository.saveValue(field, defaultValue)
-    }
+    fun saveLastActTime(value: Long) = preferencesRepository.saveSidLastActTime(value)
+
+    fun saveDid(value: String) = preferencesRepository.saveDid(value)
+
+    fun saveToken(value: String) = preferencesRepository.saveToken(value)
+
+    fun saveLastPushTokenDate(value: Long) = preferencesRepository.saveLastPushTokenDate(value)
 }

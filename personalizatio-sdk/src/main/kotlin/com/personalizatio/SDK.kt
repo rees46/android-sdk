@@ -71,15 +71,18 @@ open class SDK {
         val sdkComponent = DaggerSdkComponent.factory().create()
         sdkComponent.inject(this)
 
-        initPreferencesUseCase(context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE))
+        initPreferencesUseCase.execute(
+            sharedPreferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE),
+            preferencesKey = preferencesKey
+        )
 
         this.context = context
         TAG = tag
 
-        segment = getPreferencesValueUseCase(
+        segment = getPreferencesValueUseCase.getSegment(
             "$preferencesKey.segment",
             arrayOf("A", "B")[Math.random().roundToInt()]
-        ).toString()
+        )
 
         NotificationHelper.notificationType = notificationType
         NotificationHelper.notificationId = notificationId

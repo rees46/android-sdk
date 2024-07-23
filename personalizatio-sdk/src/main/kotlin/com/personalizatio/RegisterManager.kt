@@ -28,7 +28,7 @@ class RegisterManager @Inject constructor(
     private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
     private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
     private val networkManager: Lazy<NetworkManager>,
-){
+) {
     private var autoSendPushToken: Boolean = false
 
     private lateinit var contentResolver: ContentResolver
@@ -52,7 +52,7 @@ class RegisterManager @Inject constructor(
 
         if (did != null) return
 
-        did = getDid()
+        did = getPreferencesValueUseCase.getDid()
 
         if (did == null) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -80,19 +80,19 @@ class RegisterManager @Inject constructor(
             val token = task.result
             debug("token: $token")
 
-            val tokenField = getToken()
+            val tokenField = getPreferencesValueUseCase.getToken()
 
             val currentDate = Date()
 
             if (tokenField == null
                 || tokenField != token
-                || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS
+                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS
             ) {
 
                 setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        saveLastPushTokenDate(currentDate)
-                        saveToken(token)
+                        savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
+                        savePreferencesValueUseCase.saveToken(token)
                     }
                 })
             }
@@ -163,12 +163,15 @@ class RegisterManager @Inject constructor(
         //We need to separate sessions by time.
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
-        if (seance == null && getPreferencesValueUseCase.invoke(SID_FIELD, null) as String? != null
-            && getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0) as Long
-            >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000
-        ) {
-            seance = getPreferencesValueUseCase.invoke(SID_FIELD, null) as String
+        if (seance == null) {
+            val sid = getPreferencesValueUseCase.getSid()
+            if(sid != null
+                && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
+            {
+                seance = sid
+            }
         }
+
 
         //If there is no session, generate a new one
         if (seance == null) {
@@ -179,8 +182,9 @@ class RegisterManager @Inject constructor(
         updateSidActivity()
 
         debug(
-            "Device ID: " + did + ", seance: " + seance + ", last act: "
-                    + Timestamp(getPreferencesValueUseCase.invoke(SID_LAST_ACT_FIELD, 0) as Long)
+            "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
+                getPreferencesValueUseCase.getSidLastActTime()
+            )
         )
 
         networkManager.get().executeQueueTasks()
@@ -189,40 +193,23 @@ class RegisterManager @Inject constructor(
     }
 
     internal fun updateSidActivity() {
-        seance?.let {  seance ->
-            savePreferencesValueUseCase(SID_FIELD, seance)
+        seance?.let { seance ->
+            savePreferencesValueUseCase.saveSid(seance)
         }
-        savePreferencesValueUseCase(SID_LAST_ACT_FIELD, System.currentTimeMillis())
+        savePreferencesValueUseCase.saveLastActTime(System.currentTimeMillis())
     }
 
 
     private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(contentResolver, FIREBASE_TEST_LAB)
-
-    private fun getDid(): String? {
-        return getPreferencesValueUseCase(DID_PREFS_KEY, null) as String?
-    }
+        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
+            contentResolver,
+            FIREBASE_TEST_LAB
+        )
 
     private fun saveDid() {
         did?.let { did ->
-            savePreferencesValueUseCase(DID_PREFS_KEY, did)
+            savePreferencesValueUseCase.saveDid(did)
         }
-    }
-
-    private fun getToken(): String? {
-        return getPreferencesValueUseCase(TOKEN_PREFS_KEY, null) as String?
-    }
-
-    private fun saveToken(token: String) {
-        savePreferencesValueUseCase(TOKEN_PREFS_KEY, token)
-    }
-
-    private fun getLastPushTokenMilliseconds(): Long {
-        return getPreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0) as Long
-    }
-
-    private fun saveLastPushTokenDate(date: Date) {
-        savePreferencesValueUseCase(LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
     }
 
     internal fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
@@ -242,17 +229,13 @@ class RegisterManager @Inject constructor(
     }
 
     companion object {
-        private const val DID_PREFS_KEY = "did"
-        private const val TOKEN_PREFS_KEY = "token"
-        private const val LAST_PUSH_TOKEN_DATE_PREFS_KEY = "last_push_token_date"
+
         private const val IS_TEST_DEVICE_FIELD = "true"
         private const val FIREBASE_TEST_LAB = "firebase.test.lab"
         private const val PLATFORM_FIELD = "platform"
         private const val PLATFORM_ANDROID_FIELD = "android"
         private const val TOKEN_FIELD = "token"
         private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
-        private const val SID_FIELD = "sid"
-        private const val SID_LAST_ACT_FIELD = "sid_last_act"
         private const val SESSION_CODE_EXPIRE = 2
         private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
 

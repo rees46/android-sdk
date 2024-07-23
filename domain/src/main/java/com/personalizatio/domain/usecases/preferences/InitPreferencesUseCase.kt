@@ -8,7 +8,13 @@ class InitPreferencesUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    operator fun invoke(sharedPreferences: SharedPreferences) {
-        preferencesRepository.init(sharedPreferences)
+    fun execute(
+        sharedPreferences: SharedPreferences,
+        preferencesKey: String
+    ) {
+        preferencesRepository.initialize(
+            sharedPreferences = sharedPreferences,
+            preferencesKey = preferencesKey
+        )
     }
 }

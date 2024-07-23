@@ -7,6 +7,15 @@ class GetPreferencesValueUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    operator fun<T> invoke(field: String, defaultValue: T?) : Any? =
-        preferencesRepository.getValue(field, defaultValue)
+    fun getSidLastActTime(defaultValue: Long = 0) = preferencesRepository.getSidLastActTime(defaultValue)
+
+    fun getSid(defaultValue: String? = null) = preferencesRepository.getSid(defaultValue)
+
+    fun getDid(defaultValue: String? = null) = preferencesRepository.getDid(defaultValue)
+
+    fun getToken(defaultValue: String? = null) = preferencesRepository.getToken(defaultValue)
+
+    fun getLastPushTokenDate(defaultValue: Long = 0) = preferencesRepository.getLastPushTokenDate(defaultValue)
+
+    fun getSegment(defaultValue: String, toString: String) = preferencesRepository.getSegment(defaultValue)
 }
