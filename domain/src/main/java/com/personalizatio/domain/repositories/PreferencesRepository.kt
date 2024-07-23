@@ -1,11 +1,11 @@
 package com.personalizatio.domain.repositories
 
-import android.content.SharedPreferences
+import android.content.Context
 
 interface PreferencesRepository {
 
     fun initialize(
-        sharedPreferences: SharedPreferences,
+        context: Context,
         preferencesKey: String
     )
 

@@ -1,6 +1,6 @@
 package com.personalizatio.data.repositories.preferences
 
-import android.content.SharedPreferences
+import android.content.Context
 import com.personalizatio.domain.repositories.PreferencesRepository
 import javax.inject.Inject
 
@@ -9,10 +9,10 @@ class PreferencesRepositoryImpl @Inject constructor(
 ) : PreferencesRepository {
 
     override fun initialize(
-        sharedPreferences: SharedPreferences,
+        context: Context,
         preferencesKey: String
     ) = preferencesDataSource.initialize(
-        sharedPreferences = sharedPreferences,
+        context = context,
         preferencesKey = preferencesKey
     )
 

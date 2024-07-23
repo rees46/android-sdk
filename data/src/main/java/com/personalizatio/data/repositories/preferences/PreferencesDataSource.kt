@@ -1,5 +1,6 @@
 package com.personalizatio.data.repositories.preferences
 
+import android.content.Context
 import android.content.SharedPreferences
 import android.content.SharedPreferences.Editor
 
@@ -9,10 +10,10 @@ class PreferencesDataSource {
     private lateinit var preferencesKey: String
 
     internal fun initialize(
-        sharedPreferences: SharedPreferences,
+        context: Context,
         preferencesKey: String
     ) {
-        this.sharedPreferences = sharedPreferences
+        this.sharedPreferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
         this.preferencesKey = preferencesKey
     }
 

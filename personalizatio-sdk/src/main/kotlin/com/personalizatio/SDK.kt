@@ -72,7 +72,7 @@ open class SDK {
         sdkComponent.inject(this)
 
         initPreferencesUseCase.execute(
-            sharedPreferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE),
+            context = context,
             preferencesKey = preferencesKey
         )
 

@@ -1,6 +1,6 @@
 package com.personalizatio.domain.usecases.preferences
 
-import android.content.SharedPreferences
+import android.content.Context
 import com.personalizatio.domain.repositories.PreferencesRepository
 import javax.inject.Inject
 
@@ -9,11 +9,11 @@ class InitPreferencesUseCase @Inject constructor(
 ) {
 
     fun execute(
-        sharedPreferences: SharedPreferences,
+        context: Context,
         preferencesKey: String
     ) {
         preferencesRepository.initialize(
-            sharedPreferences = sharedPreferences,
+            context = context,
             preferencesKey = preferencesKey
         )
     }
