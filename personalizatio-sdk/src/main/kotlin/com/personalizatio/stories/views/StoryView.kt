@@ -19,17 +19,17 @@ import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.personalizatio.R
 import com.personalizatio.SDK
+import com.personalizatio.stories.StoryState
 import com.personalizatio.stories.models.Slide
 import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.views.StoriesProgressView.StoriesListener
-import com.personalizatio.stories.views.StoryDialog.OnProgressState
 import com.personalizatio.stories.views.storyItem.StoryItemView
 import com.personalizatio.stories.views.storyItem.StoryItemView.OnPageListener
 
 @SuppressLint("ViewConstructor")
 internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor(
     private val storiesView: StoriesView, //Heading
-    private val stateListener: OnProgressState
+    private val storyStateListener: StoryDialog.OnStoryStateListener
 ) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
     private var story: Story? = null
 
@@ -141,7 +141,11 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         mute.isChecked = storiesView.isMute
     }
 
-    fun setStory(story: Story, completeListener: Runnable, prevStoryListener: Runnable) {
+    fun setStory(
+        story: Story,
+        completeListener: Runnable,
+        prevStoryListener: Runnable
+    ) {
         this.story = story
         this.completeListener = completeListener
         this.prevStoryListener = prevStoryListener
@@ -271,7 +275,9 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
                 override fun onLocked(lock: Boolean) {
                     locked = lock
-                    stateListener.onState(!lock)
+                    storyStateListener.onStoryStateChanged(
+                        storyState = if(lock) StoryState.PAUSE else StoryState.RUNNING
+                    )
                     if (lock) {
                         pause()
                     } else {
@@ -300,7 +306,13 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
     internal inner class ViewPagerAdapter : RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
-            return PagerHolder(StoryItemView(storiesView))
+            return PagerHolder(StoryItemView(
+                context = storiesView.context,
+                code = storiesView.code,
+                settings = storiesView.settings,
+                itemClickListener = storiesView.itemClickListener,
+                storyStateListener = storyStateListener)
+            )
         }
 
         override fun onBindViewHolder(holder: PagerHolder, position: Int) {

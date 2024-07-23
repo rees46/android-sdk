@@ -2,6 +2,7 @@ package com.personalizatio.stories.views.storyItem
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Paint
@@ -40,9 +41,12 @@ import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.common.base.Strings
+import com.personalizatio.OnLinkClickListener
 import com.personalizatio.Product
 import com.personalizatio.R
 import com.personalizatio.SDK
+import com.personalizatio.stories.Settings
+import com.personalizatio.stories.StoryState
 import com.personalizatio.stories.models.Slide
 import com.personalizatio.stories.models.elements.ButtonElement
 import com.personalizatio.stories.models.elements.HeaderElement
@@ -50,13 +54,18 @@ import com.personalizatio.stories.models.elements.ProductElement
 import com.personalizatio.stories.models.elements.ProductsElement
 import com.personalizatio.stories.models.elements.TextBlockElement
 import com.personalizatio.stories.viewAdapters.ProductsAdapter
-import com.personalizatio.stories.views.StoriesView
+import com.personalizatio.stories.views.StoryDialog
 import com.personalizatio.ui.utils.ColorUtils
 import com.personalizatio.ui.utils.TextUtils
-import com.personalizatio.ui.utils.ViewUtils
 
 @SuppressLint("ViewConstructor")
-class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(storiesView.context) {
+class StoryItemView(
+    private val context: Context,
+    private val code: String,
+    private val settings: Settings,
+    private val itemClickListener: OnLinkClickListener?,
+    private val storyStateListener: StoryDialog.OnStoryStateListener
+) : ConstraintLayout(context) {
 
     interface OnPageListener {
         fun onPrev()
@@ -159,7 +168,11 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
             pageListener?.onNext()
         }
 
-        productsAdapter = ProductsAdapter(storiesView)
+        productsAdapter = ProductsAdapter(
+            itemClickListener = itemClickListener,
+            code = code,
+            settings = settings
+        )
         products.adapter = productsAdapter
 
         product.visibility = GONE
@@ -283,18 +296,20 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
                 }
                 Log.d(SDK.TAG, "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else ""))
 
-                val clickListener = storiesView.itemClickListener
-                if (clickListener == null
-                    || product == null && link != null && clickListener.onClick(link)
-                    || product != null && clickListener.onClick(product)) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
-                }
+                storyStateListener.onStoryStateChanged(StoryState.CLOSE)
+
                 SDK.instance.trackStory(
                     event = "click",
                     code = code,
                     storyId = storyId,
                     slideId = slide.id
                 )
+
+                if (itemClickListener == null
+                    || product == null && link != null && itemClickListener.onClick(link)
+                    || product != null && itemClickListener.onClick(product)) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                }
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
@@ -457,7 +472,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     private fun updateProducts(element: ProductsElement, slideId: String, storyId: Int) {
         productsAdapter.setProducts(element.getProducts(), storyId, slideId)
 
-        setupTextView(buttonProducts, true, element.labelShow, storiesView.settings.products_button_font_family)
+        setupTextView(buttonProducts, true, element.labelShow, settings.products_button_font_family)
 
         buttonProducts.setOnClickListener {
             buttonProducts.isActivated = !buttonProducts.isActivated
@@ -495,7 +510,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
         TextUtils.setTextColor(context, button, element.color, R.color.white)
 
         button.typeface = Typeface.create(
-            storiesView.settings.button_font_family,
+            settings.button_font_family,
             if (element.textBold) Typeface.BOLD else Typeface.NORMAL
         )
     }
@@ -511,18 +526,17 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     private fun setupReloadView(slide: Slide, position: Int, code: String, storyId: Int) {
         reloadLayout.visibility = GONE
 
-        val settings = storiesView.settings
         if (settings.failed_load_text != null) {
             setupTextView(reloadText, settings.failed_load_text!!, settings.failed_load_font_family)
         }
-        reloadText.textSize = storiesView.settings.failed_load_size.toFloat()
-        reloadText.setTextColor(Color.parseColor(storiesView.settings.failed_load_color))
+        reloadText.textSize = settings.failed_load_size.toFloat()
+        reloadText.setTextColor(Color.parseColor(settings.failed_load_color))
 
         reload.setOnClickListener { update(slide, position, code, storyId) }
     }
 
     private fun setupDefaultTextView(textView: TextView, visibility: Boolean, text: String) {
-        setupTextView(textView, visibility, text, storiesView.settings.font_family)
+        setupTextView(textView, visibility, text, settings.font_family)
     }
 
     private fun setupTextView(textView: TextView, visibility: Boolean, text: String, typeface: Typeface?) {
@@ -534,7 +548,7 @@ class StoryItemView(private val storiesView: StoriesView) : ConstraintLayout(sto
     }
 
     private fun setupDefaultTextView(textView: TextView, text: String) {
-        setupTextView(textView, text, storiesView.settings.font_family)
+        setupTextView(textView, text, settings.font_family)
     }
 
     private fun setupTextView(textView: TextView, text: String, typeface: Typeface?) {
