@@ -5,7 +5,7 @@ import com.personalizatio.RegisterManager
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.domain.usecases.notification.GetSourceObjectUseCase
+import com.personalizatio.domain.usecases.notification.GetNotificationSourceUseCase
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -25,7 +25,7 @@ import javax.inject.Inject
 
 internal class NetworkManagerImpl @Inject constructor(
     private val registerManager: RegisterManager,
-    private val getSourceObjectUseCase: GetSourceObjectUseCase
+    private val getNotificationSourceUseCase: GetNotificationSourceUseCase
 ): NetworkManager {
 
     private lateinit var baseUrl: String
@@ -105,9 +105,9 @@ internal class NetworkManagerImpl @Inject constructor(
             params.put(SEGMENT_PARAMS_FIELD, segment)
             params.put(STREAM_PARAMS_FIELD, stream)
 
-            val sourceJson = getSourceObjectUseCase(sourceTimeDuration)
-            if (sourceJson != null) {
-                params.put(SOURCE_PARAMS_FIELD, sourceJson)
+            val notificationSource = getNotificationSourceUseCase.execute(sourceTimeDuration)
+            if (notificationSource != null) {
+                params.put(SOURCE_PARAMS_FIELD, notificationSource.jsonObject)
             }
 
             executeMethod(networkMethod, params, listener)

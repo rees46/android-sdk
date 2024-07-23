@@ -5,7 +5,7 @@ import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.RecommendationManager
 import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.api.managers.TrackEventManager
-import com.personalizatio.domain.usecases.notification.GetSourceObjectUseCase
+import com.personalizatio.domain.usecases.notification.GetNotificationSourceUseCase
 import com.personalizatio.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalizatio.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalizatio.domain.usecases.recommendation.GetRecommendedByUseCase
@@ -41,11 +41,11 @@ class SdkModule {
     @Provides
     fun provideNetworkManager(
         registerManager: RegisterManager,
-        getSourceObjectUseCase: GetSourceObjectUseCase
+        getNotificationSourceUseCase: GetNotificationSourceUseCase
     ): NetworkManager {
         return NetworkManagerImpl(
             registerManager = registerManager,
-            getSourceObjectUseCase = getSourceObjectUseCase
+            getNotificationSourceUseCase = getNotificationSourceUseCase
         )
     }
 
