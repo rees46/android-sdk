@@ -17,5 +17,5 @@ class GetPreferencesValueUseCase @Inject constructor(
 
     fun getLastPushTokenDate(defaultValue: Long = 0) = preferencesRepository.getLastPushTokenDate(defaultValue)
 
-    fun getSegment(defaultValue: String, toString: String) = preferencesRepository.getSegment(defaultValue)
+    fun getSegment(defaultValue: String) = preferencesRepository.getSegment(defaultValue)
 }

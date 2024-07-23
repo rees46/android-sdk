@@ -79,10 +79,7 @@ open class SDK {
         this.context = context
         TAG = tag
 
-        segment = getPreferencesValueUseCase.getSegment(
-            "$preferencesKey.segment",
-            arrayOf("A", "B")[Math.random().roundToInt()]
-        )
+        segment = getPreferencesValueUseCase.getSegment(arrayOf("A", "B")[Math.random().roundToInt()])
 
         NotificationHelper.notificationType = notificationType
         NotificationHelper.notificationId = notificationId
