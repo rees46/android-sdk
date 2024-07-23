@@ -1,6 +1,5 @@
 package com.personalizatio.data.di
 
-import com.personalizatio.data.mappers.NotificationMapper
 import com.personalizatio.data.repositories.notification.NotificationDataSource
 import com.personalizatio.data.repositories.preferences.PreferencesDataSource
 import dagger.Module
@@ -8,7 +7,7 @@ import dagger.Provides
 import javax.inject.Singleton
 
 @Module
-class DataSourceModule {
+class DataSourcesModule {
 
     @Provides
     @Singleton
@@ -23,8 +22,4 @@ class DataSourceModule {
             preferencesDataSource = preferencesDataSource
         )
     }
-
-    @Provides
-    @Singleton
-    fun provideNotificationMapper() = NotificationMapper()
 }

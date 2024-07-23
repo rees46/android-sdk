@@ -1,14 +1,20 @@
 package com.personalizatio.di
 
 import com.personalizatio.SDK
-import com.personalizatio.data.di.DataModule
-import com.personalizatio.data.di.DataSourceModule
+import com.personalizatio.data.di.RepositoriesModule
+import com.personalizatio.data.di.DataSourcesModule
+import com.personalizatio.data.di.ModelsModule
 import dagger.Component
 import javax.inject.Singleton
 
 @Singleton
 @Component(
-    modules = [DataSourceModule::class, DataModule::class, SdkModule::class]
+    modules = [
+        DataSourcesModule::class,
+        RepositoriesModule::class,
+        ModelsModule::class,
+        SdkModule::class
+    ]
 )
 interface SdkComponent {
 
