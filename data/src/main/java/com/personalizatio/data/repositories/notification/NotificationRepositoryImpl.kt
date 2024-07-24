@@ -13,7 +13,7 @@ class NotificationRepositoryImpl @Inject constructor(
     override fun getNotificationSource(timeDuration: Int): NotificationSource? {
         val notificationSourceDto = notificationDataSource.getNotificationSourceDto()
 
-        if (notificationSourceDto.type == null || !isTimeCorrect(notificationSourceDto.time, timeDuration)) {
+        if (!isTimeCorrect(notificationSourceDto.time, timeDuration)) {
             return null
         }
 

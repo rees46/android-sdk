@@ -1,7 +1,7 @@
 package com.personalizatio.domain.models
 
-import org.json.JSONObject
-
 data class NotificationSource(
-    val jsonObject: JSONObject
+    val type: String,
+    val id: String,
+    val time: Long
 )
