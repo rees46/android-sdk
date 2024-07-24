@@ -9,20 +9,20 @@ interface PreferencesRepository {
         preferencesKey: String
     )
 
-    fun getSidLastActTime(defaultValue: Long): Long
+    fun getSidLastActTime(): Long
     fun saveSidLastActTime(value: Long)
 
-    fun getSid(defaultValue: String?):  String?
+    fun getSid():  String
     fun saveSid(value: String)
 
-    fun getDid(defaultValue: String?): String?
+    fun getDid(): String
     fun saveDid(value: String)
 
-    fun getToken(defaultValue: String?): String?
+    fun getToken(): String
     fun saveToken(value: String)
 
-    fun getLastPushTokenDate(defaultValue: Long): Long
+    fun getLastPushTokenDate(): Long
     fun saveLastPushTokenDate(value: Long)
 
-    fun getSegment(defaultValue: String): String
+    fun getSegment(): String
 }

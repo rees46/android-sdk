@@ -16,10 +16,10 @@ class NotificationDataSource @Inject constructor(
         )
     }
 
-    private fun getType(): String = preferencesDataSource.getValue(SOURCE_TYPE_KEY, DEFAULT_TYPE) ?: DEFAULT_TYPE
+    private fun getType(): String = preferencesDataSource.getValue(SOURCE_TYPE_KEY, DEFAULT_TYPE)
     internal fun saveType(value: String) = preferencesDataSource.saveValue(SOURCE_TYPE_KEY, value)
 
-    private fun getId(): String = preferencesDataSource.getValue(SOURCE_ID_KEY, DEFAULT_ID) ?: DEFAULT_ID
+    private fun getId(): String = preferencesDataSource.getValue(SOURCE_ID_KEY, DEFAULT_ID)
     internal fun saveId(value: String) = preferencesDataSource.saveValue(SOURCE_ID_KEY, value)
 
     private fun getTime(): Long = preferencesDataSource.getValue(SOURCE_TIME_KEY, DEFAULT_TIME)

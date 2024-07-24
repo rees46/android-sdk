@@ -16,30 +16,30 @@ class PreferencesRepositoryImpl @Inject constructor(
         preferencesKey = preferencesKey
     )
 
-    override fun getSidLastActTime(defaultValue: Long) = preferencesDataSource.getSidLastActTime(defaultValue)
+    override fun getSidLastActTime(): Long = preferencesDataSource.getSidLastActTime()
     override fun saveSidLastActTime(value: Long) {
         preferencesDataSource.saveSidLastActTime(value)
     }
 
-    override fun getSid(defaultValue: String?) = preferencesDataSource.getSid(defaultValue)
+    override fun getSid(): String = preferencesDataSource.getSid()
     override fun saveSid(value: String) {
         preferencesDataSource.saveSid(value)
     }
 
-    override fun getDid(defaultValue: String?) = preferencesDataSource.getDid(defaultValue)
+    override fun getDid(): String = preferencesDataSource.getDid()
     override fun saveDid(value: String) {
         preferencesDataSource.saveDid(value)
     }
 
-    override fun getToken(defaultValue: String?) = preferencesDataSource.getToken(defaultValue)
+    override fun getToken(): String = preferencesDataSource.getToken()
     override fun saveToken(value: String) {
         preferencesDataSource.saveToken(value)
     }
 
-    override fun getLastPushTokenDate(defaultValue: Long) = preferencesDataSource.getLastPushTokenDate(defaultValue)
+    override fun getLastPushTokenDate(): Long = preferencesDataSource.getLastPushTokenDate()
     override fun saveLastPushTokenDate(value: Long) {
         preferencesDataSource.saveLastPushTokenDate(value)
     }
 
-    override fun getSegment(defaultValue: String) = preferencesDataSource.getSegment(defaultValue)
+    override fun getSegment(): String = preferencesDataSource.getSegment()
 }
