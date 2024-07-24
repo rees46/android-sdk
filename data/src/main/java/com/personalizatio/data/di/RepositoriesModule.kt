@@ -15,13 +15,13 @@ abstract class RepositoriesModule {
 
     @Binds
     @Singleton
-    abstract fun preferencesRepository(impl: PreferencesRepositoryImpl): PreferencesRepository
+    abstract fun bindPreferencesRepository(impl: PreferencesRepositoryImpl): PreferencesRepository
 
     @Binds
     @Singleton
-    abstract fun recommendationRepository(impl: RecommendationRepositoryImpl): RecommendationRepository
+    abstract fun bindRecommendationRepository(impl: RecommendationRepositoryImpl): RecommendationRepository
 
     @Binds
     @Singleton
-    abstract fun sourceRepository(impl: NotificationRepositoryImpl): NotificationRepository
+    abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
 }
