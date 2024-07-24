@@ -8,7 +8,7 @@ class InitPreferencesUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    fun execute(
+    fun invoke(
         context: Context,
         preferencesKey: String
     ) {

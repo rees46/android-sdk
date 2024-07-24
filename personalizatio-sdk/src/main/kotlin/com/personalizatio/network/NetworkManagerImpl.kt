@@ -105,7 +105,7 @@ internal class NetworkManagerImpl @Inject constructor(
             params.put(SEGMENT_PARAMS_FIELD, segment)
             params.put(STREAM_PARAMS_FIELD, stream)
 
-            val notificationSource = getNotificationSourceUseCase.execute(sourceTimeDuration)
+            val notificationSource = getNotificationSourceUseCase.invoke(sourceTimeDuration)
             if (notificationSource != null) {
                 val notificationObject = JSONObject()
                     .put(SOURCE_FROM_FIELD, notificationSource.type)

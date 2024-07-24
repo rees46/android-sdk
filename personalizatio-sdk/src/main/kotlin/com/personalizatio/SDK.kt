@@ -71,7 +71,7 @@ open class SDK {
         val sdkComponent = DaggerSdkComponent.factory().create()
         sdkComponent.inject(this)
 
-        initPreferencesUseCase.execute(
+        initPreferencesUseCase.invoke(
             context = context,
             preferencesKey = preferencesKey
         )

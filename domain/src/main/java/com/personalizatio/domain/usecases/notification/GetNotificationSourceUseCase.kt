@@ -7,7 +7,7 @@ class GetNotificationSourceUseCase @Inject constructor(
     private val notificationRepository: NotificationRepository
 ) {
 
-    fun execute(
+    fun invoke(
         timeDuration: Int
     ) = notificationRepository.getNotificationSource(
         timeDuration = timeDuration
