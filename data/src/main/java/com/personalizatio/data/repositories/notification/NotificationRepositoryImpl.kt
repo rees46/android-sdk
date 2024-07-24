@@ -27,6 +27,7 @@ class NotificationRepositoryImpl @Inject constructor(
     }
 
     private fun isTimeCorrect(time: Long, timeDuration: Int): Boolean {
-        return time > 0 && time + timeDuration > System.currentTimeMillis()
+        val currentTime = System.currentTimeMillis()
+        return time > 0 && (time + timeDuration) > currentTime
     }
 }

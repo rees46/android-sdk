@@ -1,6 +1,9 @@
 package com.personalizatio.domain.models
 
-class RecommendedBy {
+data class RecommendedBy(
+    val type: TYPE,
+    var code: String? = null
+) {
     enum class TYPE(val value: String) {
         RECOMMENDATION("dynamic"),
         TRIGGER("chain"),
@@ -9,17 +12,5 @@ class RecommendedBy {
         INSTANT_SEARCH("instant_search"),
         FULL_SEARCH("full_search"),
         STORIES("stories"),
-    }
-
-    val type: String
-    var code: String? = null
-
-    constructor(type: TYPE) {
-        this.type = type.value
-    }
-
-    constructor(type: TYPE, code: String?) {
-        this.type = type.value
-        this.code = code
     }
 }
