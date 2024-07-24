@@ -14,7 +14,6 @@ class DataSourcesModule {
     fun providePreferencesDataSource() = PreferencesDataSource()
 
     @Provides
-    @Singleton
     fun provideNotificationDataSource(
         preferencesDataSource: PreferencesDataSource
     ): NotificationDataSource {
