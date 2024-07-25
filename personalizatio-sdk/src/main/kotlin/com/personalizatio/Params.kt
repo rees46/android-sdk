@@ -144,10 +144,18 @@ class Params : AbstractParams<Params>() {
      * Вставка параметров рекомендаций
      */
     fun put(recommendedBy: RecommendedBy): Params {
+        return putRecommendedBy(recommendedBy.type, recommendedBy.code)
+    }
+
+    internal fun put(recommendedBy: com.personalizatio.domain.models.RecommendedBy): Params {
+        return putRecommendedBy(recommendedBy.type.toString(), recommendedBy.code)
+    }
+
+    private fun putRecommendedBy(type: String, code: String?): Params {
         try {
-            params.put(InternalParameter.RECOMMENDED_BY.value, recommendedBy.type)
-            if (recommendedBy.code != null) {
-                params.put(InternalParameter.RECOMMENDED_CODE.value, recommendedBy.code)
+            params.put(InternalParameter.RECOMMENDED_BY.value, type)
+            if (code != null) {
+                params.put(InternalParameter.RECOMMENDED_CODE.value, code)
             }
         } catch (e: JSONException) {
             Log.e(SDK.TAG, e.message, e)

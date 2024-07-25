@@ -3,23 +3,29 @@ package com.personalizatio.notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import com.google.firebase.messaging.RemoteMessage
 import com.personalizatio.R
-import com.personalizatio.notifications.Source
+import com.personalizatio.domain.usecases.notification.UpdateNotificationSourceUseCase
 import org.json.JSONException
 import org.json.JSONObject
+import javax.inject.Inject
 
-
-class NotificationHandler(
-    private val context: Context,
-    private val prefs: () -> SharedPreferences
+class NotificationHandler @Inject constructor(
+    private val updateSourceUseCase: UpdateNotificationSourceUseCase
 ) {
 
-    fun createNotificationChannel() {
+    private lateinit var context: Context
+
+    internal fun initialize(context: Context) {
+        this.context = context
+
+        createNotificationChannel()
+    }
+
+    private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = context.getString(R.string.notification_channel_id)
             val channelName = context.getString(R.string.notification_channel_name)
@@ -38,8 +44,7 @@ class NotificationHandler(
 
     fun notificationClicked(
         extras: Bundle?,
-        sendAsync: (String, JSONObject) -> Unit,
-        source: Source
+        sendAsync: (String, JSONObject) -> Unit
     ) {
         if (extras == null) {
             return
@@ -54,10 +59,9 @@ class NotificationHandler(
                     params.put(CODE_PARAM, code)
                     sendAsync(TRACK_CLICKED, params)
 
-                    source.update(
+                    updateSourceUseCase(
                         type = type,
-                        id = code,
-                        preferences = prefs()
+                        id = code
                     )
                 } catch (e: JSONException) {
                     Log.e(TAG, e.message, e)

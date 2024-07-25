@@ -1,16 +1,23 @@
 package com.personalizatio.stories
 
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import com.personalizatio.Params.RecommendedBy
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.NetworkManager
+import com.personalizatio.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalizatio.domain.models.RecommendedBy
 import com.personalizatio.stories.models.Story
 import com.personalizatio.stories.views.StoriesView
 import org.json.JSONException
 import org.json.JSONObject
+import javax.inject.Inject
 
-internal class StoriesManager(val sdk: SDK) {
+class StoriesManager @Inject constructor(
+    val networkManager: NetworkManager,
+    val setRecommendedByUseCase: SetRecommendedByUseCase
+) {
 
     private lateinit var storiesView: StoriesView
 
@@ -20,7 +27,7 @@ internal class StoriesManager(val sdk: SDK) {
         updateStories()
     }
 
-    internal fun showStories(code: String) {
+    internal fun showStories(looper: Looper, code: String) {
         requestStories(code, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
@@ -32,7 +39,7 @@ internal class StoriesManager(val sdk: SDK) {
 
                         resetStoriesStartPositions(stories)
 
-                        showStories(stories)
+                        showStories(looper, stories)
                     } catch (e: JSONException) {
                         Log.e(SDK.TAG, e.message, e)
                     }
@@ -42,7 +49,7 @@ internal class StoriesManager(val sdk: SDK) {
     }
 
     internal fun requestStories(code: String, listener: OnApiCallbackListener) {
-        sdk.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
+        networkManager.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
     }
 
     /**
@@ -62,9 +69,9 @@ internal class StoriesManager(val sdk: SDK) {
             params.put(SLIDE_ID_PARAMS_NAME, slideId)
             params.put(CODE_PARAMS_NAME, code)
 
-            sdk.lastRecommendedBy = RecommendedBy(RecommendedBy.TYPE.STORIES, code)
+            setRecommendedByUseCase(RecommendedBy(RecommendedBy.TYPE.STORIES, code))
 
-            sdk.sendAsync(TRACK_STORIES_METHOD, params, null)
+            networkManager.postAsync(TRACK_STORIES_METHOD, params, null)
         } catch (e: JSONException) {
             e.printStackTrace()
         }
@@ -104,8 +111,8 @@ internal class StoriesManager(val sdk: SDK) {
         }
     }
 
-    private fun showStories(stories: List<Story>, startPosition: Int = 0) {
-        val handler = Handler(sdk.context.mainLooper)
+    private fun showStories(looper: Looper, stories: List<Story>, startPosition: Int = 0) {
+        val handler = Handler(looper)
         handler.post {
             storiesView.showStories(stories, startPosition)
         }

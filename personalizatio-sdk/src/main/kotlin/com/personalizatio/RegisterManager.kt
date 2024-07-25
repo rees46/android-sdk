@@ -1,6 +1,7 @@
 package com.personalizatio
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.provider.Settings
 import android.util.Log
 import com.google.android.gms.tasks.Task
@@ -8,38 +9,56 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.personalizatio.SDK.Companion.TAG
 import com.personalizatio.SDK.Companion.debug
 import com.personalizatio.api.OnApiCallbackListener
-import com.personalizatio.utils.PreferencesUtils
+import com.personalizatio.api.managers.NetworkManager
+import com.personalizatio.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalizatio.domain.usecases.preferences.SavePreferencesValueUseCase
+import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.security.SecureRandom
+import java.sql.Timestamp
 import java.util.Date
 import java.util.TimeZone
+import javax.inject.Inject
 
-class RegisterManager(val sdk: SDK) {
+class RegisterManager @Inject constructor(
+    private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
+    private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
+    private val networkManager: Lazy<NetworkManager>,
+) {
     private var autoSendPushToken: Boolean = false
 
+    private lateinit var contentResolver: ContentResolver
+
     internal var did: String? = null
+        private set
+
+    internal var seance: String? = null
+        private set
+
+    internal var isInitialized: Boolean = false
         private set
 
     /**
      * Get did from properties or generate a new did
      */
     @SuppressLint("HardwareIds")
-    internal fun initialize(autoSendPushToken: Boolean) {
+    internal fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
+        this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        if(did != null) return
+        if (did != null) return
 
-        did = getDid()
+        did = getPreferencesValueUseCase.getDid()
 
         if (did == null) {
-            did = Settings.Secure.getString(sdk.context.contentResolver, Settings.Secure.ANDROID_ID)
+            did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
             init()
-        }
-        else {
+        } else {
             initializeSdk(null)
         }
     }
@@ -61,18 +80,19 @@ class RegisterManager(val sdk: SDK) {
             val token = task.result
             debug("token: $token")
 
-            val tokenField = getToken()
+            val tokenField = getPreferencesValueUseCase.getToken()
 
             val currentDate = Date()
 
             if (tokenField == null
                 || tokenField != token
-                || (currentDate.time - getLastPushTokenMilliseconds()) >= ONE_WEEK_MILLISECONDS) {
+                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS
+            ) {
 
-                sdk.setPushTokenNotification(token, object : OnApiCallbackListener() {
+                setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        saveLastPushTokenDate(currentDate)
-                        saveToken(token)
+                        savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
+                        savePreferencesValueUseCase.saveToken(token)
                     }
                 })
             }
@@ -88,18 +108,18 @@ class RegisterManager(val sdk: SDK) {
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            sdk.networkManager.get("init", params, object : OnApiCallbackListener() {
+            networkManager.get().get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
 
                 override fun onSuccess(response: JSONObject?) {
-                    if(response == null) {
+                    if (response == null) {
                         SDK.error("Init response is not correct.")
                         return
                     }
 
                     did = response.optString("did")
-                    if(did.isNullOrEmpty()) {
+                    if (did.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct did field.")
                         return
                     }
@@ -107,7 +127,7 @@ class RegisterManager(val sdk: SDK) {
                     saveDid()
 
                     val seance = response.optString("seance")
-                    if(seance.isNullOrEmpty()) {
+                    if (seance.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct seance field.")
                         return
                     }
@@ -125,8 +145,7 @@ class RegisterManager(val sdk: SDK) {
                             delay(1000L * attempt)
                             init()
                         }
-                    }
-                    else {
+                    } else {
                         SDK.error("Init error: code: $code, $msg")
                     }
                 }
@@ -137,46 +156,88 @@ class RegisterManager(val sdk: SDK) {
     }
 
     private fun initializeSdk(sid: String?) {
-        sdk.initialized(sid)
+        isInitialized = true
+        seance = sid
+
+        //If there is no session, try to find it in the storage
+        //We need to separate sessions by time.
+        //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
+
+        if (seance == null) {
+            val sid = getPreferencesValueUseCase.getSid()
+            if(sid != null
+                && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
+            {
+                seance = sid
+            }
+        }
+
+
+        //If there is no session, generate a new one
+        if (seance == null) {
+            debug("Generate new seance")
+            seance = alphanumeric(10)
+        }
+
+        updateSidActivity()
+
+        debug(
+            "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
+                getPreferencesValueUseCase.getSidLastActTime()
+            )
+        )
+
+        networkManager.get().executeQueueTasks()
 
         initToken()
     }
 
-    private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(sdk.context.contentResolver, FIREBASE_TEST_LAB)
-
-    private fun getDid() : String? {
-        return sdk.prefs().getString(DID_PREFS_KEY, null)
+    internal fun updateSidActivity() {
+        seance?.let { seance ->
+            savePreferencesValueUseCase.saveSid(seance)
+        }
+        savePreferencesValueUseCase.saveLastActTime(System.currentTimeMillis())
     }
+
+
+    private val isTestDevice: Boolean
+        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
+            contentResolver,
+            FIREBASE_TEST_LAB
+        )
 
     private fun saveDid() {
         did?.let { did ->
-            PreferencesUtils.saveField(sdk.prefs(), DID_PREFS_KEY, did)
+            savePreferencesValueUseCase.saveDid(did)
         }
     }
 
-    private fun getToken() : String? {
-        return sdk.prefs().getString(TOKEN_PREFS_KEY, null)
+    internal fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+        val params = HashMap<String, String>()
+        params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
+        params[TOKEN_FIELD] = token
+        networkManager.get().post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
-    private fun saveToken(token: String) {
-        PreferencesUtils.saveField(sdk.prefs(), TOKEN_PREFS_KEY, token)
-    }
-
-    private fun getLastPushTokenMilliseconds() : Long {
-        return sdk.prefs().getLong(LAST_PUSH_TOKEN_DATE_PREFS_KEY, 0)
-    }
-
-    private fun saveLastPushTokenDate(date: Date) {
-        PreferencesUtils.saveField(sdk.prefs(), LAST_PUSH_TOKEN_DATE_PREFS_KEY, date.time)
+    private fun alphanumeric(length: Int): String {
+        val sb = StringBuilder(length)
+        val secureRandom = SecureRandom()
+        for (i in 0 until length) {
+            sb.append(SOURCE[secureRandom.nextInt(SOURCE.length)])
+        }
+        return sb.toString()
     }
 
     companion object {
-        private const val DID_PREFS_KEY = "did"
-        private const val TOKEN_PREFS_KEY = "token"
-        private const val LAST_PUSH_TOKEN_DATE_PREFS_KEY = "last_push_token_date"
+
         private const val IS_TEST_DEVICE_FIELD = "true"
         private const val FIREBASE_TEST_LAB = "firebase.test.lab"
+        private const val PLATFORM_FIELD = "platform"
+        private const val PLATFORM_ANDROID_FIELD = "android"
+        private const val TOKEN_FIELD = "token"
+        private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
+        private const val SESSION_CODE_EXPIRE = 2
+        private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
 
         private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60
     }

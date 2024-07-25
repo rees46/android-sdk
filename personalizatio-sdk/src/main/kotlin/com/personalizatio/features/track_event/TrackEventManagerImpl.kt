@@ -2,12 +2,19 @@ package com.personalizatio.features.track_event
 
 import com.personalizatio.Params
 import com.personalizatio.Params.TrackEvent
-import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.managers.TrackEventManager
 import com.personalizatio.api.params.ProductItemParams
+import com.personalizatio.domain.usecases.recommendation.GetRecommendedByUseCase
+import com.personalizatio.domain.usecases.recommendation.SetRecommendedByUseCase
+import javax.inject.Inject
 
-internal class TrackEventManagerImpl(val sdk: SDK) : TrackEventManager {
+internal class TrackEventManagerImpl @Inject constructor(
+    val networkManager: NetworkManager,
+    val getRecommendedByUseCase: GetRecommendedByUseCase,
+    val setRecommendedByUseCase: SetRecommendedByUseCase
+) : TrackEventManager {
 
     override fun track(event: TrackEvent, productId: String) {
         track(event, Params().put(ProductItemParams(productId)), null)
@@ -19,11 +26,12 @@ internal class TrackEventManagerImpl(val sdk: SDK) : TrackEventManager {
         listener: OnApiCallbackListener?
     ) {
         params.put(EVENT_PARAMETER, event.value)
-        if (sdk.lastRecommendedBy != null) {
-            params.put(sdk.lastRecommendedBy!!)
-            sdk.lastRecommendedBy = null
+        val lastRecommendedBy = getRecommendedByUseCase()
+        if (lastRecommendedBy != null) {
+            params.put(lastRecommendedBy)
+            setRecommendedByUseCase(null)
         }
-        sdk.sendAsync(PUSH_REQUEST, params.build(), listener)
+        networkManager.postAsync(PUSH_REQUEST, params.build(), listener)
     }
 
     override fun customTrack(
@@ -47,7 +55,7 @@ internal class TrackEventManagerImpl(val sdk: SDK) : TrackEventManager {
         if (label != null) { params.put(LABEL_PARAMETER, label) }
         if (value != null) { params.put(VALUE_PARAMETER, value) }
 
-        sdk.sendAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
+        networkManager.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
     }
 
     companion object {
