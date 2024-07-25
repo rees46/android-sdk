@@ -15,8 +15,6 @@ android {
 		minSdkVersion 19
 		targetSdkVersion 34
 		buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
-		versionCode 1
-		versionName "1.0"
 	}
 
 	buildTypes {
@@ -27,12 +25,12 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_17
-		targetCompatibility JavaVersion.VERSION_17
+		sourceCompatibility JavaVersion.VERSION_22
+		targetCompatibility JavaVersion.VERSION_22
 	}
 
 	kotlinOptions {
-		jvmTarget = '17'
+		jvmTarget = '22'
 	}
 
 	sourceSets {
