@@ -2,16 +2,19 @@ package com.personalizatio.features.search
 
 import com.google.gson.Gson
 import com.personalizatio.Params
-import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
+import com.personalizatio.api.managers.NetworkManager
 import com.personalizatio.api.params.SearchParams
 import com.personalizatio.api.managers.SearchManager
 import com.personalizatio.api.responses.search.SearchBlankResponse
 import com.personalizatio.api.responses.search.SearchFullResponse
 import com.personalizatio.api.responses.search.SearchInstantResponse
 import org.json.JSONObject
+import javax.inject.Inject
 
-internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
+internal class SearchManagerImpl @Inject constructor(
+    val networkManager: NetworkManager
+) : SearchManager {
 
     override fun searchFull(
         query: String,
@@ -61,7 +64,7 @@ internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
         onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        sdk.getAsync(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
+        networkManager.post(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
                     val searchBlankResponse = Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
@@ -85,7 +88,7 @@ internal class SearchManagerImpl(private val sdk: SDK) : SearchManager {
             .put(TYPE_PARAMETER, type.value)
             .put(QUERY_PARAMETER, query)
 
-        sdk.getAsync(SEARCH_REQUEST, params.build(), listener)
+        networkManager.post(SEARCH_REQUEST, params.build(), listener)
     }
 
     companion object {

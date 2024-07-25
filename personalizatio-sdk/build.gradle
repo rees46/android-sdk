@@ -3,9 +3,10 @@ plugins {
 	id 'org.jetbrains.kotlin.android'
 	id 'maven-publish'
 	id 'signing'
+	id 'kotlin-kapt'
 }
 
-version='2.0.12'
+version='2.0.13'
 
 android {
 	compileSdkVersion 34
@@ -84,6 +85,10 @@ dependencies {
 	implementation 'androidx.core:core-ktx:1.13.1'
 	implementation 'androidx.work:work-runtime-ktx:2.9.0'
 	implementation 'com.google.code.gson:gson:2.11.0'
+	implementation 'com.google.dagger:dagger:2.51.1'
+	implementation project(':data')
+	implementation project(':domain')
+	kapt 'com.google.dagger:dagger-compiler:2.46.1'
 }
 
 group = 'com.personalizatio'

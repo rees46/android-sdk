@@ -1,10 +1,11 @@
 package com.personalizatio.network
 
 import android.net.Uri
+import com.personalizatio.RegisterManager
 import com.personalizatio.SDK
 import com.personalizatio.api.OnApiCallbackListener
 import com.personalizatio.api.managers.NetworkManager
-import com.personalizatio.notifications.Source
+import com.personalizatio.domain.usecases.notification.GetNotificationSourceUseCase
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -20,16 +21,32 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.Collections
+import javax.inject.Inject
 
-internal class NetworkManagerImpl(
-    private val sdk: SDK,
-    private val baseUrl: String,
-    private val shopId: String,
-    private val seance: String?,
-    private val segment: String,
-    private val stream: String,
-    private val source: Source
+internal class NetworkManagerImpl @Inject constructor(
+    private val registerManager: RegisterManager,
+    private val getNotificationSourceUseCase: GetNotificationSourceUseCase
 ): NetworkManager {
+
+    private lateinit var baseUrl: String
+    private lateinit var shopId: String
+    private var seance: String? = null
+    private lateinit var segment: String
+    private lateinit var stream: String
+
+    override fun initialize(
+        baseUrl: String,
+        shopId: String,
+        seance: String?,
+        segment: String,
+        stream: String
+    ) {
+        this.baseUrl = baseUrl
+        this.shopId = shopId
+        this.seance = seance
+        this.segment = segment
+        this.stream = stream
+    }
 
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
@@ -50,14 +67,14 @@ internal class NetworkManagerImpl(
     }
 
     private fun send(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
-        sdk.updateSidActivity()
+        registerManager.updateSidActivity()
 
         sendMethod(networkMethod, params, listener)
     }
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (sdk.registerManager.did != null && sdk.initialized) {
+        if (registerManager.did != null && registerManager.isInitialized) {
             thread.start()
         } else {
             queue.add(thread)
@@ -78,8 +95,8 @@ internal class NetworkManagerImpl(
     private fun sendMethod(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         try {
             params.put(SHOP_ID_PARAMS_FIELD, shopId)
-            if (sdk.registerManager.did != null) {
-                params.put(DID_PARAMS_FIELD, sdk.registerManager.did)
+            if (registerManager.did != null) {
+                params.put(DID_PARAMS_FIELD, registerManager.did)
             }
             if (seance != null) {
                 params.put(SEANCE_PARAMS_FIELD, seance)
@@ -88,9 +105,12 @@ internal class NetworkManagerImpl(
             params.put(SEGMENT_PARAMS_FIELD, segment)
             params.put(STREAM_PARAMS_FIELD, stream)
 
-            val sourceJson = source.getJsonObject(sourceTimeDuration)
-            if (sourceJson != null) {
-                params.put(SOURCE_PARAMS_FIELD, sourceJson)
+            val notificationSource = getNotificationSourceUseCase.invoke(sourceTimeDuration)
+            if (notificationSource != null) {
+                val notificationObject = JSONObject()
+                    .put(SOURCE_FROM_FIELD, notificationSource.type)
+                    .put(SOURCE_CODE_FIELD, notificationSource.id)
+                params.put(SOURCE_PARAMS_FIELD, notificationObject)
             }
 
             executeMethod(networkMethod, params, listener)
@@ -214,5 +234,7 @@ internal class NetworkManagerImpl(
         private const val SEGMENT_PARAMS_FIELD = "segment"
         private const val STREAM_PARAMS_FIELD = "stream"
         private const val SOURCE_PARAMS_FIELD = "source"
+        private const val SOURCE_FROM_FIELD = "from"
+        private const val SOURCE_CODE_FIELD = "code"
     }
 }
