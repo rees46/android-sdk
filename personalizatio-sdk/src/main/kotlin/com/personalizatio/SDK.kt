@@ -158,6 +158,24 @@ open class SDK {
     }
 
     /**
+     * Send notification token
+     *
+     * @param token Token
+     * @param listener Listener
+     */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("registerManager.setPushTokenNotification(token, listener)")
+    )
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+        registerManager.setPushTokenNotification(
+            token = token,
+            listener = listener
+        )
+    }
+
+    /**
      * Quick search
      *
      * @param query Search phrase

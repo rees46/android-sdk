@@ -212,7 +212,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    internal fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
