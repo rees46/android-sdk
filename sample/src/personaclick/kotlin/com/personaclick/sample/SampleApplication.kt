@@ -1,7 +1,7 @@
 package com.personaclick.sample
 
 import com.personaclick.sdk.Personaclick
-import com.personalizatio.sample.AbstractSampleApplication
+import com.personalization.sample.AbstractSampleApplication
 
 class SampleApplication : AbstractSampleApplication<Personaclick>(Personaclick.getInstance()) {
     override val shopId: String

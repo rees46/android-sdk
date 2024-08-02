@@ -1,7 +1,7 @@
 package com.rees46.sample
 
-import com.personalizatio.BuildConfig
-import com.personalizatio.sample.AbstractSampleApplication
+import com.personalization.BuildConfig
+import com.personalization.sample.AbstractSampleApplication
 import com.rees46.sdk.REES46
 
 class SampleApplication : AbstractSampleApplication<REES46>(REES46.getInstance()) {

@@ -18,7 +18,7 @@ android {
 	defaultConfig {
 		minSdkVersion 19
 		multiDexEnabled true
-		applicationId 'com.personalizatio.sample'
+		applicationId 'com.personalization.sample'
 		targetSdkVersion 34
 		versionCode 1
 		versionName "1.0"
@@ -47,7 +47,7 @@ android {
 		sourceCompatibility JavaVersion.VERSION_22
 		targetCompatibility JavaVersion.VERSION_22
 	}
-	namespace 'com.personalizatio.sample'
+	namespace 'com.personalization.sample'
 	kotlinOptions {
 		jvmTarget = '22'
 	}
@@ -63,9 +63,9 @@ dependencies {
 	implementation 'androidx.appcompat:appcompat:1.6.1'
 	implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 	implementation 'androidx.recyclerview:recyclerview:1.3.2'
+	implementation project(path: ':personalization-sdk')
 
 //	rees46DebugImplementation project(path: ':personalizatio-sdk', configuration: 'rees46Debug')
 //	personaclickDebugImplementation project(path: ':personalizatio-sdk', configuration: 'personaclickDebug')
-	implementation project(path: ':personalizatio-sdk')
 	implementation 'androidx.core:core-ktx:1.13.1'
 }

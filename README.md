@@ -275,7 +275,7 @@ sdk.subscribeForBackInStock("PRODUCT_ID", "mail@example.com", null, properties, 
 Add code to your layout:
 
 ```xml
-<com.personalizatio.stories.views.StoriesView
+<com.personalization.stories.views.StoriesView
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:code="STORY BLOCK CODE" />
