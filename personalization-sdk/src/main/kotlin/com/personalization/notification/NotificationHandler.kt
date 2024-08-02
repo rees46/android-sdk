@@ -76,6 +76,7 @@ class NotificationHandler @Inject constructor(
             addNotificationData(notification = notification, data = data)
         }
         data[IMAGES_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[IMAGES_FIELD] = it }
+        data[ANALYTICS_LABEL_FIELD]?.takeIf { it.isNotEmpty() }?.let { data[ANALYTICS_LABEL_FIELD] = it }
         return data
     }
 
@@ -100,6 +101,7 @@ class NotificationHandler @Inject constructor(
         private const val IMAGES_FIELD = "images"
         private const val TITLE_FIELD = "title"
         private const val IMAGE_FIELD = "image"
+        private const val ANALYTICS_LABEL_FIELD = "analytics_label"
         private const val BODY_FIELD = "body"
         private const val TYPE_PARAM = "type"
         private const val CODE_PARAM = "code"
