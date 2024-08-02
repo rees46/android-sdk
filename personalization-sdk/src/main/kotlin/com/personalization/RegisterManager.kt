@@ -54,7 +54,7 @@ class RegisterManager @Inject constructor(
 
         did = getPreferencesValueUseCase.getDid()
 
-        if (did == null) {
+        if (did.isNullOrEmpty()) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
             init()
@@ -84,7 +84,7 @@ class RegisterManager @Inject constructor(
 
             val currentDate = Date()
 
-            if (tokenField == null
+            if (tokenField.isEmpty()
                 || tokenField != token
                 || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS
             ) {
@@ -165,7 +165,7 @@ class RegisterManager @Inject constructor(
 
         if (seance == null) {
             val sid = getPreferencesValueUseCase.getSid()
-            if(sid != null
+            if(sid.isEmpty()
                 && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
             {
                 seance = sid
