@@ -50,11 +50,11 @@ class RegisterManager @Inject constructor(
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        if (did != null) return
+        if (!did.isNullOrEmpty()) return
 
         did = getPreferencesValueUseCase.getDid()
 
-        if (did == null) {
+        if (did.isNullOrEmpty()) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
             init()
@@ -84,8 +84,9 @@ class RegisterManager @Inject constructor(
 
             val currentDate = Date()
 
-            if (tokenField == null
+            if (tokenField.isEmpty()
                 || tokenField != token
+                || autoSendPushToken
                 || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS
             ) {
 
@@ -164,11 +165,11 @@ class RegisterManager @Inject constructor(
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
         if (seance == null) {
-            val sid = getPreferencesValueUseCase.getSid()
-            if(sid != null
+            val newSid = getPreferencesValueUseCase.getSid()
+            if(newSid.isNotEmpty()
                 && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
             {
-                seance = sid
+                seance = newSid
             }
         }
 
