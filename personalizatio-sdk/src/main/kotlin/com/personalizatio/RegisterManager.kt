@@ -84,12 +84,11 @@ class RegisterManager @Inject constructor(
 
             val currentDate = Date()
 
-            if (tokenField.isEmpty()
+            if(autoSendPushToken &&
+                (tokenField.isEmpty()
                 || tokenField != token
-                || autoSendPushToken
-                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS
+                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)
             ) {
-
                 setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
