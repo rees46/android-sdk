@@ -12,7 +12,7 @@ jobs:
     with:
       PROPERTIES_FILE: gradle.properties
       SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalizatio-sdk
+      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
       GOOGLE_SERVICES_FILE_LOCATION: ./sample
       GOOGLE_SERVICES_FILE_NAME: google-services.json
       OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
