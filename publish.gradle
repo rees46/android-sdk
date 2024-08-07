@@ -8,9 +8,9 @@ def pomConfig = {
 	}
 
 	scm {
-		connection "scm:git:github.com:rees46/rees46-android-sdk.git"
-		developerConnection "scm:git:ssh://github.com:rees46/rees46-android-sdk.git"
-		url "https://github.com:rees46/rees46-android-sdk/tree/master"
+		connection "scm:git:github.com:rees46/android-sdk.git"
+		developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
+		url "https://github.com:rees46/android-sdk/tree/master"
 	}
 }
 
