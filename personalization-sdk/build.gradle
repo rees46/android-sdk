@@ -6,7 +6,7 @@ plugins {
 	id 'kotlin-kapt'
 }
 
-version='2.0.27'
+version='2.0.26'
 
 android {
 	compileSdkVersion 34
