@@ -5,11 +5,11 @@ import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
-import com.personalization.domain.usecases.notification.GetNotificationSourceUseCase
-import com.personalization.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.domain.usecases.preferences.SavePreferencesValueUseCase
-import com.personalization.domain.usecases.recommendation.GetRecommendedByUseCase
-import com.personalization.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.notification.GetNotificationSourceUseCase
+import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.features.recommendation.RecommendationManagerImpl
 import com.personalization.features.search.SearchManagerImpl
 import com.personalization.features.track_event.TrackEventManagerImpl

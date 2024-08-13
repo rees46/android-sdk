@@ -1,4 +1,2 @@
 include ':personalization-sdk'
 include ':sample'
-include ':data'
-include ':domain'

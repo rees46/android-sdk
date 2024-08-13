@@ -1,9 +1,9 @@
 package com.personalization.di
 
 import com.personalization.SDK
-import com.personalization.data.di.RepositoriesModule
-import com.personalization.data.di.DataSourcesModule
-import com.personalization.data.di.ModelsModule
+import com.personalization.sdk.data.di.RepositoriesModule
+import com.personalization.sdk.data.di.DataSourcesModule
+import com.personalization.sdk.data.di.ModelsModule
 import dagger.Component
 import javax.inject.Singleton
 

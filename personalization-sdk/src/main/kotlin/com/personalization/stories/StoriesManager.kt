@@ -6,8 +6,8 @@ import android.util.Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NetworkManager
-import com.personalization.domain.usecases.recommendation.SetRecommendedByUseCase
-import com.personalization.domain.models.RecommendedBy
+import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.models.RecommendedBy
 import com.personalization.stories.models.Story
 import com.personalization.stories.views.StoriesView
 import org.json.JSONException
