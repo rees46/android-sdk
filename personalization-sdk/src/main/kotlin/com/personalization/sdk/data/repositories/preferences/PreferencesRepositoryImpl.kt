@@ -16,11 +16,6 @@ class PreferencesRepositoryImpl @Inject constructor(
         preferencesKey = preferencesKey
     )
 
-    override fun getDid(): String = preferencesDataSource.getDid()
-    override fun saveDid(value: String) {
-        preferencesDataSource.saveDid(value)
-    }
-
     override fun getToken(): String = preferencesDataSource.getToken()
     override fun saveToken(value: String) {
         preferencesDataSource.saveToken(value)

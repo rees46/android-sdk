@@ -7,8 +7,6 @@ class GetPreferencesValueUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    fun getDid(): String = preferencesRepository.getDid()
-
     fun getToken(): String = preferencesRepository.getToken()
 
     fun getLastPushTokenDate(): Long = preferencesRepository.getLastPushTokenDate()

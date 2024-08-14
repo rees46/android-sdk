@@ -6,6 +6,7 @@ import com.personalization.api.managers.NetworkManager
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import org.json.JSONObject
 import java.util.Collections
@@ -15,7 +16,8 @@ internal class NetworkManagerImpl @Inject constructor(
     private val registerManager: RegisterManager,
     private val initNetworkUseCase: InitNetworkUseCase,
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-    private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase
+    private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+    private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase
 ): NetworkManager {
 
     override fun initialize(
@@ -56,7 +58,7 @@ internal class NetworkManagerImpl @Inject constructor(
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (registerManager.did != null && registerManager.isInitialized) {
+        if (getUserSettingsValueUseCase.getDid().isNotEmpty() && registerManager.isInitialized) {
             thread.start()
         } else {
             queue.add(thread)

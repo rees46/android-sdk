@@ -7,6 +7,8 @@ class GetUserSettingsValueUseCase @Inject constructor(
     private val userSettingsRepository: UserSettingsRepository
 ) {
 
+    fun getDid(): String = userSettingsRepository.getDid()
+
     fun getSid(): String = userSettingsRepository.getSid()
 
     fun getSidLastActTime(): Long = userSettingsRepository.getSidLastActTime()

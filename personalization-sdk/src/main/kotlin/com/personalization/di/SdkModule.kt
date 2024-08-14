@@ -50,13 +50,15 @@ class SdkModule {
         registerManager: RegisterManager,
         initNetworkUseCase: InitNetworkUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-        updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase
+        updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+        getUserSettingsValueUseCase: GetUserSettingsValueUseCase
     ): NetworkManager {
         return NetworkManagerImpl(
             registerManager = registerManager,
             initNetworkUseCase = initNetworkUseCase,
             sendNetworkMethodUseCase = sendNetworkMethodUseCase,
-            updateUserSettingsValueUseCase = updateUserSettingsValueUseCase
+            updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
+            getUserSettingsValueUseCase = getUserSettingsValueUseCase
         )
     }
 

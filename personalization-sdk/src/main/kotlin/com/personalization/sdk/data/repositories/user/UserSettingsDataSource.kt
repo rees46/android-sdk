@@ -29,7 +29,7 @@ class UserSettingsDataSource @Inject constructor(
     internal fun addParams(params: JSONObject, notificationSource: NotificationSource?): JSONObject {
         params.put(SHOP_ID_PARAMS_FIELD, shopId)
 
-        val did = preferencesDataSource.getDid()
+        val did = getDid()
         if (did.isNotEmpty()) {
             params.put(DID_PARAMS_FIELD, did)
         }
@@ -59,11 +59,16 @@ class UserSettingsDataSource @Inject constructor(
     internal fun getSid(): String = preferencesDataSource.getValue(SID_KEY, DEFAULT_SID)
     internal fun saveSid(value: String) = preferencesDataSource.saveValue(SID_KEY, value)
 
+    internal fun getDid(): String = preferencesDataSource.getValue(DID_KEY, DEFAULT_DID)
+    internal fun saveDid(value: String) = preferencesDataSource.saveValue(DID_KEY, value)
+
     companion object {
 
+        private const val DEFAULT_DID = ""
         private const val DEFAULT_SID = ""
         private const val DEFAULT_SID_LAST_ACT_TIME = 0L
 
+        private const val DID_KEY = "did"
         private const val SID_KEY = "sid"
         private const val SID_LAST_ACT_KEY = "sid_last_act"
 

@@ -21,6 +21,13 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
+    override fun getDid(): String =
+        userSettingsDataSource.getDid()
+
+    override fun updateDid(value: String) {
+        userSettingsDataSource.saveDid(value)
+    }
+
     override fun updateSid(value: String) {
         userSettingsDataSource.saveSid(value)
         updateSidLastActTime()

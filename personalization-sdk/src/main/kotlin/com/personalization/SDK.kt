@@ -369,7 +369,7 @@ open class SDK {
      * @return String
      */
     fun getDid(): String? {
-        return registerManager.did
+        return getUserSettingsValueUseCase.getDid()
     }
 
     /**

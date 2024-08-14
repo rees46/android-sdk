@@ -9,6 +9,9 @@ interface UserSettingsRepository {
         userAgent: String
     )
 
+    fun getDid(): String
+    fun updateDid(value: String)
+
     fun updateSid(value: String)
     fun getSid(): String
 

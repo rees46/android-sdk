@@ -37,9 +37,6 @@ class RegisterManager @Inject constructor(
 
     private lateinit var contentResolver: ContentResolver
 
-    internal var did: String? = null
-        private set
-
     internal var isInitialized: Boolean = false
         private set
 
@@ -51,12 +48,12 @@ class RegisterManager @Inject constructor(
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        if (!did.isNullOrEmpty()) return
+        var did = getUserSettingsValueUseCase.getDid()
 
-        did = getPreferencesValueUseCase.getDid()
-
-        if (did.isNullOrEmpty()) {
+        if (did.isEmpty()) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+            updateUserSettingsValueUseCase.updateDid(did)
 
             init()
         } else {
@@ -119,13 +116,13 @@ class RegisterManager @Inject constructor(
                         return
                     }
 
-                    did = response.optString("did")
+                    val did = response.optString("did")
                     if (did.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct did field.")
                         return
                     }
 
-                    saveDid()
+                    updateUserSettingsValueUseCase.updateDid(did)
 
                     val seance = response.optString("seance")
                     if (seance.isNullOrEmpty()) {
@@ -183,7 +180,7 @@ class RegisterManager @Inject constructor(
         updateSidActivity(seance)
 
         debug(
-            "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
+            "Device ID: " + getUserSettingsValueUseCase.getDid() + ", seance: " + seance + ", last act: " + Timestamp(
                 getUserSettingsValueUseCase.getSidLastActTime()
             )
         )
@@ -205,12 +202,6 @@ class RegisterManager @Inject constructor(
             contentResolver,
             FIREBASE_TEST_LAB
         )
-
-    private fun saveDid() {
-        did?.let { did ->
-            savePreferencesValueUseCase.saveDid(did)
-        }
-    }
 
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()

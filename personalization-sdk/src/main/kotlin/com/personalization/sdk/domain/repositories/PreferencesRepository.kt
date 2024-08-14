@@ -9,9 +9,6 @@ interface PreferencesRepository {
         preferencesKey: String
     )
 
-    fun getDid(): String
-    fun saveDid(value: String)
-
     fun getToken(): String
     fun saveToken(value: String)
 
