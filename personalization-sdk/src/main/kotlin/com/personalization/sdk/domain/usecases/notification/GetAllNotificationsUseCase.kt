@@ -1,8 +1,11 @@
 package com.personalization.sdk.domain.usecases.notification
 
+import com.google.gson.Gson
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
+import org.json.JSONObject
 import javax.inject.Inject
 
 class GetAllNotificationsUseCase @Inject constructor(
@@ -20,7 +23,8 @@ class GetAllNotificationsUseCase @Inject constructor(
         channel: String,
         page: Int?,
         limit: Int?,
-        listener: OnApiCallbackListener?
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     ) {
         val params = notificationRepository.getAllNotificationsParams(
             email = email,
@@ -37,7 +41,18 @@ class GetAllNotificationsUseCase @Inject constructor(
         networkRepository.getSecretAsync(
             method = GET_ALL_NOTIFICATIONS_REQUEST,
             params = params.build(),
-            listener = listener
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response?.let {
+                        val getAllNotificationsResponse = Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
+                        onGetAllNotifications(getAllNotificationsResponse)
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    onError(code, msg)
+                }
+            }
         )
     }
 
