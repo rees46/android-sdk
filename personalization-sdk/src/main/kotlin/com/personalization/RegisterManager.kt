@@ -9,7 +9,8 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.SDK.Companion.TAG
 import com.personalization.SDK.Companion.debug
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
+import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
@@ -31,7 +32,8 @@ class RegisterManager @Inject constructor(
     private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
     private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
     private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
-    private val networkManager: Lazy<NetworkManager>,
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+    private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase
 ) {
     private var autoSendPushToken: Boolean = false
 
@@ -103,7 +105,7 @@ class RegisterManager @Inject constructor(
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            networkManager.get().get("init", params, object : OnApiCallbackListener() {
+            sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
 
@@ -181,7 +183,7 @@ class RegisterManager @Inject constructor(
             )
         )
 
-        networkManager.get().executeQueueTasks()
+        executeQueueTasksUseCase.invoke()
 
         initToken()
     }
@@ -196,7 +198,7 @@ class RegisterManager @Inject constructor(
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
-        networkManager.get().post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
+        sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
     private fun alphanumeric(length: Int): String {

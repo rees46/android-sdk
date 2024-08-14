@@ -1,7 +1,6 @@
 package com.personalization.sdk.domain.repositories
 
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONObject
 
 interface NetworkRepository {
@@ -10,9 +9,27 @@ interface NetworkRepository {
         baseUrl: String
     )
 
-    fun sendMethod(
-        networkMethod: NetworkMethod,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    )
+    /**
+     * Direct query execution
+     */
+    fun post(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+
+    /**
+     * Asynchronous execution of a request if did is not specified and initialization has not been completed
+     */
+    fun postAsync(method: String, params: JSONObject, listener: OnApiCallbackListener? = null)
+
+    /**
+     * Direct query execution
+     */
+    fun get(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+
+    /**
+     * Asynchronous execution of a request if did is not specified and initialization has not been completed
+     */
+    fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+
+    fun executeQueueTasks()
+
+    fun addTaskToQueue(thread: Thread)
 }

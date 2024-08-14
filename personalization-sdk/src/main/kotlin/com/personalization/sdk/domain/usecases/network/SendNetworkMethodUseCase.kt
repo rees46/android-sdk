@@ -1,26 +1,69 @@
 package com.personalization.sdk.domain.usecases.network
 
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
-import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import org.json.JSONObject
 import javax.inject.Inject
 
 class SendNetworkMethodUseCase @Inject constructor(
-    private val networkRepository: NetworkRepository,
-    private val userSettingsRepository: UserSettingsRepository
+    private val networkRepository: NetworkRepository
 ) {
 
-    fun invoke(
-        networkMethod: NetworkMethod,
+    /**
+     * Direct query execution
+     */
+    fun post(
+        method: String,
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        userSettingsRepository.updateSidLastActTime()
+        networkRepository.post(
+            method = method,
+            params = params,
+            listener = listener
+        )
+    }
 
-        networkRepository.sendMethod(
-            networkMethod = networkMethod,
+    /**
+     * Asynchronous execution of a request if did is not specified and initialization has not been completed
+     */
+    fun postAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    ) {
+        networkRepository.postAsync(
+            method = method,
+            params = params,
+            listener = listener
+        )
+    }
+
+    /**
+     * Direct query execution
+     */
+    fun get(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        networkRepository.get(
+            method = method,
+            params = params,
+            listener = listener
+        )
+    }
+
+    /**
+     * Asynchronous execution of a request if did is not specified and initialization has not been completed
+     */
+    fun getAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        networkRepository.getAsync(
+            method = method,
             params = params,
             listener = listener
         )

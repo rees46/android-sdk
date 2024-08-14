@@ -5,9 +5,9 @@ import android.os.Looper
 import android.util.Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.models.RecommendedBy
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.stories.models.Story
 import com.personalization.stories.views.StoriesView
 import org.json.JSONException
@@ -15,8 +15,8 @@ import org.json.JSONObject
 import javax.inject.Inject
 
 class StoriesManager @Inject constructor(
-    val networkManager: NetworkManager,
-    val setRecommendedByUseCase: SetRecommendedByUseCase
+    val setRecommendedByUseCase: SetRecommendedByUseCase,
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) {
 
     private lateinit var storiesView: StoriesView
@@ -49,7 +49,7 @@ class StoriesManager @Inject constructor(
     }
 
     internal fun requestStories(code: String, listener: OnApiCallbackListener) {
-        networkManager.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
+        sendNetworkMethodUseCase.getAsync(String.format(REQUEST_STORIES_METHOD, code), JSONObject(), listener)
     }
 
     /**
@@ -71,7 +71,7 @@ class StoriesManager @Inject constructor(
 
             setRecommendedByUseCase(RecommendedBy(RecommendedBy.TYPE.STORIES, code))
 
-            networkManager.postAsync(TRACK_STORIES_METHOD, params, null)
+            sendNetworkMethodUseCase.postAsync(TRACK_STORIES_METHOD, params, null)
         } catch (e: JSONException) {
             e.printStackTrace()
         }

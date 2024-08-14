@@ -21,6 +21,7 @@ import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.util.Collections
 import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
@@ -28,6 +29,8 @@ class NetworkRepositoryImpl @Inject constructor(
     private val userDataSource: UserSettingsDataSource,
     private val notificationRepository: NotificationRepository
 ) : NetworkRepository {
+
+    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
     override fun initialize(
         baseUrl: String
@@ -37,7 +40,53 @@ class NetworkRepositoryImpl @Inject constructor(
         )
     }
 
-    override fun sendMethod(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+    override fun post(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        send(NetworkMethod.POST(method), params, listener)
+    }
+
+    override fun postAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        sendAsync { send(NetworkMethod.POST(method), params, listener) }
+    }
+
+    override fun get(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        send(NetworkMethod.GET(method), params, listener)
+    }
+
+    override fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        sendAsync { send(NetworkMethod.GET(method), params, listener) }
+    }
+
+    private fun send(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+        sendMethod(
+            networkMethod = networkMethod,
+            params = params,
+            listener = listener
+        )
+    }
+
+    private fun sendAsync(sendFunction: () -> Unit) {
+        val thread = Thread(sendFunction)
+        if (userDataSource.getDid().isNotEmpty() && userDataSource.getIsInitialized()) {
+            thread.start()
+        } else {
+            addTaskToQueue(thread)
+        }
+    }
+
+    override fun executeQueueTasks() {
+        for (thread in queue) {
+            thread.start()
+        }
+        queue.clear()
+    }
+
+    override fun addTaskToQueue(thread: Thread) {
+        queue.add(thread)
+    }
+
+    private fun sendMethod(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+        userDataSource.saveSidLastActTime(System.currentTimeMillis())
+
         val sourceTimeDuration = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
 
         try {
