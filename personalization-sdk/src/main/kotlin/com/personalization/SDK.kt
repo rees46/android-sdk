@@ -19,6 +19,7 @@ import com.personalization.notification.NotificationHelper
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
@@ -63,6 +64,8 @@ open class SDK {
     lateinit var addTaskToQueueUseCase: AddTaskToQueueUseCase
     @Inject
     lateinit var sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    @Inject
+    lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
 
     /**
      * @param shopId Shop key
