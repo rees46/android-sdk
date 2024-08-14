@@ -1,5 +1,6 @@
 package com.personalization.sdk.data.repositories.user
 
+import android.text.BoringLayout
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.domain.models.NotificationSource
 import org.json.JSONObject
@@ -13,6 +14,8 @@ class UserSettingsDataSource @Inject constructor(
     private var segment: String = ""
     private var stream: String = ""
     private var userAgent: String = ""
+
+    private var isInitialized: Boolean = false
 
     fun initialize(
         shopId: String,
@@ -61,6 +64,11 @@ class UserSettingsDataSource @Inject constructor(
 
     internal fun getDid(): String = preferencesDataSource.getValue(DID_KEY, DEFAULT_DID)
     internal fun saveDid(value: String) = preferencesDataSource.saveValue(DID_KEY, value)
+
+    internal fun getIsInitialized(): Boolean = isInitialized
+    internal fun setIsInitialized(value: Boolean) {
+        isInitialized = value
+    }
 
     companion object {
 

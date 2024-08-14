@@ -12,7 +12,6 @@ import java.util.Collections
 import javax.inject.Inject
 
 internal class NetworkManagerImpl @Inject constructor(
-    private val registerManager: RegisterManager,
     private val initNetworkUseCase: InitNetworkUseCase,
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
     private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase
@@ -54,7 +53,7 @@ internal class NetworkManagerImpl @Inject constructor(
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (getUserSettingsValueUseCase.getDid().isNotEmpty() && registerManager.isInitialized) {
+        if (getUserSettingsValueUseCase.getDid().isNotEmpty() && getUserSettingsValueUseCase.getIsInitialized()) {
             thread.start()
         } else {
             queue.add(thread)

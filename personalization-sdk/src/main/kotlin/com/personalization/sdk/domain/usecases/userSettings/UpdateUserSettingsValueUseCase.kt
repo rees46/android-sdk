@@ -12,4 +12,6 @@ class UpdateUserSettingsValueUseCase @Inject constructor(
     fun updateSid(value: String) = userSettingsRepository.updateSid(value)
 
     fun updateSidLastActTime() = userSettingsRepository.updateSidLastActTime()
+
+    fun updateIsInitialized(value: Boolean) = userSettingsRepository.updateIsInitialized(value)
 }

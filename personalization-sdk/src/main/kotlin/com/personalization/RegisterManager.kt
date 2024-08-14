@@ -37,9 +37,6 @@ class RegisterManager @Inject constructor(
 
     private lateinit var contentResolver: ContentResolver
 
-    internal var isInitialized: Boolean = false
-        private set
-
     /**
      * Get did from properties or generate a new did
      */
@@ -154,7 +151,7 @@ class RegisterManager @Inject constructor(
     }
 
     private fun initializeSdk(sid: String?) {
-        isInitialized = true
+        updateUserSettingsValueUseCase.updateIsInitialized(true)
         var seance = sid
 
         //If there is no session, try to find it in the storage
@@ -177,8 +174,7 @@ class RegisterManager @Inject constructor(
             seance = alphanumeric(10)
         }
 
-        updateSidActivity(seance)
-
+        updateUserSettingsValueUseCase.updateSid(seance)
         debug(
             "Device ID: " + getUserSettingsValueUseCase.getDid() + ", seance: " + seance + ", last act: " + Timestamp(
                 getUserSettingsValueUseCase.getSidLastActTime()
@@ -189,13 +185,6 @@ class RegisterManager @Inject constructor(
 
         initToken()
     }
-
-    internal fun updateSidActivity(sid: String) {
-        updateUserSettingsValueUseCase.updateSid(
-            value = sid
-        )
-    }
-
 
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(

@@ -47,13 +47,11 @@ class SdkModule {
     @Singleton
     @Provides
     fun provideNetworkManager(
-        registerManager: RegisterManager,
         initNetworkUseCase: InitNetworkUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase
     ): NetworkManager {
         return NetworkManagerImpl(
-            registerManager = registerManager,
             initNetworkUseCase = initNetworkUseCase,
             sendNetworkMethodUseCase = sendNetworkMethodUseCase,
             getUserSettingsValueUseCase = getUserSettingsValueUseCase

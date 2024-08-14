@@ -132,7 +132,7 @@ open class SDK {
         val thread = Thread {
             listener.accept(getSid())
         }
-        if (registerManager.isInitialized) {
+        if (getUserSettingsValueUseCase.getIsInitialized()) {
             thread.start()
         } else {
             networkManager.addTaskToQueue(thread)
