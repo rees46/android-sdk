@@ -7,12 +7,7 @@ import org.json.JSONObject
 interface NetworkRepository {
 
     fun initialize(
-        baseUrl: String,
-        shopId: String,
-        seance: String?,
-        segment: String,
-        stream: String,
-        userAgent: String
+        baseUrl: String
     )
 
     fun sendMethod(

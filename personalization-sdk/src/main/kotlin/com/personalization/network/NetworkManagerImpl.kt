@@ -17,20 +17,10 @@ internal class NetworkManagerImpl @Inject constructor(
 ): NetworkManager {
 
     override fun initialize(
-        baseUrl: String,
-        shopId: String,
-        seance: String?,
-        segment: String,
-        stream: String,
-        userAgent: String
+        baseUrl: String
     ) {
         initNetworkUseCase.invoke(
-            baseUrl = baseUrl,
-            shopId = shopId,
-            seance = seance,
-            segment = segment,
-            stream = stream,
-            userAgent = userAgent
+            baseUrl = baseUrl
         )
     }
 

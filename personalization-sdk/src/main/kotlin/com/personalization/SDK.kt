@@ -17,6 +17,7 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
+import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import org.json.JSONException
@@ -51,6 +52,8 @@ open class SDK {
     @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
     @Inject
+    lateinit var initUserSettingsUseCase: InitUserSettingsUseCase
+    @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
 
     /**
@@ -84,7 +87,16 @@ open class SDK {
         NotificationHelper.notificationId = notificationId
 
         notificationHandler.initialize(context)
-        networkManager.initialize(apiUrl, shopId, seance, segment, stream, userAgent())
+
+        initUserSettingsUseCase.invoke(
+            shopId = shopId,
+            seance = seance,
+            segment = segment,
+            stream = stream,
+            userAgent = userAgent()
+        )
+
+        networkManager.initialize(apiUrl)
         registerManager.initialize(context.contentResolver, autoSendPushToken)
     }
 

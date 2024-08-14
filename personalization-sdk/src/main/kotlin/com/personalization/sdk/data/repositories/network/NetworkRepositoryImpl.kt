@@ -3,6 +3,7 @@ package com.personalization.sdk.data.repositories.network
 import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.sdk.data.repositories.user.UserSettingsDataSource
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
@@ -24,24 +25,15 @@ import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
     private val networkDataSource: NetworkDataSource,
+    private val userDataSource: UserSettingsDataSource,
     private val notificationRepository: NotificationRepository
 ) : NetworkRepository {
 
     override fun initialize(
-        baseUrl: String,
-        shopId: String,
-        seance: String?,
-        segment: String,
-        stream: String,
-        userAgent: String
+        baseUrl: String
     ) {
         networkDataSource.initialize(
-            baseUrl = baseUrl,
-            shopId = shopId,
-            seance = seance,
-            segment = segment,
-            stream = stream,
-            userAgent = userAgent
+            baseUrl = baseUrl
         )
     }
 
@@ -49,7 +41,7 @@ class NetworkRepositoryImpl @Inject constructor(
         val sourceTimeDuration = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
 
         try {
-            val newParams = networkDataSource.addParams(params, sourceTimeDuration)
+            val newParams = userDataSource.addParams(params, sourceTimeDuration)
 
             executeMethod(networkMethod, newParams, listener)
         } catch (e: JSONException) {

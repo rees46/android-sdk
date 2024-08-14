@@ -6,12 +6,7 @@ import org.json.JSONObject
 interface NetworkManager {
 
     fun initialize(
-        baseUrl: String,
-        shopId: String,
-        seance: String?,
-        segment: String,
-        stream: String,
-        userAgent: String
+        baseUrl: String
     )
 
     /**
