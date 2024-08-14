@@ -17,6 +17,7 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
@@ -31,7 +32,6 @@ open class SDK {
     private lateinit var segment: String
 
     private var onMessageListener: OnMessageListener? = null
-    private var seance: String? = null
     private var search: Search = Search(JSONObject())
 
     @Inject
@@ -55,6 +55,8 @@ open class SDK {
     lateinit var initUserSettingsUseCase: InitUserSettingsUseCase
     @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
+    @Inject
+    lateinit var getUserSettingsValueUseCase: GetUserSettingsValueUseCase
 
     /**
      * @param shopId Shop key
@@ -90,7 +92,6 @@ open class SDK {
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            seance = seance,
             segment = segment,
             stream = stream,
             userAgent = userAgent()
@@ -114,11 +115,22 @@ open class SDK {
     }
 
     /**
+     * Return the session ID
+     */
+    fun getSid(): String =
+        getUserSettingsValueUseCase.getSid()
+
+    /**
      * Returns the session ID
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("getSid(): String")
+    )
     fun getSid(listener: Consumer<String?>) {
         val thread = Thread {
-            listener.accept(seance)
+            listener.accept(getSid())
         }
         if (registerManager.isInitialized) {
             thread.start()

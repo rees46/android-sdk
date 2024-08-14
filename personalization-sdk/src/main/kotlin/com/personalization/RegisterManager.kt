@@ -12,6 +12,8 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NetworkManager
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +29,8 @@ import javax.inject.Inject
 class RegisterManager @Inject constructor(
     private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
     private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
+    private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+    private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
     private val networkManager: Lazy<NetworkManager>,
 ) {
     private var autoSendPushToken: Boolean = false
@@ -34,9 +38,6 @@ class RegisterManager @Inject constructor(
     private lateinit var contentResolver: ContentResolver
 
     internal var did: String? = null
-        private set
-
-    internal var seance: String? = null
         private set
 
     internal var isInitialized: Boolean = false
@@ -157,16 +158,16 @@ class RegisterManager @Inject constructor(
 
     private fun initializeSdk(sid: String?) {
         isInitialized = true
-        seance = sid
+        var seance = sid
 
         //If there is no session, try to find it in the storage
         //We need to separate sessions by time.
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
         if (seance == null) {
-            val newSid = getPreferencesValueUseCase.getSid()
+            val newSid = getUserSettingsValueUseCase.getSid()
             if(newSid.isNotEmpty()
-                && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
+                && getUserSettingsValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
             {
                 seance = newSid
             }
@@ -179,11 +180,11 @@ class RegisterManager @Inject constructor(
             seance = alphanumeric(10)
         }
 
-        updateSidActivity()
+        updateSidActivity(seance)
 
         debug(
             "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
-                getPreferencesValueUseCase.getSidLastActTime()
+                getUserSettingsValueUseCase.getSidLastActTime()
             )
         )
 
@@ -192,11 +193,10 @@ class RegisterManager @Inject constructor(
         initToken()
     }
 
-    internal fun updateSidActivity() {
-        seance?.let { seance ->
-            savePreferencesValueUseCase.saveSid(seance)
-        }
-        savePreferencesValueUseCase.saveLastActTime(System.currentTimeMillis())
+    internal fun updateSidActivity(sid: String) {
+        updateUserSettingsValueUseCase.updateSid(
+            value = sid
+        )
     }
 
 

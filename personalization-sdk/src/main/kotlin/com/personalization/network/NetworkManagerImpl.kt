@@ -6,6 +6,7 @@ import com.personalization.api.managers.NetworkManager
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import org.json.JSONObject
 import java.util.Collections
 import javax.inject.Inject
@@ -13,7 +14,8 @@ import javax.inject.Inject
 internal class NetworkManagerImpl @Inject constructor(
     private val registerManager: RegisterManager,
     private val initNetworkUseCase: InitNetworkUseCase,
-    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+    private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase
 ): NetworkManager {
 
     override fun initialize(
@@ -43,7 +45,7 @@ internal class NetworkManagerImpl @Inject constructor(
     }
 
     private fun send(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
-        registerManager.updateSidActivity()
+        updateUserSettingsValueUseCase.updateSidLastActTime()
 
         sendNetworkMethodUseCase.invoke(
             networkMethod = networkMethod,

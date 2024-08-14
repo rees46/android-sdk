@@ -4,9 +4,14 @@ interface UserSettingsRepository {
 
     fun initialize(
         shopId: String,
-        seance: String?,
         segment: String,
         stream: String,
         userAgent: String
     )
+
+    fun updateSid(value: String)
+    fun getSid(): String
+
+    fun updateSidLastActTime()
+    fun getSidLastActTime(): Long
 }

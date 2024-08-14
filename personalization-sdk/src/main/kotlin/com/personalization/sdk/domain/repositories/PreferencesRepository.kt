@@ -9,12 +9,6 @@ interface PreferencesRepository {
         preferencesKey: String
     )
 
-    fun getSidLastActTime(): Long
-    fun saveSidLastActTime(value: Long)
-
-    fun getSid():  String
-    fun saveSid(value: String)
-
     fun getDid(): String
     fun saveDid(value: String)
 

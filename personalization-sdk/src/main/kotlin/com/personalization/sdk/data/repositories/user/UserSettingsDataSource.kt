@@ -10,20 +10,17 @@ class UserSettingsDataSource @Inject constructor(
 ) {
 
     private var shopId: String = ""
-    private var seance: String? = ""
     private var segment: String = ""
     private var stream: String = ""
     private var userAgent: String = ""
 
     fun initialize(
         shopId: String,
-        seance: String?,
         segment: String,
         stream: String,
         userAgent: String
     ) {
         this.shopId = shopId
-        this.seance = seance
         this.segment = segment
         this.stream = stream
         this.userAgent = userAgent
@@ -37,7 +34,8 @@ class UserSettingsDataSource @Inject constructor(
             params.put(DID_PARAMS_FIELD, did)
         }
 
-        if (seance != null) {
+        val seance = getSid()
+        if (seance.isNotEmpty()) {
             params.put(SEANCE_PARAMS_FIELD, seance)
             params.put(SID_PARAMS_FIELD, seance)
         }
@@ -55,7 +53,19 @@ class UserSettingsDataSource @Inject constructor(
         return params
     }
 
+    internal fun getSidLastActTime(): Long = preferencesDataSource.getValue(SID_LAST_ACT_KEY, DEFAULT_SID_LAST_ACT_TIME)
+    internal fun saveSidLastActTime(value: Long) = preferencesDataSource.saveValue(SID_LAST_ACT_KEY, value)
+
+    internal fun getSid(): String = preferencesDataSource.getValue(SID_KEY, DEFAULT_SID)
+    internal fun saveSid(value: String) = preferencesDataSource.saveValue(SID_KEY, value)
+
     companion object {
+
+        private const val DEFAULT_SID = ""
+        private const val DEFAULT_SID_LAST_ACT_TIME = 0L
+
+        private const val SID_KEY = "sid"
+        private const val SID_LAST_ACT_KEY = "sid_last_act"
 
         private const val SHOP_ID_PARAMS_FIELD = "shop_id"
         private const val DID_PARAMS_FIELD = "did"

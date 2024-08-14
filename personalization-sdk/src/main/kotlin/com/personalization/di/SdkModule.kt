@@ -5,7 +5,6 @@ import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
-import com.personalization.sdk.domain.usecases.notification.GetNotificationSourceUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
@@ -16,6 +15,8 @@ import com.personalization.features.track_event.TrackEventManagerImpl
 import com.personalization.network.NetworkManagerImpl
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import com.personalization.stories.StoriesManager
 import dagger.Lazy
 import dagger.Module
@@ -30,11 +31,15 @@ class SdkModule {
     fun provideRegisterManager(
         getPreferencesValueUseCase: GetPreferencesValueUseCase,
         savePreferencesValueUseCase: SavePreferencesValueUseCase,
+        updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+        getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         networkManager: Lazy<NetworkManager>
     ): RegisterManager {
         return RegisterManager(
             getPreferencesValueUseCase = getPreferencesValueUseCase,
             savePreferencesValueUseCase = savePreferencesValueUseCase,
+            updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
+            getUserSettingsValueUseCase = getUserSettingsValueUseCase,
             networkManager = networkManager
         )
     }
@@ -44,12 +49,14 @@ class SdkModule {
     fun provideNetworkManager(
         registerManager: RegisterManager,
         initNetworkUseCase: InitNetworkUseCase,
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+        updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase
     ): NetworkManager {
         return NetworkManagerImpl(
             registerManager = registerManager,
             initNetworkUseCase = initNetworkUseCase,
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase
+            sendNetworkMethodUseCase = sendNetworkMethodUseCase,
+            updateUserSettingsValueUseCase = updateUserSettingsValueUseCase
         )
     }
 
