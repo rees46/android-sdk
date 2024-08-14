@@ -4,6 +4,7 @@ interface UserSettingsRepository {
 
     fun initialize(
         shopId: String,
+        shopSecretKey: String,
         segment: String,
         stream: String,
         userAgent: String

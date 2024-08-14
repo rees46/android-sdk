@@ -9,12 +9,14 @@ class InitUserSettingsUseCase @Inject constructor(
 
     fun invoke(
         shopId: String,
+        shopSecretKey: String,
         segment: String,
         stream: String,
         userAgent: String
     ) {
         userSettingsRepository.initialize(
             shopId = shopId,
+            shopSecretKey = shopSecretKey,
             segment = segment,
             stream = stream,
             userAgent = userAgent

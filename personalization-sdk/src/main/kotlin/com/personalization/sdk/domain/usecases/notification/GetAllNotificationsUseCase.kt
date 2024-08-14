@@ -11,7 +11,7 @@ class GetAllNotificationsUseCase @Inject constructor(
 ) {
 
     fun invoke(
-        email: String?,
+        email: String? = null,
         phone: String? = null,
         loyaltyId: String? = null,
         externalId: String? = null,
@@ -34,7 +34,7 @@ class GetAllNotificationsUseCase @Inject constructor(
             limit = limit
         )
 
-        networkRepository.get(
+        networkRepository.getSecretAsync(
             method = GET_ALL_NOTIFICATIONS_REQUEST,
             params = params.build(),
             listener = listener

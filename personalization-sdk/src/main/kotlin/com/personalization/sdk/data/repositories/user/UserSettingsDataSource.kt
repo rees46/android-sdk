@@ -1,6 +1,5 @@
 package com.personalization.sdk.data.repositories.user
 
-import android.text.BoringLayout
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.domain.models.NotificationSource
 import org.json.JSONObject
@@ -11,6 +10,7 @@ class UserSettingsDataSource @Inject constructor(
 ) {
 
     private var shopId: String = ""
+    private var shopSecretKey: String = ""
     private var segment: String = ""
     private var stream: String = ""
     private var userAgent: String = ""
@@ -19,18 +19,28 @@ class UserSettingsDataSource @Inject constructor(
 
     fun initialize(
         shopId: String,
+        shopSecretKey: String,
         segment: String,
         stream: String,
         userAgent: String
     ) {
         this.shopId = shopId
+        this.shopSecretKey = shopSecretKey
         this.segment = segment
         this.stream = stream
         this.userAgent = userAgent
     }
 
-    internal fun addParams(params: JSONObject, notificationSource: NotificationSource?): JSONObject {
+    internal fun addParams(
+        params: JSONObject,
+        notificationSource: NotificationSource?,
+        isSecret: Boolean = false
+    ): JSONObject {
         params.put(SHOP_ID_PARAMS_FIELD, shopId)
+
+        if(isSecret) {
+            params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
+        }
 
         val did = getDid()
         if (did.isNotEmpty()) {
@@ -81,6 +91,7 @@ class UserSettingsDataSource @Inject constructor(
         private const val SID_LAST_ACT_KEY = "sid_last_act"
 
         private const val SHOP_ID_PARAMS_FIELD = "shop_id"
+        private const val SHOP_SECRET_KEY_PARAMS_FIELD = "shop_secret"
         private const val DID_PARAMS_FIELD = "did"
         private const val SEANCE_PARAMS_FIELD = "seance"
         private const val SID_PARAMS_FIELD = "sid"

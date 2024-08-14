@@ -48,12 +48,28 @@ class NetworkRepositoryImpl @Inject constructor(
         sendAsync { send(NetworkMethod.POST(method), params, listener) }
     }
 
+    override fun postSecretAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendAsync { sendSecretMethod(NetworkMethod.POST(method), params, listener) }
+    }
+
     override fun get(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         send(NetworkMethod.GET(method), params, listener)
     }
 
     override fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
         sendAsync { send(NetworkMethod.GET(method), params, listener) }
+    }
+
+    override fun getSecretAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendAsync { sendSecretMethod(NetworkMethod.GET(method), params, listener) }
     }
 
     private fun send(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
@@ -84,13 +100,35 @@ class NetworkRepositoryImpl @Inject constructor(
         queue.add(thread)
     }
 
-    private fun sendMethod(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+    private fun sendSecretMethod(
+        networkMethod: NetworkMethod,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendMethod(
+            networkMethod = networkMethod,
+            params = params,
+            listener = listener,
+            isSecret = true
+        )
+    }
+
+    private fun sendMethod(
+        networkMethod: NetworkMethod,
+        params: JSONObject,
+        listener: OnApiCallbackListener?,
+        isSecret: Boolean = false
+    ) {
         userDataSource.saveSidLastActTime(System.currentTimeMillis())
 
-        val sourceTimeDuration = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
+        val notificationSource = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
 
         try {
-            val newParams = userDataSource.addParams(params, sourceTimeDuration)
+            val newParams = userDataSource.addParams(
+                params = params,
+                notificationSource = notificationSource,
+                isSecret = isSecret
+            )
 
             executeMethod(networkMethod, newParams, listener)
         } catch (e: JSONException) {

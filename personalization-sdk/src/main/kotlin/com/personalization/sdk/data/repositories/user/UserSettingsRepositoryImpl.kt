@@ -9,12 +9,14 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun initialize(
         shopId: String,
+        shopSecretKey: String,
         segment: String,
         stream: String,
         userAgent: String
     ) {
         userSettingsDataSource.initialize(
             shopId = shopId,
+            shopSecretKey = shopSecretKey,
             segment = segment,
             stream = stream,
             userAgent = userAgent
