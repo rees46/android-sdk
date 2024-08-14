@@ -84,7 +84,7 @@ open class SDK {
         NotificationHelper.notificationId = notificationId
 
         notificationHandler.initialize(context)
-        networkManager.initialize(apiUrl, shopId, seance, segment, stream)
+        networkManager.initialize(apiUrl, shopId, seance, segment, stream, userAgent())
         registerManager.initialize(context.contentResolver, autoSendPushToken)
     }
 

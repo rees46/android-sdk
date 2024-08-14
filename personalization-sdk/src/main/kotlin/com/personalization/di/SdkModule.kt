@@ -14,6 +14,8 @@ import com.personalization.features.recommendation.RecommendationManagerImpl
 import com.personalization.features.search.SearchManagerImpl
 import com.personalization.features.track_event.TrackEventManagerImpl
 import com.personalization.network.NetworkManagerImpl
+import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.stories.StoriesManager
 import dagger.Lazy
 import dagger.Module
@@ -41,11 +43,13 @@ class SdkModule {
     @Provides
     fun provideNetworkManager(
         registerManager: RegisterManager,
-        getNotificationSourceUseCase: GetNotificationSourceUseCase
+        initNetworkUseCase: InitNetworkUseCase,
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): NetworkManager {
         return NetworkManagerImpl(
             registerManager = registerManager,
-            getNotificationSourceUseCase = getNotificationSourceUseCase
+            initNetworkUseCase = initNetworkUseCase,
+            sendNetworkMethodUseCase = sendNetworkMethodUseCase
         )
     }
 

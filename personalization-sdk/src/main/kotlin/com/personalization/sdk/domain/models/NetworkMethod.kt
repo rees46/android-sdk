@@ -1,6 +1,6 @@
-package com.personalization.network
+package com.personalization.sdk.domain.models
 
-internal sealed class NetworkMethod(val type: String, val method: String) {
+sealed class NetworkMethod(val type: String, val method: String) {
 
     class POST(method: String): NetworkMethod(type = "POST", method = method)
 

@@ -1,5 +1,6 @@
 package com.personalization.sdk.data.di
 
+import com.personalization.sdk.data.repositories.network.NetworkDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSource
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSource
@@ -16,14 +17,20 @@ class DataSourcesModule {
 
     @Provides
     @Singleton
+    fun provideNetworkDataSource(
+        preferencesDataSource: PreferencesDataSource
+    ) = NetworkDataSource(
+        preferencesDataSource = preferencesDataSource
+    )
+
+    @Provides
+    @Singleton
     fun provideRecommendationDataSource() = RecommendationDataSource()
 
     @Provides
     fun provideNotificationDataSource(
         preferencesDataSource: PreferencesDataSource
-    ): NotificationDataSource {
-        return NotificationDataSource(
+    ) = NotificationDataSource(
             preferencesDataSource = preferencesDataSource
         )
-    }
 }

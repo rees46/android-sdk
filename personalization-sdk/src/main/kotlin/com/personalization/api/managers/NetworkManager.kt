@@ -10,7 +10,8 @@ interface NetworkManager {
         shopId: String,
         seance: String?,
         segment: String,
-        stream: String
+        stream: String,
+        userAgent: String
     )
 
     /**
