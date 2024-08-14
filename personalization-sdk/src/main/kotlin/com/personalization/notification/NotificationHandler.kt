@@ -8,7 +8,7 @@ import android.os.Bundle
 import android.util.Log
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.R
-import com.personalization.domain.usecases.notification.UpdateNotificationSourceUseCase
+import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
 import org.json.JSONException
 import org.json.JSONObject
 import javax.inject.Inject

@@ -13,8 +13,8 @@ import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.domain.usecases.preferences.InitPreferencesUseCase
+import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
 import com.personalization.stories.StoriesManager

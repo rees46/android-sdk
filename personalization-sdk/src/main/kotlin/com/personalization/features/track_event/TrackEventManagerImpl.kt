@@ -6,8 +6,8 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.params.ProductItemParams
-import com.personalization.domain.usecases.recommendation.GetRecommendedByUseCase
-import com.personalization.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import javax.inject.Inject
 
 internal class TrackEventManagerImpl @Inject constructor(

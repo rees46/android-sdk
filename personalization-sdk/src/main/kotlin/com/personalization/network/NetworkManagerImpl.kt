@@ -5,7 +5,7 @@ import com.personalization.RegisterManager
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NetworkManager
-import com.personalization.domain.usecases.notification.GetNotificationSourceUseCase
+import com.personalization.sdk.domain.usecases.notification.GetNotificationSourceUseCase
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject

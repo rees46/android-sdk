@@ -10,8 +10,8 @@ import com.personalization.SDK.Companion.TAG
 import com.personalization.SDK.Companion.debug
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NetworkManager
-import com.personalization.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.domain.usecases.preferences.SavePreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
