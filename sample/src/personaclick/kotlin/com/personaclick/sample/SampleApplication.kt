@@ -5,9 +5,9 @@ import com.personalization.sample.AbstractSampleApplication
 
 class SampleApplication : AbstractSampleApplication<Personaclick>(Personaclick.getInstance()) {
     override val shopId: String
-        get() = "cb0516af5da25b1b41490072e679bc"
+        get() = "357382bf66ac0ce2f1722677c59511"
     override val shopSecretKey: String
-        get() = "secret_key"
+        get() = "9902b2c111e006ee944833c95e9e6066"
 
     override fun initialize() {
         Personaclick.initialize(

@@ -4,9 +4,14 @@ import com.google.gson.Gson
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.params.NotificationChannels
 import com.personalization.api.params.NotificationTypes
+import com.personalization.api.responses.ResponseResult
+import com.personalization.api.responses.SDKError
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import org.json.JSONObject
 import java.util.EnumSet
 import javax.inject.Inject
@@ -60,6 +65,57 @@ class GetAllNotificationsUseCase @Inject constructor(
                 }
             }
         )
+    }
+
+    fun invoke(
+        email: String? = null,
+        phone: String? = null,
+        loyaltyId: String? = null,
+        externalId: String? = null,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int = DEFAULT_PAGE,
+        limit: Int = DEFAULT_LIMIT
+    ): StateFlow<ResponseResult<GetAllNotificationsResponse>> {
+
+        val resultFlow = MutableStateFlow(ResponseResult<GetAllNotificationsResponse>())
+
+        val onGetAllNotifications = { response: GetAllNotificationsResponse ->
+            val result = ResponseResult(
+                response = response
+            )
+
+            resultFlow.update {
+                result
+            }
+        }
+
+        val onError = { code: Int, message: String? ->
+            val result = ResponseResult<GetAllNotificationsResponse>(
+                error = SDKError(code, message)
+            )
+
+            resultFlow.update {
+                result
+            }
+        }
+
+        invoke(
+            email = email,
+            phone = phone,
+            loyaltyId = loyaltyId,
+            externalId = externalId,
+            dateFrom = dateFrom,
+            types = types,
+            channels = channels,
+            page = page,
+            limit = limit,
+            onGetAllNotifications = onGetAllNotifications,
+            onError = onError
+        )
+
+        return resultFlow
     }
 
     private inline fun <reified T : Enum<T>> getEnumsString(enums: EnumSet<T>): String {
