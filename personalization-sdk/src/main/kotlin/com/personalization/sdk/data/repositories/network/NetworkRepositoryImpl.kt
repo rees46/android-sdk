@@ -40,12 +40,30 @@ class NetworkRepositoryImpl @Inject constructor(
         )
     }
 
-    override fun post(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        send(NetworkMethod.POST(method), params, listener)
+    override fun post(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendMethod(
+            networkMethod = NetworkMethod.POST(method),
+            params = params,
+            listener = listener
+        )
     }
 
-    override fun postAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        sendAsync { send(NetworkMethod.POST(method), params, listener) }
+    override fun postAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendAsync {
+            sendMethod(
+                networkMethod = NetworkMethod.POST(method),
+                params = params,
+                listener = listener
+            )
+        }
     }
 
     override fun postSecretAsync(
@@ -53,15 +71,39 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync { sendSecretMethod(NetworkMethod.POST(method), params, listener) }
+        sendAsync {
+            sendSecretMethod(
+                networkMethod = NetworkMethod.POST(method),
+                params = params,
+                listener = listener
+            )
+        }
     }
 
-    override fun get(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        send(NetworkMethod.GET(method), params, listener)
+    override fun get(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendMethod(
+            networkMethod = NetworkMethod.GET(method),
+            params = params,
+            listener = listener
+        )
     }
 
-    override fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        sendAsync { send(NetworkMethod.GET(method), params, listener) }
+    override fun getAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
+        sendAsync {
+            sendMethod(
+                networkMethod = NetworkMethod.GET(method),
+                params = params,
+                listener = listener
+            )
+        }
     }
 
     override fun getSecretAsync(
@@ -69,15 +111,13 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync { sendSecretMethod(NetworkMethod.GET(method), params, listener) }
-    }
-
-    private fun send(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
-        sendMethod(
-            networkMethod = networkMethod,
-            params = params,
-            listener = listener
-        )
+        sendAsync {
+            sendSecretMethod(
+                networkMethod = NetworkMethod.GET(method),
+                params = params,
+                listener = listener
+            )
+        }
     }
 
     private fun sendAsync(sendFunction: () -> Unit) {
@@ -136,7 +176,11 @@ class NetworkRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun executeMethod(networkMethod: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+    private fun executeMethod(
+        networkMethod: NetworkMethod,
+        params: JSONObject,
+        listener: OnApiCallbackListener?
+    ) {
         val thread = Thread {
             try {
                 val buildUri = build(networkMethod, params)
@@ -179,7 +223,10 @@ class NetworkRepositoryImpl @Inject constructor(
         thread.start()
     }
 
-    private fun build(networkMethod: NetworkMethod, params: JSONObject): Uri {
+    private fun build(
+        networkMethod: NetworkMethod,
+        params: JSONObject
+    ): Uri {
         val builder = Uri.parse(networkDataSource.baseUrl + networkMethod.method).buildUpon()
 
         val it = params.keys()
@@ -191,7 +238,10 @@ class NetworkRepositoryImpl @Inject constructor(
         return builder.build()
     }
 
-    private fun getUrl(networkMethod: NetworkMethod, buildUri: Uri) : URL {
+    private fun getUrl(
+        networkMethod: NetworkMethod,
+        buildUri: Uri
+    ) : URL {
         return if (networkMethod is NetworkMethod.POST) {
             URL(networkDataSource.baseUrl + networkMethod.method)
         } else {
@@ -199,7 +249,11 @@ class NetworkRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun getConnection(networkMethod: NetworkMethod, url: URL, params: JSONObject) : HttpURLConnection {
+    private fun getConnection(
+        networkMethod: NetworkMethod,
+        url: URL,
+        params: JSONObject
+    ) : HttpURLConnection {
         val connection = url.openConnection() as HttpURLConnection
         connection.setRequestProperty("User-Agent", SDK.userAgent())
         connection.requestMethod = networkMethod.type

@@ -9,37 +9,45 @@ interface NetworkRepository {
         baseUrl: String
     )
 
-    /**
-     * Direct query execution
-     */
-    fun post(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+    fun post(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
-    /**
-     * Asynchronous execution of a request if did is not specified and initialization has not been completed
-     */
-    fun postAsync(method: String, params: JSONObject, listener: OnApiCallbackListener? = null)
+    fun postAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
-    /**
-     * Asynchronous execution of a request with shop secret key if did is not specified and initialization has not been completed
-     */
-    fun postSecretAsync(method: String, params: JSONObject, listener: OnApiCallbackListener? = null)
+    fun postSecretAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
-    /**
-     * Direct query execution
-     */
-    fun get(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+    fun get(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
-    /**
-     * Asynchronous execution of a request if did is not specified and initialization has not been completed
-     */
-    fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?)
+    fun getAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
-    /**
-     * Asynchronous execution of a request with shop secret key if did is not specified and initialization has not been completed
-     */
-    fun getSecretAsync(method: String, params: JSONObject, listener: OnApiCallbackListener? = null)
+    fun getSecretAsync(
+        method: String,
+        params: JSONObject,
+        listener: OnApiCallbackListener? = null
+    )
 
     fun executeQueueTasks()
 
-    fun addTaskToQueue(thread: Thread)
+    fun addTaskToQueue(
+        thread: Thread
+    )
 }
