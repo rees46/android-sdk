@@ -9,11 +9,11 @@ import com.personalization.api.responses.SDKError
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
+import com.personalization.utils.EnumUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import org.json.JSONObject
-import java.util.EnumSet
 import javax.inject.Inject
 
 class GetAllNotificationsUseCase @Inject constructor(
@@ -34,8 +34,8 @@ class GetAllNotificationsUseCase @Inject constructor(
         onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     ) {
-        val type = getEnumsString(types)
-        val channel = getEnumsString(channels)
+        val type = EnumUtils.getEnumsString(types)
+        val channel = EnumUtils.getEnumsString(channels)
 
         val params = notificationRepository.getAllNotificationsParams(
             email = email,
@@ -116,21 +116,6 @@ class GetAllNotificationsUseCase @Inject constructor(
         )
 
         return resultFlow
-    }
-
-    private inline fun <reified T : Enum<T>> getEnumsString(enums: EnumSet<T>): String {
-        val string = StringBuilder()
-
-        for (enum in enumValues<T>()) {
-            if(enums.contains(enum)) {
-                if(string.isNotEmpty()) {
-                    string.append(',')
-                }
-                string.append(enum.toString())
-            }
-        }
-
-        return string.toString()
     }
 
     companion object {
