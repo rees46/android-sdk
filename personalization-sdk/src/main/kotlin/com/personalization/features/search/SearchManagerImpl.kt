@@ -64,7 +64,7 @@ internal class SearchManagerImpl @Inject constructor(
         onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        networkManager.post(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
+        networkManager.get(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
                     val searchBlankResponse = Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
@@ -88,7 +88,7 @@ internal class SearchManagerImpl @Inject constructor(
             .put(TYPE_PARAMETER, type.value)
             .put(QUERY_PARAMETER, query)
 
-        networkManager.post(SEARCH_REQUEST, params.build(), listener)
+        networkManager.get(SEARCH_REQUEST, params.build(), listener)
     }
 
     companion object {
