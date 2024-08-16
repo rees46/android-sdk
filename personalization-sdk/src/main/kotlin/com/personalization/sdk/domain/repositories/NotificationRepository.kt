@@ -1,7 +1,7 @@
 package com.personalization.sdk.domain.repositories
 
-import com.personalization.Params
 import com.personalization.sdk.domain.models.NotificationSource
+import org.json.JSONObject
 
 interface NotificationRepository {
 
@@ -19,5 +19,5 @@ interface NotificationRepository {
         channel: String,
         page: Int?,
         limit: Int?
-    ): Params
+    ): JSONObject
 }

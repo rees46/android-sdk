@@ -1,11 +1,11 @@
 package com.personalization.sdk.data.repositories.notification
 
-import com.personalization.Params
 import com.personalization.sdk.data.mappers.NotificationMapper
 import com.personalization.sdk.data.models.params.GetAllNotificationsParams
 import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NotificationRepository
+import org.json.JSONObject
 import javax.inject.Inject
 
 class NotificationRepositoryImpl @Inject constructor(
@@ -39,8 +39,8 @@ class NotificationRepositoryImpl @Inject constructor(
         channel: String,
         page: Int?,
         limit: Int?
-    ): Params {
-        val params = Params()
+    ): JSONObject {
+        val params = JSONObject()
 
         addOptionalParam(params, GetAllNotificationsParams.EMAIL.value, email)
         addOptionalParam(params, GetAllNotificationsParams.PHONE.value, phone)

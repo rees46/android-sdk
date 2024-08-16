@@ -51,7 +51,7 @@ class GetAllNotificationsUseCase @Inject constructor(
 
         networkRepository.getSecretAsync(
             method = GET_ALL_NOTIFICATIONS_REQUEST,
-            params = params.build(),
+            params = params,
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     response?.let {
