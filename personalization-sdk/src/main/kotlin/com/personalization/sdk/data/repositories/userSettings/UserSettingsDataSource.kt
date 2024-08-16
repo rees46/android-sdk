@@ -1,6 +1,8 @@
 package com.personalization.sdk.data.repositories.userSettings
 
+import com.personalization.sdk.data.models.params.UserSettingsParams
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
+import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
 import com.personalization.sdk.domain.models.NotificationSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -16,32 +18,28 @@ class UserSettingsDataSource @AssistedInject constructor(
 
     private var isInitialized: Boolean = false
 
-    private fun addOptionalParam(params: JSONObject, key: String, value: String?) {
-    value?.let { params.put(key, it) }
-}
-
     internal fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?,
         isSecret: Boolean = false
     ): JSONObject {
-        params.put(SHOP_ID_PARAMS_FIELD, shopId)
+        params.put(UserSettingsParams.SHOP_ID.value, shopId)
 
         if (isSecret) {
-            params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
+            params.put(UserSettingsParams.SHOP_SECRET_KEY.value, shopSecretKey)
         }
 
-        addOptionalParam(params, DID_PARAMS_FIELD, getDid())
-        addOptionalParam(params, SID_PARAMS_FIELD, getSid())
-        addOptionalParam(params, SEANCE_PARAMS_FIELD, getSid())
-        params.put(SEGMENT_PARAMS_FIELD, segment)
-        params.put(STREAM_PARAMS_FIELD, stream)
+        addOptionalParam(params, UserSettingsParams.DID.value, getDid())
+        addOptionalParam(params, UserSettingsParams.SID.value, getSid())
+        addOptionalParam(params, UserSettingsParams.SEANCE.value, getSid())
+        params.put(UserSettingsParams.SEGMENT.value, segment)
+        params.put(UserSettingsParams.STREAM.value, stream)
 
         notificationSource?.let {
             val notificationObject = JSONObject()
-                .put(SOURCE_FROM_FIELD, it.type)
-                .put(SOURCE_CODE_FIELD, it.id)
-            params.put(SOURCE_PARAMS_FIELD, notificationObject)
+                .put(UserSettingsParams.SOURCE_FROM.value, it.type)
+                .put(UserSettingsParams.SOURCE_CODE.value, it.id)
+            params.put(UserSettingsParams.SOURCE.value, notificationObject)
         }
 
         return params
@@ -70,16 +68,5 @@ class UserSettingsDataSource @AssistedInject constructor(
         private const val DID_KEY = "did"
         private const val SID_KEY = "sid"
         private const val SID_LAST_ACT_KEY = "sid_last_act"
-
-        private const val SHOP_ID_PARAMS_FIELD = "shop_id"
-        private const val SHOP_SECRET_KEY_PARAMS_FIELD = "shop_secret"
-        private const val DID_PARAMS_FIELD = "did"
-        private const val SEANCE_PARAMS_FIELD = "seance"
-        private const val SID_PARAMS_FIELD = "sid"
-        private const val SEGMENT_PARAMS_FIELD = "segment"
-        private const val STREAM_PARAMS_FIELD = "stream"
-        private const val SOURCE_PARAMS_FIELD = "source"
-        private const val SOURCE_FROM_FIELD = "from"
-        private const val SOURCE_CODE_FIELD = "code"
     }
 }
