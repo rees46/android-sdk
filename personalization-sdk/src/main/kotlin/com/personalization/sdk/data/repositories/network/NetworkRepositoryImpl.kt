@@ -4,10 +4,10 @@ import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.data.di.DataSourcesModule
-import com.personalization.sdk.data.repositories.user.UserSettingsDataSource
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
+import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -27,7 +27,7 @@ import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
     private val networkDataSourceFactory: DataSourcesModule.NetworkDataSourceFactory,
-    private val userDataSource: UserSettingsDataSource,
+    private val userSettingsRepository: UserSettingsRepository,
     private val notificationRepository: NotificationRepository
 ) : NetworkRepository {
 
@@ -125,7 +125,7 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (userDataSource.getDid().isNotEmpty() && userDataSource.getIsInitialized()) {
+        if (userSettingsRepository.getDid().isNotEmpty() && userSettingsRepository.getIsInitialized()) {
             thread.start()
         } else {
             addTaskToQueue(thread)
@@ -162,12 +162,12 @@ class NetworkRepositoryImpl @Inject constructor(
         listener: OnApiCallbackListener?,
         isSecret: Boolean = false
     ) {
-        userDataSource.saveSidLastActTime(System.currentTimeMillis())
+        userSettingsRepository.updateSidLastActTime()
 
         val notificationSource = notificationRepository.getNotificationSource(NetworkDataSource.TWO_DAYS_MILLISECONDS)
 
         try {
-            val newParams = userDataSource.addParams(
+            val newParams = userSettingsRepository.addParams(
                 params = params,
                 notificationSource = notificationSource,
                 isSecret = isSecret

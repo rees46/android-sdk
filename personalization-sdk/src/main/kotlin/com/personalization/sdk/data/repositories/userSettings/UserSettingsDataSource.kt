@@ -1,65 +1,51 @@
-package com.personalization.sdk.data.repositories.user
+package com.personalization.sdk.data.repositories.userSettings
 
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.domain.models.NotificationSource
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import org.json.JSONObject
-import javax.inject.Inject
 
-class UserSettingsDataSource @Inject constructor(
-    private val preferencesDataSource: PreferencesDataSource
+class UserSettingsDataSource @AssistedInject constructor(
+    private val preferencesDataSource: PreferencesDataSource,
+    @Assisted("shopId") private val shopId: String,
+    @Assisted("shopSecretKey") private val shopSecretKey: String,
+    @Assisted("segment") private val segment: String,
+    @Assisted("stream") private val stream: String
 ) {
 
-    private var shopId: String = ""
-    private var shopSecretKey: String = ""
-    private var segment: String = ""
-    private var stream: String = ""
-    private var userAgent: String = ""
-
     private var isInitialized: Boolean = false
-
-    fun initialize(
-        shopId: String,
-        shopSecretKey: String,
-        segment: String,
-        stream: String,
-        userAgent: String
-    ) {
-        this.shopId = shopId
-        this.shopSecretKey = shopSecretKey
-        this.segment = segment
-        this.stream = stream
-        this.userAgent = userAgent
-    }
 
     private fun addOptionalParam(params: JSONObject, key: String, value: String?) {
     value?.let { params.put(key, it) }
 }
 
-internal fun addParams(
-    params: JSONObject,
-    notificationSource: NotificationSource?,
-    isSecret: Boolean = false
-): JSONObject {
-    params.put(SHOP_ID_PARAMS_FIELD, shopId)
+    internal fun addParams(
+        params: JSONObject,
+        notificationSource: NotificationSource?,
+        isSecret: Boolean = false
+    ): JSONObject {
+        params.put(SHOP_ID_PARAMS_FIELD, shopId)
 
-    if (isSecret) {
-        params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
+        if (isSecret) {
+            params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
+        }
+
+        addOptionalParam(params, DID_PARAMS_FIELD, getDid())
+        addOptionalParam(params, SID_PARAMS_FIELD, getSid())
+        addOptionalParam(params, SEANCE_PARAMS_FIELD, getSid())
+        params.put(SEGMENT_PARAMS_FIELD, segment)
+        params.put(STREAM_PARAMS_FIELD, stream)
+
+        notificationSource?.let {
+            val notificationObject = JSONObject()
+                .put(SOURCE_FROM_FIELD, it.type)
+                .put(SOURCE_CODE_FIELD, it.id)
+            params.put(SOURCE_PARAMS_FIELD, notificationObject)
+        }
+
+        return params
     }
-
-    addOptionalParam(params, DID_PARAMS_FIELD, getDid())
-    addOptionalParam(params, SEANCE_PARAMS_FIELD, getSid())
-    params.put(SEGMENT_PARAMS_FIELD, segment)
-    params.put(STREAM_PARAMS_FIELD, stream)
-
-    notificationSource?.let {
-        val notificationObject = JSONObject()
-            .put(SOURCE_FROM_FIELD, it.type)
-            .put(SOURCE_CODE_FIELD, it.id)
-        params.put(SOURCE_PARAMS_FIELD, notificationObject)
-    }
-
-    return params
-}
 
     internal fun getSidLastActTime(): Long = preferencesDataSource.getValue(SID_LAST_ACT_KEY, DEFAULT_SID_LAST_ACT_TIME)
     internal fun saveSidLastActTime(value: Long) = preferencesDataSource.saveValue(SID_LAST_ACT_KEY, value)

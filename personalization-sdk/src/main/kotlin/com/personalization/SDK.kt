@@ -104,8 +104,7 @@ open class SDK {
             shopId = shopId,
             shopSecretKey = shopSecretKey,
             segment = segment,
-            stream = stream,
-            userAgent = userAgent()
+            stream = stream
         )
         initNetworkUseCase.invoke(
             baseUrl = apiUrl

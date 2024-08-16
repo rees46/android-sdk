@@ -4,7 +4,7 @@ import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.data.repositories.notification.NotificationRepositoryImpl
 import com.personalization.sdk.data.repositories.preferences.PreferencesRepositoryImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationRepositoryImpl
-import com.personalization.sdk.data.repositories.user.UserSettingsRepositoryImpl
+import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.PreferencesRepository
@@ -12,6 +12,7 @@ import com.personalization.sdk.domain.repositories.RecommendationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import dagger.Binds
 import dagger.Module
+import javax.inject.Singleton
 
 @Module
 abstract class RepositoriesModule {
@@ -20,9 +21,11 @@ abstract class RepositoriesModule {
     abstract fun bindPreferencesRepository(impl: PreferencesRepositoryImpl): PreferencesRepository
 
     @Binds
+    @Singleton
     abstract fun bindUserRepository(impl: UserSettingsRepositoryImpl): UserSettingsRepository
 
     @Binds
+    @Singleton
     abstract fun bindNetworkRepository(impl: NetworkRepositoryImpl): NetworkRepository
 
     @Binds

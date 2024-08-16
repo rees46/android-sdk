@@ -11,15 +11,13 @@ class InitUserSettingsUseCase @Inject constructor(
         shopId: String,
         shopSecretKey: String,
         segment: String,
-        stream: String,
-        userAgent: String
+        stream: String
     ) {
         userSettingsRepository.initialize(
             shopId = shopId,
             shopSecretKey = shopSecretKey,
             segment = segment,
-            stream = stream,
-            userAgent = userAgent
+            stream = stream
         )
     }
 }
