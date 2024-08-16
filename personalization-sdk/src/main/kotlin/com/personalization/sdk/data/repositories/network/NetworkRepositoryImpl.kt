@@ -3,6 +3,7 @@ package com.personalization.sdk.data.repositories.network
 import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.data.repositories.user.UserSettingsDataSource
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
@@ -25,17 +26,19 @@ import java.util.Collections
 import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
-    private val networkDataSource: NetworkDataSource,
+    private val networkDataSourceFactory: DataSourcesModule.NetworkDataSourceFactory,
     private val userDataSource: UserSettingsDataSource,
     private val notificationRepository: NotificationRepository
 ) : NetworkRepository {
 
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
+    private var networkDataSource: NetworkDataSource? = null
+
     override fun initialize(
         baseUrl: String
     ) {
-        networkDataSource.initialize(
+        networkDataSource = networkDataSourceFactory.create(
             baseUrl = baseUrl
         )
     }
@@ -227,7 +230,9 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         params: JSONObject
     ): Uri {
-        val builder = Uri.parse(networkDataSource.baseUrl + networkMethod.method).buildUpon()
+        if(networkDataSource == null) throw Exception("Network not initialized.")
+
+        val builder = Uri.parse(networkDataSource!!.baseUrl + networkMethod.method).buildUpon()
 
         val it = params.keys()
         while (it.hasNext()) {
@@ -242,8 +247,10 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         buildUri: Uri
     ) : URL {
+        if(networkDataSource == null) throw Exception("Network not initialized.")
+
         return if (networkMethod is NetworkMethod.POST) {
-            URL(networkDataSource.baseUrl + networkMethod.method)
+            URL(networkDataSource!!.baseUrl + networkMethod.method)
         } else {
             URL(buildUri.toString())
         }

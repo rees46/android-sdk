@@ -1,16 +1,11 @@
 package com.personalization.sdk.data.repositories.network
 
-import javax.inject.Inject
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 
-class NetworkDataSource @Inject constructor() {
-
-    internal var baseUrl: String = ""
-
-    fun initialize(
-        baseUrl: String
-    ) {
-        this.baseUrl = baseUrl
-    }
+class NetworkDataSource @AssistedInject constructor(
+    @Assisted val baseUrl: String
+) {
 
     companion object {
 

@@ -7,6 +7,7 @@ import com.personalization.sdk.data.repositories.recommendation.RecommendationDa
 import com.personalization.sdk.data.repositories.user.UserSettingsDataSource
 import dagger.Module
 import dagger.Provides
+import dagger.assisted.AssistedFactory
 import javax.inject.Singleton
 
 @Module
@@ -16,9 +17,10 @@ class DataSourcesModule {
     @Singleton
     fun providePreferencesDataSource() = PreferencesDataSource()
 
-    @Provides
-    @Singleton
-    fun provideNetworkDataSource() = NetworkDataSource()
+    @AssistedFactory
+    interface NetworkDataSourceFactory {
+        fun create(baseUrl: String): NetworkDataSource
+    }
 
     @Provides
     @Singleton
