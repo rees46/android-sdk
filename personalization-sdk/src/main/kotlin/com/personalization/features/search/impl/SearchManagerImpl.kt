@@ -1,4 +1,4 @@
-package com.personalization.features.search
+package com.personalization.features.search.impl
 
 import com.google.gson.Gson
 import com.personalization.Params

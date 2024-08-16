@@ -1,4 +1,4 @@
-package com.personalization.features.recommendation
+package com.personalization.features.recommendation.impl
 
 import com.google.gson.Gson
 import com.personalization.Params

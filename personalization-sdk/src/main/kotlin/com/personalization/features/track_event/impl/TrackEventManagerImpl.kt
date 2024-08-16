@@ -1,4 +1,4 @@
-package com.personalization.features.track_event
+package com.personalization.features.track_event.impl
 
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
