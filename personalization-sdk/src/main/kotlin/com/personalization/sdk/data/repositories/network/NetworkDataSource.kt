@@ -14,6 +14,6 @@ class NetworkDataSource @Inject constructor() {
 
     companion object {
 
-        internal var sourceTimeDuration = 60 * 60 * 24 * 2 * 1000
+        internal const val TWO_DAYS_MILLISECONDS  = 60 * 60 * 24 * 2 * 1000
     }
 }
