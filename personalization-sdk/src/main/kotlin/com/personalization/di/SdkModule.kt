@@ -10,7 +10,7 @@ import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUs
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
-import com.personalization.features.track_event.impl.TrackEventManagerImpl
+import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
