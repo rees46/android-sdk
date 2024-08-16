@@ -31,40 +31,35 @@ class UserSettingsDataSource @Inject constructor(
         this.userAgent = userAgent
     }
 
-    internal fun addParams(
-        params: JSONObject,
-        notificationSource: NotificationSource?,
-        isSecret: Boolean = false
-    ): JSONObject {
-        params.put(SHOP_ID_PARAMS_FIELD, shopId)
+    private fun addOptionalParam(params: JSONObject, key: String, value: String?) {
+    value?.let { params.put(key, it) }
+}
 
-        if(isSecret) {
-            params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
-        }
+internal fun addParams(
+    params: JSONObject,
+    notificationSource: NotificationSource?,
+    isSecret: Boolean = false
+): JSONObject {
+    params.put(SHOP_ID_PARAMS_FIELD, shopId)
 
-        val did = getDid()
-        if (did.isNotEmpty()) {
-            params.put(DID_PARAMS_FIELD, did)
-        }
-
-        val seance = getSid()
-        if (seance.isNotEmpty()) {
-            params.put(SEANCE_PARAMS_FIELD, seance)
-            params.put(SID_PARAMS_FIELD, seance)
-        }
-
-        params.put(SEGMENT_PARAMS_FIELD, segment)
-        params.put(STREAM_PARAMS_FIELD, stream)
-
-        if (notificationSource != null) {
-            val notificationObject = JSONObject()
-                .put(SOURCE_FROM_FIELD, notificationSource.type)
-                .put(SOURCE_CODE_FIELD, notificationSource.id)
-            params.put(SOURCE_PARAMS_FIELD, notificationObject)
-        }
-
-        return params
+    if (isSecret) {
+        params.put(SHOP_SECRET_KEY_PARAMS_FIELD, shopSecretKey)
     }
+
+    addOptionalParam(params, DID_PARAMS_FIELD, getDid())
+    addOptionalParam(params, SEANCE_PARAMS_FIELD, getSid())
+    params.put(SEGMENT_PARAMS_FIELD, segment)
+    params.put(STREAM_PARAMS_FIELD, stream)
+
+    notificationSource?.let {
+        val notificationObject = JSONObject()
+            .put(SOURCE_FROM_FIELD, it.type)
+            .put(SOURCE_CODE_FIELD, it.id)
+        params.put(SOURCE_PARAMS_FIELD, notificationObject)
+    }
+
+    return params
+}
 
     internal fun getSidLastActTime(): Long = preferencesDataSource.getValue(SID_LAST_ACT_KEY, DEFAULT_SID_LAST_ACT_TIME)
     internal fun saveSidLastActTime(value: Long) = preferencesDataSource.saveValue(SID_LAST_ACT_KEY, value)
