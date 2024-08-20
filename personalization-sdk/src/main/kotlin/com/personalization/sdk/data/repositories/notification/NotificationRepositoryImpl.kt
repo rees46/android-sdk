@@ -1,5 +1,8 @@
 package com.personalization.sdk.data.repositories.notification
 
+import com.google.gson.Gson
+import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.data.mappers.NotificationMapper
 import com.personalization.sdk.data.models.params.GetAllNotificationsParams
 import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
@@ -54,6 +57,23 @@ class NotificationRepositoryImpl @Inject constructor(
 
         return params
     }
+
+    override fun getAllNotificationListener(
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit
+    ) : OnApiCallbackListener =
+        object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    val getAllNotificationsResponse = Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
+                    onGetAllNotifications(getAllNotificationsResponse)
+                }
+            }
+
+            override fun onError(code: Int, msg: String?) {
+                onError(code, msg)
+            }
+        }
 
     private fun isTimeCorrect(time: Long, timeDuration: Int): Boolean {
         val currentTime = System.currentTimeMillis()

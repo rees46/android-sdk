@@ -1,7 +1,5 @@
 package com.personalization.sdk.domain.usecases.notification
 
-import com.google.gson.Gson
-import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.params.NotificationChannels
 import com.personalization.api.params.NotificationTypes
 import com.personalization.api.responses.ResponseResult
@@ -13,7 +11,6 @@ import com.personalization.utils.EnumUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import org.json.JSONObject
 import javax.inject.Inject
 
 class GetAllNotificationsUseCase @Inject constructor(
@@ -49,21 +46,15 @@ class GetAllNotificationsUseCase @Inject constructor(
             limit = limit
         )
 
+        val listener = notificationRepository.getAllNotificationListener(
+            onGetAllNotifications = onGetAllNotifications,
+            onError = onError
+        )
+
         networkRepository.getSecretAsync(
             method = GET_ALL_NOTIFICATIONS_REQUEST,
             params = params,
-            listener = object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val getAllNotificationsResponse = Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
-                        onGetAllNotifications(getAllNotificationsResponse)
-                    }
-                }
-
-                override fun onError(code: Int, msg: String?) {
-                    onError(code, msg)
-                }
-            }
+            listener = listener
         )
     }
 
