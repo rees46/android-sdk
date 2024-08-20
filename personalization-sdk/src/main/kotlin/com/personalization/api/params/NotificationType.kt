@@ -14,9 +14,6 @@ enum class NotificationType(val value: String) {
         return value
     }
 
-    infix fun and(other: NotificationType): EnumSet<NotificationType> =
+    infix fun and(other: NotificationType): NotificationTypes =
         NotificationTypes.of(this, other)
 }
-
-infix fun EnumSet<NotificationType>.and(other: NotificationType): EnumSet<NotificationType> =
-    NotificationTypes.of(other, *this.toTypedArray())

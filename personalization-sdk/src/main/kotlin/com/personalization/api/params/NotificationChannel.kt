@@ -16,9 +16,6 @@ enum class NotificationChannel(val value: String) {
         return value
     }
 
-    infix fun and(other: NotificationChannel): EnumSet<NotificationChannel> =
+    infix fun and(other: NotificationChannel): NotificationChannels =
         NotificationChannels.of(this, other)
 }
-
-infix fun EnumSet<NotificationChannel>.and(other: NotificationChannel): EnumSet<NotificationChannel> =
-    NotificationChannels.of(other, *this.toTypedArray())
