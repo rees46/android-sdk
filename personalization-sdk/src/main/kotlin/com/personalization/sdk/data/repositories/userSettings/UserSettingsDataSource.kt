@@ -23,23 +23,23 @@ class UserSettingsDataSource @AssistedInject constructor(
         notificationSource: NotificationSource?,
         isSecret: Boolean = false
     ): JSONObject {
-        params.put(UserSettingsParams.SHOP_ID.value, shopId)
+        params.put(UserSettingsParams.SHOP_ID, shopId)
 
         if (isSecret) {
-            params.put(UserSettingsParams.SHOP_SECRET_KEY.value, shopSecretKey)
+            params.put(UserSettingsParams.SHOP_SECRET_KEY, shopSecretKey)
         }
 
-        addOptionalParam(params, UserSettingsParams.DID.value, getDid())
-        addOptionalParam(params, UserSettingsParams.SID.value, getSid())
-        addOptionalParam(params, UserSettingsParams.SEANCE.value, getSid())
-        params.put(UserSettingsParams.SEGMENT.value, segment)
-        params.put(UserSettingsParams.STREAM.value, stream)
+        addOptionalParam(params, UserSettingsParams.DID, getDid())
+        addOptionalParam(params, UserSettingsParams.SID, getSid())
+        addOptionalParam(params, UserSettingsParams.SEANCE, getSid())
+        params.put(UserSettingsParams.SEGMENT, segment)
+        params.put(UserSettingsParams.STREAM, stream)
 
         notificationSource?.let {
             val notificationObject = JSONObject()
-                .put(UserSettingsParams.SOURCE_FROM.value, it.type)
-                .put(UserSettingsParams.SOURCE_CODE.value, it.id)
-            params.put(UserSettingsParams.SOURCE.value, notificationObject)
+                .put(UserSettingsParams.SOURCE_FROM, it.type)
+                .put(UserSettingsParams.SOURCE_CODE, it.id)
+            params.put(UserSettingsParams.SOURCE, notificationObject)
         }
 
         return params
