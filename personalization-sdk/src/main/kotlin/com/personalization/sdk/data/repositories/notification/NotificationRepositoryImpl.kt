@@ -16,7 +16,7 @@ class NotificationRepositoryImpl @Inject constructor(
     private val notificationMapper: NotificationMapper
 ) : NotificationRepository {
 
-    override fun getNotificationSource(timeDuration: Int): NotificationSource? {
+    override fun getNotificationSource(timeDuration: Long): NotificationSource? {
         val notificationSourceDto = notificationDataSource.getNotificationSourceDto()
 
         if (!isTimeCorrect(notificationSourceDto.time, timeDuration)) {
@@ -75,7 +75,7 @@ class NotificationRepositoryImpl @Inject constructor(
             }
         }
 
-    private fun isTimeCorrect(time: Long, timeDuration: Int): Boolean {
+    private fun isTimeCorrect(time: Long, timeDuration: Long): Boolean {
         val currentTime = System.currentTimeMillis()
         return time > 0 && (time + timeDuration) > currentTime
     }

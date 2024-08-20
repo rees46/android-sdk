@@ -164,7 +164,7 @@ class NetworkRepositoryImpl @Inject constructor(
     ) {
         userSettingsRepository.updateSidLastActTime()
 
-        val notificationSource = notificationRepository.getNotificationSource(NetworkDataSource.TWO_DAYS_MILLISECONDS)
+        val notificationSource = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
 
         try {
             val newParams = userSettingsRepository.addParams(

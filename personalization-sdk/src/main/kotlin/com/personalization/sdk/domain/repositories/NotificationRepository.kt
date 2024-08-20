@@ -7,7 +7,7 @@ import org.json.JSONObject
 
 interface NotificationRepository {
 
-    fun getNotificationSource(timeDuration: Int): NotificationSource?
+    fun getNotificationSource(timeDuration: Long): NotificationSource?
 
     fun updateNotificationSource(type: String, id: String)
 
