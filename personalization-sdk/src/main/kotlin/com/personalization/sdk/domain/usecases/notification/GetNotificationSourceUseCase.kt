@@ -8,7 +8,7 @@ class GetNotificationSourceUseCase @Inject constructor(
 ) {
 
     fun invoke(
-        timeDuration: Int
+        timeDuration: Long
     ) = notificationRepository.getNotificationSource(
         timeDuration = timeDuration
     )

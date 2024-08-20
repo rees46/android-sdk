@@ -1,19 +1,19 @@
-package com.personalization.features.track_event
+package com.personalization.features.trackEvent.impl
 
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.params.ProductItemParams
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import javax.inject.Inject
 
 internal class TrackEventManagerImpl @Inject constructor(
-    val networkManager: NetworkManager,
     val getRecommendedByUseCase: GetRecommendedByUseCase,
-    val setRecommendedByUseCase: SetRecommendedByUseCase
+    val setRecommendedByUseCase: SetRecommendedByUseCase,
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : TrackEventManager {
 
     override fun track(event: TrackEvent, productId: String) {
@@ -31,7 +31,7 @@ internal class TrackEventManagerImpl @Inject constructor(
             params.put(lastRecommendedBy)
             setRecommendedByUseCase(null)
         }
-        networkManager.postAsync(PUSH_REQUEST, params.build(), listener)
+        sendNetworkMethodUseCase.postAsync(PUSH_REQUEST, params.build(), listener)
     }
 
     override fun customTrack(
@@ -55,7 +55,7 @@ internal class TrackEventManagerImpl @Inject constructor(
         if (label != null) { params.put(LABEL_PARAMETER, label) }
         if (value != null) { params.put(VALUE_PARAMETER, value) }
 
-        networkManager.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
+        sendNetworkMethodUseCase.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
     }
 
     companion object {

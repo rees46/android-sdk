@@ -16,21 +16,6 @@ class PreferencesRepositoryImpl @Inject constructor(
         preferencesKey = preferencesKey
     )
 
-    override fun getSidLastActTime(): Long = preferencesDataSource.getSidLastActTime()
-    override fun saveSidLastActTime(value: Long) {
-        preferencesDataSource.saveSidLastActTime(value)
-    }
-
-    override fun getSid(): String = preferencesDataSource.getSid()
-    override fun saveSid(value: String) {
-        preferencesDataSource.saveSid(value)
-    }
-
-    override fun getDid(): String = preferencesDataSource.getDid()
-    override fun saveDid(value: String) {
-        preferencesDataSource.saveDid(value)
-    }
-
     override fun getToken(): String = preferencesDataSource.getToken()
     override fun saveToken(value: String) {
         preferencesDataSource.saveToken(value)

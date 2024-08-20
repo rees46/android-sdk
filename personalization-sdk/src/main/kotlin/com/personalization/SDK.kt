@@ -8,7 +8,6 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
@@ -17,6 +16,12 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
+import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
+import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import org.json.JSONException
@@ -30,15 +35,12 @@ open class SDK {
     private lateinit var segment: String
 
     private var onMessageListener: OnMessageListener? = null
-    private var seance: String? = null
     private var search: Search = Search(JSONObject())
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
     @Inject
     lateinit var registerManager: RegisterManager
-    @Inject
-    lateinit var networkManager: NetworkManager
     @Inject
     lateinit var storiesManager: StoriesManager
     @Inject
@@ -51,7 +53,19 @@ open class SDK {
     @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
     @Inject
+    lateinit var initUserSettingsUseCase: InitUserSettingsUseCase
+    @Inject
+    lateinit var initNetworkUseCase: InitNetworkUseCase
+    @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
+    @Inject
+    lateinit var getUserSettingsValueUseCase: GetUserSettingsValueUseCase
+    @Inject
+    lateinit var addTaskToQueueUseCase: AddTaskToQueueUseCase
+    @Inject
+    lateinit var sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    @Inject
+    lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
 
     /**
      * @param shopId Shop key
@@ -59,6 +73,7 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
+        shopSecretKey: String,
         apiUrl: String,
         tag: String,
         preferencesKey: String,
@@ -84,7 +99,16 @@ open class SDK {
         NotificationHelper.notificationId = notificationId
 
         notificationHandler.initialize(context)
-        networkManager.initialize(apiUrl, shopId, seance, segment, stream)
+
+        initUserSettingsUseCase.invoke(
+            shopId = shopId,
+            shopSecretKey = shopSecretKey,
+            segment = segment,
+            stream = stream
+        )
+        initNetworkUseCase.invoke(
+            baseUrl = apiUrl
+        )
         registerManager.initialize(context.contentResolver, autoSendPushToken)
     }
 
@@ -102,16 +126,27 @@ open class SDK {
     }
 
     /**
+     * Return the session ID
+     */
+    fun getSid(): String =
+        getUserSettingsValueUseCase.getSid()
+
+    /**
      * Returns the session ID
      */
+    @Deprecated(
+        "This method will be removed in future versions.",
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith("getSid(): String")
+    )
     fun getSid(listener: Consumer<String?>) {
         val thread = Thread {
-            listener.accept(seance)
+            listener.accept(getSid())
         }
-        if (registerManager.isInitialized) {
+        if (getUserSettingsValueUseCase.getIsInitialized()) {
             thread.start()
         } else {
-            networkManager.addTaskToQueue(thread)
+            addTaskToQueueUseCase.invoke(thread)
         }
     }
 
@@ -121,7 +156,7 @@ open class SDK {
     fun notificationClicked(extras: Bundle?) {
         notificationHandler.notificationClicked(
             extras = extras,
-            sendAsync = { method, params -> networkManager.postAsync(method, params) }
+            sendAsync = { method, params -> sendNetworkMethodUseCase.postAsync(method, params) }
         )
     }
 
@@ -134,7 +169,7 @@ open class SDK {
         replaceWith = ReplaceWith("networkManager.postAsync(method, params, listener)")
     )
     fun sendAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        networkManager.postAsync(method, params, listener)
+        sendNetworkMethodUseCase.postAsync(method, params, listener)
     }
 
     /**
@@ -146,7 +181,7 @@ open class SDK {
         replaceWith = ReplaceWith("networkManager.getAsync(method, params, listener)")
     )
     fun getAsync(method: String, params: JSONObject, listener: OnApiCallbackListener?) {
-        networkManager.getAsync(method, params, listener)
+        sendNetworkMethodUseCase.getAsync(method, params, listener)
     }
 
     /**
@@ -345,7 +380,7 @@ open class SDK {
      * @return String
      */
     fun getDid(): String? {
-        return registerManager.did
+        return getUserSettingsValueUseCase.getDid()
     }
 
     /**
@@ -662,7 +697,7 @@ open class SDK {
                 params.put(CODE_FIELD, id)
             }
             if (params.length() > 0) {
-                networkManager.postAsync(TRACK_RECEIVED, params)
+                sendNetworkMethodUseCase.postAsync(TRACK_RECEIVED, params)
             }
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)

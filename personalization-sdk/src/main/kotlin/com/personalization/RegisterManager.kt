@@ -9,9 +9,12 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.SDK.Companion.TAG
 import com.personalization.SDK.Companion.debug
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
+import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,20 +30,14 @@ import javax.inject.Inject
 class RegisterManager @Inject constructor(
     private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
     private val savePreferencesValueUseCase: SavePreferencesValueUseCase,
-    private val networkManager: Lazy<NetworkManager>,
+    private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+    private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+    private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase
 ) {
     private var autoSendPushToken: Boolean = false
 
     private lateinit var contentResolver: ContentResolver
-
-    internal var did: String? = null
-        private set
-
-    internal var seance: String? = null
-        private set
-
-    internal var isInitialized: Boolean = false
-        private set
 
     /**
      * Get did from properties or generate a new did
@@ -50,12 +47,12 @@ class RegisterManager @Inject constructor(
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        if (!did.isNullOrEmpty()) return
+        var did = getUserSettingsValueUseCase.getDid()
 
-        did = getPreferencesValueUseCase.getDid()
-
-        if (did.isNullOrEmpty()) {
+        if (did.isEmpty()) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+            updateUserSettingsValueUseCase.updateDid(did)
 
             init()
         } else {
@@ -108,7 +105,7 @@ class RegisterManager @Inject constructor(
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            networkManager.get().get("init", params, object : OnApiCallbackListener() {
+            sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
 
@@ -118,13 +115,13 @@ class RegisterManager @Inject constructor(
                         return
                     }
 
-                    did = response.optString("did")
+                    val did = response.optString("did")
                     if (did.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct did field.")
                         return
                     }
 
-                    saveDid()
+                    updateUserSettingsValueUseCase.updateDid(did)
 
                     val seance = response.optString("seance")
                     if (seance.isNullOrEmpty()) {
@@ -156,17 +153,17 @@ class RegisterManager @Inject constructor(
     }
 
     private fun initializeSdk(sid: String?) {
-        isInitialized = true
-        seance = sid
+        updateUserSettingsValueUseCase.updateIsInitialized(true)
+        var seance = sid
 
         //If there is no session, try to find it in the storage
         //We need to separate sessions by time.
         //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
 
         if (seance == null) {
-            val newSid = getPreferencesValueUseCase.getSid()
+            val newSid = getUserSettingsValueUseCase.getSid()
             if(newSid.isNotEmpty()
-                && getPreferencesValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
+                && getUserSettingsValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
             {
                 seance = newSid
             }
@@ -179,26 +176,17 @@ class RegisterManager @Inject constructor(
             seance = alphanumeric(10)
         }
 
-        updateSidActivity()
-
+        updateUserSettingsValueUseCase.updateSid(seance)
         debug(
-            "Device ID: " + did + ", seance: " + seance + ", last act: " + Timestamp(
-                getPreferencesValueUseCase.getSidLastActTime()
+            "Device ID: " + getUserSettingsValueUseCase.getDid() + ", seance: " + seance + ", last act: " + Timestamp(
+                getUserSettingsValueUseCase.getSidLastActTime()
             )
         )
 
-        networkManager.get().executeQueueTasks()
+        executeQueueTasksUseCase.invoke()
 
         initToken()
     }
-
-    internal fun updateSidActivity() {
-        seance?.let { seance ->
-            savePreferencesValueUseCase.saveSid(seance)
-        }
-        savePreferencesValueUseCase.saveLastActTime(System.currentTimeMillis())
-    }
-
 
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
@@ -206,17 +194,11 @@ class RegisterManager @Inject constructor(
             FIREBASE_TEST_LAB
         )
 
-    private fun saveDid() {
-        did?.let { did ->
-            savePreferencesValueUseCase.saveDid(did)
-        }
-    }
-
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
-        networkManager.get().post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
+        sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
     private fun alphanumeric(length: Int): String {

@@ -1,19 +1,19 @@
-package com.personalization.features.search
+package com.personalization.features.search.impl
 
 import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
 import com.personalization.api.params.SearchParams
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.api.responses.search.SearchInstantResponse
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
 
 internal class SearchManagerImpl @Inject constructor(
-    val networkManager: NetworkManager
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : SearchManager {
 
     override fun searchFull(
@@ -64,7 +64,7 @@ internal class SearchManagerImpl @Inject constructor(
         onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        networkManager.get(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
+        sendNetworkMethodUseCase.get(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
                     val searchBlankResponse = Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
@@ -88,7 +88,7 @@ internal class SearchManagerImpl @Inject constructor(
             .put(TYPE_PARAMETER, type.value)
             .put(QUERY_PARAMETER, query)
 
-        networkManager.get(SEARCH_REQUEST, params.build(), listener)
+        sendNetworkMethodUseCase.get(SEARCH_REQUEST, params.build(), listener)
     }
 
     companion object {

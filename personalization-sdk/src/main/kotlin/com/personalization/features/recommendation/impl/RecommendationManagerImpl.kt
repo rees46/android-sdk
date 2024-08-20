@@ -1,17 +1,17 @@
-package com.personalization.features.recommendation
+package com.personalization.features.recommendation.impl
 
 import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.NetworkManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.responses.recommendation.GetRecommendationResponse
 import com.personalization.api.responses.recommendation.GetExtendedRecommendationResponse
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
 
 internal class RecommendationManagerImpl @Inject constructor(
-    val networkManager: NetworkManager
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : RecommendationManager {
 
     override fun getRecommendation(
@@ -59,7 +59,7 @@ internal class RecommendationManagerImpl @Inject constructor(
     }
 
     override fun getRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
-        networkManager.getAsync("$GET_RECOMMENDATION_REQUEST/$recommenderCode", params.build(), listener)
+        sendNetworkMethodUseCase.getAsync("$GET_RECOMMENDATION_REQUEST/$recommenderCode", params.build(), listener)
     }
 
     companion object {
