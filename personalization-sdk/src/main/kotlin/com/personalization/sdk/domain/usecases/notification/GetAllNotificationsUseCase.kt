@@ -5,7 +5,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.params.NotificationChannels
 import com.personalization.api.params.NotificationTypes
 import com.personalization.api.responses.ResponseResult
-import com.personalization.api.responses.SDKError
+import com.personalization.api.responses.SDKErrorResponse
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
@@ -93,7 +93,7 @@ class GetAllNotificationsUseCase @Inject constructor(
 
         val onError = { code: Int, message: String? ->
             val result = ResponseResult<GetAllNotificationsResponse>(
-                error = SDKError(code, message)
+                error = SDKErrorResponse(code, message)
             )
 
             resultFlow.update {
