@@ -13,13 +13,3 @@ class GetAllNotificationsParams {
         const val LIMIT = "limit"
     }
 }
-    EMAIL("email"),
-    PHONE("phone"),
-    EXTERNAL_ID("external_id"),
-    LOYALTY_ID("loyalty_id"),
-    DATE_FROM("date_from"),
-    TYPE("type"),
-    CHANNEL("channel"),
-    PAGE("page"),
-    LIMIT("limit")
-}

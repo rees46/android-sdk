@@ -42,15 +42,15 @@ class NotificationRepositoryImpl @Inject constructor(
     ): JSONObject {
         val params = JSONObject()
 
-        addOptionalParam(params, GetAllNotificationsParams.EMAIL.value, email)
-        addOptionalParam(params, GetAllNotificationsParams.PHONE.value, phone)
-        addOptionalParam(params, GetAllNotificationsParams.EXTERNAL_ID.value, externalId)
-        addOptionalParam(params, GetAllNotificationsParams.LOYALTY_ID.value, loyaltyId)
-        params.put(GetAllNotificationsParams.DATE_FROM.value, dateFrom)
-        params.put(GetAllNotificationsParams.TYPE.value, type)
-        params.put(GetAllNotificationsParams.CHANNEL.value, channel)
-        addOptionalParam(params, GetAllNotificationsParams.PAGE.value, page)
-        addOptionalParam(params, GetAllNotificationsParams.LIMIT.value, limit)
+        addOptionalParam(params, GetAllNotificationsParams.EMAIL, email)
+        addOptionalParam(params, GetAllNotificationsParams.PHONE, phone)
+        addOptionalParam(params, GetAllNotificationsParams.EXTERNAL_ID, externalId)
+        addOptionalParam(params, GetAllNotificationsParams.LOYALTY_ID, loyaltyId)
+        params.put(GetAllNotificationsParams.DATE_FROM, dateFrom)
+        params.put(GetAllNotificationsParams.TYPE, type)
+        params.put(GetAllNotificationsParams.CHANNEL, channel)
+        addOptionalParam(params, GetAllNotificationsParams.PAGE, page)
+        addOptionalParam(params, GetAllNotificationsParams.LIMIT, limit)
 
         return params
     }
