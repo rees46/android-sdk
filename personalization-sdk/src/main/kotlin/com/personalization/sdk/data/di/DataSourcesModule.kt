@@ -27,7 +27,6 @@ class DataSourcesModule {
 
     @AssistedFactory
     interface UserSettingsDataSourceFactory {
-        @Singleton
         fun create(
             @Assisted("shopId") shopId: String,
             @Assisted("shopSecretKey") shopSecretKey: String,
