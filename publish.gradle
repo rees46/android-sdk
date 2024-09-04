@@ -6,6 +6,13 @@ def pomConfig = {
 			distribution "repo"
 		}
 	}
+	developers {
+		developer {
+			id "noff"
+			name "Michael Kechinov"
+			email "mk@rees46.com"
+		}
+	}
 
 	scm {
 		connection "scm:git:github.com:rees46/android-sdk.git"
