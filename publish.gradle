@@ -124,7 +124,6 @@ publishing {
 		}
 	}
 }
-
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
