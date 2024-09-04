@@ -25,10 +25,14 @@ jobs:
       URL: ${{ vars.REES_REPO_URL }}
       MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
     secrets:
+      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   publish-rees:
@@ -44,10 +48,14 @@ jobs:
       URL: ${{ vars.REES_REPO_URL }}
       MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
     secrets:
+      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
 
   publish-persona:
     needs: version
@@ -62,9 +70,13 @@ jobs:
       URL: ${{ vars.PERSONA_REPO_URL }}
       MAVEN_REPOSITORY_URL: ${{ vars.PERSONA_MAVEN_URL }}
     secrets:
+      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   release:
@@ -81,8 +93,12 @@ jobs:
       URL: ${{ vars.REES_REPO_URL }}
       MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
     secrets:
+      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}

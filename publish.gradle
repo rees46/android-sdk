@@ -13,6 +13,7 @@ def pomConfig = {
 		url "https://github.com:rees46/android-sdk/tree/master"
 	}
 }
+def urls = [rees46: "https://github.com/rees46/android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 
 def publicationNames = []
 publishing {
@@ -108,10 +109,40 @@ publishing {
 
 			url = uri(publishUrl)
 		}
+		maven {
+			name = "sonatype"
+
+			def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
+			credentials {
+				username sonataUsername
+				password sonataPassword
+			}
+
+			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+		}
 	}
 }
+def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
+	nexusPublishing {
+		repositories {
+			android.libraryVariants.all { variant ->
+				if (variant.buildType.name == "debug") return
+
+				"${variant.flavorName}Sonatype" {
+					stagingProfileId = sonatypeIds[variant.flavorName]
+					username = sonataUsername
+					password = sonataPassword
+					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+				}
+			}
+		}
+	}
+
 	android.libraryVariants.all { variant ->
 		if(variant == 'release') {
 			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
@@ -124,6 +155,8 @@ ext["signing.password"] = signing_password
 ext["signing.secretKeyRingFile"] = signing_secretKeyRingFile
 ext["ossrhUsername"] = ossrhUsername
 ext["ossrhPassword"] = ossrhPassword
+ext["sonataUsername"] = sonataUsername
+ext["sonataPassword"] = sonataPassword
 ext["variantName"] = variantName
 ext["url"] = url
 ext["publishUrl"] = publishUrl
