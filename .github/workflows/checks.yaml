@@ -20,8 +20,12 @@ jobs:
       URL: https://github.com/PersonaClick/android-sdk
       MAVEN_REPOSITORY_URL: https://maven.pkg.github.com/PersonaClick/android-sdk
     secrets:
+      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
+      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
       GOOGLE_SERVICES_FILE_AS_BASE64_STRING: ${{ secrets.GOOGLE_SERVICES_FILE_AS_BASE64_STRING }}

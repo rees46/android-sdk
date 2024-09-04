@@ -116,8 +116,8 @@ publishing {
 			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
 
 			credentials {
-				username ossrhUsername
-				password ossrhPassword
+				username sonataUsername
+				password sonataPassword
 			}
 
 			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
@@ -135,8 +135,8 @@ afterEvaluate {
 
 				"${variant.flavorName}Sonatype" {
 					stagingProfileId = sonatypeIds[variant.flavorName]
-					username = ossrhUsername
-					password = ossrhPassword
+					username = sonataUsername
+					password = sonataPassword
 					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
 					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 				}
@@ -156,6 +156,8 @@ ext["signing.password"] = signing_password
 ext["signing.secretKeyRingFile"] = signing_secretKeyRingFile
 ext["ossrhUsername"] = ossrhUsername
 ext["ossrhPassword"] = ossrhPassword
+ext["sonataUsername"] = sonataUsername
+ext["sonataPassword"] = sonataPassword
 ext["variantName"] = variantName
 ext["url"] = url
 ext["publishUrl"] = publishUrl
