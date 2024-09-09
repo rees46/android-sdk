@@ -73,7 +73,7 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	/**
-	 * Вызывать, когда объект сторисов удален с экрана и больше не нужен
+	 * Call when the story object is removed from the screen and is no longer needed
 	 */
 	public void release() {
 		getPlayer().release();
@@ -96,7 +96,6 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		setCode(typedArray.getString(R.styleable.StoriesView_code));
 	}
 
-	//Инициализация
 	private void initialize() {
 		View view = inflate(getContext(), R.layout.stories, this);
 		RecyclerView stories = view.findViewById(R.id.stories);
@@ -104,7 +103,6 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 		adapter = new StoriesAdapter(this, list, this);
 		stories.setAdapter(adapter);
 
-		//Плеер для просмотра видео
 		setPlayer(new Player(getContext()));
 
 		getSettings().failed_load_text = getResources().getString(R.string.failed_load_text);
@@ -131,7 +129,7 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	/**
-	 * Устанавливает слушатель клика по элементам
+	 * Sets a click listener on elements
 	 * @param listener OnLinkClickListener
 	 */
 	public void setOnLinkClickListener(@Nullable OnLinkClickListener listener) {
@@ -164,8 +162,9 @@ final public class StoriesView extends ConstraintLayout implements StoriesAdapte
 	}
 
 	public void unregisterObserver() {
-		if( observer != null ) {
+		if (observer != null) {
 			getContext().getContentResolver().unregisterContentObserver(observer);
+			observer = null;
 		}
 	}
 
