@@ -67,29 +67,37 @@ class RegisterManager @Inject constructor(
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
             if (!task.isSuccessful) {
                 SDK.error("getInstanceId failed", task.exception)
+                Log.e(TAG, "Failed to retrieve Firebase token: ${task.exception?.message}")
                 return@addOnCompleteListener
             }
             if (task.result == null) {
                 SDK.error("Firebase result is null")
+                Log.e(TAG, "Firebase token result is null")
                 return@addOnCompleteListener
             }
 
             val token = task.result
             debug("token: $token")
+            Log.d(TAG, "Retrieved Firebase token: $token")
 
             val tokenField = getPreferencesValueUseCase.getToken()
-
             val currentDate = Date()
 
-            if(autoSendPushToken &&
+            if (autoSendPushToken &&
                 (tokenField.isEmpty()
-                || tokenField != token
-                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)
+                        || tokenField != token
+                        || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)
             ) {
+                Log.d(TAG, "Calling setPushTokenNotification with token: $token")
                 setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
                         savePreferencesValueUseCase.saveToken(token)
+                        Log.d(TAG, "Push token successfully sent and saved")
+                    }
+
+                    override fun onError(code: Int, msg: String?) {
+                        Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
                     }
                 })
             }
@@ -98,13 +106,14 @@ class RegisterManager @Inject constructor(
 
     private fun init() {
         if (isTestDevice) {
-            Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
+            Log.w(TAG, "Disable working on Google Play Pre-Launch report devices")
             return
         }
 
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
+            Log.d(TAG, "Sending init request with params: $params")
             sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
@@ -112,12 +121,14 @@ class RegisterManager @Inject constructor(
                 override fun onSuccess(response: JSONObject?) {
                     if (response == null) {
                         SDK.error("Init response is not correct.")
+                        Log.e(TAG, "Init response is null or incorrect.")
                         return
                     }
 
                     val did = response.optString("did")
                     if (did.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct did field.")
+                        Log.e(TAG, "Init response missing 'did' field.")
                         return
                     }
 
@@ -126,6 +137,7 @@ class RegisterManager @Inject constructor(
                     val seance = response.optString("seance")
                     if (seance.isNullOrEmpty()) {
                         SDK.error("Init response does not contain the correct seance field.")
+                        Log.e(TAG, "Init response missing 'seance' field.")
                         return
                     }
 
@@ -134,21 +146,24 @@ class RegisterManager @Inject constructor(
 
                 override fun onError(code: Int, msg: String?) {
                     if (code >= 500 || code <= 0) {
-                        Log.e(TAG, "code: $code, $msg")
+                        Log.e(TAG, "Init error: code: $code, message: $msg")
                         if (attempt < 5) {
                             attempt++
                         }
                         CoroutineScope(Dispatchers.Main).launch {
                             delay(1000L * attempt)
+                            Log.d(TAG, "Retrying init, attempt: $attempt")
                             init()
                         }
                     } else {
-                        SDK.error("Init error: code: $code, $msg")
+                        SDK.error("Init error: code: $code, message: $msg")
+                        Log.e(TAG, "Init error: code: $code, message: $msg")
                     }
                 }
             })
         } catch (e: Exception) {
             SDK.error(e.message, e)
+            Log.e(TAG, "Exception during init: ${e.message}")
         }
     }
 
@@ -198,6 +213,7 @@ class RegisterManager @Inject constructor(
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
+        Log.d(TAG, "Sending push token to server: $token")
         sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
