@@ -26,8 +26,8 @@ class StoryDialog(
     private val completeShowStory: () -> Unit,
     private val cancelShowStory: () -> Unit
 ) : Dialog(
-    storiesView.context, 
-android.R.style.Theme_Translucent_NoTitleBar
+    storiesView.context,
+    android.R.style.Theme_Translucent_NoTitleBar
 ), PullDismissLayout.Listener {
 
     private val storyViews = HashMap<Int, StoryView>()
