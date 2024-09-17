@@ -1,6 +1,8 @@
 package com.personalization.di
 
+import androidx.fragment.app.FragmentManager
 import com.personalization.RegisterManager
+import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
@@ -11,6 +13,7 @@ import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUs
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
 import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
@@ -32,24 +35,22 @@ class SdkModule {
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
         executeQueueTasksUseCase: ExecuteQueueTasksUseCase
-    ): RegisterManager =
-        RegisterManager(
-            getPreferencesValueUseCase = getPreferencesValueUseCase,
-            savePreferencesValueUseCase = savePreferencesValueUseCase,
-            updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
-            getUserSettingsValueUseCase = getUserSettingsValueUseCase,
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase,
-            executeQueueTasksUseCase = executeQueueTasksUseCase
-        )
+    ): RegisterManager = RegisterManager(
+        getPreferencesValueUseCase = getPreferencesValueUseCase,
+        savePreferencesValueUseCase = savePreferencesValueUseCase,
+        updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
+        getUserSettingsValueUseCase = getUserSettingsValueUseCase,
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase,
+        executeQueueTasksUseCase = executeQueueTasksUseCase
+    )
 
     @Singleton
     @Provides
     fun provideRecommendationManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): RecommendationManager =
-        RecommendationManagerImpl(
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase
-        )
+    ): RecommendationManager = RecommendationManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
 
     @Singleton
     @Provides
@@ -57,30 +58,33 @@ class SdkModule {
         getRecommendedByUseCase: GetRecommendedByUseCase,
         setRecommendedByUseCase: SetRecommendedByUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): TrackEventManager =
-        TrackEventManagerImpl(
-            getRecommendedByUseCase = getRecommendedByUseCase,
-            setRecommendedByUseCase = setRecommendedByUseCase,
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase
-        )
+    ): TrackEventManager = TrackEventManagerImpl(
+        getRecommendedByUseCase = getRecommendedByUseCase,
+        setRecommendedByUseCase = setRecommendedByUseCase,
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
 
     @Singleton
     @Provides
     fun provideStoriesManager(
         setRecommendedByUseCase: SetRecommendedByUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): StoriesManager =
-        StoriesManager(
-            setRecommendedByUseCase = setRecommendedByUseCase,
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase
-        )
+    ): StoriesManager = StoriesManager(
+        setRecommendedByUseCase = setRecommendedByUseCase,
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
 
     @Singleton
     @Provides
     fun provideSearchManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): SearchManager =
-        SearchManagerImpl(
-            sendNetworkMethodUseCase = sendNetworkMethodUseCase
-        )
+    ): SearchManager = SearchManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideInAppNotificationManager(
+
+    ): InAppNotificationManager = InAppNotificationManagerImpl()
 }
