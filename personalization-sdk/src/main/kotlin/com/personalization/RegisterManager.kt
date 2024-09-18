@@ -74,22 +74,22 @@ class RegisterManager @Inject constructor(
             }
 
             val token = task.result
-            debug("Retrieved Firebase token: $token")
+            Log.i(TAG, "Retrieved Firebase token: $token")
 
             val tokenField = getPreferencesValueUseCase.getToken()
             val currentDate = Date()
 
             if (autoSendPushToken && (tokenField.isEmpty() || tokenField != token || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)) {
-                debug("Calling setPushTokenNotification with token: $token")
+                Log.i(TAG, "Calling setPushTokenNotification with token: $token")
                 setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
                         savePreferencesValueUseCase.saveToken(token)
-                        debug("Push token successfully sent and saved")
+                        Log.d(TAG, "Push token successfully sent and saved")
                     }
 
                     override fun onError(code: Int, msg: String?) {
-                        debug("Failed to send push token. Code: $code, Message: $msg")
+                        Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
                     }
                 })
             }
@@ -105,7 +105,7 @@ class RegisterManager @Inject constructor(
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            debug("Sending init request with params: $params")
+            Log.i(TAG,"Sending init request with params: $params")
             sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
