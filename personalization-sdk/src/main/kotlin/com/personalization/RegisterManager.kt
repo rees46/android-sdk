@@ -15,17 +15,16 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
-import dagger.Lazy
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.security.SecureRandom
 import java.sql.Timestamp
 import java.util.Date
 import java.util.TimeZone
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class RegisterManager @Inject constructor(
     private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
@@ -66,7 +65,7 @@ class RegisterManager @Inject constructor(
     private fun initToken() {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
             if (!task.isSuccessful) {
-                SDK.error("getInstanceId failed", task.exception)
+                SDK.error("Failed to retrieve Firebase token: ${task.exception?.message}")
                 return@addOnCompleteListener
             }
             if (task.result == null) {
@@ -75,21 +74,22 @@ class RegisterManager @Inject constructor(
             }
 
             val token = task.result
-            debug("token: $token")
+            Log.i(TAG, "Retrieved Firebase token: $token")
 
             val tokenField = getPreferencesValueUseCase.getToken()
-
             val currentDate = Date()
 
-            if(autoSendPushToken &&
-                (tokenField.isEmpty()
-                || tokenField != token
-                || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)
-            ) {
+            if (autoSendPushToken && (tokenField.isEmpty() || tokenField != token || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)) {
+                Log.i(TAG, "Calling setPushTokenNotification with token: $token")
                 setPushTokenNotification(token, object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
                         savePreferencesValueUseCase.saveToken(token)
+                        Log.d(TAG, "Push token successfully sent and saved")
+                    }
+
+                    override fun onError(code: Int, msg: String?) {
+                        Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
                     }
                 })
             }
@@ -98,13 +98,14 @@ class RegisterManager @Inject constructor(
 
     private fun init() {
         if (isTestDevice) {
-            Log.w(TAG, "Disable working Google Play Pre-Launch report devices")
+            Log.w(TAG, "Disable working on Google Play Pre-Launch report devices")
             return
         }
 
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
+            Log.i(TAG,"Sending init request with params: $params")
             sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0
@@ -112,6 +113,7 @@ class RegisterManager @Inject constructor(
                 override fun onSuccess(response: JSONObject?) {
                     if (response == null) {
                         SDK.error("Init response is not correct.")
+                        Log.e(TAG, "Init response is null or incorrect.")
                         return
                     }
 
@@ -134,16 +136,17 @@ class RegisterManager @Inject constructor(
 
                 override fun onError(code: Int, msg: String?) {
                     if (code >= 500 || code <= 0) {
-                        Log.e(TAG, "code: $code, $msg")
+                        Log.e(TAG, "Init error: code: $code, message: $msg")
                         if (attempt < 5) {
                             attempt++
                         }
                         CoroutineScope(Dispatchers.Main).launch {
                             delay(1000L * attempt)
+                            Log.d(TAG, "Retrying init, attempt: $attempt")
                             init()
                         }
                     } else {
-                        SDK.error("Init error: code: $code, $msg")
+                        SDK.error("Init error: code: $code, message: $msg")
                     }
                 }
             })
@@ -162,9 +165,7 @@ class RegisterManager @Inject constructor(
 
         if (seance == null) {
             val newSid = getUserSettingsValueUseCase.getSid()
-            if(newSid.isNotEmpty()
-                && getUserSettingsValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000)
-            {
+            if (newSid.isNotEmpty() && getUserSettingsValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000) {
                 seance = newSid
             }
         }
@@ -190,14 +191,14 @@ class RegisterManager @Inject constructor(
 
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
-            contentResolver,
-            FIREBASE_TEST_LAB
+            contentResolver, FIREBASE_TEST_LAB
         )
 
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
+        Log.d(TAG, "Sending push token to server: $token")
         sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
     }
 
