@@ -10,4 +10,10 @@ interface InAppNotificationManager {
         title: String,
         message: String
     )
+
+    fun showFullScreenAlertDialog(
+        title: String,
+        message: String,
+        imageUrl: String?
+    )
 }

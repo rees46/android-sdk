@@ -9,7 +9,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
 
-class AlertDialog : DialogFragment() {
+class DefaultAlertDialog : DialogFragment() {
 
     private var _binding: AlertDialogBinding? = null
     private val binding get() = _binding!!
@@ -45,8 +45,8 @@ class AlertDialog : DialogFragment() {
         const val TITLE_KEY = "title"
         const val MESSAGE_KEY = "message"
 
-        fun newInstance(title: String, message: String): AlertDialog {
-            val dialog = AlertDialog()
+        fun newInstance(title: String, message: String): DefaultAlertDialog {
+            val dialog = DefaultAlertDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)

@@ -18,6 +18,7 @@
 
 	<string name="alert_dialog_title">Alert Title</string>
 	<string name="alert_dialog_message">This is an alert message.</string>
-	<string name="alert_dialog_button_title">OK</string>
+	<string name="alert_dialog_button_accept_title">OK</string>
+	<string name="alert_dialog_button_decline_title">Cancel</string>
 
 </resources>
