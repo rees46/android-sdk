@@ -135,7 +135,7 @@ open class SDK {
 
     fun initializeInAppNotification(
         fragmentManager: FragmentManager
-    ){
+    ) {
         inAppNotificationManager.initialize(fragmentManager = fragmentManager)
     }
 

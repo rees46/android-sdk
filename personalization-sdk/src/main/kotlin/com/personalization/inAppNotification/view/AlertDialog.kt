@@ -1,5 +1,7 @@
 package com.personalization.inAppNotification.view
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -22,6 +24,8 @@ class AlertDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
         with(binding) {
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
@@ -39,7 +43,7 @@ class AlertDialog : DialogFragment() {
     companion object {
         const val TAG = "AlertDialog"
         const val TITLE_KEY = "title"
-        const val MESSAGE_KEY = "title"
+        const val MESSAGE_KEY = "message"
 
         fun newInstance(title: String, message: String): AlertDialog {
             val dialog = AlertDialog()

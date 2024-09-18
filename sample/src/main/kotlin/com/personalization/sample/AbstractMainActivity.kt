@@ -40,6 +40,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 
         val storiesView = findViewById<StoriesView>(R.id.stories_view)
         sdk.initializeStoriesView(storiesView)
+        //TODO remove
         sdk.initializeInAppNotification(fragmentManager = supportFragmentManager)
 
         if (intent.extras != null) {

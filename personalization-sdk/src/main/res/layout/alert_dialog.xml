@@ -2,8 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/rounded_background"
+    android:minWidth="300dp"
+    android:minHeight="150dp"
     android:orientation="vertical"
     android:padding="20dp">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_product_image" />
 
     <TextView
         android:id="@+id/title"
