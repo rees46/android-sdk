@@ -16,7 +16,7 @@ class FullScreenDialog : DialogFragment() {
     private val binding: FullScreenDialogBinding by lazy {
         FullScreenDialogBinding.inflate(layoutInflater)
     }
-    
+
     private var listener: FullScreenDialogListener? = null
 
     fun setListener(listener: FullScreenDialogListener) {

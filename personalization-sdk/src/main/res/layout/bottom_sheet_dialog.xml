@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:background="@drawable/roudned_background_8"
+    android:background="@drawable/rounded_dialog"
     android:minWidth="300dp"
     android:minHeight="150dp"
     android:orientation="vertical"
-    android:paddingTop="10dp"
-    android:paddingHorizontal="10dp">
+    android:paddingHorizontal="@dimen/medium_margin"
+    android:paddingTop="@dimen/medium_margin">
 
     <TextView
         android:id="@+id/title"
@@ -16,27 +16,52 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        tools:text="@string/alert_dialog_title"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="@string/alert_dialog_title" />
 
     <TextView
         android:id="@+id/message"
         style="@style/Widget.Compat.NotificationActionText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="@dimen/medium_margin"
         android:gravity="center"
         tools:text="@string/alert_dialog_message" />
 
-    <Button
-        android:id="@+id/button"
-        style="@style/ShapeAppearanceOverlay.Material3.Button"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:background="@drawable/rounded_background"
-        android:layout_marginTop="20dp"
-        android:layout_marginBottom="20dp"
-        tools:text="@string/alert_dialog_button_accept_title" />
+        android:layout_marginVertical="@dimen/large_margin"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/buttonDecline"
+            style="@style/ShapeAppearanceOverlay.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/default_margin"
+            android:layout_marginEnd="@dimen/default_margin"
+            android:layout_marginBottom="@dimen/default_margin"
+            android:layout_weight="0.4"
+            android:background="@drawable/rounded_background"
+            android:gravity="center"
+            android:text="@string/alert_dialog_button_decline_title" />
+
+        <Button
+            android:id="@+id/buttonAccept"
+            style="@style/ShapeAppearanceOverlay.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="@dimen/default_margin"
+            android:layout_marginBottom="@dimen/default_margin"
+            android:layout_weight="1"
+            android:background="@drawable/rounded_background"
+            android:gravity="center"
+            android:text="@string/alert_dialog_button_accept_title" />
+
+    </LinearLayout>
 
 </LinearLayout>

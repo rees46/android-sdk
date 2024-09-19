@@ -1,6 +1,10 @@
+@file:Suppress("NewApi")
+
 package com.personalization.inAppNotification.view
 
+import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -32,12 +36,24 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        (view.parent as View).apply {
+            backgroundTintMode = PorterDuff.Mode.CLEAR
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
         with(binding) {
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
-            button.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
-            button.setOnClickListener {
+            buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+            buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
+
+            buttonAccept.setOnClickListener {
                 listener?.onPositiveButtonClick()
+                dismiss()
+            }
+            buttonDecline.setOnClickListener {
+                listener?.onNegativeButtonClick()
                 dismiss()
             }
         }
