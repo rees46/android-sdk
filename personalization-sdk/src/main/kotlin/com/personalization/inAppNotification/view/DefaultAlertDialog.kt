@@ -29,9 +29,8 @@ class DefaultAlertDialog : DialogFragment() {
         with(binding) {
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
-            button.setOnClickListener {
-                dismiss()
-            }
+            button.text = arguments?.getString(BUTTON_TEXT_KEY).orEmpty()
+            button.setOnClickListener { dismiss() }
         }
     }
 
@@ -42,14 +41,20 @@ class DefaultAlertDialog : DialogFragment() {
 
     companion object {
         const val TAG = "AlertDialog"
-        const val TITLE_KEY = "title"
-        const val MESSAGE_KEY = "message"
+        const val TITLE_KEY = "TITLE_KEY"
+        const val MESSAGE_KEY = "MESSAGE_KEY"
+        const val BUTTON_TEXT_KEY = "BUTTON_TEXT_KEY"
 
-        fun newInstance(title: String, message: String): DefaultAlertDialog {
+        fun newInstance(
+            title: String,
+            message: String,
+            buttonText: String
+        ): DefaultAlertDialog {
             val dialog = DefaultAlertDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
+                putString(BUTTON_TEXT_KEY, buttonText)
             }
             dialog.arguments = args
             return dialog

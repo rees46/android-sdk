@@ -8,13 +8,25 @@ interface InAppNotificationManager {
     fun showAlertDialog(
         fragmentManager: FragmentManager,
         title: String,
-        message: String
+        message: String,
+        buttonText: String
     )
 
-    fun showFullScreenAlertDialog(
+    fun showFullScreenDialog(
         fragmentManager: FragmentManager,
         title: String,
         message: String,
-        imageUrl: String?
+        imageUrl: String?,
+        buttonPositiveText:String,
+        buttonNegativeText:String,
+    )
+
+    fun showBottomSheetDialog(
+        fragmentManager: FragmentManager,
+        title: String,
+        message: String,
+        imageUrl: String?,
+        buttonPositiveText:String,
+        buttonNegativeText:String,
     )
 }

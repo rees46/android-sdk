@@ -18,7 +18,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
 ) : AppCompatActivity() {
 
-    private lateinit var text: EditText
+    private lateinit var emailEditText: EditText
     private lateinit var button: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,9 +38,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                    1
+                    /* activity = */ this,
+                    /* permissions = */ arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    /* requestCode = */ 1
                 )
             }
         }
@@ -55,9 +55,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 
     private fun handleEmailSending() {
         button = findViewById(R.id.button)
-        text = findViewById(R.id.email)
+        emailEditText = findViewById(R.id.emailEditText)
 
-        text.setOnEditorActionListener { _: TextView?, actionId: Int, _: KeyEvent? ->
+        emailEditText.setOnEditorActionListener { _: TextView?, actionId: Int, _: KeyEvent? ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 button.callOnClick()
             }
@@ -65,9 +65,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         button.setOnClickListener {
-            if (text.text.toString().isNotEmpty()) {
+            if (emailEditText.text.toString().isNotEmpty()) {
                 val params = HashMap<String, String>()
-                params["email"] = text.text.toString()
+                params["email"] = emailEditText.text.toString()
                 sdk.profile(params)
                 Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
             }
@@ -86,20 +86,34 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         val debugImageUrl =
             "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
 
-
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
             sdk.inAppNotificationManager.showAlertDialog(
                 fragmentManager = supportFragmentManager,
                 title = debugTitle,
                 message = debugMessage,
+                buttonText = "OK"
             )
         }
+
         findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showFullScreenAlertDialog(
+            sdk.inAppNotificationManager.showFullScreenDialog(
                 fragmentManager = supportFragmentManager,
                 title = debugTitle,
                 message = debugMessage,
-                imageUrl = debugImageUrl
+                imageUrl = debugImageUrl,
+                buttonNegativeText = "Cancel",
+                buttonPositiveText = "OK"
+            )
+        }
+
+        findViewById<Button>(R.id.bottomSheetDialogButton).setOnClickListener {
+            sdk.inAppNotificationManager.showBottomSheetDialog(
+                fragmentManager = supportFragmentManager,
+                title = debugTitle,
+                message = debugMessage,
+                imageUrl = debugImageUrl,
+                buttonNegativeText = "Cancel",
+                buttonPositiveText = "OK"
             )
         }
     }

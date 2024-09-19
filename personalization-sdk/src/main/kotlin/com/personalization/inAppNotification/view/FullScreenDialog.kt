@@ -59,17 +59,23 @@ class FullScreenDialog : DialogFragment() {
         const val TITLE_KEY = "TITLE_KEY"
         const val MESSAGE_KEY = "MESSAGE_KEY"
         const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
+        const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
+        const val BUTTON_NEGATIVE_TEXT_KEY = "BUTTON_NEGATIVE_TEXT_KEY"
 
         fun newInstance(
             title: String,
             message: String,
-            imageUrl: String?
+            imageUrl: String?,
+            buttonPositiveText: String,
+            buttonNegativeText: String
         ): FullScreenDialog {
             val dialog = FullScreenDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
                 putString(IMAGE_URL_KEY, imageUrl)
+                putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
+                putString(BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
             }
             dialog.arguments = args
             return dialog
