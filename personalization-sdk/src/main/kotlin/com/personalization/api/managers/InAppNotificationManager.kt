@@ -19,6 +19,8 @@ interface InAppNotificationManager {
         imageUrl: String?,
         buttonPositiveText:String,
         buttonNegativeText:String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     )
 
     fun showBottomSheetDialog(
@@ -28,5 +30,7 @@ interface InAppNotificationManager {
         imageUrl: String?,
         buttonPositiveText:String,
         buttonNegativeText:String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     )
 }

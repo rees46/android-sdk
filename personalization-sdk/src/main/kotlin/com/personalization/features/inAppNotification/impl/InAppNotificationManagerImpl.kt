@@ -32,14 +32,30 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         imageUrl: String?,
         buttonPositiveText: String,
         buttonNegativeText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     ) {
-        FullScreenDialog.newInstance(
+        val dialog = FullScreenDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
-        ).show(
+        )
+
+        dialog.setListener(
+            object : FullScreenDialog.FullScreenDialogListener {
+                override fun onPositiveButtonClick() {
+                    onPositiveClick()
+                }
+
+                override fun onNegativeButtonClick() {
+                    onNegativeClick()
+                }
+            }
+        )
+
+        dialog.show(
             /* manager = */ fragmentManager,
             /* tag = */ FullScreenDialog.TAG
         )
@@ -51,14 +67,30 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         message: String,
         imageUrl: String?,
         buttonPositiveText: String,
-        buttonNegativeText: String
+        buttonNegativeText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     ) {
-        BottomSheetDialog.newInstance(
+        val dialog = BottomSheetDialog.newInstance(
             title = title,
             message = message,
             buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
-        ).show(
+            buttonNegativeText = buttonNegativeText
+        )
+
+        dialog.setListener(
+            object : BottomSheetDialog.BottomSheetDialogListener {
+                override fun onPositiveButtonClick() {
+                    onPositiveClick()
+                }
+
+                override fun onNegativeButtonClick() {
+                    onNegativeClick()
+                }
+            }
+        )
+
+        dialog.show(
             /* manager = */ fragmentManager,
             /* tag = */ BottomSheetDialog.TAG
         )

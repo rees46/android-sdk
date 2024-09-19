@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -101,6 +102,12 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
                 buttonNegativeText = "Cancel",
                 buttonPositiveText = "OK"
             )
@@ -112,6 +119,12 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
                 buttonNegativeText = "Cancel",
                 buttonPositiveText = "OK"
             )

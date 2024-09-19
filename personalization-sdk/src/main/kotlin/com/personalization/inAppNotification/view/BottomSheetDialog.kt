@@ -14,6 +14,12 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
     private var _binding: BottomSheetDialogBinding? = null
     private val binding get() = _binding!!
 
+    private var listener: BottomSheetDialogListener? = null
+
+    fun setListener(listener: BottomSheetDialogListener) {
+        this.listener = listener
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -30,13 +36,21 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
             button.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
-            button.setOnClickListener { dismiss() }
+            button.setOnClickListener {
+                listener?.onPositiveButtonClick()
+                dismiss()
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
+    }
+
+    interface BottomSheetDialogListener {
+        fun onPositiveButtonClick()
+        fun onNegativeButtonClick()
     }
 
     companion object {

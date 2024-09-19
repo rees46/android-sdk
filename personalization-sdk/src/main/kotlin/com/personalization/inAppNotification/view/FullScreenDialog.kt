@@ -16,6 +16,12 @@ class FullScreenDialog : DialogFragment() {
     private var _binding: FullScreenDialogBinding? = null
     private val binding get() = _binding!!
 
+    private var listener: FullScreenDialogListener? = null
+
+    fun setListener(listener: FullScreenDialogListener) {
+        this.listener = listener
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -40,10 +46,11 @@ class FullScreenDialog : DialogFragment() {
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
             buttonDecline.setOnClickListener {
+                listener?.onNegativeButtonClick()
                 dismiss()
             }
             buttonAccept.setOnClickListener {
-                //TODO Handle some positive click
+                listener?.onPositiveButtonClick()
                 dismiss()
             }
         }
@@ -52,6 +59,11 @@ class FullScreenDialog : DialogFragment() {
     override fun onDestroy() {
         super.onDestroy()
         _binding = null
+    }
+
+    interface FullScreenDialogListener {
+        fun onPositiveButtonClick()
+        fun onNegativeButtonClick()
     }
 
     companion object {
