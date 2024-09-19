@@ -4,14 +4,15 @@ import androidx.fragment.app.FragmentManager
 
 interface InAppNotificationManager {
 
-    fun initialize(fragmentManager: FragmentManager)
 
     fun showAlertDialog(
+        fragmentManager: FragmentManager,
         title: String,
         message: String
     )
 
     fun showFullScreenAlertDialog(
+        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?

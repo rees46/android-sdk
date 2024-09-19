@@ -4,32 +4,31 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.util.Consumer
-import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
+import com.personalization.api.managers.TrackEventManager
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
+import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
-import org.json.JSONException
-import org.json.JSONObject
 import java.util.Locale
 import javax.inject.Inject
+import org.json.JSONException
+import org.json.JSONObject
 
 open class SDK {
 
@@ -131,12 +130,6 @@ open class SDK {
 
     fun initializeStoriesView(storiesView: StoriesView) {
         storiesManager.initialize(storiesView)
-    }
-
-    fun initializeInAppNotification(
-        fragmentManager: FragmentManager
-    ) {
-        inAppNotificationManager.initialize(fragmentManager = fragmentManager)
     }
 
     /**

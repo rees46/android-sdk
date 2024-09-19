@@ -8,34 +8,22 @@ import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
 
-    //TODO remove
-    private val debugTitle = "Привет,мы на связи"
-    private val debugMessage =
-        "И мы к вам с хорошими новостями. Совсем скоро мы проведем вебинар по поиску на сайте — там будет масса полезной информации, которая поможет бустануть конверсию и повысить лояльность аудитории. Приходите!"
-    private val debugImageUrl = "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
-
-    private lateinit var supportFragmentManager: FragmentManager
-
-    override fun initialize(fragmentManager: FragmentManager) {
-        supportFragmentManager = fragmentManager
-        showFullScreenAlertDialog(
-            title = debugTitle,
-            message = debugMessage,
-            imageUrl = debugImageUrl
-        )
-    }
-
-    override fun showAlertDialog(title: String, message: String) {
+    override fun showAlertDialog(
+        fragmentManager: FragmentManager,
+        title: String,
+        message: String
+    ) {
         DefaultAlertDialog.newInstance(
             title = title,
             message = message
         ).show(
-            /* manager = */ supportFragmentManager,
+            /* manager = */ fragmentManager,
             /* tag = */ DefaultAlertDialog.TAG
         )
     }
 
     override fun showFullScreenAlertDialog(
+        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?
@@ -45,7 +33,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             message = message,
             imageUrl = imageUrl
         ).show(
-            /* manager = */ supportFragmentManager,
+            /* manager = */ fragmentManager,
             /* tag = */ FullScreenDialog.TAG
         )
     }
