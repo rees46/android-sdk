@@ -11,8 +11,9 @@ import com.personalization.databinding.BottomSheetDialogBinding
 
 class BottomSheetDialog : BottomSheetDialogFragment() {
 
-    private var _binding: BottomSheetDialogBinding? = null
-    private val binding get() = _binding!!
+    private val binding: BottomSheetDialogBinding by lazy {
+        BottomSheetDialogBinding.inflate(layoutInflater)
+    }
 
     private var listener: BottomSheetDialogListener? = null
 
@@ -24,7 +25,6 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = BottomSheetDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -41,11 +41,6 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
                 dismiss()
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        _binding = null
     }
 
     interface BottomSheetDialogListener {

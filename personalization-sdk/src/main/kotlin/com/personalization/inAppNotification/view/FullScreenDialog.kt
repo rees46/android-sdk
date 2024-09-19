@@ -13,9 +13,10 @@ import com.personalization.databinding.FullScreenDialogBinding
 
 class FullScreenDialog : DialogFragment() {
 
-    private var _binding: FullScreenDialogBinding? = null
-    private val binding get() = _binding!!
-
+    private val binding: FullScreenDialogBinding by lazy {
+        FullScreenDialogBinding.inflate(layoutInflater)
+    }
+    
     private var listener: FullScreenDialogListener? = null
 
     fun setListener(listener: FullScreenDialogListener) {
@@ -26,7 +27,6 @@ class FullScreenDialog : DialogFragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FullScreenDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -54,11 +54,6 @@ class FullScreenDialog : DialogFragment() {
                 dismiss()
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        _binding = null
     }
 
     interface FullScreenDialogListener {

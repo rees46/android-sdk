@@ -11,14 +11,14 @@ import com.personalization.databinding.AlertDialogBinding
 
 class DefaultAlertDialog : DialogFragment() {
 
-    private var _binding: AlertDialogBinding? = null
-    private val binding get() = _binding!!
+    private val binding: AlertDialogBinding by lazy {
+        AlertDialogBinding.inflate(layoutInflater)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = AlertDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -32,11 +32,6 @@ class DefaultAlertDialog : DialogFragment() {
             button.text = arguments?.getString(BUTTON_TEXT_KEY).orEmpty()
             button.setOnClickListener { dismiss() }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        _binding = null
     }
 
     companion object {
