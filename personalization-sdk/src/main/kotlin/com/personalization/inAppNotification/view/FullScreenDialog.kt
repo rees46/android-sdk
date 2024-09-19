@@ -45,6 +45,9 @@ class FullScreenDialog : DialogFragment() {
 
             title.text = arguments?.getString(TITLE_KEY).orEmpty()
             message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
+            buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+            buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
+
             buttonDecline.setOnClickListener {
                 listener?.onNegativeButtonClick()
                 dismiss()

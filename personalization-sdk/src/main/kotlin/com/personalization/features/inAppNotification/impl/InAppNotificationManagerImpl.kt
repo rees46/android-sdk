@@ -4,7 +4,7 @@ import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.inAppNotification.view.BottomSheetDialog
-import com.personalization.inAppNotification.view.CustomSnackbar
+import com.personalization.inAppNotification.view.SdkSnackbar
 import com.personalization.inAppNotification.view.DefaultAlertDialog
 import com.personalization.inAppNotification.view.FullScreenDialog
 import javax.inject.Inject
@@ -106,7 +106,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        CustomSnackbar(view).show(
+        SdkSnackbar(view).show(
             message = message,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,

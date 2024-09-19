@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import com.google.android.material.snackbar.Snackbar
 import com.personalization.databinding.CustomSnackbarBinding
 
-class CustomSnackbar(private val rootView: View) {
+class SdkSnackbar(private val rootView: View) {
 
     fun show(
         message: String,
