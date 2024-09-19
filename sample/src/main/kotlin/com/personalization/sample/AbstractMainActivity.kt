@@ -86,13 +86,15 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             "И мы к вам с хорошими новостями. Совсем скоро мы проведем вебинар по поиску на сайте — там будет масса полезной информации, которая поможет бустануть конверсию и повысить лояльность аудитории. Приходите!"
         val debugImageUrl =
             "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
+        val buttonNegative = "Cancel"
+        val buttonPositive = "OK"
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
             sdk.inAppNotificationManager.showAlertDialog(
                 fragmentManager = supportFragmentManager,
                 title = debugTitle,
                 message = debugMessage,
-                buttonText = "OK"
+                buttonText = buttonPositive
             )
         }
 
@@ -102,14 +104,14 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
                 onPositiveClick = {
                     Log.d(this.localClassName, ": onPositiveClick")
                 },
-                buttonNegativeText = "Cancel",
-                buttonPositiveText = "OK"
             )
         }
 
@@ -119,14 +121,29 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
                 onPositiveClick = {
                     Log.d(this.localClassName, ": onPositiveClick")
                 },
-                buttonNegativeText = "Cancel",
-                buttonPositiveText = "OK"
+            )
+        }
+
+        findViewById<Button>(R.id.snackBarButton).setOnClickListener {
+            sdk.inAppNotificationManager.showSnackBar(
+                view = findViewById(android.R.id.content),
+                message = debugTitle,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
             )
         }
     }

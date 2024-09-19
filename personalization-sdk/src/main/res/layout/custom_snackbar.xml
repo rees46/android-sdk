@@ -3,32 +3,33 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@android:color/darker_gray"
-    android:elevation="6dp"
-    android:orientation="horizontal"
-    android:padding="16dp">
+    android:background="@color/colorGray"
+    android:gravity="center"
+    android:orientation="horizontal">
 
     <TextView
-        android:id="@+id/snackbar_message"
+        android:id="@+id/title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_margin="@dimen/large_margin"
         android:layout_weight="1"
         android:textColor="@android:color/white"
         tools:text="Some snackbar text" />
 
     <Button
-        android:id="@+id/snackbar_positive_button"
+        android:id="@+id/negativeButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        android:textColor="@android:color/holo_green_light"
-        tools:text="Accept" />
+        android:textColor="@color/colorRed"
+        android:text="Decline" />
 
     <Button
-        android:id="@+id/snackbar_negative_button"
+        android:id="@+id/positiveButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        android:textColor="@android:color/holo_red_light"
-        tools:text="Decline" />
+        android:textColor="@color/colorGreen"
+        tools:text="Accept" />
+
 </LinearLayout>

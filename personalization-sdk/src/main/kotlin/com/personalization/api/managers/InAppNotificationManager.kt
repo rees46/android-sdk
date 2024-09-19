@@ -1,10 +1,9 @@
 package com.personalization.api.managers
 
-import android.content.Context
+import android.view.View
 import androidx.fragment.app.FragmentManager
 
 interface InAppNotificationManager {
-
 
     fun showAlertDialog(
         fragmentManager: FragmentManager,
@@ -36,7 +35,10 @@ interface InAppNotificationManager {
     )
 
     fun showSnackBar(
+        view: View,
         message: String,
+        buttonPositiveText: String,
+        buttonNegativeText: String,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )
