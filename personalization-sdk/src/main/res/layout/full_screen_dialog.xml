@@ -55,7 +55,10 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_weight="0.4"
+                android:layout_marginBottom="5dp"
                 android:gravity="center"
+                android:layout_marginTop="5dp"
+                android:background="@drawable/rounded_background"
                 android:text="@string/alert_dialog_button_decline_title" />
 
             <Button
@@ -65,7 +68,10 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:layout_weight="1"
+                android:layout_marginTop="5dp"
+                android:layout_marginBottom="5dp"
                 android:gravity="center"
+                android:background="@drawable/rounded_background"
                 android:text="@string/alert_dialog_button_accept_title" />
 
         </LinearLayout>

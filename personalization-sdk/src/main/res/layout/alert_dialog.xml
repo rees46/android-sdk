@@ -6,13 +6,8 @@
     android:minWidth="300dp"
     android:minHeight="150dp"
     android:orientation="vertical"
-    android:padding="20dp">
-
-    <ImageView
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_gravity="center"
-        android:src="@drawable/ic_product_image" />
+    android:paddingTop="20dp"
+    android:paddingHorizontal="20dp">
 
     <TextView
         android:id="@+id/title"
@@ -39,6 +34,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="20dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/rounded_background"
         android:text="@string/alert_dialog_button_accept_title" />
 
 </LinearLayout>
