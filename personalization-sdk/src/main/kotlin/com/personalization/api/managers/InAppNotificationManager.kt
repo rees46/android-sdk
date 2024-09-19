@@ -1,5 +1,6 @@
 package com.personalization.api.managers
 
+import android.content.Context
 import androidx.fragment.app.FragmentManager
 
 interface InAppNotificationManager {
@@ -17,8 +18,8 @@ interface InAppNotificationManager {
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText:String,
-        buttonNegativeText:String,
+        buttonPositiveText: String,
+        buttonNegativeText: String,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )
@@ -28,8 +29,14 @@ interface InAppNotificationManager {
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText:String,
-        buttonNegativeText:String,
+        buttonPositiveText: String,
+        buttonNegativeText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
+    )
+
+    fun showSnackBar(
+        message: String,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )

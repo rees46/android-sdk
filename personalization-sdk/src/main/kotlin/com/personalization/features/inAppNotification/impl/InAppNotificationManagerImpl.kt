@@ -3,6 +3,7 @@ package com.personalization.features.inAppNotification.impl
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.inAppNotification.view.BottomSheetDialog
+import com.personalization.inAppNotification.view.CustomSnackbar
 import com.personalization.inAppNotification.view.DefaultAlertDialog
 import com.personalization.inAppNotification.view.FullScreenDialog
 import javax.inject.Inject
@@ -94,5 +95,15 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             /* manager = */ fragmentManager,
             /* tag = */ BottomSheetDialog.TAG
         )
+    }
+
+    override fun showSnackBar(
+        message: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
+    ) {
+        val rootView = requireActivity().findViewById<View>(android.R.id.content)
+        val customSnackbar = CustomSnackbar(rootView)
+        customSnackbar.show(message, onPositiveClick, onNegativeClick)
     }
 }
