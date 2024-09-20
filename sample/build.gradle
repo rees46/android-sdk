@@ -5,6 +5,8 @@ plugins {
 }
 
 android {
+	namespace 'com.personalization.sample'
+
 	signingConfigs {
 		release {
 			storeFile file('../test.key')
@@ -44,12 +46,12 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_17
-		targetCompatibility JavaVersion.VERSION_17
+		sourceCompatibility JavaVersion.VERSION_22
+		targetCompatibility JavaVersion.VERSION_22
 	}
-	namespace 'com.personalization.sample'
+
 	kotlinOptions {
-		jvmTarget = '17'
+		jvmTarget = '22'
 	}
 }
 
