@@ -5,6 +5,8 @@ plugins {
 }
 
 android {
+	namespace 'com.personalization.sample'
+
 	signingConfigs {
 		release {
 			storeFile file('../test.key')
