@@ -19,6 +19,9 @@
     <dimen name="story_avatar_padding">5dp</dimen>
     <dimen name="story_avatar_border">2dp</dimen>
     <dimen name="story_avatar_title_size">12sp</dimen>
+    <dimen name="default_margin">5dp</dimen>
+    <dimen name="medium_margin">10dp</dimen>
+    <dimen name="large_margin">20dp</dimen>
 
     <dimen name="product_image_size">150dp</dimen>
     <dimen name="product_margin">8dp</dimen>

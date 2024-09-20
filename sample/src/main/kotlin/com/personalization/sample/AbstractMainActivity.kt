@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -13,41 +14,51 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.personalization.SDK
-import com.personalization.stories.views.StoriesView
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
 ) : AppCompatActivity() {
-    private lateinit var text: EditText
+
+    private lateinit var emailEditText: EditText
     private lateinit var button: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        //		Log.e("ID", Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID));
+        handlePermissions()
+        handleNotification()
+        handleEmailSending()
+        initializingStoriesView()
+        handleInAppNotifications()
+    }
+
+    private fun handlePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
             ) {
                 ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                    1
+                    /* activity = */ this,
+                    /* permissions = */ arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    /* requestCode = */ 1
                 )
             }
         }
+    }
 
-        val storiesView = findViewById<StoriesView>(R.id.stories_view)
-        sdk.initializeStoriesView(storiesView)
-
+    private fun handleNotification() {
         if (intent.extras != null) {
             sdk.notificationClicked(intent.extras)
         }
+        sdk.notificationClicked(intent.extras)
+    }
 
+    private fun handleEmailSending() {
         button = findViewById(R.id.button)
-        text = findViewById(R.id.email)
-        text.setOnEditorActionListener { _: TextView?, actionId: Int, _: KeyEvent? ->
+        emailEditText = findViewById(R.id.emailEditText)
+
+        emailEditText.setOnEditorActionListener { _: TextView?, actionId: Int, _: KeyEvent? ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 button.callOnClick()
             }
@@ -55,89 +66,85 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         button.setOnClickListener {
-            if (text.getText().toString().isNotEmpty()) {
+            if (emailEditText.text.toString().isNotEmpty()) {
                 val params = HashMap<String, String>()
-                params["email"] = text.getText().toString()
+                params["email"] = emailEditText.text.toString()
                 sdk.profile(params)
                 Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
             }
         }
+    }
 
-        sdk.notificationClicked(intent.extras)
+    private fun initializingStoriesView() {
+        sdk.initializeStoriesView(findViewById(R.id.stories_view))
+    }
 
-//      //Запрашиваем поиск
-//		val params = SearchParams()
-//		params.put(SearchParams.Parameter.LOCATIONS, "location")
-//		val filters = SearchParams.SearchFilters()
-//		filters.put("voltage", arrayOf("11.1", "14.8"))
-//		params.put(SearchParams.Parameter.FILTERS, filters);
-//        sdk.search("coats", SearchParams.TYPE.FULL, params, object : OnApiCallbackListener() {
-//            override fun onSuccess(response: JSONObject?) {
-//                Log.i(sdk.tag, "Search response: $response")
-//            }
-//        })
-//
-//		//Запрашиваем поиск при клике на пустое поле
-//        sdk.searchBlank(object : OnApiCallbackListener() {
-//            override fun onSuccess(response: JSONObject?) {
-//                Log.i(sdk.tag, "Search response: $response")
-//            }
-//        })
-//
-//		//Запрашиваем блок рекомендаций
-//		val recommenderParams = Params()
-//        recommenderParams.put(Params.Parameter.EXTENDED, true)
-//        recommenderParams.put(Params.Parameter.ITEM, "37")
-//        sdk.recommend("e9ddb9cdc66285fac40c7a897760582a", recommenderParams, object : OnApiCallbackListener() {
-//            override fun onSuccess(response: JSONObject?) {
-//                Log.i(sdk.tag, "Recommender response: $response")
-//            }
-//        })
-//
-//		//Просмотр товара (простой)
-//        sdk.track(Params.TrackEvent.VIEW, "37")
-//
-//		//Добавление в корзину (простое)
-//        sdk.track(Params.TrackEvent.CART, "37")
-//
-//		//Добавление в корзину (расширенный)
-//		val cart = Params()
-//		cart
-//			.put(Params.Item("37")
-//				.set(Params.Item.COLUMN.AMOUNT, 2)
-//				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
-//			)
-//			.put(Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"))
-//        sdk.track(Params.TrackEvent.CART, cart)
-//
-//		//Трекинг полной корзины
-//		val fullCart = Params()
-//        fullCart
-//			.put(Params.Parameter.FULL_CART, true)
-//			.put(Params.Item("37")
-//				.set(Params.Item.COLUMN.AMOUNT, 2)
-//				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
-//			)
-//			.put(Params.Item("40")
-//				.set(Params.Item.COLUMN.AMOUNT, 1)
-//				.set(Params.Item.COLUMN.FASHION_SIZE, "M")
-//			)
-//        sdk.track(Params.TrackEvent.CART, fullCart)
-//
-//		//Покупка
-//		val purchase = Params()
-//		purchase
-//				.put(Params.Item("37").set(Params.Item.COLUMN.AMOUNT, 2).set(Params.Item.COLUMN.PRICE, 10.5))
-//				.put(Params.Item("38").set(Params.Item.COLUMN.AMOUNT, 2))
-//				.put(Params.Parameter.ORDER_ID, "100234")
-//				.put(Params.Parameter.ORDER_PRICE, 100500)
-//				.put(Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "e9ddb9cdc66285fac40c7a897760582a"))
-//        sdk.track(Params.TrackEvent.PURCHASE, purchase)
-//
-//		//Просмотр категории
-//        sdk.track(Params.TrackEvent.CATEGORY, Params().put(Params.Parameter.CATEGORY_ID, "100"))
-//
-//		//Трекинг поиска
-//        sdk.track(Params.TrackEvent.SEARCH, Params().put(Params.Parameter.SEARCH_QUERY, "coats"))
+    private fun handleInAppNotifications() {
+        //TODO remove
+        val debugTitle = "Привет,мы на связи"
+        val debugMessage =
+            "И мы к вам с хорошими новостями. Совсем скоро мы проведем вебинар по поиску на сайте — там будет масса полезной информации, которая поможет бустануть конверсию и повысить лояльность аудитории. Приходите!"
+        val debugImageUrl =
+            "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
+        val buttonNegative = "Cancel"
+        val buttonPositive = "OK"
+
+        findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
+            sdk.inAppNotificationManager.showAlertDialog(
+                fragmentManager = supportFragmentManager,
+                title = debugTitle,
+                message = debugMessage,
+                buttonText = buttonPositive
+            )
+        }
+
+        findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
+            sdk.inAppNotificationManager.showFullScreenDialog(
+                fragmentManager = supportFragmentManager,
+                title = debugTitle,
+                message = debugMessage,
+                imageUrl = debugImageUrl,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
+            )
+        }
+
+        findViewById<Button>(R.id.bottomSheetDialogButton).setOnClickListener {
+            sdk.inAppNotificationManager.showBottomSheetDialog(
+                fragmentManager = supportFragmentManager,
+                title = debugTitle,
+                message = debugMessage,
+                imageUrl = debugImageUrl,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
+            )
+        }
+
+        findViewById<Button>(R.id.snackBarButton).setOnClickListener {
+            sdk.inAppNotificationManager.showSnackBar(
+                view = findViewById(android.R.id.content),
+                message = debugTitle,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
+            )
+        }
     }
 }

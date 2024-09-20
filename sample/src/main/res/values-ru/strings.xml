@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="failed_load_text">Не удалось загрузить данные. Проверьте подключение и повторите попытку.</string>
-    <string name="notification_button_forward">Вперёд</string>
-    <string name="notification_button_back">Назад</string>
+    <string name="app_name">Personalizatio SDK Sample</string>
 
     <string name="alert_dialog_title">Alert Title</string>
     <string name="alert_dialog_message">This is an alert message.</string>

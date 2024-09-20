@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/backgroundImageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:adjustViewBounds="true"
+        android:scaleType="centerCrop"
+        tools:src="@drawable/ic_product_image" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/gray_scale"
+        android:orientation="vertical"
+        android:padding="@dimen/large_margin">
+
+        <TextView
+            android:id="@+id/title"
+            style="@style/TextAppearance.Compat.Notification.Title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/alert_dialog_title"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/message"
+            style="@style/Widget.Compat.NotificationActionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/medium_margin"
+            android:gravity="center"
+            android:text="@string/alert_dialog_message" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/buttonDecline"
+                style="@style/ShapeAppearanceOverlay.Material3.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/default_margin"
+                android:layout_marginEnd="@dimen/default_margin"
+                android:layout_marginBottom="@dimen/default_margin"
+                android:layout_weight="0.4"
+                android:background="@drawable/rounded_background"
+                android:gravity="center"
+                android:text="@string/alert_dialog_button_decline_title" />
+
+            <Button
+                android:id="@+id/buttonAccept"
+                style="@style/ShapeAppearanceOverlay.Material3.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="@dimen/default_margin"
+                android:layout_marginBottom="@dimen/default_margin"
+                android:layout_weight="1"
+                android:background="@drawable/rounded_background"
+                android:gravity="center"
+                android:text="@string/alert_dialog_button_accept_title" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

@@ -11,7 +11,9 @@ version='2.0.25'
 android {
 	compileSdkVersion 34
 	flavorDimensions += 'default'
-
+	viewBinding {
+		enabled = true
+	}
 	defaultConfig {
 		minSdkVersion 19
 		targetSdkVersion 34
@@ -27,12 +29,12 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_22
-		targetCompatibility JavaVersion.VERSION_22
+		sourceCompatibility JavaVersion.VERSION_17
+		targetCompatibility JavaVersion.VERSION_17
 	}
 
 	kotlinOptions {
-		jvmTarget = '22'
+		jvmTarget = '17'
 	}
 
 	sourceSets {

@@ -15,4 +15,10 @@
 	<string name="failed_load_text">Failed to retrieve data. Please check your connection and try again.</string>
 	<string name="notification_button_back">Previous</string>
 	<string name="notification_button_forward">Next</string>
+
+	<string name="alert_dialog_title">Alert Title</string>
+	<string name="alert_dialog_message">This is an alert message.</string>
+	<string name="alert_dialog_button_accept_title">OK</string>
+	<string name="alert_dialog_button_decline_title">Cancel</string>
+
 </resources>

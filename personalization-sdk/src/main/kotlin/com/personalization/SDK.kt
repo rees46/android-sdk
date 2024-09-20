@@ -8,26 +8,27 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.managers.TrackEventManager
+import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
+import com.personalization.api.managers.TrackEventManager
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.notification.NotificationHandler
 import com.personalization.notification.NotificationHelper
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
+import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
+import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
-import org.json.JSONException
-import org.json.JSONObject
 import java.util.Locale
 import javax.inject.Inject
+import org.json.JSONException
+import org.json.JSONObject
 
 open class SDK {
 
@@ -39,31 +40,46 @@ open class SDK {
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
+
     @Inject
     lateinit var registerManager: RegisterManager
+
     @Inject
     lateinit var storiesManager: StoriesManager
+
     @Inject
     lateinit var recommendationManager: RecommendationManager
+
     @Inject
     lateinit var trackEventManager: TrackEventManager
+
     @Inject
     lateinit var searchManager: SearchManager
 
     @Inject
+    lateinit var inAppNotificationManager: InAppNotificationManager
+
+    @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
+
     @Inject
     lateinit var initUserSettingsUseCase: InitUserSettingsUseCase
+
     @Inject
     lateinit var initNetworkUseCase: InitNetworkUseCase
+
     @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
+
     @Inject
     lateinit var getUserSettingsValueUseCase: GetUserSettingsValueUseCase
+
     @Inject
     lateinit var addTaskToQueueUseCase: AddTaskToQueueUseCase
+
     @Inject
     lateinit var sendNetworkMethodUseCase: SendNetworkMethodUseCase
+
     @Inject
     lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
 
@@ -717,8 +733,10 @@ open class SDK {
 
         var TAG = "SDK"
 
-        private const val SUBSCRIPTION_UNSUBSCRIBE_PRICE = "subscriptions/unsubscribe_from_product_price"
-        private const val SUBSCRIPTION_UNSUBSCRIBE = "subscriptions/unsubscribe_from_product_available"
+        private const val SUBSCRIPTION_UNSUBSCRIBE_PRICE =
+            "subscriptions/unsubscribe_from_product_price"
+        private const val SUBSCRIPTION_UNSUBSCRIBE =
+            "subscriptions/unsubscribe_from_product_available"
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"

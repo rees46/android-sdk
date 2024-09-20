@@ -30,7 +30,7 @@
             android:textAlignment="center" />
 
         <EditText
-            android:id="@+id/email"
+            android:id="@+id/emailEditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:imeOptions="actionDone"
@@ -41,6 +41,30 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Send email" />
+
+        <Button
+            android:id="@+id/alertDialogButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Default pop-up" />
+
+        <Button
+            android:id="@+id/fullScreenDialogButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Full screen pop-up" />
+
+        <Button
+            android:id="@+id/bottomSheetDialogButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bottom sheet pop-up" />
+
+        <Button
+            android:id="@+id/snackBarButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Show snack bar" />
 
     </LinearLayout>
 
