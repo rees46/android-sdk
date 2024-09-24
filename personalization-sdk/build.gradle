@@ -29,12 +29,12 @@ android {
 	}
 
 	compileOptions {
-		sourceCompatibility JavaVersion.VERSION_22
-		targetCompatibility JavaVersion.VERSION_22
+		sourceCompatibility JavaVersion.VERSION_20
+		targetCompatibility JavaVersion.VERSION_20
 	}
 
 	kotlinOptions {
-		jvmTarget = '22'
+		jvmTarget = '20'
 	}
 
 	sourceSets {
