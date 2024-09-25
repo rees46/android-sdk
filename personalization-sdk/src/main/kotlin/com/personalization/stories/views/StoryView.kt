@@ -1,3 +1,5 @@
+@file:SuppressLint("ClickableViewAccessibility", "ViewConstructor")
+
 package com.personalization.stories.views
 
 import android.annotation.SuppressLint
@@ -19,6 +21,7 @@ import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.personalization.R
 import com.personalization.SDK
+import com.personalization.SDK.Companion.TAG
 import com.personalization.stories.StoryState
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.Story
@@ -26,45 +29,39 @@ import com.personalization.stories.views.StoriesProgressView.StoriesListener
 import com.personalization.stories.views.storyItem.StoryItemView
 import com.personalization.stories.views.storyItem.StoryItemView.OnPageListener
 
-@SuppressLint("ViewConstructor")
-internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor(
-    private val storiesView: StoriesView, //Heading
+internal class StoryView(
+    private val storiesView: StoriesView,
     private val storyStateListener: StoryDialog.OnStoryStateListener
 ) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
-    private var story: Story? = null
-
-    private var pressTime = 0L
-    private var completeListener: Runnable? = null
-    private var prevStoryListener: Runnable? = null
 
     private lateinit var storiesProgressView: StoriesProgressView
     private var onTouchListener: OnTouchListener? = null
+    private var viewPagerSize: Pair<Int, Int>? = null
+    private val holders = HashMap<Int, PagerHolder>()
+    private var prevStoryListener: Runnable? = null
+    private var completeListener: Runnable? = null
     private lateinit var mViewPager: ViewPager2
+    private lateinit var mute: ToggleButton
     private var storiesStarted = false
     private var prevFocusState = true
+    private var story: Story? = null
     private var locked = false
-    private val holders = HashMap<Int, PagerHolder>()
-    private lateinit var mute: ToggleButton
-
-    private var viewPagerSize: Pair<Int, Int>? = null
+    private var pressTime = 0L
 
     init {
         inflate(context, R.layout.story_view, this)
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
 
         initViews()
-        setupViews();
+        setupViews()
     }
 
     private fun initViews() {
         storiesProgressView = findViewById(R.id.storiesProgressView)
-
         mViewPager = findViewById(R.id.storiesViewPager)
-
         mute = findViewById(R.id.mute)
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private fun setupViews() {
         onTouchListener = OnTouchListener { _: View?, event: MotionEvent ->
             if (storiesStarted) {
@@ -72,7 +69,6 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                     MotionEvent.ACTION_DOWN -> {
                         pressTime = System.currentTimeMillis()
                         pause()
-                        //							setHeadingVisibility(GONE);
                         return@OnTouchListener false
                     }
 
@@ -81,7 +77,6 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                         if (LIMIT < now - pressTime) {
                             resume()
                         }
-                        //							setHeadingVisibility(VISIBLE);
                         return@OnTouchListener LIMIT < now - pressTime
                     }
                 }
@@ -95,34 +90,37 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         mViewPager.clipToPadding = false
         mViewPager.clipChildren = false
         mViewPager.offscreenPageLimit = 1
-        mViewPager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                val player = com.personalization.stories.Player.player
-                player?.let {
-                    if (player.isPlaying || player.isLoading) {
-                        player.pause()
-                    }
-                }
 
-                story?.let { story ->
-                    for (i in 0 until story.slidesCount) {
-                        if (i != position) {
-                            getHolder(i)?.release()
+        mViewPager.registerOnPageChangeCallback(
+            object : OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    val player = com.personalization.stories.Player.player
+                    player?.let {
+                        if (player.isPlaying || player.isLoading) {
+                            player.pause()
                         }
                     }
 
-                    if (storiesStarted) {
-                        SDK.instance.trackStory(
-                            event = "view",
-                            code = storiesView.code,
-                            storyId = story.id,
-                            slideId = story.getSlide(position).id
-                        )
-                        playVideo()
+                    story?.let { story ->
+                        for (i in 0 until story.slidesCount) {
+                            if (i != position) {
+                                getHolder(i)?.release()
+                            }
+                        }
+
+                        if (storiesStarted) {
+                            SDK.instance.trackStory(
+                                event = "view",
+                                code = storiesView.code,
+                                storyId = story.id,
+                                slideId = story.getSlide(position).id
+                            )
+                            playVideo()
+                        }
                     }
                 }
             }
-        })
+        )
 
         com.personalization.stories.Player?.let { player ->
             player.player?.let { innerPlayer ->
@@ -154,8 +152,12 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         storiesProgressView.setStoriesCount(slidesCount)
         mViewPager.adapter = ViewPagerAdapter()
 
-        // Hack to prevent onPageSelected from triggering when opening the first campaign
-        mViewPager.setCurrentItem(if (story.startPosition == 0) slidesCount else 0, false)
+        mViewPager.setCurrentItem(
+            when (story.startPosition) {
+                0 -> slidesCount
+                else -> 0
+            }, false
+        )
 
         mViewPager.setCurrentItem(story.startPosition, false)
     }
@@ -218,7 +220,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        Log.e(SDK.TAG, "player error: " + error.message + ", story: " + story?.id)
+        Log.e(TAG, "player error: " + error.message + ", story: " + story?.id)
         val holder = currentHolder
         holder?.storyItem?.let { storyItem ->
             storyItem.reloadLayout.visibility = VISIBLE
@@ -229,7 +231,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                         holder.storyItem.reloadLayout.visibility = GONE
                         playVideo()
                     } else {
-                        storiesView.code?.let { code ->
+                        storiesView.code.let { code ->
                             holder.storyItem.update(slide, mViewPager.currentItem, code, story!!.id)
                         }
                     }
@@ -255,39 +257,43 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
                 viewPagerSize = Pair(viewPagerHeight, viewPagerTopOffset)
             }
             storyItem.setViewSize(viewPagerSize!!.first, viewPagerSize!!.second)
-            storyItem.setOnPageListener(object : OnPageListener {
-                override fun onPrev() {
-                    previousSlide()
-                }
+            storyItem.setOnPageListener(
+                object : OnPageListener {
+                    override fun onPrev() {
+                        previousSlide()
+                    }
 
-                override fun onNext() {
-                    nextSlide()
-                }
+                    override fun onNext() {
+                        nextSlide()
+                    }
 
-                override fun onPrepared(position: Int) {
-                    if (story?.getSlide(position)?.type == "image" && storiesStarted) {
-                        try {
-                            storiesProgressView.resume()
-                        } catch (_: IndexOutOfBoundsException) {
+                    override fun onPrepared(position: Int) {
+                        if (story?.getSlide(position)?.type == "image" && storiesStarted) {
+                            try {
+                                storiesProgressView.resume()
+                            } catch (e: IndexOutOfBoundsException) {
+                                Log.e(TAG, "Video onPrepared $e")
+                            }
+                        }
+                    }
+
+                    override fun onLocked(lock: Boolean) {
+                        locked = lock
+                        storyStateListener.onStoryStateChanged(
+                            storyState = when {
+                                lock -> StoryState.PAUSE
+                                else -> StoryState.RUNNING
+                            }
+                        )
+                        when {
+                            lock -> pause()
+                            else -> resume()
                         }
                     }
                 }
-
-                override fun onLocked(lock: Boolean) {
-                    locked = lock
-                    storyStateListener.onStoryStateChanged(
-                        storyState = if(lock) StoryState.PAUSE else StoryState.RUNNING
-                    )
-                    if (lock) {
-                        pause()
-                    } else {
-                        resume()
-                    }
-                }
-            })
+            )
         }
 
-        @SuppressLint("ClickableViewAccessibility")
         fun bind(slide: Slide?, position: Int) {
             holders[position] = this
             mute.visibility = GONE
@@ -306,12 +312,14 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
 
     internal inner class ViewPagerAdapter : RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
-            return PagerHolder(StoryItemView(
-                context = storiesView.context,
-                code = storiesView.code,
-                settings = storiesView.settings,
-                itemClickListener = storiesView.itemClickListener,
-                storyStateListener = storyStateListener)
+            return PagerHolder(
+                StoryItemView(
+                    context = storiesView.context,
+                    code = storiesView.code,
+                    settings = storiesView.settings,
+                    itemClickListener = storiesView.itemClickListener,
+                    storyStateListener = storyStateListener
+                )
             )
         }
 
@@ -337,7 +345,7 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         }
     }
 
-    fun updateDurations() {
+    private fun updateDurations() {
         story?.let { story ->
             val slidesCount = story.slidesCount
             val durations = LongArray(slidesCount)
@@ -423,8 +431,11 @@ internal class StoryView @SuppressLint("ClickableViewAccessibility") constructor
         completeListener?.run()
     }
 
-    fun updateDuration(position: Int) {
-        storiesProgressView.updateStoryDuration(position, story?.getSlide(position)?.duration ?: 0)
+    private fun updateDuration(position: Int) {
+        storiesProgressView.updateStoryDuration(
+            position = position,
+            duration = story?.getSlide(position)?.duration ?: 0
+        )
     }
 
     fun startStories() {

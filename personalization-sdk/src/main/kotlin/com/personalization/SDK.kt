@@ -21,6 +21,7 @@ import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
+import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
@@ -81,7 +82,11 @@ open class SDK {
     lateinit var sendNetworkMethodUseCase: SendNetworkMethodUseCase
 
     @Inject
+    lateinit var setRecommendedByUseCase: SetRecommendedByUseCase
+
+    @Inject
     lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
+
 
     /**
      * @param shopId Shop key
@@ -130,6 +135,43 @@ open class SDK {
 
     fun initializeStoriesView(storiesView: StoriesView) {
         storiesManager.initialize(storiesView)
+    }
+
+    /**
+     * @param listener
+     */
+    fun stories(code: String, listener: OnApiCallbackListener) {
+        storiesManager.requestStories(code, listener)
+    }
+
+    /**
+     * Show stories block by code
+     *
+     * @param code Stories block code
+     */
+    fun showStories(code: String) {
+        storiesManager.showStories(context.mainLooper, code)
+    }
+
+    /**
+     * Triggers a story event
+     *
+     * @param event Event
+     * @param code Stories block code
+     * @param storyId Story ID
+     * @param slideId Slide ID
+     */
+    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
+        if (::storiesManager.isInitialized) {
+            storiesManager.trackStory(
+                event = event,
+                code = code,
+                storyId = storyId,
+                slideId = slideId
+            )
+        } else {
+            Log.i(TAG, "storiesManager is not initialized")
+        }
     }
 
     /**
@@ -668,34 +710,6 @@ open class SDK {
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
-    }
-
-    /**
-     * @param listener
-     */
-    fun stories(code: String, listener: OnApiCallbackListener) {
-        storiesManager.requestStories(code, listener)
-    }
-
-    /**
-     * Show stories block by code
-     *
-     * @param code Stories block code
-     */
-    fun showStories(code: String) {
-        storiesManager.showStories(context.mainLooper, code)
-    }
-
-    /**
-     * Triggers a story event
-     *
-     * @param event Event
-     * @param code Stories block code
-     * @param storyId Story ID
-     * @param slideId Slide ID
-     */
-    fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
-        storiesManager.trackStory(event, code, storyId, slideId)
     }
 
     /**
