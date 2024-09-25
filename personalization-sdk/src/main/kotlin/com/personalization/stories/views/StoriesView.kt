@@ -136,7 +136,13 @@ class StoriesView : ConstraintLayout, ClickListener {
         completeShowStory: () -> Unit = { },
         cancelShowStory: () -> Unit = { }
     ) {
-        val dialog = StoryDialog(this, stories, startPosition, completeShowStory, cancelShowStory)
+        val dialog = StoryDialog(
+            storiesView = this,
+            stories = stories,
+            startPosition = startPosition,
+            completeShowStory = completeShowStory,
+            cancelShowStory = cancelShowStory
+        )
         dialog.show()
     }
 
