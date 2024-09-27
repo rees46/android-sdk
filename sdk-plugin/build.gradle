@@ -1,0 +1,32 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'groovy'
+    id 'org.jetbrains.kotlin.android' version '2.0.20' apply false
+}
+
+repositories {
+    mavenCentral()
+    google()
+
+    gradlePluginPortal()
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation localGroovy()
+//    api 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0'
+//    api 'com.android.tools.build:gradle:8.5.2'
+}
+
+gradlePlugin {
+    plugins {
+        register("conventionPlugin") {
+            id = "com.personalization.config"
+            implementationClass = "SdkPlugin"
+        }
+    }
+}
+
+//kotlin {
+////    jvmToolchain(20)
+//}
