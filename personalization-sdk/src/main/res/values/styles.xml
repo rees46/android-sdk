@@ -12,7 +12,7 @@
 
     <declare-styleable name="StoriesView">
         <attr name="code" format="string" />
-        <attr name="needOpeningWebView" format="boolean" />
+        <attr name="need_opening_web_view" format="boolean" />
     </declare-styleable>
 
     <dimen name="story_avatar_size">76dp</dimen>
