@@ -169,5 +169,5 @@ ext["url"] = url
 ext["publishUrl"] = publishUrl
 
 signing {
-	sign publishing.publications
+//	sign publishing.publications
 }

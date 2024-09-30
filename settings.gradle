@@ -1,2 +1,10 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}
+
 include ':personalization-sdk'
 include ':sample'
+include ':sdk-plugin'

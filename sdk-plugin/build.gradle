@@ -1,32 +1,106 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
-    id 'java-gradle-plugin'
-    id 'groovy'
-    id 'org.jetbrains.kotlin.android' version '2.0.20' apply false
+    id("com.gradle.plugin-publish") version ("1.2.0")
+    id("java-gradle-plugin")
 }
 
-repositories {
-    mavenCentral()
-    google()
+group = "dev.icerock.moko"
+version = "1.0.0"
 
-    gradlePluginPortal()
+project.afterEvaluate {
+    publishing {
+        publications {
+            library(MavenPublication) {
+                setGroupId groupId
+                setArtifactId artifactId
+                version "1.0.0"
+                artifact("$buildDir/outputs/aar/personalization-sdk-rees46-debug.aar")
+
+            }
+        }
+        repositories {
+            mavenLocal()
+        }
+    }
 }
 
 dependencies {
     implementation gradleApi()
     implementation localGroovy()
-//    api 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.0'
-//    api 'com.android.tools.build:gradle:8.5.2'
+//    implementation(gradleKotlinDsl())
+//    compileOnly(libs.kotlinGradlePlugin)
+//    compileOnly(libs.androidGradlePlugin)
+//    compileOnly(libs.kotlinCompilerEmbeddable)
+//    compileOnly(libs.androidSdkCommon)
+//    implementation(libs.kotlinPoet)
+//    implementation(libs.kotlinxSerialization)
+//    implementation(libs.apacheCommonsText)
+//    implementation(libs.commonsCodec)
+//
+//    testImplementation(kotlin("test-junit"))
 }
 
-gradlePlugin {
-    plugins {
-        register("conventionPlugin") {
-            id = "com.personalization.config"
-            implementationClass = "SdkPlugin"
-        }
-    }
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+
+    withJavadocJar()
+    withSourcesJar()
 }
 
 //kotlin {
-////    jvmToolchain(20)
+//    jvmToolchain(20)
+//}
+
+gradlePlugin {
+    plugins {
+        create("multiplatform-resources") {
+            id = "dev.icerock.mobile.multiplatform-resources"
+            implementationClass = "dev.icerock.gradle.MultiplatformResourcesPlugin"
+
+            displayName = "MOKO resources generator plugin"
+            description = "Plugin to provide access to the resources on iOS & Android"
+//            tags.set(listOf("moko-resources", "moko", "kotlin", "kotlin-multiplatform"))
+        }
+    }
+
+    website.set("https://github.com/icerockdev/moko-resources")
+    vcsUrl.set("https://github.com/icerockdev/moko-resources")
+}
+//plugins{
+//    id 'java-gradle-plugin'
+//    id 'maven-publish'
+//}
+//
+//group = 'com.personalization'
+//version = '1.0.0'
+//
+//dependencies {
+//    implementation gradleApi()
+//    implementation localGroovy()
+//}
+//
+//gradlePlugin {
+//    plugins {
+//        create("personalizationPluginConfigs") {
+//            id = "com.personalization.plugin"
+//            implementationClass = "com.personalization.gradle.SdkPlugin"
+//        }
+//    }
+//}
+//
+//publishing {
+//    publications {
+//        mavenJava(MavenPublication) {
+//            from components.java
+//            groupId = project.group
+//            artifactId = 'your-plugin'
+//            version = project.version
+//        }
+//    }
+//    repositories {
+//        mavenLocal()
+//    }
 //}
