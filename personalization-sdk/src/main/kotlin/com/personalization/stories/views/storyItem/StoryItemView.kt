@@ -1,3 +1,5 @@
+@file:SuppressLint("ClickableViewAccessibility", "ViewConstructor", "ResourceAsColor")
+
 package com.personalization.stories.views.storyItem
 
 import android.annotation.SuppressLint
@@ -58,13 +60,13 @@ import com.personalization.stories.views.StoryDialog
 import com.personalization.ui.utils.ColorUtils
 import com.personalization.ui.utils.TextUtils
 
-@SuppressLint("ViewConstructor")
 class StoryItemView(
     private val context: Context,
     private val code: String,
     private val settings: Settings,
     private val itemClickListener: OnLinkClickListener?,
-    private val storyStateListener: StoryDialog.OnStoryStateListener
+    private val storyStateListener: StoryDialog.OnStoryStateListener,
+    private val needOpeningWebView: Boolean
 ) : ConstraintLayout(context) {
 
     interface OnPageListener {
@@ -98,8 +100,8 @@ class StoryItemView(
 
     private lateinit var button: Button
     private lateinit var textBlocksLayout: FrameLayout
-	lateinit var reload: ImageButton
-	lateinit var reloadLayout: View
+    lateinit var reload: ImageButton
+    lateinit var reloadLayout: View
     private lateinit var reloadText: TextView
     private lateinit var header: ConstraintLayout
     private lateinit var titleTextView: TextView
@@ -209,7 +211,13 @@ class StoryItemView(
     fun update(slide: Slide, position: Int, code: String, storyId: Int) {
         slide.isPrepared = false
 
-        setBackgroundColor(ColorUtils.getColor(context, slide.backgroundColor, android.R.color.black))
+        setBackgroundColor(
+            ColorUtils.getColor(
+                context,
+                slide.backgroundColor,
+                android.R.color.black
+            )
+        )
 
         video.visibility = GONE
 
@@ -218,42 +226,16 @@ class StoryItemView(
         setButtonOnClickListener(slide, code, storyId)
 
         if (slide.type == "image") {
-            loadImage(slide.background, object : RequestListener<Drawable> {
-                override fun onLoadFailed(
-                    e: GlideException?,
-                    model: Any?,
-                    target: Target<Drawable>,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    reloadLayout.visibility = VISIBLE
-                    return false
-                }
-
-                override fun onResourceReady(
-                    resource: Drawable,
-                    model: Any,
-                    target: Target<Drawable>?,
-                    dataSource: DataSource,
-                    isFirstResource: Boolean
-                ): Boolean {
-                    onPreparedSlide(slide, position)
-                    return false
-                }
-            })
-        }
-
-        if (slide.type == "video") {
-            video.visibility = VISIBLE
-
-            val preview = slide.preview
-            if (preview.isNotEmpty()) {
-                loadImage(preview, object : RequestListener<Drawable> {
+            loadImage(
+                url = slide.background,
+                listener = object : RequestListener<Drawable> {
                     override fun onLoadFailed(
                         e: GlideException?,
                         model: Any?,
                         target: Target<Drawable>,
                         isFirstResource: Boolean
                     ): Boolean {
+                        reloadLayout.visibility = VISIBLE
                         return false
                     }
 
@@ -264,9 +246,41 @@ class StoryItemView(
                         dataSource: DataSource,
                         isFirstResource: Boolean
                     ): Boolean {
+                        onPreparedSlide(slide, position)
                         return false
                     }
-                })
+                }
+            )
+        }
+
+        if (slide.type == "video") {
+            video.visibility = VISIBLE
+
+            val preview = slide.preview
+            if (preview.isNotEmpty()) {
+                loadImage(
+                    url = preview,
+                    listener = object : RequestListener<Drawable> {
+                        override fun onLoadFailed(
+                            e: GlideException?,
+                            model: Any?,
+                            target: Target<Drawable>,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            return false
+                        }
+
+                        override fun onResourceReady(
+                            resource: Drawable,
+                            model: Any,
+                            target: Target<Drawable>?,
+                            dataSource: DataSource,
+                            isFirstResource: Boolean
+                        ): Boolean {
+                            return false
+                        }
+                    }
+                )
             }
         }
 
@@ -289,12 +303,15 @@ class StoryItemView(
                 var link: String? = null
 
                 for (element in slide.getElements()) {
-                    when(element) {
+                    when (element) {
                         is ProductElement -> product = element.item
                         is ButtonElement -> link = element.link
                     }
                 }
-                Log.d(SDK.TAG, "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else ""))
+                Log.d(
+                    SDK.TAG,
+                    "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else "")
+                )
 
                 storyStateListener.onStoryStateChanged(StoryState.CLOSE)
 
@@ -304,11 +321,13 @@ class StoryItemView(
                     storyId = storyId,
                     slideId = slide.id
                 )
-
-                if (itemClickListener == null
-                    || product == null && link != null && itemClickListener.onClick(link)
-                    || product != null && itemClickListener.onClick(product)) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                if (itemClickListener == null) {
+                    return@setOnClickListener
+                }
+                if (needOpeningWebView && link != null) {
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                    )
                 }
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
@@ -347,10 +366,12 @@ class StoryItemView(
         setupDefaultTextView(productOldPrice, item.oldPrice.isNotEmpty(), item.oldPrice)
         setupDefaultTextView(promocodeText, item.promocode.isNotEmpty(), element.title)
         productOldPrice.paintFlags = productOldPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-        productDiscountBox.visibility = if (item.discountPercent.isEmpty() &&  item.promocode.isEmpty()) GONE else VISIBLE
+        productDiscountBox.visibility =
+            if (item.discountPercent.isEmpty() && item.promocode.isEmpty()) GONE else VISIBLE
 
         val radius = resources.getDimension(R.dimen.product_price_box_radius)
-        val shapeBox = ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, radius).build()
+        val shapeBox =
+            ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, radius).build()
         val shapeBoxDrawable = MaterialShapeDrawable(shapeBox)
         val shapeDiscount = ShapeAppearanceModel().toBuilder()
             .setTopRightCorner(CornerFamily.ROUNDED, radius)
@@ -390,7 +411,6 @@ class StoryItemView(
             .setDuration(ELEMENTS_LAYOUT_ANIMATION_DURATION.toLong())
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private fun updateHeader(
         element: HeaderElement,
         slideId: String,
@@ -400,7 +420,14 @@ class StoryItemView(
         header.visibility = VISIBLE
         header.setOnTouchListener { _: View?, event: MotionEvent ->
             if (event.action == MotionEvent.ACTION_UP) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(element.link)))
+                if (needOpeningWebView) {
+                    context.startActivity(
+                        Intent(
+                            /* action = */ Intent.ACTION_VIEW,
+                            /* uri = */ Uri.parse(element.link)
+                        )
+                    )
+                }
                 SDK.instance.trackStory(
                     event = "click",
                     code = code,
@@ -413,7 +440,6 @@ class StoryItemView(
 
         if (element.icon.isNotEmpty()) {
             titleCardView.visibility = VISIBLE
-            if (context == null) return
             Glide.with(context).load(element.icon).into(titleIconImageView)
         } else {
             titleCardView.visibility = GONE
@@ -440,30 +466,33 @@ class StoryItemView(
                 is ButtonElement -> updateButton(element)
                 is ProductsElement -> updateProducts(element, slide.id, storyId)
                 is ProductElement -> {
-                    updateProduct(element, object : RequestListener<Drawable> {
-                        override fun onLoadFailed(
-                            e: GlideException?,
-                            model: Any?,
-                            target: Target<Drawable?>,
-                            isFirstResource: Boolean
-                        ): Boolean {
-                            return false
-                        }
-
-                        override fun onResourceReady(
-                            resource: Drawable,
-                            model: Any,
-                            target: Target<Drawable>?,
-                            dataSource: DataSource,
-                            isFirstResource: Boolean
-                        ): Boolean {
-                            slide.isPrepared = true
-                            if (pageListener != null) {
-                                pageListener!!.onPrepared(position)
+                    updateProduct(
+                        element,
+                        object : RequestListener<Drawable> {
+                            override fun onLoadFailed(
+                                e: GlideException?,
+                                model: Any?,
+                                target: Target<Drawable?>,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                return false
                             }
-                            return false
+
+                            override fun onResourceReady(
+                                resource: Drawable,
+                                model: Any,
+                                target: Target<Drawable>?,
+                                dataSource: DataSource,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                slide.isPrepared = true
+                                if (pageListener != null) {
+                                    pageListener!!.onPrepared(position)
+                                }
+                                return false
+                            }
                         }
-                    })
+                    )
                 }
             }
         }
@@ -476,7 +505,8 @@ class StoryItemView(
 
         buttonProducts.setOnClickListener {
             buttonProducts.isActivated = !buttonProducts.isActivated
-            buttonProducts.text = if (buttonProducts.isActivated) element.labelHide else element.labelShow
+            buttonProducts.text =
+                if (buttonProducts.isActivated) element.labelHide else element.labelShow
 
             val set = ConstraintSet()
             set.clone(elementsLayout as ConstraintLayout?)
@@ -501,7 +531,6 @@ class StoryItemView(
         pageListener?.onLocked(buttonProducts.isActivated)
     }
 
-    @SuppressLint("ResourceAsColor")
     private fun updateButton(element: ButtonElement) {
         button.visibility = VISIBLE
         button.text = element.title
@@ -539,7 +568,12 @@ class StoryItemView(
         setupTextView(textView, visibility, text, settings.font_family)
     }
 
-    private fun setupTextView(textView: TextView, visibility: Boolean, text: String, typeface: Typeface?) {
+    private fun setupTextView(
+        textView: TextView,
+        visibility: Boolean,
+        text: String,
+        typeface: Typeface?
+    ) {
         textView.visibility = if (visibility) VISIBLE else GONE
 
         if (visibility) {
@@ -553,7 +587,7 @@ class StoryItemView(
 
     private fun setupTextView(textView: TextView, text: String, typeface: Typeface?) {
         textView.text = text
-        if(typeface != null) {
+        if (typeface != null) {
             textView.typeface = typeface
         }
     }
