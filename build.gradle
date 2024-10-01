@@ -9,7 +9,6 @@ buildscript {
 		classpath 'com.android.tools.build:gradle:8.5.2'
 		classpath "com.google.gms:google-services:4.4.1"
 		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-		classpath("com.personalization:sdk-plugin:1.0.0")
 	}
 }
 
