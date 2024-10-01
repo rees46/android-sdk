@@ -24,7 +24,8 @@ class StoryDialog(
     private val stories: List<Story>,
     private val startPosition: Int,
     private val completeShowStory: () -> Unit,
-    private val cancelShowStory: () -> Unit
+    private val cancelShowStory: () -> Unit,
+    private val needOpeningWebView: Boolean
 ) : Dialog(
     storiesView.context,
     android.R.style.Theme_Translucent_NoTitleBar
@@ -168,7 +169,13 @@ class StoryDialog(
     ) :
         RecyclerView.Adapter<PagerHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PagerHolder {
-            return PagerHolder(StoryView(storiesView, storyStateListener))
+            return PagerHolder(
+                StoryView(
+                    storiesView = storiesView,
+                    storyStateListener = storyStateListener,
+                    needOpeningWebView = needOpeningWebView
+                )
+            )
         }
 
         override fun onViewAttachedToWindow(holder: PagerHolder) {

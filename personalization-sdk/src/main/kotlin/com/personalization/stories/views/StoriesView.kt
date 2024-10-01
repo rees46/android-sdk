@@ -26,6 +26,7 @@ class StoriesView : ConstraintLayout, ClickListener {
     private lateinit var player: Player
 
     lateinit var code: String
+    private var needOpeningWebView: Boolean = true
 
     private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
@@ -36,8 +37,13 @@ class StoriesView : ConstraintLayout, ClickListener {
         private set
     var muteListener: Runnable? = null
 
-    constructor(context: Context?, code: String) : super(context!!) {
+    constructor(
+        context: Context?,
+        code: String,
+        needOpeningWebView: Boolean
+    ) : super(context!!) {
         this.code = code
+        this.needOpeningWebView = needOpeningWebView
     }
 
     constructor(context: Context?, attrs: AttributeSet?) : super(context!!, attrs) {
@@ -53,8 +59,12 @@ class StoriesView : ConstraintLayout, ClickListener {
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int)
-            : super(context!!, attrs, defStyleAttr, defStyleRes) {
+    constructor(
+        context: Context?,
+        attrs: AttributeSet?,
+        defStyleAttr: Int,
+        defStyleRes: Int
+    ) : super(context!!, attrs, defStyleAttr, defStyleRes) {
         parseAttrs(attrs)
     }
 
@@ -81,11 +91,13 @@ class StoriesView : ConstraintLayout, ClickListener {
     private fun parseAttrs(attrs: AttributeSet?) {
         val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
         val code = typedArray.getString(R.styleable.StoriesView_code)
+        val openingWebView = typedArray.getBoolean(R.styleable.StoriesView_need_opening_web_view, true)
         if (code == null) {
             SDK.error("Code is set incorrectly")
             return
         }
         this.code = code
+        this.needOpeningWebView = openingWebView
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -124,6 +136,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         }
 
         showStories(stories, id, { adapter.notifyDataSetChanged() }, {})
+
     }
 
     fun muteVideo(mute: Boolean) {
@@ -141,7 +154,8 @@ class StoriesView : ConstraintLayout, ClickListener {
             stories = stories,
             startPosition = startPosition,
             completeShowStory = completeShowStory,
-            cancelShowStory = cancelShowStory
+            cancelShowStory = cancelShowStory,
+            needOpeningWebView = needOpeningWebView
         )
         dialog.show()
     }

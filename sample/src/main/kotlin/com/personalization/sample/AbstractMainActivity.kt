@@ -13,7 +13,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.personalization.OnLinkClickListener
+import com.personalization.Product
 import com.personalization.SDK
+import com.personalization.stories.views.StoriesView
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
@@ -76,7 +79,20 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     }
 
     private fun initializingStoriesView() {
-        sdk.initializeStoriesView(findViewById(R.id.stories_view))
+        val storiesView: StoriesView = findViewById(R.id.stories_view)
+        sdk.initializeStoriesView(storiesView)
+
+        storiesView.itemClickListener = object : OnLinkClickListener {
+            override fun onClick(url: String): Boolean {
+                // return true if need to opening using the SDK
+                return false
+            }
+
+            override fun onClick(product: Product): Boolean {
+                // return true if need to opening using the SDK
+                return false
+            }
+        }
     }
 
     private fun handleInAppNotifications() {

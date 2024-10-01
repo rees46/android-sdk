@@ -11,6 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:code="fcaa8d3168ab7d7346e4b4f1a1c92214"
+        app:need_opening_web_view="false"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
