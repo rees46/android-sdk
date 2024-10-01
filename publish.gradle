@@ -1,160 +1,215 @@
 def pomConfig = {
-	licenses {
-		license {
-			name "The Apache Software License, Version 2.0"
-			url "http://www.apache.org/licenses/LICENSE-2.0.txt"
-			distribution "repo"
-		}
-	}
-	developers {
-		developer {
-			id "pnixx"
-			name "Sergey Odintsov"
-			email "nixx.dj@gmail.com"
-		}
-	}
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "pnixx"
+            name "Sergey Odintsov"
+            email "nixx.dj@gmail.com"
+        }
+    }
 
-	scm {
-		connection "scm:git:github.com:rees46/android-sdk.git"
-		developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
-		url "https://github.com:rees46/android-sdk/tree/master"
-	}
+    scm {
+        connection "scm:git:github.com:rees46/android-sdk.git"
+        developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
+        url "https://github.com:rees46/android-sdk/tree/master"
+    }
 }
 def urls = [rees46: "https://github.com/rees46/android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 
 def publicationNames = []
+
+def isPublishingInMavenLocal = false
+
 publishing {
-	publications {
-		android.libraryVariants.all { variant ->
-			if (variant.buildType.name == "debug") return // Prevents publishing debug library
+    publications {
+        android.libraryVariants.all { variant ->
+            println "Processing variant: ${variant.name}"
 
-			if (variant.flavorName != variantName) return
+            if (!isPublishingInMavenLocal) {
+                if (variant.buildType.name == "debug") {
+                    println "Skipping debug variant: ${variant.name}"
+                    return // Prevents publishing debug library
+                }
 
-			def flavored = !variant.flavorName.isEmpty()
+                if (variant.flavorName != variantName) {
+                    println "Skipping variant due to flavor mismatch: ${variant.flavorName} != ${variantName}"
+                    return
+                }
+            }
 
-			def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
+            def flavored = !variant.flavorName.isEmpty()
+            println "Is flavored variant: ${flavored}"
 
-			def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? variantArtifactId : ""}")
+            def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
+            println "Variant Artifact ID before applying flag: ${variantArtifactId}"
 
-			def sourceDirs = variant.sourceSets.collect {
-				it.javaDirectories
-			}
-			def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
-				description "Generates Javadoc for ${variant.name}."
-				source = variant.javaCompileProvider.get().source
-				destinationDir = javaDocDestDir
-				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
-				configurations.implementation.setCanBeResolved(true)
-				classpath += files(configurations.implementation)
-				options.links("http://docs.oracle.com/javase/7/docs/api/");
-				options.links("http://d.android.com/reference/");
-				exclude '**/BuildConfig.java'
-				exclude '**/R.java'
-				failOnError false
-			}
-			def javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
-				description "Puts Javadoc for ${variant.name} in a jar."
-				archiveClassifier.set('javadoc-' + variant.name)
-				from javadoc.destinationDir
-			}
-			def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
-				description "Puts sources for ${variant.name} in a jar."
-				archiveClassifier.set('sources-' + variant.name)
-				from sourceDirs
-			}
+            def modifiedGroupId = isPublishingInMavenLocal ? "com.local-${variant.flavorName}" : "com.${variant.flavorName}"
+            def modifiedArtifactId = isPublishingInMavenLocal ? "local-${variantArtifactId}" : variantArtifactId
 
-			def publicationName = "${variant.name.capitalize()}Library"
-			publicationNames.add(publicationName)
+            println "Final Group ID: ${modifiedGroupId}"
+            println "Final Artifact ID: ${modifiedArtifactId}"
 
-			"$publicationName"(MavenPublication) {
-				artifactId variantArtifactId
-				groupId "com.${variant.flavorName}"
-				version version
+            def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? modifiedArtifactId : ""}")
+            println "Javadoc Destination Directory: ${javaDocDestDir}"
 
-				artifact variant.packageLibraryProvider.get()
-				artifact sourcesJar
-				artifact javadocJar
+            def sourceDirs = variant.sourceSets.collect {
+                it.javaDirectories
+            }
+            println "Source Directories: ${sourceDirs}"
 
-				pom {
-					packaging 'aar'
-					withXml {
-						def root = asNode()
-						root.appendNode("name", variantArtifactId)
-						root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
-						root.appendNode("url", url)
-						root.children().last() + pomConfig
-						def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
+            def javadoc
+            def javadocJar
 
-						def addDep = {
-							if (it.group == null) return
-							def dependencyNode = depsNode.appendNode('dependency')
-							dependencyNode.appendNode('groupId', it.group)
-							dependencyNode.appendNode('artifactId', it.name)
-							dependencyNode.appendNode('version', it.version)
-							if (it.hasProperty('optional') && it.optional) {
-								dependencyNode.appendNode('optional', 'true')
-							}
-						}
+            if (!isPublishingInMavenLocal || variant.buildType.name == "release") {
+                javadoc = task("${variant.name}Javadoc", type: Javadoc) {
+                    description "Generates Javadoc for ${variant.name}."
+                    source = variant.javaCompileProvider.get().source
+                    destinationDir = javaDocDestDir
+                    classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
+                    configurations.implementation.setCanBeResolved(true)
+                    classpath += files(configurations.implementation)
+                    options.links("http://docs.oracle.com/javase/7/docs/api/");
+                    options.links("http://d.android.com/reference/");
+                    exclude '**/BuildConfig.java'
+                    exclude '**/R.java'
+                    failOnError false
+                }
+                println "Created Javadoc task for variant: ${variant.name}"
 
-						configurations.implementation.allDependencies.each addDep
-						if (flavored) {
-							configurations["${variant.flavorName}Implementation"].allDependencies.each addDep
-						}
-					}
-				}
-			}
-		}
-	}
-	repositories {
-		maven {
-			name = "GitHubPackages"
+                javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
+                    description "Puts Javadoc for ${variant.name} in a jar."
+                    archiveClassifier.set('javadoc-' + variant.name)
+                    from javadoc.destinationDir
+                }
+                println "Created JavadocJar task for variant: ${variant.name}"
+            }
 
-			credentials {
-				username ossrhUsername
-				password ossrhPassword
-			}
+            def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
+                description "Puts sources for ${variant.name} in a jar."
+                archiveClassifier.set('sources-' + variant.name)
+                from sourceDirs
+            }
+            println "Created SourcesJar task for variant: ${variant.name}"
 
-			url = uri(publishUrl)
-		}
-		maven {
-			name = "sonatype"
+            def publicationName = "${variant.name.capitalize()}Library"
+            publicationNames.add(publicationName)
+            println "Adding publication: ${publicationName}"
 
-			def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-			def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            "$publicationName"(MavenPublication) {
+                artifactId modifiedArtifactId
+                groupId modifiedGroupId
+                version version
 
-			credentials {
-				username sonataUsername
-				password sonataPassword
-			}
+                artifact variant.packageLibraryProvider.get()
+                artifact sourcesJar
+                if (javadocJar != null) {
+                    artifact javadocJar
+                }
 
-			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-		}
-	}
+                pom {
+                    packaging 'aar'
+                    withXml {
+                        def root = asNode()
+                        root.appendNode("name", modifiedArtifactId)
+                        root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
+                        root.appendNode("url", url)
+                        root.children().last() + pomConfig
+
+                        def depsNode = root.appendNode('dependencies')
+
+                        configurations.implementation.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'compile')
+
+                                println "  - compile dependency: ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+
+                        configurations.kapt.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'provided')
+                                println "  - provided dependency (kapt): ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    repositories {
+        if (isPublishingInMavenLocal) {
+            mavenLocal()
+            println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
+        } else {
+            println "Publishing to local maven repository"
+        }
+
+        maven {
+            name = "GitHubPackages"
+            credentials {
+                username ossrhUsername
+                password ossrhPassword
+            }
+            url = uri(publishUrl)
+            println "Configured GitHub Packages repository with URL: ${publishUrl}"
+        }
+
+        maven {
+            name = "sonatype"
+
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
+            credentials {
+                username sonataUsername
+                password sonataPassword
+            }
+
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            println "Configured Sonatype repository with URL: ${url}"
+        }
+    }
 }
+
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
-	nexusPublishing {
-		repositories {
-			android.libraryVariants.all { variant ->
-				if (variant.buildType.name == "debug") return
+    nexusPublishing {
+        repositories {
+            android.libraryVariants.all { variant ->
+                if (variant.buildType.name == "debug") return
 
-				"${variant.flavorName}Sonatype" {
-					stagingProfileId = sonatypeIds[variant.flavorName]
-					username = sonataUsername
-					password = sonataPassword
-					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-				}
-			}
-		}
-	}
+                "${variant.flavorName}Sonatype" {
+                    stagingProfileId = sonatypeIds[variant.flavorName]
+                    username = sonataUsername
+                    password = sonataPassword
+                    nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+                    snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+                }
+            }
+        }
+    }
 
-	android.libraryVariants.all { variant ->
-		if(variant == 'release') {
-			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
-		}
-	}
+    android.libraryVariants.all { variant ->
+        if (variant == 'release') {
+            tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
+        }
+    }
 }
 
 ext["signing.keyId"] = signing_keyId
@@ -169,5 +224,7 @@ ext["url"] = url
 ext["publishUrl"] = publishUrl
 
 signing {
-	sign publishing.publications
+    if (!isPublishingInMavenLocal) {
+        sign publishing.publications
+    }
 }
