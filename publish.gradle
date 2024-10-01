@@ -224,5 +224,7 @@ ext["url"] = url
 ext["publishUrl"] = publishUrl
 
 signing {
-	sign publishing.publications
+    if (!isPublishingInMavenLocal) {
+        sign publishing.publications
+    }
 }
