@@ -1,111 +1,124 @@
 def pomConfig = {
-	licenses {
-		license {
-			name "The Apache Software License, Version 2.0"
-			url "http://www.apache.org/licenses/LICENSE-2.0.txt"
-			distribution "repo"
-		}
-	}
-	developers {
-		developer {
-			id "pnixx"
-			name "Sergey Odintsov"
-			email "nixx.dj@gmail.com"
-		}
-	}
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "pnixx"
+            name "Sergey Odintsov"
+            email "nixx.dj@gmail.com"
+        }
+    }
 
-	scm {
-		connection "scm:git:github.com:rees46/android-sdk.git"
-		developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
-		url "https://github.com:rees46/android-sdk/tree/master"
-	}
+    scm {
+        connection "scm:git:github.com:rees46/android-sdk.git"
+        developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
+        url "https://github.com:rees46/android-sdk/tree/master"
+    }
 }
 def urls = [rees46: "https://github.com/rees46/android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 
 def publicationNames = []
+
 publishing {
-	publications {
-		android.libraryVariants.all { variant ->
-			if (variant.buildType.name == "debug") return // Prevents publishing debug library
+    publications {
+        android.libraryVariants.all { variant ->
+            if (variant.buildType.name == "debug") return // Prevents publishing debug library
 
-			if (variant.flavorName != variantName) return
+            if (variant.flavorName != variantName) return
 
-			def flavored = !variant.flavorName.isEmpty()
+            def flavored = !variant.flavorName.isEmpty()
 
-			def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
+            def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
 
-			def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? variantArtifactId : ""}")
+            def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? variantArtifactId : ""}")
 
-			def sourceDirs = variant.sourceSets.collect {
-				it.javaDirectories
-			}
-			def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
-				description "Generates Javadoc for ${variant.name}."
-				source = variant.javaCompileProvider.get().source
-				destinationDir = javaDocDestDir
-				classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
-				configurations.implementation.setCanBeResolved(true)
-				classpath += files(configurations.implementation)
-				options.links("http://docs.oracle.com/javase/7/docs/api/");
-				options.links("http://d.android.com/reference/");
-				exclude '**/BuildConfig.java'
-				exclude '**/R.java'
-				failOnError false
-			}
-			def javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
-				description "Puts Javadoc for ${variant.name} in a jar."
-				archiveClassifier.set('javadoc-' + variant.name)
-				from javadoc.destinationDir
-			}
-			def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
-				description "Puts sources for ${variant.name} in a jar."
-				archiveClassifier.set('sources-' + variant.name)
-				from sourceDirs
-			}
+            def sourceDirs = variant.sourceSets.collect {
+                it.javaDirectories
+            }
+            def javadoc = task("${variant.name}Javadoc", type: Javadoc) {
+                description "Generates Javadoc for ${variant.name}."
+                source = variant.javaCompileProvider.get().source
+                destinationDir = javaDocDestDir
+                classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
+                configurations.implementation.setCanBeResolved(true)
+                classpath += files(configurations.implementation)
+                options.links("http://docs.oracle.com/javase/7/docs/api/");
+                options.links("http://d.android.com/reference/");
+                exclude '**/BuildConfig.java'
+                exclude '**/R.java'
+                failOnError false
+            }
+            def javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
+                description "Puts Javadoc for ${variant.name} in a jar."
+                archiveClassifier.set('javadoc-' + variant.name)
+                from javadoc.destinationDir
+            }
+            def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
+                description "Puts sources for ${variant.name} in a jar."
+                archiveClassifier.set('sources-' + variant.name)
+                from sourceDirs
+            }
 
-			def publicationName = "${variant.name.capitalize()}Library"
-			publicationNames.add(publicationName)
+            def publicationName = "${variant.name.capitalize()}Library"
+            publicationNames.add(publicationName)
 
-			"$publicationName"(MavenPublication) {
-				artifactId variantArtifactId
-				groupId "com.${variant.flavorName}"
-				version version
+            "$publicationName"(MavenPublication) {
+                artifactId variantArtifactId
+                groupId "com.${variant.flavorName}"
+                version version
 
-				artifact variant.packageLibraryProvider.get()
-				artifact sourcesJar
-				artifact javadocJar
+                artifact variant.packageLibraryProvider.get()
+                artifact sourcesJar
+                artifact javadocJar
 
-				pom {
-					packaging 'aar'
-					withXml {
-						def root = asNode()
-						root.appendNode("name", variantArtifactId)
-						root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
-						root.appendNode("url", url)
-						root.children().last() + pomConfig
-						def depsNode = root["dependencies"][0] ?: root.appendNode("dependencies")
+                pom {
+                    packaging 'aar'
+                    withXml {
+                        def root = asNode()
+                        root.appendNode("name", variantArtifactId)
+                        root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
+                        root.appendNode("url", url)
+                        root.children().last() + pomConfig
 
-						def addDep = {
-							if (it.group == null) return
-							def dependencyNode = depsNode.appendNode('dependency')
-							dependencyNode.appendNode('groupId', it.group)
-							dependencyNode.appendNode('artifactId', it.name)
-							dependencyNode.appendNode('version', it.version)
-							if (it.hasProperty('optional') && it.optional) {
-								dependencyNode.appendNode('optional', 'true')
-							}
-						}
+                        def depsNode = root.appendNode('dependencies')
 
-						configurations.implementation.allDependencies.each addDep
-						if (flavored) {
-							configurations["${variant.flavorName}Implementation"].allDependencies.each addDep
-						}
-					}
-				}
-			}
-		}
-	}
-	repositories {
+                        configurations.implementation.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'compile')
+
+                                println "  - compile dependency: ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+
+                        configurations.kapt.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'provided')
+                                println "  - provided dependency (kapt): ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+                    }
+                }
+            }
+            println "implementation '${groupId}:${artifactId}:${version}'"
+        }
+    }
+
+    repositories {
+        mavenLocal()
+
 		maven {
 			name = "GitHubPackages"
 
@@ -129,32 +142,54 @@ publishing {
 
 			url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 		}
-	}
+    }
 }
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    implementation 'com.google.firebase:firebase-messaging:23.4.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'org.jetbrains:annotations:24.1.0'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    implementation 'androidx.media3:media3-exoplayer:1.2.1'
+    implementation 'androidx.media3:media3-ui:1.2.1'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.dagger:dagger:2.51.1'
+    kapt 'com.google.dagger:dagger-compiler:2.48'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+}
+
 def sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
 
 afterEvaluate {
-	nexusPublishing {
-		repositories {
-			android.libraryVariants.all { variant ->
-				if (variant.buildType.name == "debug") return
+    nexusPublishing {
+        repositories {
+            android.libraryVariants.all { variant ->
+                if (variant.buildType.name == "debug") return
 
-				"${variant.flavorName}Sonatype" {
-					stagingProfileId = sonatypeIds[variant.flavorName]
-					username = sonataUsername
-					password = sonataPassword
-					nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-					snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-				}
-			}
-		}
-	}
+                "${variant.flavorName}Sonatype" {
+                    stagingProfileId = sonatypeIds[variant.flavorName]
+                    username = sonataUsername
+                    password = sonataPassword
+                    nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+                    snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+                }
+            }
+        }
+    }
 
-	android.libraryVariants.all { variant ->
-		if(variant == 'release') {
-			tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
-		}
-	}
+    android.libraryVariants.all { variant ->
+        if (variant == 'release') {
+            tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
+        }
+    }
 }
 
 ext["signing.keyId"] = signing_keyId
@@ -169,5 +204,5 @@ ext["url"] = url
 ext["publishUrl"] = publishUrl
 
 signing {
-//	sign publishing.publications
+	sign publishing.publications
 }

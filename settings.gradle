@@ -7,4 +7,3 @@ pluginManagement {
 
 include ':personalization-sdk'
 include ':sample'
-include ':sdk-plugin'
