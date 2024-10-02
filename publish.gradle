@@ -8,9 +8,9 @@ def pomConfig = {
     }
     developers {
         developer {
-            id "pnixx"
-            name "Sergey Odintsov"
-            email "nixx.dj@gmail.com"
+            id ""
+            name ""
+            email ""
         }
     }
 
