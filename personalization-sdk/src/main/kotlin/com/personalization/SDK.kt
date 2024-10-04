@@ -158,6 +158,7 @@ open class SDK {
     fun showAlertDialog(
         title: String,
         message: String,
+        imageUrl: String,
         buttonNegativeText: String,
         buttonPositiveText: String,
         buttonPositiveColor: Int,
@@ -168,6 +169,7 @@ open class SDK {
         fragmentManager = fragmentManager,
         title = title,
         message = message,
+        imageUrl = imageUrl,
         buttonPositiveColor = buttonPositiveColor,
         buttonNegativeColor = buttonNegativeColor,
         buttonNegativeText = buttonNegativeText,

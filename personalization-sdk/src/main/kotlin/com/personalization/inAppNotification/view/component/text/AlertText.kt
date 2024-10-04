@@ -1,8 +1,8 @@
-package com.personalization.inAppNotification.view.component
+package com.personalization.inAppNotification.view.component.text
 
 import android.content.Context
 import android.util.AttributeSet
-import android.view.Gravity.CENTER
+import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.res.ResourcesCompat
 
@@ -18,7 +18,7 @@ class AlertText @JvmOverloads constructor(
 
     private fun setupView() {
         textSize = 16f
-        gravity = CENTER
+        gravity = Gravity.START
         setTextColor(ResourcesCompat.getColor(resources, android.R.color.black, null))
     }
 }

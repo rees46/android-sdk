@@ -1,66 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/rounded_background"
-    android:minWidth="300dp"
+    android:layout_margin="@dimen/large_margin"
+    android:maxWidth="300dp"
     android:minHeight="150dp"
-    android:orientation="vertical"
-    android:paddingHorizontal="@dimen/large_margin"
-    android:paddingTop="@dimen/large_margin">
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:cardUseCompatPadding="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.personalization.inAppNotification.view.component.AlertText
-            android:id="@+id/title"
+        <com.personalization.inAppNotification.view.component.image.AlertImageView
+            android:id="@+id/backgroundImageView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/alert_dialog_title"
-            android:textStyle="bold" />
-
-        <com.personalization.inAppNotification.view.component.AlertText
-            android:id="@+id/message"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/medium_margin"
-            android:gravity="center"
-            android:text="@string/alert_dialog_message" />
+            android:layout_height="200dp"
+            android:layout_gravity="top"
+            android:src="@drawable/image_sample"
+            android:adjustViewBounds="true"
+            android:scaleType="centerCrop" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="12dp"
-            android:orientation="horizontal">
+            android:background="@drawable/rounded_background"
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/large_margin"
+            android:paddingTop="@dimen/large_margin"
+            android:translationY="-16dp">
 
-            <com.personalization.inAppNotification.view.component.AlertButton
-                android:id="@+id/buttonDecline"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_marginEnd="6dp"
-                android:layout_weight="1"
-                app:buttonColor="@color/colorGray"
-                app:buttonText="@string/alert_dialog_button_decline_title"
-                app:textColor="@color/white"
-                app:textSize="18sp" />
+            <include
+                android:id="@+id/textContainer"
+                layout="@layout/alert_text_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
 
-            <com.personalization.inAppNotification.view.component.AlertButton
-                android:id="@+id/buttonAccept"
-                android:layout_width="0dp"
-                android:layout_height="44dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                app:buttonColor="@color/colorPrimary"
-                app:buttonText="@string/alert_dialog_button_accept_title"
-                app:textColor="@color/white"
-                app:textSize="18sp" />
+            <include
+                android:id="@+id/buttonContainer"
+                layout="@layout/alert_button_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-</LinearLayout>
+</androidx.cardview.widget.CardView>

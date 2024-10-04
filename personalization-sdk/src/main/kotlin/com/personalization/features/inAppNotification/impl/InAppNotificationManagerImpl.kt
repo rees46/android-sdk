@@ -15,6 +15,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         fragmentManager: FragmentManager,
         title: String,
         message: String,
+        imageUrl: String,
         buttonPositiveText: String,
         buttonNegativeText: String,
         buttonPositiveColor: Int,
@@ -25,6 +26,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         val dialog = DefaultAlertDialog.newInstance(
             title = title,
             message = message,
+            imageUrl = imageUrl,
             buttonPositiveColor = buttonPositiveColor,
             buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,

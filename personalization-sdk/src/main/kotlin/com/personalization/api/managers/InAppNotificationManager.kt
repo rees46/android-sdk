@@ -9,6 +9,7 @@ interface InAppNotificationManager {
         fragmentManager: FragmentManager,
         title: String,
         message: String,
+        imageUrl: String,
         buttonPositiveText: String,
         buttonNegativeText: String,
         buttonPositiveColor: Int,

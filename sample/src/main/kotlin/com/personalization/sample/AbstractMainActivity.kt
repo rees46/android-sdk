@@ -115,6 +115,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             sdk.showAlertDialog(
                 title = debugTitle,
                 message = debugMessage,
+                imageUrl = debugImageUrl,
                 buttonNegativeText = buttonNegative,
                 buttonPositiveText = buttonPositive,
                 buttonNegativeColor =  ContextCompat.getColor(this, R.color.colorGray),
