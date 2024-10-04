@@ -29,13 +29,14 @@
             android:layout_height="wrap_content"
             android:background="@drawable/rounded_background"
             android:orientation="vertical"
-            android:paddingHorizontal="@dimen/large_margin"
             android:paddingTop="@dimen/large_margin"
             android:translationY="-16dp">
 
             <include
                 android:id="@+id/textContainer"
                 layout="@layout/alert_text_container"
+                android:layout_marginStart="@dimen/large_margin"
+                android:layout_marginEnd="18dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 

@@ -20,5 +20,7 @@ class AlertText @JvmOverloads constructor(
         textSize = 16f
         gravity = Gravity.START
         setTextColor(ResourcesCompat.getColor(resources, android.R.color.black, null))
+
+        setPadding(0, 0, 0, 0)
     }
 }

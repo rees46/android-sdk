@@ -119,7 +119,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 buttonNegativeText = buttonNegative,
                 buttonPositiveText = buttonPositive,
                 buttonNegativeColor =  ContextCompat.getColor(this, R.color.colorGray),
-                buttonPositiveColor = ContextCompat.getColor(this, R.color.colorPrimary),
+                buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor),
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
