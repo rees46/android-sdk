@@ -23,6 +23,9 @@
     <dimen name="default_margin">5dp</dimen>
     <dimen name="medium_margin">10dp</dimen>
     <dimen name="large_margin">20dp</dimen>
+    <dimen name="button_height">44dp</dimen>
+    <dimen name="small_corner_radius">8dp</dimen>
+    <dimen name="margin_small">6dp</dimen>
 
     <dimen name="product_image_size">150dp</dimen>
     <dimen name="product_margin">8dp</dimen>

@@ -7,6 +7,7 @@ import androidx.appcompat.widget.AppCompatImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 
@@ -22,7 +23,7 @@ class AlertImageView @JvmOverloads constructor(
                 .load(url)
                 .apply(RequestOptions().centerCrop())
                 .listener(
-                    object : com.bumptech.glide.request.RequestListener<Drawable> {
+                    object : RequestListener<Drawable> {
 
                         override fun onLoadFailed(
                             exception: GlideException?,

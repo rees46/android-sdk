@@ -8,10 +8,10 @@
 
     <androidx.cardview.widget.CardView
         android:layout_width="0dp"
-        android:layout_height="44dp"
-        android:layout_marginEnd="6dp"
+        android:layout_height="@dimen/button_height"
+        android:layout_marginEnd="@dimen/margin_small"
         android:layout_weight="1"
-        app:cardCornerRadius="8dp">
+        app:cardCornerRadius="@dimen/small_corner_radius">
 
         <com.personalization.inAppNotification.view.component.button.AlertButton
             android:id="@+id/buttonDecline"
@@ -26,10 +26,10 @@
 
     <androidx.cardview.widget.CardView
         android:layout_width="0dp"
-        android:layout_height="44dp"
-        android:layout_marginStart="6dp"
+        android:layout_height="@dimen/button_height"
+        android:layout_marginStart="@dimen/margin_small"
         android:layout_weight="1"
-        app:cardCornerRadius="8dp">
+        app:cardCornerRadius="@dimen/small_corner_radius">
 
         <com.personalization.inAppNotification.view.component.button.AlertButton
             android:id="@+id/buttonAccept"
