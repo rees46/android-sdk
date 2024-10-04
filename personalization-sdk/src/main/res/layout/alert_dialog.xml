@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/rounded_background"
@@ -9,54 +10,56 @@
     android:paddingHorizontal="@dimen/large_margin"
     android:paddingTop="@dimen/large_margin">
 
-    <TextView
-        android:id="@+id/title"
-        style="@style/TextAppearance.Compat.Notification.Title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="@string/alert_dialog_title"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/message"
-        style="@style/Widget.Compat.NotificationActionText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/medium_margin"
-        android:gravity="center"
-        android:text="@string/alert_dialog_message" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
-        <Button
-            android:id="@+id/buttonAccept"
-            style="@style/ShapeAppearanceOverlay.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+        <com.personalization.inAppNotification.view.component.AlertText
+            android:id="@+id/title"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:elevation="0dp"
-            android:layout_marginTop="@dimen/large_margin"
-            android:layout_marginBottom="@dimen/large_margin"
-            android:background="@drawable/rounded_background"
-            android:text="@string/alert_dialog_button_decline_title" />
+            android:gravity="center"
+            android:text="@string/alert_dialog_title"
+            android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/buttonDecline"
-            style="@style/ShapeAppearanceOverlay.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+        <com.personalization.inAppNotification.view.component.AlertText
+            android:id="@+id/message"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:elevation="0dp"
-            android:layout_gravity="center"
-            android:layout_marginTop="@dimen/large_margin"
-            android:layout_marginBottom="@dimen/large_margin"
-            android:background="@drawable/rounded_background"
-            android:text="@string/alert_dialog_button_accept_title" />
+            android:layout_marginTop="@dimen/medium_margin"
+            android:gravity="center"
+            android:text="@string/alert_dialog_message" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="12dp"
+            android:orientation="horizontal">
+
+            <com.personalization.inAppNotification.view.component.AlertButton
+                android:id="@+id/buttonDecline"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                app:buttonColor="@color/colorGray"
+                app:buttonText="@string/alert_dialog_button_decline_title"
+                app:textColor="@color/white"
+                app:textSize="18sp" />
+
+            <com.personalization.inAppNotification.view.component.AlertButton
+                android:id="@+id/buttonAccept"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                app:buttonColor="@color/colorPrimary"
+                app:buttonText="@string/alert_dialog_button_accept_title"
+                app:textColor="@color/white"
+                app:textSize="18sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

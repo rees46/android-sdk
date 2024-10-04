@@ -160,12 +160,16 @@ open class SDK {
         message: String,
         buttonNegativeText: String,
         buttonPositiveText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) = inAppNotificationManager.showAlertDialog(
         fragmentManager = fragmentManager,
         title = title,
         message = message,
+        buttonPositiveColor = buttonPositiveColor,
+        buttonNegativeColor = buttonNegativeColor,
         buttonNegativeText = buttonNegativeText,
         buttonPositiveText = buttonPositiveText,
         onNegativeClick = onNegativeClick,

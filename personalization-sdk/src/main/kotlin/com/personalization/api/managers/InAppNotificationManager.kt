@@ -11,6 +11,8 @@ interface InAppNotificationManager {
         message: String,
         buttonPositiveText: String,
         buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )

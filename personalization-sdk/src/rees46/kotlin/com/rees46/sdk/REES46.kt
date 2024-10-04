@@ -1,6 +1,8 @@
 package com.rees46.sdk
 
 import android.content.Context
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
 import com.personalization.BuildConfig
 import com.personalization.SDK
 import com.personalization.notification.NotificationHelper
@@ -23,7 +25,7 @@ class REES46 private constructor() : SDK() {
         private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
 
         private val API_URL: String = when {
-            BuildConfig.DEBUG -> DEBUG_API_URL
+            !BuildConfig.DEBUG -> DEBUG_API_URL
             else -> RELEASE_API_URL
         }
         private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
@@ -49,13 +51,13 @@ class REES46 private constructor() : SDK() {
             sdk.initialize(
                 context = context,
                 shopSecretKey = shopSecretKey,
-                shopId = shopId,
+                shopId = "357382bf66ac0ce2f1722677c59511",
                 apiUrl = apiUrl,
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID,
                 notificationType = NOTIFICATION_TYPE,
-                notificationId =  NOTIFICATION_ID,
+                notificationId = NOTIFICATION_ID,
                 autoSendPushToken = autoSendPushToken
             )
 

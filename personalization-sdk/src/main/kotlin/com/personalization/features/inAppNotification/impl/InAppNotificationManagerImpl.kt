@@ -17,12 +17,16 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         message: String,
         buttonPositiveText: String,
         buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
         val dialog = DefaultAlertDialog.newInstance(
             title = title,
             message = message,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
         )
