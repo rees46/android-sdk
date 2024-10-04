@@ -78,6 +78,10 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
     }
 
+    private fun initializingFragmentManager() = sdk.initializeFragmentManager(
+        fragmentManager = supportFragmentManager
+    )
+
     private fun initializingStoriesView() {
         val storiesView: StoriesView = findViewById(R.id.stories_view)
         sdk.initializeStoriesView(storiesView)
@@ -106,17 +110,22 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         val buttonPositive = "OK"
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showAlertDialog(
-                fragmentManager = supportFragmentManager,
+            sdk.showAlertDialog(
                 title = debugTitle,
                 message = debugMessage,
-                buttonText = buttonPositive
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
             )
         }
 
         findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showFullScreenDialog(
-                fragmentManager = supportFragmentManager,
+            sdk.showFullScreenDialog(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
@@ -132,8 +141,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         findViewById<Button>(R.id.bottomSheetDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showBottomSheetDialog(
-                fragmentManager = supportFragmentManager,
+            sdk.showBottomSheetDialog(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,

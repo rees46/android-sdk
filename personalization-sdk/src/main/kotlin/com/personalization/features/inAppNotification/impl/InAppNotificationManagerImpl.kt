@@ -4,9 +4,9 @@ import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.inAppNotification.view.BottomSheetDialog
-import com.personalization.inAppNotification.view.SdkSnackbar
 import com.personalization.inAppNotification.view.DefaultAlertDialog
 import com.personalization.inAppNotification.view.FullScreenDialog
+import com.personalization.inAppNotification.view.SdkSnackbar
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
@@ -15,13 +15,26 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         fragmentManager: FragmentManager,
         title: String,
         message: String,
-        buttonText: String
+        buttonPositiveText: String,
+        buttonNegativeText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     ) {
-        DefaultAlertDialog.newInstance(
+        val dialog = DefaultAlertDialog.newInstance(
             title = title,
             message = message,
-            buttonText = buttonText
-        ).show(
+            buttonPositiveText = buttonPositiveText,
+            buttonNegativeText = buttonNegativeText,
+        )
+
+        dialog.setListener(
+            object : DefaultAlertDialog.AlertDialogListener {
+                override fun onPositiveButtonClick() = onPositiveClick()
+                override fun onNegativeButtonClick() = onNegativeClick()
+            }
+        )
+
+        dialog.show(
             /* manager = */ fragmentManager,
             /* tag = */ DefaultAlertDialog.TAG
         )
@@ -47,13 +60,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
 
         dialog.setListener(
             object : FullScreenDialog.FullScreenDialogListener {
-                override fun onPositiveButtonClick() {
-                    onPositiveClick()
-                }
-
-                override fun onNegativeButtonClick() {
-                    onNegativeClick()
-                }
+                override fun onPositiveButtonClick() = onPositiveClick()
+                override fun onNegativeButtonClick() = onNegativeClick()
             }
         )
 
@@ -82,13 +90,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
 
         dialog.setListener(
             object : BottomSheetDialog.BottomSheetDialogListener {
-                override fun onPositiveButtonClick() {
-                    onPositiveClick()
-                }
-
-                override fun onNegativeButtonClick() {
-                    onNegativeClick()
-                }
+                override fun onPositiveButtonClick() = onPositiveClick()
+                override fun onNegativeButtonClick() = onNegativeClick()
             }
         )
 

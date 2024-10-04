@@ -9,7 +9,10 @@ interface InAppNotificationManager {
         fragmentManager: FragmentManager,
         title: String,
         message: String,
-        buttonText: String
+        buttonPositiveText: String,
+        buttonNegativeText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     )
 
     fun showFullScreenDialog(
