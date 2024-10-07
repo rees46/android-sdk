@@ -70,8 +70,7 @@ class DefaultAlertDialog : DialogFragment() {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
                 }
                 buttonDeclineContainer.setOnClickListener {
-                    listener?.onNegativeButtonClick()
-                    dismiss()
+                    onButtonClick(isPositiveClick = false)
                 }
             }
         }
@@ -87,8 +86,7 @@ class DefaultAlertDialog : DialogFragment() {
                     buttonAccept.setBackgroundColor(positiveButtonColor)
                 }
                 buttonAcceptContainer.setOnClickListener {
-                    listener?.onPositiveButtonClick()
-                    dismiss()
+                    onButtonClick(isPositiveClick = true)
                 }
             }
         }
@@ -99,6 +97,14 @@ class DefaultAlertDialog : DialogFragment() {
             closeButton.addPressEffect()
             closeButton.setOnClickListener { dismiss() }
         }
+    }
+
+    private fun onButtonClick(isPositiveClick: Boolean) {
+        when (isPositiveClick) {
+            true -> listener?.onPositiveButtonClick()
+            else -> listener?.onNegativeButtonClick()
+        }
+        dismiss()
     }
 
     interface AlertDialogListener {
