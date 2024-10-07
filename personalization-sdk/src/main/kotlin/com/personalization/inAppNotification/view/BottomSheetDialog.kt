@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.personalization.databinding.BottomSheetDialogBinding
+import com.personalization.inAppNotification.view.DefaultAlertDialog.Companion
 
 class BottomSheetDialog : BottomSheetDialogFragment() {
 
@@ -73,6 +74,8 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         const val TAG = "BottomSheetDialog"
         const val TITLE_KEY = "TITLE_KEY"
         const val MESSAGE_KEY = "MESSAGE_KEY"
+        const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
+        const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
         const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
         const val BUTTON_NEGATIVE_TEXT_KEY = "BUTTON_NEGATIVE_TEXT_KEY"
 
@@ -80,12 +83,16 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
             title: String,
             message: String,
             buttonPositiveText: String,
-            buttonNegativeText: String
+            buttonNegativeText: String,
+            buttonPositiveColor: Int,
+            buttonNegativeColor: Int,
         ): BottomSheetDialog {
             val dialog = BottomSheetDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
+                putInt(BUTTON_POSITIVE_COLOR_KEY, buttonPositiveColor)
+                putInt(BUTTON_NEGATIVE_COLOR_KEY, buttonNegativeColor)
                 putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
                 putString(BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
             }

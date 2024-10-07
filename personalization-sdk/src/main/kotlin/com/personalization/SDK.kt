@@ -203,6 +203,8 @@ open class SDK {
         imageUrl: String?,
         buttonPositiveText: String,
         buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) = inAppNotificationManager.showBottomSheetDialog(
@@ -212,6 +214,8 @@ open class SDK {
         imageUrl = imageUrl,
         buttonNegativeText = buttonNegativeText,
         buttonPositiveText = buttonPositiveText,
+        buttonPositiveColor = buttonPositiveColor,
+        buttonNegativeColor = buttonNegativeColor,
         onNegativeClick = onNegativeClick,
         onPositiveClick = onPositiveClick,
     )

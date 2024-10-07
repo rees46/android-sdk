@@ -84,14 +84,18 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         imageUrl: String?,
         buttonPositiveText: String,
         buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
         val dialog = BottomSheetDialog.newInstance(
             title = title,
             message = message,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText
+            buttonNegativeText = buttonNegativeText,
         )
 
         dialog.setListener(

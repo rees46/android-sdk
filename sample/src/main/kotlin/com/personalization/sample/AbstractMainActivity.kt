@@ -109,6 +109,8 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
         val buttonNegative = "Cancel"
         val buttonPositive = "Accept"
+        val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
+        val buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor)
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
             sdk.showAlertDialog(
@@ -117,8 +119,8 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 imageUrl = debugImageUrl,
                 buttonNegativeText = buttonNegative,
                 buttonPositiveText = buttonPositive,
-                buttonNegativeColor =  ContextCompat.getColor(this, R.color.colorGray),
-                buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor),
+                buttonNegativeColor = buttonNegativeColor,
+                buttonPositiveColor = buttonPositiveColor,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
@@ -151,6 +153,8 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 imageUrl = debugImageUrl,
                 buttonNegativeText = buttonNegative,
                 buttonPositiveText = buttonPositive,
+                buttonNegativeColor = buttonNegativeColor,
+                buttonPositiveColor = buttonPositiveColor,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
