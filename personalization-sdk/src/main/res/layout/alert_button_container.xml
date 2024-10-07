@@ -3,11 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="@dimen/large_margin"
     android:orientation="horizontal"
+    android:paddingHorizontal="@dimen/large_margin"
     android:paddingTop="@dimen/large_margin">
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/buttonDeclineContainer"
         android:layout_width="0dp"
         android:layout_height="@dimen/button_height"
         android:layout_marginEnd="@dimen/margin_small"
@@ -26,6 +27,7 @@
     </androidx.cardview.widget.CardView>
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/buttonAcceptContainer"
         android:layout_width="0dp"
         android:layout_height="@dimen/button_height"
         android:layout_marginStart="@dimen/margin_small"
@@ -36,8 +38,6 @@
             android:id="@+id/buttonAccept"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clickable="true"
-            android:focusable="true"
             app:buttonColor="@color/buttonAcceptColor"
             app:buttonText="@string/alert_dialog_button_accept_title"
             app:textColor="@color/white"

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
+import com.personalization.inAppNotification.utils.button.addPressEffect
 
 class DefaultAlertDialog : DialogFragment() {
 
@@ -36,45 +37,67 @@ class DefaultAlertDialog : DialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        initImage()
+        initTextBlock()
+        initAcceptButton()
+        initDeclineButton()
+        handleClosingButton()
+    }
 
+    private fun initTextBlock() {
         with(binding) {
             textContainer.apply {
                 title.text = arguments?.getString(TITLE_KEY).orEmpty()
                 message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
             }
+        }
+    }
 
-            val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
-            if (imageUrl.isNotBlank()) {
-                binding.backgroundImageView.loadImage(imageUrl)
-            }
+    private fun initImage() {
+        val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
+        if (imageUrl.isNotBlank()) {
+            binding.backgroundImageView.loadImage(imageUrl)
+        }
+    }
 
-            closeButton.setOnClickListener {
-                dismiss()
-            }
-
+    private fun initDeclineButton() {
+        val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
+        with(binding) {
             buttonContainer.apply {
-                buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+                buttonDeclineContainer.addPressEffect()
                 buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
-
-                val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
-                val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
-
-                if (positiveButtonColor != null) {
-                    buttonAccept.setBackgroundColor(positiveButtonColor)
-                }
                 if (negativeButtonColor != null) {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
                 }
-
-                buttonAccept.setOnClickListener {
-                    listener?.onPositiveButtonClick()
-                    dismiss()
-                }
-                buttonDecline.setOnClickListener {
+                buttonDeclineContainer.setOnClickListener {
                     listener?.onNegativeButtonClick()
                     dismiss()
                 }
             }
+        }
+    }
+
+    private fun initAcceptButton() {
+        val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
+        with(binding) {
+            buttonContainer.apply {
+                buttonAcceptContainer.addPressEffect()
+                buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+                if (positiveButtonColor != null) {
+                    buttonAccept.setBackgroundColor(positiveButtonColor)
+                }
+                buttonAcceptContainer.setOnClickListener {
+                    listener?.onPositiveButtonClick()
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private fun handleClosingButton() {
+        with(binding) {
+            closeButton.addPressEffect()
+            closeButton.setOnClickListener { dismiss() }
         }
     }
 

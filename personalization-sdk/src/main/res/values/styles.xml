@@ -32,6 +32,9 @@
 
     <dimen name="progress_bar_height">2dp</dimen>
 
+    <dimen name="button_press_scale">0.9</dimen>
+    <integer name="button_press_duration">100</integer>
+
     <color name="primary">#35c25e</color>
 
     <color name="progress_primary">@color/white</color>
