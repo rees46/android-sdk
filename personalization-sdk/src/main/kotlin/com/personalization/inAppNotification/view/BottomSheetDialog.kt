@@ -80,8 +80,7 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
                     buttonAccept.setBackgroundColor(positiveButtonColor)
                 }
                 buttonAcceptContainer.setOnClickListener {
-                    listener?.onPositiveButtonClick()
-                    dismiss()
+                    onButtonClick(isPositiveClick = true)
                 }
             }
         }
@@ -101,8 +100,7 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
                 }
                 buttonDeclineContainer.setOnClickListener {
-                    listener?.onNegativeButtonClick()
-                    dismiss()
+                    onButtonClick(isPositiveClick = false)
                 }
             }
         }
@@ -113,6 +111,14 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
             closeButton.addPressEffect()
             closeButton.setOnClickListener { dismiss() }
         }
+    }
+
+    private fun onButtonClick(isPositiveClick: Boolean) {
+        when (isPositiveClick) {
+            true -> listener?.onPositiveButtonClick()
+            else -> listener?.onNegativeButtonClick()
+        }
+        dismiss()
     }
 
     interface BottomSheetDialogListener {

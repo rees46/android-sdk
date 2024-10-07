@@ -23,6 +23,8 @@ interface InAppNotificationManager {
         title: String,
         message: String,
         imageUrl: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
         onPositiveClick: () -> Unit,

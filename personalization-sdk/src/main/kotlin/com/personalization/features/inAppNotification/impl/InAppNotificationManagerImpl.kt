@@ -51,6 +51,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         title: String,
         message: String,
         imageUrl: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
         onPositiveClick: () -> Unit,
@@ -60,6 +62,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             title = title,
             message = message,
             imageUrl = imageUrl,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
         )

@@ -39,11 +39,10 @@
         android:layout_height="0dp"
         android:layout_gravity="bottom"
         android:layout_weight="1"
-        android:background="@drawable/rounded_background"
+        android:background="@color/colorWhite"
         android:gravity="bottom"
         android:orientation="vertical"
-        android:paddingTop="@dimen/large_margin"
-        android:paddingBottom="@dimen/large_margin">
+        android:paddingTop="@dimen/large_margin">
 
         <include
             android:id="@+id/textContainer"
@@ -59,7 +58,8 @@
             android:id="@+id/buttonContainer"
             layout="@layout/alert_button_container"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/large_margin" />
 
     </LinearLayout>
 
