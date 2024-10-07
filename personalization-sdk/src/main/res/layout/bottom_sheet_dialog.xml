@@ -1,67 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/rounded_dialog"
-    android:minWidth="300dp"
-    android:minHeight="150dp"
-    android:orientation="vertical"
-    android:paddingHorizontal="@dimen/medium_margin"
-    android:paddingTop="@dimen/medium_margin">
+    android:layout_height="wrap_content">
 
-    <TextView
-        android:id="@+id/title"
-        style="@style/TextAppearance.Compat.Notification.Title"
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:textStyle="bold"
-        tools:text="@string/alert_dialog_title" />
+        app:cardCornerRadius="@dimen/medium_margin">
 
-    <TextView
-        android:id="@+id/message"
-        style="@style/Widget.Compat.NotificationActionText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/medium_margin"
-        android:gravity="center"
-        tools:text="@string/alert_dialog_message" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginVertical="@dimen/large_margin"
-        android:gravity="center">
-
-        <Button
-            android:id="@+id/buttonDecline"
-            style="@style/ShapeAppearanceOverlay.Material3.Button"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="@dimen/default_margin"
-            android:layout_marginEnd="@dimen/default_margin"
-            android:layout_marginBottom="@dimen/default_margin"
-            android:layout_weight="0.4"
-            android:background="@drawable/rounded_background"
-            android:gravity="center"
-            android:text="@string/alert_dialog_button_decline_title" />
+            android:orientation="vertical">
 
-        <Button
-            android:id="@+id/buttonAccept"
-            style="@style/ShapeAppearanceOverlay.Material3.Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="@dimen/default_margin"
-            android:layout_marginBottom="@dimen/default_margin"
-            android:layout_weight="1"
-            android:background="@drawable/rounded_background"
-            android:gravity="center"
-            android:text="@string/alert_dialog_button_accept_title" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
-    </LinearLayout>
+                <com.personalization.inAppNotification.view.component.image.AlertImageView
+                    android:id="@+id/backgroundImageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/image_sample" />
 
-</LinearLayout>
+                <com.personalization.inAppNotification.view.component.button.CloseImageButton
+                    android:id="@+id/closeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|top"
+                    android:layout_margin="@dimen/medium_margin"
+                    app:alpha="0.5"
+                    app:backgroundColor="@color/gray_scale"
+                    app:src="@drawable/ic_close" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rounded_background"
+                android:orientation="vertical"
+                android:paddingTop="@dimen/large_margin"
+                android:translationY="-16dp">
+
+                <include
+                    android:id="@+id/textContainer"
+                    layout="@layout/alert_text_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/large_margin"
+                    android:layout_marginEnd="18dp" />
+
+                <include
+                    android:id="@+id/buttonContainer"
+                    layout="@layout/alert_button_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+</FrameLayout>

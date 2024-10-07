@@ -4,10 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="@dimen/large_margin"
-    android:maxWidth="300dp"
-    android:minHeight="150dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="2dp"
+    app:cardCornerRadius="@dimen/medium_margin"
     app:cardUseCompatPadding="true">
 
     <LinearLayout
@@ -17,7 +14,7 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp">
+            android:layout_height="wrap_content">
 
             <com.personalization.inAppNotification.view.component.image.AlertImageView
                 android:id="@+id/backgroundImageView"

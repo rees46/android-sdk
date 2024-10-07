@@ -11,23 +11,51 @@ fun View.addPressEffect(
     scaleDown: Float = buttonPressScale,
     duration: Long = buttonPressDuration
 ) {
+    var isAnimating = false
+    var isClicked = false
+
     this.setOnTouchListener { _, event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                this.animate().scaleX(scaleDown).scaleY(scaleDown)
-                    .setDuration(duration)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
+                if (!isAnimating) {
+                    isAnimating = true
+                    this.animate().scaleX(scaleDown).scaleY(scaleDown)
+                        .setDuration(duration)
+                        .setInterpolator(AccelerateDecelerateInterpolator())
+                        .withEndAction {
+                            isAnimating = false
+                        }
+                        .start()
+                }
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                this.animate().scaleX(1f).scaleY(1f)
-                    .setDuration(duration)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
-                this.performClick()
+            MotionEvent.ACTION_UP -> {
+                if (!isAnimating) {
+                    isAnimating = true
+                    this.animate().scaleX(1f).scaleY(1f)
+                        .setDuration(duration)
+                        .setInterpolator(AccelerateDecelerateInterpolator())
+                        .withEndAction {
+                            isAnimating = false
+                        }
+                        .start()
+
+                    if (!isClicked) {
+                        this.performClick()
+                        isClicked = true
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                isAnimating = false
             }
         }
+
+        this.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            isClicked = false
+        }
+
         true
     }
 }
