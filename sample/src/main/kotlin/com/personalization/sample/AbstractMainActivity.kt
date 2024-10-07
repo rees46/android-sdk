@@ -151,7 +151,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
-                buttonNegativeText = buttonNegative,
+                buttonNegativeText = null,
                 buttonPositiveText = buttonPositive,
                 buttonNegativeColor = buttonNegativeColor,
                 buttonPositiveColor = buttonPositiveColor,

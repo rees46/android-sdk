@@ -5,13 +5,12 @@ package com.personalization.inAppNotification.view
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.personalization.R
 import com.personalization.databinding.BottomSheetDialogBinding
 import com.personalization.inAppNotification.utils.button.addPressEffect
 
@@ -56,8 +55,9 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun initImage() {
-        with(binding) {
-
+        val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
+        if (imageUrl.isNotBlank()) {
+            binding.backgroundImageView.loadImage(imageUrl)
         }
     }
 
@@ -89,10 +89,14 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
 
     private fun initDeclineButton() {
         val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
+        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY)
         with(binding) {
             buttonContainer.apply {
                 buttonDeclineContainer.addPressEffect()
-                buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
+                buttonDeclineContainer.isVisible = buttonText.isNullOrEmpty().not()
+                if (buttonText != null) {
+                    buttonDecline.text = buttonText
+                }
                 if (negativeButtonColor != null) {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
                 }
@@ -119,6 +123,7 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
     companion object {
         const val TAG = "BottomSheetDialog"
         const val TITLE_KEY = "TITLE_KEY"
+        const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
         const val MESSAGE_KEY = "MESSAGE_KEY"
         const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
         const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
@@ -128,8 +133,9 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         fun newInstance(
             title: String,
             message: String,
+            imageUrl: String?,
             buttonPositiveText: String,
-            buttonNegativeText: String,
+            buttonNegativeText: String?,
             buttonPositiveColor: Int,
             buttonNegativeColor: Int,
         ): BottomSheetDialog {
@@ -137,6 +143,7 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
+                putString(IMAGE_URL_KEY, imageUrl)
                 putInt(BUTTON_POSITIVE_COLOR_KEY, buttonPositiveColor)
                 putInt(BUTTON_NEGATIVE_COLOR_KEY, buttonNegativeColor)
                 putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)

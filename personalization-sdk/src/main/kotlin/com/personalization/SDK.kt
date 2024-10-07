@@ -202,7 +202,7 @@ open class SDK {
         message: String,
         imageUrl: String?,
         buttonPositiveText: String,
-        buttonNegativeText: String,
+        buttonNegativeText: String?,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
