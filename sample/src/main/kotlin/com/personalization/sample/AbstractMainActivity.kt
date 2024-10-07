@@ -13,6 +13,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.personalization.OnLinkClickListener
 import com.personalization.Product
 import com.personalization.SDK
@@ -32,6 +33,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         handlePermissions()
         handleNotification()
         handleEmailSending()
+        initializingFragmentManager()
         initializingStoriesView()
         handleInAppNotifications()
     }
@@ -78,6 +80,10 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
     }
 
+    private fun initializingFragmentManager() = sdk.initializeFragmentManager(
+        fragmentManager = supportFragmentManager
+    )
+
     private fun initializingStoriesView() {
         val storiesView: StoriesView = findViewById(R.id.stories_view)
         sdk.initializeStoriesView(storiesView)
@@ -96,32 +102,45 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     }
 
     private fun handleInAppNotifications() {
-        //TODO remove
-        val debugTitle = "Привет,мы на связи"
+        val debugTitle = "Pizza ipsum dolor meat lovers buffalo."
         val debugMessage =
-            "И мы к вам с хорошими новостями. Совсем скоро мы проведем вебинар по поиску на сайте — там будет масса полезной информации, которая поможет бустануть конверсию и повысить лояльность аудитории. Приходите!"
+            "Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef."
+        val debugFullScreenMessage =
+            "Pizza ipsum dolor meat lovers buffalo. Garlic sauce party sautéed ipsum cheese. Meatball mayo extra peppers Chicago spinach olives. Philly black crust pineapple steak ranch large large. Chicken hand pie tossed pan mushrooms large Bianca deep. Mozzarella roll string party mouth style lovers Hawaiian pan. Ricotta mayo red pizza fresh style string string. Broccoli meatball wing cheese sautéed. Peppers ipsum Aussie cheese olives Philly Hawaiian Aussie cheese personal. Pork dolor sausage bell mozzarella pepperoni thin deep mushrooms."
         val debugImageUrl =
-            "https://blog-frontend.envato.com/cdn-cgi/image/width=2560,quality=75,format=auto/uploads/sites/2/2022/04/E-commerce-App-JPG-File-scaled.jpg"
+            "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
         val buttonNegative = "Cancel"
-        val buttonPositive = "OK"
+        val buttonPositive = "Accept"
+        val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
+        val buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor)
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showAlertDialog(
-                fragmentManager = supportFragmentManager,
-                title = debugTitle,
-                message = debugMessage,
-                buttonText = buttonPositive
-            )
-        }
-
-        findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showFullScreenDialog(
-                fragmentManager = supportFragmentManager,
+            sdk.showAlertDialog(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
                 buttonNegativeText = buttonNegative,
                 buttonPositiveText = buttonPositive,
+                buttonNegativeColor = buttonNegativeColor,
+                buttonPositiveColor = buttonPositiveColor,
+                onNegativeClick = {
+                    Log.d(this.localClassName, ": onNegativeClick")
+                },
+                onPositiveClick = {
+                    Log.d(this.localClassName, ": onPositiveClick")
+                },
+            )
+        }
+
+        findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
+            sdk.showFullScreenDialog(
+                title = debugTitle,
+                message = debugFullScreenMessage,
+                imageUrl = debugImageUrl,
+                buttonNegativeText = buttonNegative,
+                buttonPositiveText = buttonPositive,
+                buttonNegativeColor = buttonNegativeColor,
+                buttonPositiveColor = buttonPositiveColor,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },
@@ -132,13 +151,14 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         findViewById<Button>(R.id.bottomSheetDialogButton).setOnClickListener {
-            sdk.inAppNotificationManager.showBottomSheetDialog(
-                fragmentManager = supportFragmentManager,
+            sdk.showBottomSheetDialog(
                 title = debugTitle,
                 message = debugMessage,
                 imageUrl = debugImageUrl,
-                buttonNegativeText = buttonNegative,
+                buttonNegativeText = null,
                 buttonPositiveText = buttonPositive,
+                buttonNegativeColor = buttonNegativeColor,
+                buttonPositiveColor = buttonPositiveColor,
                 onNegativeClick = {
                     Log.d(this.localClassName, ": onNegativeClick")
                 },

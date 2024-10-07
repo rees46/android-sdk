@@ -1,6 +1,8 @@
 package com.rees46.sdk
 
 import android.content.Context
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
 import com.personalization.BuildConfig
 import com.personalization.SDK
 import com.personalization.notification.NotificationHelper
@@ -55,7 +57,7 @@ class REES46 private constructor() : SDK() {
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID,
                 notificationType = NOTIFICATION_TYPE,
-                notificationId =  NOTIFICATION_ID,
+                notificationId = NOTIFICATION_ID,
                 autoSendPushToken = autoSendPushToken
             )
 
