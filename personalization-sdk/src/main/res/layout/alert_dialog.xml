@@ -3,8 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_margin="@dimen/large_margin"
-    app:cardCornerRadius="@dimen/medium_margin"
+    app:cardCornerRadius="@dimen/default_radius"
     app:cardUseCompatPadding="true">
 
     <LinearLayout
@@ -23,7 +24,7 @@
                 android:layout_gravity="top"
                 android:adjustViewBounds="true"
                 android:scaleType="centerCrop"
-                android:src="@drawable/image_sample" />
+                tools:src="@drawable/image_sample" />
 
             <com.personalization.inAppNotification.view.component.button.CloseImageButton
                 android:id="@+id/closeButton"
