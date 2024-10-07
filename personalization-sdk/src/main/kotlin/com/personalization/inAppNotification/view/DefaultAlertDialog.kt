@@ -48,6 +48,10 @@ class DefaultAlertDialog : DialogFragment() {
                 binding.backgroundImageView.loadImage(imageUrl)
             }
 
+            closeButton.setOnClickListener {
+                dismiss()
+            }
+
             buttonContainer.apply {
                 buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
                 buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()

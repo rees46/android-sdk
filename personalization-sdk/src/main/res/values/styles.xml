@@ -84,5 +84,10 @@
         <attr name="buttonText" format="string" />
     </declare-styleable>
 
+    <declare-styleable name="CloseImageButton">
+        <attr name="src" format="reference" />
+        <attr name="alpha" format="float" />
+        <attr name="backgroundColor" format="color" />
+    </declare-styleable>
 
 </resources>

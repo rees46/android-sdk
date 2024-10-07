@@ -102,7 +102,6 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     }
 
     private fun handleInAppNotifications() {
-        //TODO remove
         val debugTitle = "Pizza ipsum dolor meat lovers buffalo."
         val debugMessage =
             "Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef."

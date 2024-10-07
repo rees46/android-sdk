@@ -15,14 +15,29 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.personalization.inAppNotification.view.component.image.AlertImageView
-            android:id="@+id/backgroundImageView"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:layout_gravity="top"
-            android:src="@drawable/image_sample"
-            android:adjustViewBounds="true"
-            android:scaleType="centerCrop" />
+            android:layout_height="200dp">
+
+            <com.personalization.inAppNotification.view.component.image.AlertImageView
+                android:id="@+id/backgroundImageView"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_gravity="top"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/image_sample" />
+
+            <com.personalization.inAppNotification.view.component.button.CloseImageButton
+                android:id="@+id/closeButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|top"
+                android:layout_margin="@dimen/medium_margin"
+                app:alpha="0.5"
+                app:backgroundColor="@color/gray_scale"
+                app:src="@drawable/ic_close" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -35,10 +50,10 @@
             <include
                 android:id="@+id/textContainer"
                 layout="@layout/alert_text_container"
-                android:layout_marginStart="@dimen/large_margin"
-                android:layout_marginEnd="18dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/large_margin"
+                android:layout_marginEnd="18dp" />
 
             <include
                 android:id="@+id/buttonContainer"
