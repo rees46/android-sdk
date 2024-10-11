@@ -1,3 +1,9 @@
+@file:SuppressLint("ClickableViewAccessibility")
+
+package com.personalization.ui.animation.button
+
+import android.annotation.SuppressLint
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 
@@ -6,14 +12,12 @@ fun View.addPressEffectDeclarative(
     duration: Long = 150L
 ) {
     setOnClickListener {
-        // Плавное возвращение к оригинальному размеру после клика
         this.animate().scaleX(1f).scaleY(1f)
             .setDuration(duration)
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
     }
 
-    // Анимация нажатия
     this.setOnTouchListener { _, event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -22,6 +26,7 @@ fun View.addPressEffectDeclarative(
                     .setInterpolator(AccelerateDecelerateInterpolator())
                     .start()
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 this.animate().scaleX(1f).scaleY(1f)
                     .setDuration(duration)

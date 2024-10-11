@@ -81,14 +81,14 @@
         </attr>
     </declare-styleable>
 
-    <declare-styleable name="AlertButton">
+    <declare-styleable name="InAppNotificationButton">
         <attr name="buttonColor" format="color" />
         <attr name="textColor" format="color" />
         <attr name="textSize" format="dimension" />
         <attr name="buttonText" format="string" />
     </declare-styleable>
 
-    <declare-styleable name="CloseImageButton">
+    <declare-styleable name="InAppNotificationImageButton">
         <attr name="src" format="reference" />
         <attr name="alpha" format="float" />
         <attr name="backgroundColor" format="color" />

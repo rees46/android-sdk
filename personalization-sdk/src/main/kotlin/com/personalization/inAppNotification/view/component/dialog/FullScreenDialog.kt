@@ -1,4 +1,4 @@
-package com.personalization.inAppNotification.view
+package com.personalization.inAppNotification.view.component.dialog
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -9,7 +9,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.FullScreenDialogBinding
-import com.personalization.inAppNotification.utils.button.addPressEffect
+import com.personalization.ui.animation.button.addPressEffectDeclarative
 
 class FullScreenDialog : DialogFragment() {
 
@@ -67,7 +67,7 @@ class FullScreenDialog : DialogFragment() {
         val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                buttonDeclineContainer.addPressEffect()
+                buttonDeclineContainer.addPressEffectDeclarative()
                 buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
                 if (negativeButtonColor != null) {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
@@ -83,7 +83,7 @@ class FullScreenDialog : DialogFragment() {
         val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                buttonAcceptContainer.addPressEffect()
+                buttonAcceptContainer.addPressEffectDeclarative()
                 buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
                 if (positiveButtonColor != null) {
                     buttonAccept.setBackgroundColor(positiveButtonColor)
@@ -97,7 +97,7 @@ class FullScreenDialog : DialogFragment() {
 
     private fun handleClosingButton() {
         with(binding) {
-            closeButton.addPressEffect()
+            closeButton.addPressEffectDeclarative()
             closeButton.setOnClickListener { dismiss() }
         }
     }

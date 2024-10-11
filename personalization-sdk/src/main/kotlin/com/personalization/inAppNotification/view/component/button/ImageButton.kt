@@ -7,7 +7,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import com.personalization.R
 
-class CloseImageButton @JvmOverloads constructor(
+class ImageButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -20,17 +20,17 @@ class CloseImageButton @JvmOverloads constructor(
     private fun setupView(attrs: AttributeSet?) {
         val typedArray = context.obtainStyledAttributes(
             attrs,
-            R.styleable.CloseImageButton
+            R.styleable.InAppNotificationImageButton
         )
 
         val srcDrawable = typedArray.getResourceId(
-            R.styleable.CloseImageButton_src,
+            R.styleable.InAppNotificationImageButton_src,
             R.drawable.ic_close
         )
         setImageResource(srcDrawable)
 
         val alphaValue = typedArray.getFloat(
-            R.styleable.CloseImageButton_alpha,
+            R.styleable.InAppNotificationImageButton_alpha,
             0.5f
         )
         alpha = alphaValue
@@ -38,7 +38,7 @@ class CloseImageButton @JvmOverloads constructor(
         val backgroundDrawable = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             val backgroundColor = typedArray.getColor(
-                R.styleable.CloseImageButton_backgroundColor,
+                R.styleable.InAppNotificationImageButton_backgroundColor,
                 ContextCompat.getColor(context, R.color.gray_scale)
             )
             setColor(backgroundColor)

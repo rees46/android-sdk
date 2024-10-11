@@ -3,10 +3,10 @@ package com.personalization.features.inAppNotification.impl
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.inAppNotification.view.BottomSheetDialog
-import com.personalization.inAppNotification.view.DefaultAlertDialog
-import com.personalization.inAppNotification.view.FullScreenDialog
-import com.personalization.inAppNotification.view.SdkSnackbar
+import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
+import com.personalization.inAppNotification.view.component.dialog.AlertDialog
+import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
+import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
@@ -23,7 +23,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        val dialog = DefaultAlertDialog.newInstance(
+        val dialog = AlertDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
@@ -34,7 +34,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         )
 
         dialog.setListener(
-            object : DefaultAlertDialog.AlertDialogListener {
+            object : AlertDialog.AlertDialogListener {
                 override fun onPositiveButtonClick() = onPositiveClick()
                 override fun onNegativeButtonClick() = onNegativeClick()
             }
@@ -42,7 +42,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ DefaultAlertDialog.TAG
+            /* tag = */ AlertDialog.TAG
         )
     }
 
@@ -124,7 +124,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        SdkSnackbar(view).show(
+        Snackbar(view).show(
             message = message,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,

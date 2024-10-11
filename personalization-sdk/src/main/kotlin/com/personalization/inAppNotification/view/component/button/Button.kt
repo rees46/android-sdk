@@ -14,7 +14,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import com.personalization.R
 
-class AlertButton @JvmOverloads constructor(
+class Button @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -27,28 +27,28 @@ class AlertButton @JvmOverloads constructor(
     private fun setupView(attrs: AttributeSet?) {
         val typedArray: TypedArray = context.obtainStyledAttributes(
             attrs,
-            R.styleable.AlertButton
+            R.styleable.InAppNotificationButton
         )
 
         val buttonColor: Int = typedArray.getColor(
-            R.styleable.AlertButton_buttonColor,
+            R.styleable.InAppNotificationButton_buttonColor,
             ContextCompat.getColor(context, R.color.colorPrimary)
         )
         setBackgroundColor(buttonColor)
 
         val textColor: Int = typedArray.getColor(
-            R.styleable.AlertButton_textColor,
+            R.styleable.InAppNotificationButton_textColor,
             ContextCompat.getColor(context, android.R.color.white)
         )
         setTextColor(textColor)
 
         val textSize = typedArray.getDimension(
-            R.styleable.AlertButton_textSize,
+            R.styleable.InAppNotificationButton_textSize,
             16f
         )
         setTextSize(pxToSp(context, textSize))
 
-        text = typedArray.getString(R.styleable.AlertButton_buttonText)
+        text = typedArray.getString(R.styleable.InAppNotificationButton_buttonText)
 
         gravity = Gravity.CENTER
         textAlignment = TEXT_ALIGNMENT_CENTER

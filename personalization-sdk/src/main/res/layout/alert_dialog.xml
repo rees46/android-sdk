@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <com.personalization.inAppNotification.view.component.image.AlertImageView
+            <com.personalization.inAppNotification.view.component.image.ImageView
                 android:id="@+id/backgroundImageView"
                 android:layout_width="match_parent"
                 android:layout_height="200dp"
@@ -26,7 +26,7 @@
                 android:scaleType="centerCrop"
                 tools:src="@drawable/image_sample" />
 
-            <com.personalization.inAppNotification.view.component.button.CloseImageButton
+            <com.personalization.inAppNotification.view.component.button.ImageButton
                 android:id="@+id/closeButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

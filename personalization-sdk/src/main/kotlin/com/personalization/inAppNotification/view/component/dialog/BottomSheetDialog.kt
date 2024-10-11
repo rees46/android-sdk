@@ -1,31 +1,35 @@
-package com.personalization.inAppNotification.view
+@file:Suppress("NewApi")
 
+package com.personalization.inAppNotification.view.component.dialog
+
+import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.DialogFragment
-import com.personalization.databinding.AlertDialogBinding
-import com.personalization.inAppNotification.utils.button.addPressEffect
+import androidx.core.view.isVisible
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.personalization.databinding.BottomSheetDialogBinding
+import com.personalization.ui.animation.button.addPressEffectDeclarative
 
-class DefaultAlertDialog : DialogFragment() {
+class BottomSheetDialog : BottomSheetDialogFragment() {
 
-    private var listener: AlertDialogListener? = null
+    private var listener: BottomSheetDialogListener? = null
 
-    fun setListener(listener: AlertDialogListener) {
+    fun setListener(listener: BottomSheetDialogListener) {
         this.listener = listener
     }
 
-    private var _binding: AlertDialogBinding? = null
+    private var _binding: BottomSheetDialogBinding? = null
     private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = AlertDialogBinding.inflate(inflater, container, false)
+        _binding = BottomSheetDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -36,12 +40,25 @@ class DefaultAlertDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
         initImage()
         initTextBlock()
         initAcceptButton()
         initDeclineButton()
         handleClosingButton()
+
+        (view.parent as View).apply {
+            backgroundTintMode = PorterDuff.Mode.CLEAR
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+    }
+
+    private fun initImage() {
+        val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
+        if (imageUrl.isNotBlank()) {
+            binding.backgroundImageView.loadImage(imageUrl)
+        }
     }
 
     private fun initTextBlock() {
@@ -53,34 +70,11 @@ class DefaultAlertDialog : DialogFragment() {
         }
     }
 
-    private fun initImage() {
-        val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
-        if (imageUrl.isNotBlank()) {
-            binding.backgroundImageView.loadImage(imageUrl)
-        }
-    }
-
-    private fun initDeclineButton() {
-        val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
-        with(binding) {
-            buttonContainer.apply {
-                buttonDeclineContainer.addPressEffect()
-                buttonDecline.text = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
-                if (negativeButtonColor != null) {
-                    buttonDecline.setBackgroundColor(negativeButtonColor)
-                }
-                buttonDeclineContainer.setOnClickListener {
-                    onButtonClick(isPositiveClick = false)
-                }
-            }
-        }
-    }
-
     private fun initAcceptButton() {
         val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                buttonAcceptContainer.addPressEffect()
+                buttonAcceptContainer.addPressEffectDeclarative()
                 buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
                 if (positiveButtonColor != null) {
                     buttonAccept.setBackgroundColor(positiveButtonColor)
@@ -92,9 +86,29 @@ class DefaultAlertDialog : DialogFragment() {
         }
     }
 
+    private fun initDeclineButton() {
+        val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
+        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY)
+        with(binding) {
+            buttonContainer.apply {
+                buttonDeclineContainer.addPressEffectDeclarative()
+                buttonDeclineContainer.isVisible = buttonText.isNullOrEmpty().not()
+                if (buttonText != null) {
+                    buttonDecline.text = buttonText
+                }
+                if (negativeButtonColor != null) {
+                    buttonDecline.setBackgroundColor(negativeButtonColor)
+                }
+                buttonDeclineContainer.setOnClickListener {
+                    onButtonClick(isPositiveClick = false)
+                }
+            }
+        }
+    }
+
     private fun handleClosingButton() {
         with(binding) {
-            closeButton.addPressEffect()
+            closeButton.addPressEffectDeclarative()
             closeButton.setOnClickListener { dismiss() }
         }
     }
@@ -107,16 +121,16 @@ class DefaultAlertDialog : DialogFragment() {
         dismiss()
     }
 
-    interface AlertDialogListener {
+    interface BottomSheetDialogListener {
         fun onPositiveButtonClick()
         fun onNegativeButtonClick()
     }
 
     companion object {
-        const val TAG = "AlertDialog"
+        const val TAG = "BottomSheetDialog"
         const val TITLE_KEY = "TITLE_KEY"
-        const val MESSAGE_KEY = "MESSAGE_KEY"
         const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
+        const val MESSAGE_KEY = "MESSAGE_KEY"
         const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
         const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
         const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
@@ -125,13 +139,13 @@ class DefaultAlertDialog : DialogFragment() {
         fun newInstance(
             title: String,
             message: String,
-            imageUrl: String,
+            imageUrl: String?,
             buttonPositiveText: String,
-            buttonNegativeText: String,
+            buttonNegativeText: String?,
             buttonPositiveColor: Int,
             buttonNegativeColor: Int,
-        ): DefaultAlertDialog {
-            val dialog = DefaultAlertDialog()
+        ): BottomSheetDialog {
+            val dialog = BottomSheetDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)

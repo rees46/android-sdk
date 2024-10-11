@@ -6,7 +6,7 @@ import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.content.res.ResourcesCompat
 
-class AlertText @JvmOverloads constructor(
+class Text @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -21,6 +21,11 @@ class AlertText @JvmOverloads constructor(
         gravity = Gravity.START
         setTextColor(ResourcesCompat.getColor(resources, android.R.color.black, null))
 
-        setPadding(0, 0, 0, 0)
+        setPadding(
+            /* left = */ 0,
+            /* top = */ 0,
+            /* right = */ 0,
+            /* bottom = */ 0
+        )
     }
 }
