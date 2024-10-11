@@ -10,6 +10,7 @@ import android.view.WindowManager
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.FullScreenDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
+import com.personalization.ui.click.NotificationClickListener
 
 class FullScreenDialog : DialogFragment() {
 
@@ -17,9 +18,9 @@ class FullScreenDialog : DialogFragment() {
         FullScreenDialogBinding.inflate(layoutInflater)
     }
 
-    private var listener: FullScreenDialogListener? = null
+    private var listener: NotificationClickListener? = null
 
-    fun setListener(listener: FullScreenDialogListener) {
+    fun setListener(listener: NotificationClickListener) {
         this.listener = listener
     }
 
@@ -104,16 +105,10 @@ class FullScreenDialog : DialogFragment() {
 
     private fun onButtonClick(isPositiveClick: Boolean) {
         when (isPositiveClick) {
-            true -> listener?.onPositiveButtonClick()
-            else -> listener?.onNegativeButtonClick()
+            true -> listener?.onPositiveClick()
+            else -> listener?.onNegativeClick()
         }
         dismiss()
-    }
-
-
-    interface FullScreenDialogListener {
-        fun onPositiveButtonClick()
-        fun onNegativeButtonClick()
     }
 
     companion object {

@@ -13,12 +13,13 @@ import androidx.core.view.isVisible
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.personalization.databinding.BottomSheetDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
+import com.personalization.ui.click.NotificationClickListener
 
 class BottomSheetDialog : BottomSheetDialogFragment() {
 
-    private var listener: BottomSheetDialogListener? = null
+    private var listener: NotificationClickListener? = null
 
-    fun setListener(listener: BottomSheetDialogListener) {
+    fun setListener(listener: NotificationClickListener) {
         this.listener = listener
     }
 
@@ -115,15 +116,10 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
 
     private fun onButtonClick(isPositiveClick: Boolean) {
         when (isPositiveClick) {
-            true -> listener?.onPositiveButtonClick()
-            else -> listener?.onNegativeButtonClick()
+            true -> listener?.onPositiveClick()
+            else -> listener?.onNegativeClick()
         }
         dismiss()
-    }
-
-    interface BottomSheetDialogListener {
-        fun onPositiveButtonClick()
-        fun onNegativeButtonClick()
     }
 
     companion object {

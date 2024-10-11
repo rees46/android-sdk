@@ -7,6 +7,7 @@ import com.personalization.inAppNotification.view.component.dialog.BottomSheetDi
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
+import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
@@ -34,9 +35,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         )
 
         dialog.setListener(
-            object : AlertDialog.AlertDialogListener {
-                override fun onPositiveButtonClick() = onPositiveClick()
-                override fun onNegativeButtonClick() = onNegativeClick()
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
             }
         )
 
@@ -69,9 +70,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         )
 
         dialog.setListener(
-            object : FullScreenDialog.FullScreenDialogListener {
-                override fun onPositiveButtonClick() = onPositiveClick()
-                override fun onNegativeButtonClick() = onNegativeClick()
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
             }
         )
 
@@ -104,9 +105,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         )
 
         dialog.setListener(
-            object : BottomSheetDialog.BottomSheetDialogListener {
-                override fun onPositiveButtonClick() = onPositiveClick()
-                override fun onNegativeButtonClick() = onNegativeClick()
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
             }
         )
 

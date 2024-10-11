@@ -9,12 +9,13 @@ import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
+import com.personalization.ui.click.NotificationClickListener
 
 class AlertDialog : DialogFragment() {
 
-    private var listener: AlertDialogListener? = null
+    private var listener: NotificationClickListener? = null
 
-    fun setListener(listener: AlertDialogListener) {
+    fun setListener(listener: NotificationClickListener) {
         this.listener = listener
     }
 
@@ -101,15 +102,10 @@ class AlertDialog : DialogFragment() {
 
     private fun onButtonClick(isPositiveClick: Boolean) {
         when (isPositiveClick) {
-            true -> listener?.onPositiveButtonClick()
-            else -> listener?.onNegativeButtonClick()
+            true -> listener?.onPositiveClick()
+            else -> listener?.onNegativeClick()
         }
         dismiss()
-    }
-
-    interface AlertDialogListener {
-        fun onPositiveButtonClick()
-        fun onNegativeButtonClick()
     }
 
     companion object {
