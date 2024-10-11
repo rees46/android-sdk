@@ -89,15 +89,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         sdk.initializeStoriesView(storiesView)
 
         storiesView.itemClickListener = object : OnLinkClickListener {
-            override fun onClick(url: String): Boolean {
-                // return true if need to opening using the SDK
-                return false
-            }
+            override fun onClick(url: String): Boolean = false
 
-            override fun onClick(product: Product): Boolean {
-                // return true if need to opening using the SDK
-                return false
-            }
+            override fun onClick(product: Product): Boolean = false
         }
     }
 
