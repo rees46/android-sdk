@@ -1,61 +1,34 @@
-package com.personalization.inAppNotification.utils.button
-
-import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 
-private const val buttonPressScale = 0.9f
-private const val buttonPressDuration = 5L
-
-fun View.addPressEffect(
-    scaleDown: Float = buttonPressScale,
-    duration: Long = buttonPressDuration
+fun View.addPressEffectDeclarative(
+    scaleDown: Float = 0.9f,
+    duration: Long = 150L
 ) {
-    var isAnimating = false
-    var isClicked = false
+    setOnClickListener {
+        // Плавное возвращение к оригинальному размеру после клика
+        this.animate().scaleX(1f).scaleY(1f)
+            .setDuration(duration)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .start()
+    }
 
+    // Анимация нажатия
     this.setOnTouchListener { _, event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                if (!isAnimating) {
-                    isAnimating = true
-                    this.animate().scaleX(scaleDown).scaleY(scaleDown)
-                        .setDuration(duration)
-                        .setInterpolator(AccelerateDecelerateInterpolator())
-                        .withEndAction {
-                            isAnimating = false
-                        }
-                        .start()
-                }
+                this.animate().scaleX(scaleDown).scaleY(scaleDown)
+                    .setDuration(duration)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
             }
-
-            MotionEvent.ACTION_UP -> {
-                if (!isAnimating) {
-                    isAnimating = true
-                    this.animate().scaleX(1f).scaleY(1f)
-                        .setDuration(duration)
-                        .setInterpolator(AccelerateDecelerateInterpolator())
-                        .withEndAction {
-                            isAnimating = false
-                        }
-                        .start()
-
-                    if (!isClicked) {
-                        this.performClick()
-                        isClicked = true
-                    }
-                }
-            }
-
-            MotionEvent.ACTION_CANCEL -> {
-                isAnimating = false
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                this.animate().scaleX(1f).scaleY(1f)
+                    .setDuration(duration)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
             }
         }
-
-        this.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            isClicked = false
-        }
-
-        true
+        false
     }
 }
