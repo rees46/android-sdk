@@ -1,21 +1,20 @@
 package com.personalization.di
 
-import androidx.fragment.app.FragmentManager
 import com.personalization.RegisterManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
+import com.personalization.features.recommendation.impl.RecommendationManagerImpl
+import com.personalization.features.search.impl.SearchManagerImpl
+import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
+import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
-import com.personalization.features.recommendation.impl.RecommendationManagerImpl
-import com.personalization.features.search.impl.SearchManagerImpl
-import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
-import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
-import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
-import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import com.personalization.stories.StoriesManager
@@ -84,7 +83,5 @@ class SdkModule {
 
     @Singleton
     @Provides
-    fun provideInAppNotificationManager(
-
-    ): InAppNotificationManager = InAppNotificationManagerImpl()
+    fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
 }

@@ -3,10 +3,11 @@ package com.personalization.features.inAppNotification.impl
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.inAppNotification.view.BottomSheetDialog
-import com.personalization.inAppNotification.view.SdkSnackbar
-import com.personalization.inAppNotification.view.DefaultAlertDialog
-import com.personalization.inAppNotification.view.FullScreenDialog
+import com.personalization.inAppNotification.view.component.dialog.AlertDialog
+import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
+import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
+import com.personalization.inAppNotification.view.component.snackbar.Snackbar
+import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
@@ -15,15 +16,34 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         fragmentManager: FragmentManager,
         title: String,
         message: String,
-        buttonText: String
+        imageUrl: String,
+        buttonPositiveText: String,
+        buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     ) {
-        DefaultAlertDialog.newInstance(
+        val dialog = AlertDialog.newInstance(
             title = title,
             message = message,
-            buttonText = buttonText
-        ).show(
+            imageUrl = imageUrl,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
+            buttonPositiveText = buttonPositiveText,
+            buttonNegativeText = buttonNegativeText,
+        )
+
+        dialog.setListener(
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
+            }
+        )
+
+        dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ DefaultAlertDialog.TAG
+            /* tag = */ AlertDialog.TAG
         )
     }
 
@@ -32,6 +52,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         title: String,
         message: String,
         imageUrl: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
         onPositiveClick: () -> Unit,
@@ -41,19 +63,16 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             title = title,
             message = message,
             imageUrl = imageUrl,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
         )
 
         dialog.setListener(
-            object : FullScreenDialog.FullScreenDialogListener {
-                override fun onPositiveButtonClick() {
-                    onPositiveClick()
-                }
-
-                override fun onNegativeButtonClick() {
-                    onNegativeClick()
-                }
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
             }
         )
 
@@ -69,26 +88,26 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         message: String,
         imageUrl: String?,
         buttonPositiveText: String,
-        buttonNegativeText: String,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
         val dialog = BottomSheetDialog.newInstance(
             title = title,
             message = message,
+            imageUrl = imageUrl,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText
+            buttonNegativeText = buttonNegativeText,
         )
 
         dialog.setListener(
-            object : BottomSheetDialog.BottomSheetDialogListener {
-                override fun onPositiveButtonClick() {
-                    onPositiveClick()
-                }
-
-                override fun onNegativeButtonClick() {
-                    onNegativeClick()
-                }
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() = onNegativeClick()
             }
         )
 
@@ -106,7 +125,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        SdkSnackbar(view).show(
+        Snackbar(view).show(
             message = message,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,

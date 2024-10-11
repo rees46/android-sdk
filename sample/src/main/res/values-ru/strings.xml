@@ -2,8 +2,10 @@
 <resources>
     <string name="app_name">Personalizatio SDK Sample</string>
 
-    <string name="alert_dialog_title">Alert Title</string>
-    <string name="alert_dialog_message">This is an alert message.</string>
-    <string name="alert_dialog_button_accept_title">OK</string>
+    <string name="alert_dialog_button_accept_title">Accept</string>
     <string name="alert_dialog_button_decline_title">Cancel</string>
+    <string name="alert_dialog_title">Pizza ipsum dolor meat lovers buffalo.</string>
+    <string name="alert_dialog_message">Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef.</string>
+    <string name="alert_dialog_full_screen_message">Pizza ipsum dolor meat lovers buffalo. Garlic sauce party sautéed ipsum cheese. Meatball mayo extra peppers Chicago spinach olives. Philly black crust pineapple steak ranch large large. Chicken hand pie tossed pan mushrooms large Bianca deep. Mozzarella roll string party mouth style lovers Hawaiian pan. Ricotta mayo red pizza fresh style string string. Broccoli meatball wing cheese sautéed. Peppers ipsum Aussie cheese olives Philly Hawaiian Aussie cheese personal. Pork dolor sausage bell mozzarella pepperoni thin deep mushrooms.</string>
+
 </resources>

@@ -9,7 +9,13 @@ interface InAppNotificationManager {
         fragmentManager: FragmentManager,
         title: String,
         message: String,
-        buttonText: String
+        imageUrl: String,
+        buttonPositiveText: String,
+        buttonNegativeText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
     )
 
     fun showFullScreenDialog(
@@ -17,6 +23,8 @@ interface InAppNotificationManager {
         title: String,
         message: String,
         imageUrl: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
         onPositiveClick: () -> Unit,
@@ -29,7 +37,9 @@ interface InAppNotificationManager {
         message: String,
         imageUrl: String?,
         buttonPositiveText: String,
-        buttonNegativeText: String,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )
