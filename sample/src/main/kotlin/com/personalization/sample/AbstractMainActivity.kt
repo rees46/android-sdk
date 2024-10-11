@@ -102,17 +102,16 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     }
 
     private fun handleInAppNotifications() {
-        val debugTitle = "Pizza ipsum dolor meat lovers buffalo."
-        val debugMessage =
-            "Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef."
-        val debugFullScreenMessage =
-            "Pizza ipsum dolor meat lovers buffalo. Garlic sauce party sautéed ipsum cheese. Meatball mayo extra peppers Chicago spinach olives. Philly black crust pineapple steak ranch large large. Chicken hand pie tossed pan mushrooms large Bianca deep. Mozzarella roll string party mouth style lovers Hawaiian pan. Ricotta mayo red pizza fresh style string string. Broccoli meatball wing cheese sautéed. Peppers ipsum Aussie cheese olives Philly Hawaiian Aussie cheese personal. Pork dolor sausage bell mozzarella pepperoni thin deep mushrooms."
-        val debugImageUrl =
-            "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
-        val buttonNegative = "Cancel"
-        val buttonPositive = "Accept"
-        val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
+        val debugFullScreenMessage = resources.getString(R.string.alert_dialog_full_screen_message)
+        val buttonNegative = resources.getString(R.string.alert_dialog_button_decline_title)
+        val buttonPositive = resources.getString(R.string.alert_dialog_button_accept_title)
+        val debugMessage = resources.getString(R.string.alert_dialog_message)
+        val debugTitle = resources.getString(R.string.alert_dialog_title)
+
         val buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor)
+        val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
+
+        val debugImageUrl = "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
             sdk.showAlertDialog(

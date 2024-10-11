@@ -3,8 +3,8 @@ package com.personalization.features.inAppNotification.impl
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
+import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.ui.click.NotificationClickListener
