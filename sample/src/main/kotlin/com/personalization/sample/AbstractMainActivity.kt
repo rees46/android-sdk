@@ -111,7 +111,8 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         val buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor)
         val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
 
-        val debugImageUrl = "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
+        val debugImageUrl =
+            "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
 
         findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
             sdk.showAlertDialog(
