@@ -86,12 +86,12 @@ class StoryItemView(
     private lateinit var product: ConstraintLayout
     private lateinit var productPriceBox: LinearLayout
     private lateinit var productDiscountBox: LinearLayout
-    private lateinit var productBrand: TextView
-    private lateinit var productName: TextView
     private lateinit var productOldPrice: TextView
-    private lateinit var productPrice: TextView
     private lateinit var productDiscount: TextView
     private lateinit var promocodeText: TextView
+    private lateinit var productBrand: TextView
+    private lateinit var productPrice: TextView
+    private lateinit var productName: TextView
     private lateinit var productImage: ImageView
 
     private var pageListener: OnPageListener? = null
@@ -112,6 +112,8 @@ class StoryItemView(
     private lateinit var elementsLayout: ViewGroup
     private lateinit var products: RecyclerView
     private lateinit var productsAdapter: ProductsAdapter
+    private var buttonTextShow = ""
+    private var buttonTextHide = ""
 
     private var viewHeight = 0
     private var viewTopOffset = 0
@@ -173,7 +175,10 @@ class StoryItemView(
         productsAdapter = ProductsAdapter(
             itemClickListener = itemClickListener,
             code = code,
-            settings = settings
+            settings = settings,
+            onCloseStories = {
+                hideProducts()
+            }
         )
         products.adapter = productsAdapter
 
@@ -321,9 +326,7 @@ class StoryItemView(
                     storyId = storyId,
                     slideId = slide.id
                 )
-                if (itemClickListener == null) {
-                    return@setOnClickListener
-                }
+
                 if (needOpeningWebView && link != null) {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse(link))
@@ -403,12 +406,6 @@ class StoryItemView(
 
     fun release() {
         video.player = null
-    }
-
-    fun setHeadingVisibility(visibility: Int) {
-        elementsLayout.animate().alpha((if (visibility == GONE) 0 else 1).toFloat())
-            .setStartDelay((if (visibility == GONE) ELEMENTS_LAYOUT_ANIMATION_DELAY else 0).toLong())
-            .setDuration(ELEMENTS_LAYOUT_ANIMATION_DURATION.toLong())
     }
 
     private fun updateHeader(
@@ -501,46 +498,79 @@ class StoryItemView(
     private fun updateProducts(element: ProductsElement, slideId: String, storyId: Int) {
         productsAdapter.setProducts(element.getProducts(), storyId, slideId)
 
-        setupTextView(buttonProducts, true, element.labelShow, settings.products_button_font_family)
+        buttonTextShow = element.labelShow
+        buttonTextHide = element.labelHide
+
+        setupTextView(
+            textView = buttonProducts,
+            visibility = true,
+            text = buttonTextShow,
+            typeface = settings.products_button_font_family
+        )
 
         buttonProducts.setOnClickListener {
             buttonProducts.isActivated = !buttonProducts.isActivated
-            buttonProducts.text =
-                if (buttonProducts.isActivated) element.labelHide else element.labelShow
+            buttonProducts.text = if (buttonProducts.isActivated) buttonTextHide else buttonTextShow
 
-            val set = ConstraintSet()
-            set.clone(elementsLayout as ConstraintLayout?)
-
-            val transition: Transition = ChangeBounds()
-            transition.addTarget(buttonProducts.id)
-            transition.addTarget(button.id)
-
-            val transition2: Transition = androidx.transition.Slide(Gravity.BOTTOM)
-            transition2.addTarget(products.id)
-
-            val transitions = TransitionSet()
-            transitions.addTransition(transition)
-            transitions.addTransition(transition2)
-
-            TransitionManager.beginDelayedTransition(elementsLayout, transitions)
-            products.visibility = if (buttonProducts.isActivated) VISIBLE else GONE
-
-            pageListener?.onLocked(buttonProducts.isActivated)
+            toggleProductsVisibility(buttonProducts.isActivated)
         }
 
         pageListener?.onLocked(buttonProducts.isActivated)
+    }
+
+    private fun hideProducts() {
+        buttonProducts.isActivated = false
+        buttonProducts.text = buttonTextShow
+        toggleProductsVisibility(false)
+    }
+
+    private fun toggleProductsVisibility(isVisible: Boolean) {
+        val set = ConstraintSet()
+        set.clone(elementsLayout as ConstraintLayout?)
+
+        val transition: Transition = ChangeBounds().apply {
+            addTarget(buttonProducts.id)
+            addTarget(button.id)
+        }
+
+        val transition2: Transition = androidx.transition.Slide(Gravity.BOTTOM).apply {
+            addTarget(products.id)
+        }
+
+        val transitions = TransitionSet().apply {
+            addTransition(transition)
+            addTransition(transition2)
+        }
+
+        TransitionManager.beginDelayedTransition(elementsLayout, transitions)
+        products.visibility = if (isVisible) View.VISIBLE else View.GONE
+
+        pageListener?.onLocked(isVisible)
     }
 
     private fun updateButton(element: ButtonElement) {
         button.visibility = VISIBLE
         button.text = element.title
 
-        ColorUtils.setBackgroundButtonColor(context, button, element.background, R.color.primary)
-        TextUtils.setTextColor(context, button, element.color, R.color.white)
+        ColorUtils.setBackgroundButtonColor(
+            context = context,
+            button = button,
+            colorString = element.background,
+            defaultColor = R.color.primary
+        )
+        TextUtils.setTextColor(
+            context = context,
+            button = button,
+            colorString = element.color,
+            defaultColor = R.color.white
+        )
 
         button.typeface = Typeface.create(
-            settings.button_font_family,
-            if (element.textBold) Typeface.BOLD else Typeface.NORMAL
+            /* family = */ settings.button_font_family,
+            /* style = */ when {
+                element.textBold -> Typeface.BOLD
+                else -> Typeface.NORMAL
+            }
         )
     }
 
@@ -590,10 +620,5 @@ class StoryItemView(
         if (typeface != null) {
             textView.typeface = typeface
         }
-    }
-
-    companion object {
-        private const val ELEMENTS_LAYOUT_ANIMATION_DELAY = 100
-        private const val ELEMENTS_LAYOUT_ANIMATION_DURATION = 200
     }
 }

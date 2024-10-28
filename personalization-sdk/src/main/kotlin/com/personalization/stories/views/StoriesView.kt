@@ -135,8 +135,11 @@ class StoriesView : ConstraintLayout, ClickListener {
             story.startPosition = 0
         }
 
-        showStories(stories, id, { adapter.notifyDataSetChanged() }, {})
-
+        showStories(
+            stories = stories,
+            startPosition = id,
+            completeShowStory = { adapter.notifyDataSetChanged() },
+        )
     }
 
     fun muteVideo(mute: Boolean) {
