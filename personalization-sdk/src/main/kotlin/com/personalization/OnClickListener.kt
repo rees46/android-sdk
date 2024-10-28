@@ -4,7 +4,7 @@ package com.personalization
  * Callback for clicking on a link.
  * All methods must return Boolean: true - if you need to call opening by means of the SDK itself
  */
-interface OnLinkClickListener {
+interface OnClickListener {
     /**
      * Called when clicking on a regular link or deep link
      * @param url String

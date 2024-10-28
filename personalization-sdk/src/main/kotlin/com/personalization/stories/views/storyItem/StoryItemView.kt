@@ -43,7 +43,6 @@ import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.common.base.Strings
-import com.personalization.OnLinkClickListener
 import com.personalization.Product
 import com.personalization.R
 import com.personalization.SDK
@@ -64,7 +63,7 @@ class StoryItemView(
     private val context: Context,
     private val code: String,
     private val settings: Settings,
-    private val itemClickListener: OnLinkClickListener?,
+    private val itemClickListener: com.personalization.OnClickListener?,
     private val storyStateListener: StoryDialog.OnStoryStateListener,
     private val needOpeningWebView: Boolean
 ) : ConstraintLayout(context) {

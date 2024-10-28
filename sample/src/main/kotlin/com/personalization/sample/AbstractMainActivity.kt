@@ -14,7 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.personalization.OnLinkClickListener
+import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.stories.views.StoriesView
@@ -88,7 +88,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         val storiesView: StoriesView = findViewById(R.id.stories_view)
         sdk.initializeStoriesView(storiesView)
 
-        storiesView.itemClickListener = object : OnLinkClickListener {
+        storiesView.itemClickListener = object : OnClickListener {
             override fun onClick(url: String): Boolean = false
 
             override fun onClick(product: Product): Boolean = false

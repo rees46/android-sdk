@@ -11,7 +11,6 @@ import android.os.Looper
 import android.util.AttributeSet
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.personalization.OnLinkClickListener
 import com.personalization.R
 import com.personalization.SDK
 import com.personalization.stories.Player
@@ -32,7 +31,7 @@ class StoriesView : ConstraintLayout, ClickListener {
     private var observer: ContentObserver? = null
 
     val settings: Settings = Settings()
-    var itemClickListener: OnLinkClickListener? = null
+    var itemClickListener: com.personalization.OnClickListener? = null
     var isMute: Boolean = true
         private set
     var muteListener: Runnable? = null

@@ -16,14 +16,14 @@ import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.personalization.OnLinkClickListener
+import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.R
 import com.personalization.SDK
 import com.personalization.stories.Settings
 
 internal class ProductsAdapter(
-    private val itemClickListener: OnLinkClickListener?,
+    private val itemClickListener: OnClickListener?,
     private val code: String,
     private val settings: Settings,
     private val onCloseStories: () -> Unit
