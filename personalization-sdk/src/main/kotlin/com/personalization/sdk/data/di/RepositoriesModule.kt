@@ -33,4 +33,7 @@ abstract class RepositoriesModule {
 
     @Binds
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    @Binds
+    abstract fun bindProductsRepository(impl: PreferencesRepositoryImpl): PreferencesRepository
 }
