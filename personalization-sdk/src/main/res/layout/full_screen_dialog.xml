@@ -1,82 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:orientation="vertical">
 
-    <ImageView
-        android:id="@+id/backgroundImageView"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:adjustViewBounds="true"
-        android:scaleType="centerCrop"
-        tools:src="@drawable/ic_product_image" />
+        android:layout_height="wrap_content">
+
+        <com.personalization.inAppNotification.view.component.image.ImageView
+            android:id="@+id/backgroundImageView"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="top"
+            android:adjustViewBounds="true"
+            android:scaleType="centerCrop"
+            tools:src="@drawable/image_sample" />
+
+        <com.personalization.inAppNotification.view.component.button.ImageButton
+            android:id="@+id/closeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|top"
+            android:layout_margin="@dimen/medium_margin"
+            app:alpha="0.5"
+            app:backgroundColor="@color/gray_scale"
+            app:src="@drawable/ic_close" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/gray_scale"
+        android:layout_height="0dp"
+        android:layout_gravity="bottom"
+        android:layout_weight="1"
+        android:background="@color/colorWhite"
+        android:gravity="bottom"
         android:orientation="vertical"
-        android:padding="@dimen/large_margin">
+        android:paddingTop="@dimen/large_margin">
 
-        <TextView
-            android:id="@+id/title"
-            style="@style/TextAppearance.Compat.Notification.Title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/alert_dialog_title"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/message"
-            style="@style/Widget.Compat.NotificationActionText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/medium_margin"
-            android:gravity="center"
-            android:text="@string/alert_dialog_message" />
-
-        <View
+        <include
+            android:id="@+id/textContainer"
+            layout="@layout/alert_text_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_marginStart="@dimen/large_margin"
+            android:layout_marginEnd="18dp"
+            android:layout_weight="1"
+            tools:ignore="NestedWeights" />
 
-        <LinearLayout
+        <include
+            android:id="@+id/buttonContainer"
+            layout="@layout/alert_button_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center">
-
-            <Button
-                android:id="@+id/buttonDecline"
-                style="@style/ShapeAppearanceOverlay.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="@dimen/default_margin"
-                android:layout_marginEnd="@dimen/default_margin"
-                android:layout_marginBottom="@dimen/default_margin"
-                android:layout_weight="0.4"
-                android:background="@drawable/rounded_background"
-                android:gravity="center"
-                android:text="@string/alert_dialog_button_decline_title" />
-
-            <Button
-                android:id="@+id/buttonAccept"
-                style="@style/ShapeAppearanceOverlay.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:layout_marginTop="@dimen/default_margin"
-                android:layout_marginBottom="@dimen/default_margin"
-                android:layout_weight="1"
-                android:background="@drawable/rounded_background"
-                android:gravity="center"
-                android:text="@string/alert_dialog_button_accept_title" />
-
-        </LinearLayout>
+            android:layout_marginBottom="@dimen/large_margin" />
 
     </LinearLayout>
 
-</FrameLayout>
+</LinearLayout>

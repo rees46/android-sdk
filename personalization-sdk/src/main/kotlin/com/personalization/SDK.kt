@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.util.Consumer
+import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
@@ -35,6 +36,7 @@ open class SDK {
 
     internal lateinit var context: Context
     private lateinit var segment: String
+    lateinit var fragmentManager: FragmentManager
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
@@ -107,8 +109,7 @@ open class SDK {
         sdkComponent.inject(this)
 
         initPreferencesUseCase.invoke(
-            context = context,
-            preferencesKey = preferencesKey
+            context = context, preferencesKey = preferencesKey
         )
 
         this.context = context
@@ -122,10 +123,7 @@ open class SDK {
         notificationHandler.initialize(context)
 
         initUserSettingsUseCase.invoke(
-            shopId = shopId,
-            shopSecretKey = shopSecretKey,
-            segment = segment,
-            stream = stream
+            shopId = shopId, shopSecretKey = shopSecretKey, segment = segment, stream = stream
         )
         initNetworkUseCase.invoke(
             baseUrl = apiUrl
@@ -153,6 +151,79 @@ open class SDK {
         storiesManager.showStories(context.mainLooper, code)
     }
 
+    fun initializeFragmentManager(fragmentManager: FragmentManager) {
+        this.fragmentManager = fragmentManager
+    }
+
+    fun showAlertDialog(
+        title: String,
+        message: String,
+        imageUrl: String,
+        buttonNegativeText: String,
+        buttonPositiveText: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
+    ) = inAppNotificationManager.showAlertDialog(
+        fragmentManager = fragmentManager,
+        title = title,
+        message = message,
+        imageUrl = imageUrl,
+        buttonPositiveColor = buttonPositiveColor,
+        buttonNegativeColor = buttonNegativeColor,
+        buttonNegativeText = buttonNegativeText,
+        buttonPositiveText = buttonPositiveText,
+        onNegativeClick = onNegativeClick,
+        onPositiveClick = onPositiveClick,
+    )
+
+    fun showFullScreenDialog(
+        title: String,
+        message: String,
+        imageUrl: String,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        buttonNegativeText: String,
+        buttonPositiveText: String,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
+    ) = inAppNotificationManager.showFullScreenDialog(
+        fragmentManager = fragmentManager,
+        title = title,
+        message = message,
+        imageUrl = imageUrl,
+        buttonPositiveColor = buttonPositiveColor,
+        buttonNegativeColor = buttonNegativeColor,
+        buttonNegativeText = buttonNegativeText,
+        buttonPositiveText = buttonPositiveText,
+        onNegativeClick = onNegativeClick,
+        onPositiveClick = onPositiveClick,
+    )
+
+    fun showBottomSheetDialog(
+        title: String,
+        message: String,
+        imageUrl: String?,
+        buttonPositiveText: String,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit,
+        onNegativeClick: () -> Unit
+    ) = inAppNotificationManager.showBottomSheetDialog(
+        fragmentManager = fragmentManager,
+        title = title,
+        message = message,
+        imageUrl = imageUrl,
+        buttonNegativeText = buttonNegativeText,
+        buttonPositiveText = buttonPositiveText,
+        buttonPositiveColor = buttonPositiveColor,
+        buttonNegativeColor = buttonNegativeColor,
+        onNegativeClick = onNegativeClick,
+        onPositiveClick = onPositiveClick,
+    )
+
     /**
      * Triggers a story event
      *
@@ -164,10 +235,7 @@ open class SDK {
     fun trackStory(event: String, code: String, storyId: Int, slideId: String) {
         if (::storiesManager.isInitialized) {
             storiesManager.trackStory(
-                event = event,
-                code = code,
-                storyId = storyId,
-                slideId = slideId
+                event = event, code = code, storyId = storyId, slideId = slideId
             )
         } else {
             Log.i(TAG, "storiesManager is not initialized")
@@ -186,8 +254,7 @@ open class SDK {
     /**
      * Return the session ID
      */
-    fun getSid(): String =
-        getUserSettingsValueUseCase.getSid()
+    fun getSid(): String = getUserSettingsValueUseCase.getSid()
 
     /**
      * Returns the session ID
@@ -212,10 +279,8 @@ open class SDK {
      * @param extras from data notification
      */
     fun notificationClicked(extras: Bundle?) {
-        notificationHandler.notificationClicked(
-            extras = extras,
-            sendAsync = { method, params -> sendNetworkMethodUseCase.postAsync(method, params) }
-        )
+        notificationHandler.notificationClicked(extras = extras,
+            sendAsync = { method, params -> sendNetworkMethodUseCase.postAsync(method, params) })
     }
 
     /**
@@ -262,8 +327,7 @@ open class SDK {
     )
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         registerManager.setPushTokenNotification(
-            token = token,
-            listener = listener
+            token = token, listener = listener
         )
     }
 
@@ -276,7 +340,8 @@ open class SDK {
      */
     @Deprecated(
         "This class will be removed in future versions. Use searchManager.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "searchManager.searchInstant(...) or searchManager.searchFull(...)"
         )
     )
@@ -294,7 +359,8 @@ open class SDK {
      */
     @Deprecated(
         "This class will be removed in future versions. Use searchManager.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "searchManager.searchInstant(...) or searchManager.searchFull(...)"
         )
     )
@@ -315,25 +381,24 @@ open class SDK {
 
     @Deprecated(
         "This class will be removed in future versions. Use searchManager.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "searchManager.searchBlank(...)"
         )
     )
     fun searchBlank(listener: OnApiCallbackListener) {
         if (search != null) {
             if (search?.blank == null) {
-                getAsync(
-                    BLANK_SEARCH_FIELD,
-                    Params().build(), object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            search?.blank = response
-                            listener.onSuccess(response)
-                        }
+                getAsync(BLANK_SEARCH_FIELD, Params().build(), object : OnApiCallbackListener() {
+                    override fun onSuccess(response: JSONObject?) {
+                        search?.blank = response
+                        listener.onSuccess(response)
+                    }
 
-                        override fun onError(code: Int, msg: String?) {
-                            listener.onError(code, msg)
-                        }
-                    })
+                    override fun onError(code: Int, msg: String?) {
+                        listener.onError(code, msg)
+                    }
+                })
             } else {
                 listener.onSuccess(search?.blank)
             }
@@ -350,7 +415,8 @@ open class SDK {
      */
     @Deprecated(
         "This method will be removed in future versions. Use recommendationManager.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "recommendationManager.getRecommendation(recommender_code, ...)"
         )
     )
@@ -367,7 +433,8 @@ open class SDK {
      */
     @Deprecated(
         "This method will be removed in future versions. Use recommendationManager.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "recommendationManager.getRecommendation(code, ...)"
         )
     )
@@ -383,7 +450,8 @@ open class SDK {
      */
     @Deprecated(
         "This method will be removed in future versions.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "trackEventManager.track(event, itemId)"
         )
     )
@@ -400,7 +468,8 @@ open class SDK {
      */
     @Deprecated(
         "This method will be removed in future versions.",
-        level = DeprecationLevel.WARNING, replaceWith = ReplaceWith(
+        level = DeprecationLevel.WARNING,
+        replaceWith = ReplaceWith(
             "trackEventManager.track(event, params, listener)"
         )
     )
@@ -655,10 +724,7 @@ open class SDK {
      * @param phone
      */
     fun addToSegment(
-        segmentId: String,
-        email: String?,
-        phone: String?,
-        listener: OnApiCallbackListener? = null
+        segmentId: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null
     ) {
         segmentMethod(ADD_FIELD, segmentId, email, phone, listener)
     }
@@ -671,10 +737,7 @@ open class SDK {
      * @param phone
      */
     fun removeFromSegment(
-        segment_id: String,
-        email: String?,
-        phone: String?,
-        listener: OnApiCallbackListener? = null
+        segment_id: String, email: String?, phone: String?, listener: OnApiCallbackListener? = null
     ) {
         segmentMethod(REMOVE_FIELD, segment_id, email, phone, listener)
     }

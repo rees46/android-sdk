@@ -1,4 +1,4 @@
-package com.personalization.inAppNotification.view
+package com.personalization.inAppNotification.view.component.snackbar
 
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import com.google.android.material.snackbar.Snackbar
 import com.personalization.databinding.CustomSnackbarBinding
 
-class SdkSnackbar(private val rootView: View) {
+class Snackbar(private val rootView: View) {
 
     fun show(
         message: String,

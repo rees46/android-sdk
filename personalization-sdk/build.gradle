@@ -6,12 +6,15 @@ plugins {
 	id 'kotlin-kapt'
 }
 
-version='2.0.33'
+version='2.0.35'
 
 android {
 	compileSdkVersion 34
 	flavorDimensions += 'default'
 	viewBinding {
+		enabled = true
+	}
+	dataBinding {
 		enabled = true
 	}
 	defaultConfig {
