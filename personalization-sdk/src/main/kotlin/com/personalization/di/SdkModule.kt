@@ -2,10 +2,12 @@ package com.personalization.di
 
 import com.personalization.RegisterManager
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
+import com.personalization.features.products.impl.ProductsManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
 import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
@@ -48,6 +50,14 @@ class SdkModule {
     fun provideRecommendationManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): RecommendationManager = RecommendationManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideProductsManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): ProductsManager = ProductsManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
     )
 

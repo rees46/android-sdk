@@ -2,11 +2,11 @@ package com.personalization.features.products.impl
 
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.ProductsManager
-import com.personalization.sdk.domain.usecases.products.GetProductsUseCase
+import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import javax.inject.Inject
 
 internal class ProductsManagerImpl @Inject constructor(
-    val getProductsUseCase: GetProductsUseCase
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : ProductsManager {
 
     override fun getProductsList(
