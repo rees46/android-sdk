@@ -1,5 +1,7 @@
 package com.personalization.api.managers
 
+import com.personalization.api.OnApiCallbackListener
+
 interface ProductsManager {
 
     fun getProductsList(
@@ -9,6 +11,7 @@ interface ProductsManager {
         locations: String?,
         limit: Int?,
         page: Int?,
-        filters: Map<String, Any>?
+        filters: Map<String, Any>?,
+        listener: OnApiCallbackListener? = null
     )
 }
