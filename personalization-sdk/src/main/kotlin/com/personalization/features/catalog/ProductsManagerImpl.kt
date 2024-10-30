@@ -1,11 +1,11 @@
 package com.personalization.features.catalog
 
-import com.personalization.api.managers.CatalogManager
+import com.personalization.api.managers.ProductsManager
 import javax.inject.Inject
 
-internal class CatalogManagerImpl @Inject constructor(
+internal class ProductsManagerImpl @Inject constructor(
 
-) : CatalogManager {
+) : ProductsManager {
 
     override fun getProductsList(
         brands: String?,

@@ -1,6 +1,6 @@
 package com.personalization.api.managers
 
-interface CatalogManager {
+interface ProductsManager {
 
     fun getProductsList(
         brands: String?,
