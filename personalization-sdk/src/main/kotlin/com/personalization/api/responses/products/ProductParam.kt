@@ -1,4 +1,4 @@
-package com.personalization.sdk.domain.models.products
+package com.personalization.api.responses.products
 
 data class ProductParam(
     val key: String,
