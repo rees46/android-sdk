@@ -1,6 +1,11 @@
-package com.personalization.api.responses.products
+package com.personalization.api.responses.products.product
 
 import com.google.gson.annotations.SerializedName
+import com.personalization.api.responses.products.brand.Brand
+import com.personalization.api.responses.products.category.Category
+import com.personalization.api.responses.products.filter.Filter
+import com.personalization.api.responses.products.price.PriceRange
+import com.personalization.api.responses.products.price.PriceRangeItem
 
 data class ProductsResponse(
     @SerializedName("brands")

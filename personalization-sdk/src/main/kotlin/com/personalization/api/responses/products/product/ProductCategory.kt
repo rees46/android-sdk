@@ -1,4 +1,4 @@
-package com.personalization.api.responses.products
+package com.personalization.api.responses.products.product
 
 data class ProductCategory(
     val id: String,

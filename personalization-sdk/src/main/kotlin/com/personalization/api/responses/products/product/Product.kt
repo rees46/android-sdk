@@ -1,4 +1,4 @@
-package com.personalization.api.responses.products
+package com.personalization.api.responses.products.product
 
 import com.google.gson.annotations.SerializedName
 import com.personalization.api.responses.product.ImageUrlResized

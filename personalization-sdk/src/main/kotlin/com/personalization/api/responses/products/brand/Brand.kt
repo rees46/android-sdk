@@ -1,4 +1,4 @@
-package com.personalization.api.responses.products
+package com.personalization.api.responses.products.brand
 
 import com.google.gson.annotations.SerializedName
 
