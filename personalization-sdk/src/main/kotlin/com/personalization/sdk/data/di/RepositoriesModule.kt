@@ -33,4 +33,5 @@ abstract class RepositoriesModule {
 
     @Binds
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
 }

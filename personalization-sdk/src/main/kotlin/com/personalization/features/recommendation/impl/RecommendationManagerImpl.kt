@@ -4,11 +4,11 @@ import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.RecommendationManager
-import com.personalization.api.responses.recommendation.GetRecommendationResponse
 import com.personalization.api.responses.recommendation.GetExtendedRecommendationResponse
+import com.personalization.api.responses.recommendation.GetRecommendationResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import org.json.JSONObject
 import javax.inject.Inject
+import org.json.JSONObject
 
 internal class RecommendationManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
@@ -22,18 +22,23 @@ internal class RecommendationManagerImpl @Inject constructor(
     ) {
         params.put(EXTENDED_PARAMETER, false)
 
-        getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    val getRecommendationResponse = Gson().fromJson(it.toString(), GetRecommendationResponse::class.java)
-                    onGetRecommendation(getRecommendationResponse)
+        getRecommendation(
+            recommenderCode = recommenderCode,
+            params = params,
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response?.let {
+                        val getRecommendationResponse =
+                            Gson().fromJson(it.toString(), GetRecommendationResponse::class.java)
+                        onGetRecommendation(getRecommendationResponse)
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    onError(code, msg)
                 }
             }
-
-            override fun onError(code: Int, msg: String?) {
-                onError(code, msg)
-            }
-        })
+        )
     }
 
     override fun getExtendedRecommendation(
@@ -44,18 +49,25 @@ internal class RecommendationManagerImpl @Inject constructor(
     ) {
         params.put(EXTENDED_PARAMETER, true)
 
-        getRecommendation(recommenderCode, params, object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    val getExtendedRecommendationResponse = Gson().fromJson(it.toString(), GetExtendedRecommendationResponse::class.java)
-                    onGetExtendedRecommendation.invoke(getExtendedRecommendationResponse)
+        getRecommendation(
+            recommenderCode = recommenderCode,
+            params = params,
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response?.let {
+                        val getExtendedRecommendationResponse = Gson().fromJson(
+                            it.toString(),
+                            GetExtendedRecommendationResponse::class.java
+                        )
+                        onGetExtendedRecommendation.invoke(getExtendedRecommendationResponse)
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    onError(code, msg)
                 }
             }
-
-            override fun onError(code: Int, msg: String?) {
-                onError(code, msg)
-            }
-        })
+        )
     }
 
     override fun getRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {

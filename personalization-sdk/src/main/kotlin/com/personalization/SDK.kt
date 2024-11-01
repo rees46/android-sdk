@@ -10,6 +10,7 @@ import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
@@ -52,6 +53,9 @@ open class SDK {
 
     @Inject
     lateinit var recommendationManager: RecommendationManager
+
+    @Inject
+    lateinit var productsManager: ProductsManager
 
     @Inject
     lateinit var trackEventManager: TrackEventManager
