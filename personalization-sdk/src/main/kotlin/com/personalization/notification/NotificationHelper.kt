@@ -57,7 +57,7 @@ object NotificationHelper {
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setContentTitle(data[NOTIFICATION_TITLE])
             .setContentText(data[NOTIFICATION_BODY])
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_notification_logo)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
 
@@ -129,6 +129,7 @@ object NotificationHelper {
                 /* id = */ notificationId.hashCode(),
                 /* notification = */ notificationBuilder.build()
             )
+
             else -> SDK.error("NotificationManager not available")
         }
     }
