@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.R
 import com.personalization.SDK
@@ -44,6 +45,10 @@ object NotificationHelper {
             currentIndex = currentIndex
         )
 
+        val customView = RemoteViews(context.packageName, R.layout.custom_notification)
+        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
+        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
+
         val pendingIntent = PendingIntent.getActivity(
             /* context = */ context,
             /* requestCode = */ requestCodeGenerator.generateRequestCode(
@@ -55,9 +60,9 @@ object NotificationHelper {
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-            .setContentTitle(data[NOTIFICATION_TITLE])
-            .setContentText(data[NOTIFICATION_BODY])
             .setSmallIcon(R.drawable.ic_notification_logo)
+            .setCustomContentView(customView)
+            .setCustomBigContentView(customView)  // для расширенного вида
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
 
