@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.R
@@ -137,6 +138,54 @@ object NotificationHelper {
 
             else -> SDK.error("NotificationManager not available")
         }
+    }
+
+    fun createCustomNotification(
+        context: Context,
+        data: Map<String, String?>,
+        images: List<Bitmap>?,
+        currentIndex: Int
+    ) {
+        val customView = RemoteViews(context.packageName, R.layout.custom_notification)
+
+        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
+        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
+
+        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
+            customView.setViewVisibility(R.id.small_image, View.VISIBLE)
+            customView.setImageViewBitmap(R.id.small_image, images[currentIndex])
+            customView.setImageViewResource(R.id.expand_arrow, R.drawable.ic_arrow_open)
+        } else {
+            customView.setViewVisibility(R.id.small_image, View.GONE)
+            customView.setImageViewResource(R.id.expand_arrow, R.drawable.ic_arrow_close)
+        }
+
+        val intent = createNotificationIntent(
+            context = context,
+            data = data,
+            currentIndex = currentIndex
+        )
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            requestCodeGenerator.generateRequestCode(
+                action = intent.action.orEmpty(),
+                currentIndex = currentIndex
+            ),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
+            .setSmallIcon(R.drawable.ic_notification_logo)
+            .setCustomContentView(customView)
+            .setCustomBigContentView(customView)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
+        notificationManager?.notify(notificationId.hashCode(), notificationBuilder.build())
     }
 
     private fun createNotificationIntent(
