@@ -151,6 +151,7 @@ object NotificationHelper {
         customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
         customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
 
+
         if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
             customView.setViewVisibility(R.id.small_image, View.VISIBLE)
             customView.setImageViewBitmap(R.id.small_image, images[currentIndex])
