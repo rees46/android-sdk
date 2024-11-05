@@ -197,6 +197,20 @@ object NotificationHelper {
 
         customView.setOnClickPendingIntent(R.id.action1, prevPendingIntent)
         customView.setOnClickPendingIntent(R.id.action2, nextPendingIntent)
+        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
+
+            if (currentIndex < images.size - 1) {
+                customView.setViewVisibility(R.id.action1, View.GONE)
+                customView.setViewVisibility(R.id.action2, View.VISIBLE)
+            }
+            if (currentIndex > 0) {
+                customView.setViewVisibility(R.id.action1, View.VISIBLE)
+                customView.setViewVisibility(R.id.action2, View.VISIBLE)
+            }
+            if (currentIndex == images.size - 1) {
+                customView.setViewVisibility(R.id.action2, View.GONE)
+            }
+        }
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification_logo)

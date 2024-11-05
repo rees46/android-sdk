@@ -191,7 +191,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         val testData = mapOf(
             NOTIFICATION_TITLE to "Test Notification Title",
             NOTIFICATION_BODY to "This is a test notification body",
-            NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg"
+            NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg,https://www.hollywoodreporter.com/wp-content/uploads/2022/02/TCDFUTU_FE007-H2-2022.jpg?w=1296&h=730&crop=1"
         )
 
         CoroutineScope(Dispatchers.Main).launch {
