@@ -57,11 +57,6 @@ object NotificationHelper {
         notificationManager.notify(notificationId.hashCode(), notificationBuilder.build())
     }
 
-    private fun setNotificationText(customView: RemoteViews, data: Map<String, String?>) {
-        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
-        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
-    }
-
     private fun configureImageDisplay(
         customView: RemoteViews,
         images: List<Bitmap>?,
@@ -73,10 +68,17 @@ object NotificationHelper {
             customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
             customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])
             customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
+            customView.setViewVisibility(R.id.actionContainer, View.VISIBLE)
         } else {
             customView.setViewVisibility(R.id.smallImage, View.GONE)
-            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_close)
+            customView.setViewVisibility(R.id.expandArrow, View.GONE)
+            customView.setViewVisibility(R.id.actionContainer, View.GONE)
         }
+    }
+
+    private fun setNotificationText(customView: RemoteViews, data: Map<String, String?>) {
+        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
+        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
     }
 
     private fun setNavigationActions(
@@ -96,8 +98,14 @@ object NotificationHelper {
         customView.setOnClickPendingIntent(R.id.action1, prevPendingIntent)
         customView.setOnClickPendingIntent(R.id.action2, nextPendingIntent)
 
-        customView.setViewVisibility(R.id.action1, if (currentIndex > 0) View.VISIBLE else View.GONE)
-        customView.setViewVisibility(R.id.action2, if (currentIndex < imageCount - 1) View.VISIBLE else View.GONE)
+        customView.setViewVisibility(
+            R.id.action1,
+            if (currentIndex > 0) View.VISIBLE else View.GONE
+        )
+        customView.setViewVisibility(
+            R.id.action2,
+            if (currentIndex < imageCount - 1) View.VISIBLE else View.GONE
+        )
     }
 
     private fun createNavigationPendingIntent(
