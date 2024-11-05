@@ -63,7 +63,6 @@ object NotificationHelper {
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification_logo)
             .setCustomContentView(customView)
-            .setCustomBigContentView(customView)  // для расширенного вида
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
 
@@ -151,45 +150,63 @@ object NotificationHelper {
         customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
         customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
 
-
         if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
-            customView.setViewVisibility(R.id.small_image, View.VISIBLE)
-            customView.setViewVisibility(R.id.large_image, View.VISIBLE)
-            customView.setImageViewBitmap(R.id.small_image, images[currentIndex])
-            customView.setImageViewBitmap(R.id.large_image, images[currentIndex])
-            customView.setImageViewResource(R.id.expand_arrow, R.drawable.ic_arrow_open)
+            customView.setViewVisibility(R.id.smallImage, View.VISIBLE)
+            customView.setViewVisibility(R.id.largeImage, View.VISIBLE)
+            customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
+            customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])
+            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
         } else {
-            customView.setViewVisibility(R.id.small_image, View.GONE)
-            customView.setImageViewResource(R.id.expand_arrow, R.drawable.ic_arrow_close)
+            customView.setViewVisibility(R.id.smallImage, View.GONE)
+            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_close)
         }
 
-        val intent = createNotificationIntent(
-            context = context,
-            data = data,
-            currentIndex = currentIndex
+        val prevIntent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
+            action = ACTION_PREVIOUS_IMAGE
+            putExtra(CURRENT_IMAGE_INDEX, currentIndex - 1)
+            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
+            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
+            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
+        }
+        val nextIntent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
+            action = ACTION_NEXT_IMAGE
+            putExtra(CURRENT_IMAGE_INDEX, currentIndex + 1)
+            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
+            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
+            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
+        }
+
+        val prevPendingIntent = PendingIntent.getBroadcast(
+            /* context = */ context,
+            /* requestCode = */ requestCodeGenerator.generateRequestCode(
+                action = prevIntent.action.orEmpty(),
+                currentIndex = currentIndex - 1
+            ),
+            /* intent = */ prevIntent,
+            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val nextPendingIntent = PendingIntent.getBroadcast(
+            /* context = */ context,
+            /* requestCode = */ requestCodeGenerator.generateRequestCode(
+                action = nextIntent.action.orEmpty(),
+                currentIndex = currentIndex + 1
+            ),
+            /* intent = */ nextIntent,
+            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            requestCodeGenerator.generateRequestCode(
-                action = intent.action.orEmpty(),
-                currentIndex = currentIndex
-            ),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        customView.setOnClickPendingIntent(R.id.action1, prevPendingIntent)
+        customView.setOnClickPendingIntent(R.id.action2, nextPendingIntent)
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification_logo)
             .setCustomContentView(customView)
             .setCustomBigContentView(customView)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
 
-        val notificationManager = context.getSystemService(
-            Context.NOTIFICATION_SERVICE
-        ) as NotificationManager?
-        notificationManager?.notify(notificationId.hashCode(), notificationBuilder.build())
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(notificationId.hashCode(), notificationBuilder.build())
     }
 
     private fun createNotificationIntent(

@@ -33,7 +33,7 @@ class UpdateNotificationWorker(
 
             try {
                 val loadedImages = NotificationHelper.loadBitmaps(urls = images)
-                NotificationHelper.createNotification(
+                NotificationHelper.createCustomNotification(
                     context = context,
                     data = data,
                     images = loadedImages,

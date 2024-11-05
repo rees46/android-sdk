@@ -1,6 +1,7 @@
 package com.personalization.sample
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -10,14 +11,21 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
+import com.personalization.notification.NotificationHelper
+import com.personalization.notification.NotificationHelper.NOTIFICATION_BODY
+import com.personalization.notification.NotificationHelper.NOTIFICATION_IMAGES
+import com.personalization.notification.NotificationHelper.NOTIFICATION_TITLE
+import com.personalization.notification.NotificationHelper.loadBitmaps
 import com.personalization.stories.views.StoriesView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
@@ -71,12 +79,13 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         button.setOnClickListener {
-            if (emailEditText.text.toString().isNotEmpty()) {
-                val params = HashMap<String, String>()
-                params["email"] = emailEditText.text.toString()
-                sdk.profile(params)
-                Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
-            }
+//            if (emailEditText.text.toString().isNotEmpty()) {
+//                val params = HashMap<String, String>()
+//                params["email"] = emailEditText.text.toString()
+//                sdk.profile(params)
+//                Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
+//            }
+            showTestNotification(this)
         }
     }
 
@@ -174,6 +183,25 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 onPositiveClick = {
                     Log.d(this.localClassName, ": onPositiveClick")
                 },
+            )
+        }
+    }
+
+    fun showTestNotification(context: Context) {
+        val testData = mapOf(
+            NOTIFICATION_TITLE to "Test Notification Title",
+            NOTIFICATION_BODY to "This is a test notification body",
+            NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg"
+        )
+
+        CoroutineScope(Dispatchers.Main).launch {
+            val images = loadBitmaps(testData[NOTIFICATION_IMAGES])
+
+            NotificationHelper.createCustomNotification(
+                context = context,
+                data = testData,
+                images = images,
+                currentIndex = 0
             )
         }
     }

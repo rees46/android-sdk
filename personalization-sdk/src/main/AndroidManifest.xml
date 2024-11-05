@@ -26,5 +26,6 @@
                 <action android:name="ACTION_PREVIOUS_IMAGE" />
             </intent-filter>
         </receiver>
+
     </application>
 </manifest>
