@@ -154,7 +154,9 @@ object NotificationHelper {
 
         if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
             customView.setViewVisibility(R.id.small_image, View.VISIBLE)
+            customView.setViewVisibility(R.id.large_image, View.VISIBLE)
             customView.setImageViewBitmap(R.id.small_image, images[currentIndex])
+            customView.setImageViewBitmap(R.id.large_image, images[currentIndex])
             customView.setImageViewResource(R.id.expand_arrow, R.drawable.ic_arrow_open)
         } else {
             customView.setViewVisibility(R.id.small_image, View.GONE)
@@ -184,8 +186,9 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
 
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
+        val notificationManager = context.getSystemService(
+            Context.NOTIFICATION_SERVICE
+        ) as NotificationManager?
         notificationManager?.notify(notificationId.hashCode(), notificationBuilder.build())
     }
 
