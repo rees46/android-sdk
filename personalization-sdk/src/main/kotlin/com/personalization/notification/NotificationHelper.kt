@@ -40,177 +40,11 @@ object NotificationHelper {
         images: List<Bitmap>?,
         currentIndex: Int
     ) {
-        val intent = createNotificationIntent(
-            context = context,
-            data = data,
-            currentIndex = currentIndex
-        )
-
-        val customView = RemoteViews(context.packageName, R.layout.custom_notification)
-        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
-        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
-
-        val pendingIntent = PendingIntent.getActivity(
-            /* context = */ context,
-            /* requestCode = */ requestCodeGenerator.generateRequestCode(
-                action = intent.action.orEmpty(),
-                currentIndex = currentIndex
-            ),
-            /* intent = */ intent,
-            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification_logo)
-            .setCustomContentView(customView)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-
-        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
-            val currentImage = images[currentIndex]
-
-            notificationBuilder.setLargeIcon(currentImage)
-                .setStyle(
-                    NotificationCompat.BigPictureStyle().bigPicture(currentImage)
-                )
-
-            if (currentIndex > 0) {
-                val prevIntent = createNotificationIntent(
-                    context = context,
-                    data = data,
-                    currentIndex = currentIndex - 1
-                )
-                val prevPendingIntent = PendingIntent.getBroadcast(
-                    /* context = */ context,
-                    /* requestCode = */ requestCodeGenerator.generateRequestCode(
-                        action = prevIntent.action.orEmpty(),
-                        currentIndex = currentIndex - 1
-                    ),
-                    /* intent = */ prevIntent,
-                    /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                notificationBuilder.addAction(
-                    /* action = */ NotificationCompat.Action.Builder(
-                        /* icon = */ android.R.drawable.ic_media_previous,
-                        /* title = */ context.getString(R.string.notification_button_back),
-                        /* intent = */ prevPendingIntent
-                    ).build()
-                )
-            }
-
-            if (currentIndex < images.size - 1) {
-                val nextIntent = createNotificationIntent(
-                    context = context,
-                    data = data,
-                    currentIndex = currentIndex + 1
-                )
-                val nextPendingIntent = PendingIntent.getBroadcast(
-                    /* context = */ context,
-                    /* requestCode = */ requestCodeGenerator.generateRequestCode(
-                        action = nextIntent.action.orEmpty(),
-                        currentIndex = currentIndex + 1
-                    ),
-                    /* intent = */ nextIntent,
-                    /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                notificationBuilder.addAction(
-                    /* action = */ NotificationCompat.Action.Builder(
-                        /* icon = */ android.R.drawable.ic_media_next,
-                        /* title = */ context.getString(R.string.notification_button_forward),
-                        /* intent = */ nextPendingIntent
-                    ).build()
-                )
-            }
-        } else {
-            notificationBuilder.setStyle(
-                NotificationCompat.BigTextStyle().bigText(data[NOTIFICATION_BODY])
-            )
-        }
-
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        when {
-            notificationManager != null -> notificationManager.notify(
-                /* id = */ notificationId.hashCode(),
-                /* notification = */ notificationBuilder.build()
-            )
-
-            else -> SDK.error("NotificationManager not available")
-        }
-    }
-
-    fun createCustomNotification(
-        context: Context,
-        data: Map<String, String?>,
-        images: List<Bitmap>?,
-        currentIndex: Int
-    ) {
         val customView = RemoteViews(context.packageName, R.layout.custom_notification)
 
-        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
-        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
-
-        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
-            customView.setViewVisibility(R.id.smallImage, View.VISIBLE)
-            customView.setViewVisibility(R.id.largeImage, View.VISIBLE)
-            customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
-            customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])
-            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
-        } else {
-            customView.setViewVisibility(R.id.smallImage, View.GONE)
-            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_close)
-        }
-
-        val prevIntent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
-            action = ACTION_PREVIOUS_IMAGE
-            putExtra(CURRENT_IMAGE_INDEX, currentIndex - 1)
-            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
-            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
-        }
-        val nextIntent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
-            action = ACTION_NEXT_IMAGE
-            putExtra(CURRENT_IMAGE_INDEX, currentIndex + 1)
-            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
-            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
-        }
-
-        val prevPendingIntent = PendingIntent.getBroadcast(
-            /* context = */ context,
-            /* requestCode = */ requestCodeGenerator.generateRequestCode(
-                action = prevIntent.action.orEmpty(),
-                currentIndex = currentIndex - 1
-            ),
-            /* intent = */ prevIntent,
-            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val nextPendingIntent = PendingIntent.getBroadcast(
-            /* context = */ context,
-            /* requestCode = */ requestCodeGenerator.generateRequestCode(
-                action = nextIntent.action.orEmpty(),
-                currentIndex = currentIndex + 1
-            ),
-            /* intent = */ nextIntent,
-            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        customView.setOnClickPendingIntent(R.id.action1, prevPendingIntent)
-        customView.setOnClickPendingIntent(R.id.action2, nextPendingIntent)
-        if (!images.isNullOrEmpty() && currentIndex >= 0 && currentIndex < images.size) {
-
-            if (currentIndex < images.size - 1) {
-                customView.setViewVisibility(R.id.action1, View.GONE)
-                customView.setViewVisibility(R.id.action2, View.VISIBLE)
-            }
-            if (currentIndex > 0) {
-                customView.setViewVisibility(R.id.action1, View.VISIBLE)
-                customView.setViewVisibility(R.id.action2, View.VISIBLE)
-            }
-            if (currentIndex == images.size - 1) {
-                customView.setViewVisibility(R.id.action2, View.GONE)
-            }
-        }
+        setNotificationText(customView, data)
+        configureImageDisplay(customView, images, currentIndex)
+        setNavigationActions(customView, context, data, currentIndex, images?.size ?: 0)
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.ic_notification_logo)
@@ -223,22 +57,68 @@ object NotificationHelper {
         notificationManager.notify(notificationId.hashCode(), notificationBuilder.build())
     }
 
-    private fun createNotificationIntent(
+    private fun setNotificationText(customView: RemoteViews, data: Map<String, String?>) {
+        customView.setTextViewText(R.id.title, data[NOTIFICATION_TITLE])
+        customView.setTextViewText(R.id.body, data[NOTIFICATION_BODY])
+    }
+
+    private fun configureImageDisplay(
+        customView: RemoteViews,
+        images: List<Bitmap>?,
+        currentIndex: Int
+    ) {
+        if (!images.isNullOrEmpty() && currentIndex in images.indices) {
+            customView.setViewVisibility(R.id.smallImage, View.VISIBLE)
+            customView.setViewVisibility(R.id.largeImage, View.VISIBLE)
+            customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
+            customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])
+            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
+        } else {
+            customView.setViewVisibility(R.id.smallImage, View.GONE)
+            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_close)
+        }
+    }
+
+    private fun setNavigationActions(
+        customView: RemoteViews,
         context: Context,
         data: Map<String, String?>,
-        currentIndex: Int
-    ): Intent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
-        putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
-        putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
-        putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
-        putExtra(notificationType, data[notificationType])
-        putExtra(notificationId, data[notificationId])
-        putExtra(CURRENT_IMAGE_INDEX, currentIndex)
+        currentIndex: Int,
+        imageCount: Int
+    ) {
+        val prevPendingIntent = createNavigationPendingIntent(
+            context, data, currentIndex - 1, ACTION_PREVIOUS_IMAGE
+        )
+        val nextPendingIntent = createNavigationPendingIntent(
+            context, data, currentIndex + 1, ACTION_NEXT_IMAGE
+        )
 
-        action = when (currentIndex) {
-            0 -> ACTION_NEXT_IMAGE
-            else -> ACTION_PREVIOUS_IMAGE
+        customView.setOnClickPendingIntent(R.id.action1, prevPendingIntent)
+        customView.setOnClickPendingIntent(R.id.action2, nextPendingIntent)
+
+        customView.setViewVisibility(R.id.action1, if (currentIndex > 0) View.VISIBLE else View.GONE)
+        customView.setViewVisibility(R.id.action2, if (currentIndex < imageCount - 1) View.VISIBLE else View.GONE)
+    }
+
+    private fun createNavigationPendingIntent(
+        context: Context,
+        data: Map<String, String?>,
+        newIndex: Int,
+        action: String
+    ): PendingIntent {
+        val intent = Intent(context, NotificationBroadcastReceiver::class.java).apply {
+            this.action = action
+            putExtra(CURRENT_IMAGE_INDEX, newIndex)
+            putExtra(NOTIFICATION_TITLE, data[NOTIFICATION_TITLE])
+            putExtra(NOTIFICATION_BODY, data[NOTIFICATION_BODY])
+            putExtra(NOTIFICATION_IMAGES, data[NOTIFICATION_IMAGES])
         }
+        return PendingIntent.getBroadcast(
+            context,
+            requestCodeGenerator.generateRequestCode(action, newIndex),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     suspend fun loadBitmaps(urls: String?): List<Bitmap> {
