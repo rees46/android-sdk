@@ -1,7 +1,6 @@
 package com.personalization.sample
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +10,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -44,6 +44,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         initializingFragmentManager()
         initializingStoriesView()
         handleInAppNotifications()
+        handlePushNotification()
     }
 
     private fun handlePermissions() {
@@ -79,13 +80,12 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
 
         button.setOnClickListener {
-//            if (emailEditText.text.toString().isNotEmpty()) {
-//                val params = HashMap<String, String>()
-//                params["email"] = emailEditText.text.toString()
-//                sdk.profile(params)
-//                Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
-//            }
-            showTestNotification(this)
+            if (emailEditText.text.toString().isNotEmpty()) {
+                val params = HashMap<String, String>()
+                params["email"] = emailEditText.text.toString()
+                sdk.profile(params)
+                Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -187,22 +187,24 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
     }
 
-    fun showTestNotification(context: Context) {
-        val testData = mapOf(
-            NOTIFICATION_TITLE to "Test Notification Title",
-            NOTIFICATION_BODY to "This is a test notification body",
-            NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg,https://www.hollywoodreporter.com/wp-content/uploads/2022/02/TCDFUTU_FE007-H2-2022.jpg?w=1296&h=730&crop=1"
-        )
-
-        CoroutineScope(Dispatchers.Main).launch {
-            val images = loadBitmaps(testData[NOTIFICATION_IMAGES])
-
-            NotificationHelper.createNotification(
-                context = context,
-                data = testData,
-                images = images,
-                currentIndex = 0
+    private fun handlePushNotification() {
+        findViewById<Button>(R.id.pushNotificationButton).setOnClickListener {
+            val testData = mapOf(
+                NOTIFICATION_TITLE to "Test Notification Title",
+                NOTIFICATION_BODY to "This is a test notification body",
+                NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg,https://www.hollywoodreporter.com/wp-content/uploads/2022/02/TCDFUTU_FE007-H2-2022.jpg?w=1296&h=730&crop=1"
             )
+
+            CoroutineScope(Dispatchers.Main).launch {
+                val images = loadBitmaps(testData[NOTIFICATION_IMAGES])
+
+                NotificationHelper.createNotification(
+                    context = applicationContext,
+                    data = testData,
+                    images = images,
+                    currentIndex = 0
+                )
+            }
         }
     }
 }
