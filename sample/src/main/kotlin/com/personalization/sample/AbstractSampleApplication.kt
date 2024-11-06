@@ -3,9 +3,9 @@ package com.personalization.sample
 import android.app.Application
 import android.util.Log
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper
-import com.personalization.notification.NotificationHelper.createNotification
-import com.personalization.notification.NotificationHelper.loadBitmaps
+import com.personalization.notification.core.NotificationHelper
+import com.personalization.notification.core.NotificationHelper.createNotification
+import com.personalization.notification.core.NotificationHelper.loadBitmaps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

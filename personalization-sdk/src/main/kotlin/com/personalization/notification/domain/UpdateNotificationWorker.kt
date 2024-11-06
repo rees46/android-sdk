@@ -1,9 +1,10 @@
-package com.personalization.notification
+package com.personalization.notification.domain
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personalization.SDK
+import com.personalization.notification.core.NotificationHelper
 import java.io.IOException
 
 class UpdateNotificationWorker(

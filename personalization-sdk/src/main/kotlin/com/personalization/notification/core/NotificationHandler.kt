@@ -1,4 +1,4 @@
-package com.personalization.notification
+package com.personalization.notification.core
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,9 +9,9 @@ import android.util.Log
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.R
 import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
+import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
-import javax.inject.Inject
 
 class NotificationHandler @Inject constructor(
     private val updateSourceUseCase: UpdateNotificationSourceUseCase

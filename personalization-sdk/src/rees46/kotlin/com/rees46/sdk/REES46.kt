@@ -1,11 +1,9 @@
 package com.rees46.sdk
 
 import android.content.Context
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentManager
 import com.personalization.BuildConfig
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper
+import com.personalization.notification.core.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

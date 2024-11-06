@@ -1,4 +1,4 @@
-package com.personalization.notification
+package com.personalization.notification.core
 
 import kotlin.math.abs
 

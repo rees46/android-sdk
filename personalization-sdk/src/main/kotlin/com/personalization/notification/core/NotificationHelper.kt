@@ -1,4 +1,6 @@
-package com.personalization.notification
+@file:Suppress("PackageDirectoryMismatch")
+
+package com.personalization.notification.core
 
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -11,6 +13,7 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.R
 import com.personalization.SDK
+import com.personalization.notification.domain.NotificationBroadcastReceiver
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
@@ -33,6 +36,29 @@ object NotificationHelper {
     var notificationId: String = "NOTIFICATION_ID"
 
     private val requestCodeGenerator = RequestCodeGenerator
+
+    /**
+     * Creates a notification using `RemoteViews` for custom design.
+     *
+     * Only a limited set of standard components
+     * (`TextView`, `ImageView`, `LinearLayout`, etc.) are allowed in `RemoteViews`, since notifications may
+     * appear in system areas such as the notification panel, lock screen,
+     * and widgets, where custom `View` is not supported.
+     *
+     * The restriction on using custom components is due to security
+     * and optimization requirements, since notifications are rendered outside the context of the application and must
+     * be compatible with Android system mechanisms. Custom `View`, such as custom components derived from `TextView` or `ImageView`, cannot
+     * be used in `RemoteViews`. *
+     * In this method, instead of custom `View`, it is recommended to:
+     * - Use standard `TextView` and `ImageView`, and configure them programmatically via the `RemoteViews` API.
+     * - If necessary, create a `Bitmap` with a custom design (for example, with text)
+     * and display it via `ImageView`.
+     *
+     * @param context Application context for accessing resources and system services.
+     * @param data Data for filling the notification title and text.
+     * @param images List of images to display in the notification (if available).
+     * @param currentIndex Index of the current image in the `images` list, if multiple images are used.
+     */
 
     fun createNotification(
         context: Context,
@@ -123,7 +149,7 @@ object NotificationHelper {
         }
         return PendingIntent.getBroadcast(
             context,
-            requestCodeGenerator.generateRequestCode(action, newIndex),
+            RequestCodeGenerator.generateRequestCode(action, newIndex),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

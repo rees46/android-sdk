@@ -17,11 +17,11 @@ import androidx.core.content.ContextCompat
 import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper
-import com.personalization.notification.NotificationHelper.NOTIFICATION_BODY
-import com.personalization.notification.NotificationHelper.NOTIFICATION_IMAGES
-import com.personalization.notification.NotificationHelper.NOTIFICATION_TITLE
-import com.personalization.notification.NotificationHelper.loadBitmaps
+import com.personalization.notification.core.NotificationHelper
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_BODY
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_IMAGES
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_TITLE
+import com.personalization.notification.core.NotificationHelper.loadBitmaps
 import com.personalization.stories.views.StoriesView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

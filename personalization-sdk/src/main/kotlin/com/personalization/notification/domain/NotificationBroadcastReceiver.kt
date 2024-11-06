@@ -1,4 +1,4 @@
-package com.personalization.notification
+package com.personalization.notification.domain
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -7,12 +7,12 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper.ACTION_NEXT_IMAGE
-import com.personalization.notification.NotificationHelper.ACTION_PREVIOUS_IMAGE
-import com.personalization.notification.NotificationHelper.CURRENT_IMAGE_INDEX
-import com.personalization.notification.NotificationHelper.NOTIFICATION_BODY
-import com.personalization.notification.NotificationHelper.NOTIFICATION_IMAGES
-import com.personalization.notification.NotificationHelper.NOTIFICATION_TITLE
+import com.personalization.notification.core.NotificationHelper.ACTION_NEXT_IMAGE
+import com.personalization.notification.core.NotificationHelper.ACTION_PREVIOUS_IMAGE
+import com.personalization.notification.core.NotificationHelper.CURRENT_IMAGE_INDEX
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_BODY
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_IMAGES
+import com.personalization.notification.core.NotificationHelper.NOTIFICATION_TITLE
 
 class NotificationBroadcastReceiver : BroadcastReceiver() {
 
