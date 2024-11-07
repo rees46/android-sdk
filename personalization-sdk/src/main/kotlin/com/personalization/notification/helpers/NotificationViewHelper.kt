@@ -6,14 +6,14 @@ import android.widget.RemoteViews
 import com.personalization.R
 import com.personalization.notification.model.NotificationConstants.ACTION_NEXT_IMAGE
 import com.personalization.notification.model.NotificationConstants.ACTION_PREVIOUS_IMAGE
-import com.personalization.notification.model.PushNotificationData
+import com.personalization.notification.model.NotificationData
 
 object NotificationViewHelper {
 
     fun setNavigationActions(
         customView: RemoteViews,
         context: Context,
-        data: PushNotificationData,
+        data: NotificationData,
         currentIndex: Int,
         imageCount: Int
     ) {

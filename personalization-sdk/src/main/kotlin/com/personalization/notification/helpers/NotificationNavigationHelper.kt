@@ -9,13 +9,13 @@ import com.personalization.notification.model.NotificationConstants.CURRENT_IMAG
 import com.personalization.notification.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.notification.model.NotificationConstants.NOTIFICATION_IMAGES
 import com.personalization.notification.model.NotificationConstants.NOTIFICATION_TITLE
-import com.personalization.notification.model.PushNotificationData
+import com.personalization.notification.model.NotificationData
 
 object NotificationNavigationHelper {
 
     fun createNavigationPendingIntent(
         context: Context,
-        data: PushNotificationData,
+        data: NotificationData,
         newIndex: Int,
         action: String
     ): PendingIntent {

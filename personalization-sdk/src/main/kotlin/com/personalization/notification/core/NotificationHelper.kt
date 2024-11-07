@@ -10,7 +10,7 @@ import com.personalization.notification.helpers.NotificationImageHelper
 import com.personalization.notification.helpers.NotificationTextHelper
 import com.personalization.notification.helpers.NotificationViewHelper
 import com.personalization.notification.model.NotificationConstants.NOTIFICATION_CHANNEL
-import com.personalization.notification.model.PushNotificationData
+import com.personalization.notification.model.NotificationData
 
 object NotificationHelper {
 
@@ -19,7 +19,7 @@ object NotificationHelper {
     fun createNotification(
         context: Context,
         notificationId: Int,
-        data: PushNotificationData,
+        data: NotificationData,
         images: List<Bitmap>?,
         currentIndex: Int = 0
     ) {

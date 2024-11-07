@@ -5,7 +5,10 @@ import com.personalization.BuildConfig
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
 import com.personalization.notification.helpers.NotificationImageHelper
-import com.personalization.notification.model.PushNotificationData
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.notification.model.NotificationData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -64,15 +67,15 @@ class REES46 private constructor() : SDK() {
             sdk.setOnMessageListener { data: Map<String, String> ->
                 coroutineScope.launch {
                     val images = withContext(Dispatchers.IO) {
-                        NotificationImageHelper.loadBitmaps(urls = data[NotificationHelper.NOTIFICATION_IMAGES])
+                        NotificationImageHelper.loadBitmaps(urls = data[NOTIFICATION_IMAGES])
                     }
                     NotificationHelper.createNotification(
                         context = context,
                         notificationId = data.hashCode(),
-                        data = PushNotificationData(
-                            title = data[NotificationHelper.NOTIFICATION_TITLE],
-                            body = data[NotificationHelper.NOTIFICATION_BODY],
-                            images = data[NotificationHelper.NOTIFICATION_IMAGES]
+                        data = NotificationData(
+                            title = data[NOTIFICATION_TITLE],
+                            body = data[NOTIFICATION_BODY],
+                            images = data[NOTIFICATION_IMAGES]
                         ),
                         images = images
                     )

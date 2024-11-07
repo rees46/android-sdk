@@ -18,11 +18,11 @@ import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
-import com.personalization.notification.core.NotificationHelper.NOTIFICATION_BODY
-import com.personalization.notification.core.NotificationHelper.NOTIFICATION_IMAGES
-import com.personalization.notification.core.NotificationHelper.NOTIFICATION_TITLE
 import com.personalization.notification.helpers.NotificationImageHelper.loadBitmaps
-import com.personalization.notification.model.PushNotificationData
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.notification.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.notification.model.NotificationData
 import com.personalization.stories.views.StoriesView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -202,7 +202,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 NotificationHelper.createNotification(
                     context = applicationContext,
                     notificationId = testData.hashCode(),
-                    data = PushNotificationData(
+                    data = NotificationData(
                         title = testData[NOTIFICATION_TITLE],
                         body = testData[NOTIFICATION_BODY],
                         images = testData[NOTIFICATION_IMAGES]
