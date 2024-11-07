@@ -12,6 +12,7 @@ import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 object NotificationImageHelper {
@@ -41,19 +42,20 @@ object NotificationImageHelper {
 
             val urlArray = urls.split(",").toTypedArray()
 
-            val bitmaps = urlArray.map { url ->
-                async {
-                    try {
-                        val inputStream: InputStream = URL(url).openStream()
-                        BitmapFactory.decodeStream(inputStream)
-                    } catch (ioException: IOException) {
-                        ErrorHandler.logError("Error caught in load bitmaps", ioException)
-                        null
+            // Использование ограниченного пула потоков
+            coroutineScope {
+                urlArray.map { url ->
+                    async {
+                        try {
+                            val inputStream: InputStream = URL(url).openStream()
+                            BitmapFactory.decodeStream(inputStream)
+                        } catch (ioException: IOException) {
+                            ErrorHandler.logError("Error caught in load bitmaps", ioException)
+                            null
+                        }
                     }
-                }
+                }.awaitAll().filterNotNull()
             }
-
-            bitmaps.awaitAll().filterNotNull()
         }
     }
 }
