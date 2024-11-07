@@ -7,8 +7,6 @@ import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
-import com.personalization.features.notification.core.NotificationHandler
-import com.personalization.features.notification.domain.helpers.NotificationClickHandler
 import com.personalization.features.products.impl.ProductsManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
@@ -96,12 +94,4 @@ class SdkModule {
     @Singleton
     @Provides
     fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
-
-    @Singleton
-    @Provides
-    fun provideNotificationHandler(
-        notificationClickHandler: NotificationClickHandler
-    ): NotificationHandler = NotificationHandler(
-        notificationClickHandler = notificationClickHandler
-    )
 }
