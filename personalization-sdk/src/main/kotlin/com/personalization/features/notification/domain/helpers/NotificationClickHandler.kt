@@ -2,31 +2,41 @@ package com.personalization.features.notification.domain.helpers
 
 import android.os.Bundle
 import com.personalization.features.notification.core.ErrorHandler
-import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
-import javax.inject.Inject
+import com.personalization.features.notification.domain.model.NotificationConstants.CODE_PARAM
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ID
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TYPE
+import com.personalization.features.notification.domain.model.NotificationConstants.TRACK_CLICKED
+import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
+import org.json.JSONException
 import org.json.JSONObject
 
-class NotificationClickHandler @Inject constructor(
-    private val updateSourceUseCase: UpdateNotificationSourceUseCase
-) {
+object NotificationClickHandler {
 
     fun handleNotificationClick(
         extras: Bundle?,
-        sendAsync: (String, JSONObject) -> Unit
+        sendAsync: (String, JSONObject) -> Unit,
+        onResult: (type: String, code: String) -> Unit
     ) {
-        extras?.let {
-            val type = it.getString("NOTIFICATION_TYPE", null)
-            val code = it.getString("NOTIFICATION_ID", null)
+        if (extras == null) {
+            return
+        } else {
+            val type = extras.getString(NOTIFICATION_TYPE, null)
+            val code = extras.getString(NOTIFICATION_ID, null)
 
             if (type != null && code != null) {
-                val params = JSONObject().apply {
-                    put("type", type)
-                    put("code", code)
+                val params = JSONObject()
+                try {
+                    params.put(TYPE_PARAM, type)
+                    params.put(CODE_PARAM, code)
+                    sendAsync(TRACK_CLICKED, params)
+
+                    onResult(type, code)
+                } catch (jsonException: JSONException) {
+                    ErrorHandler.logError(
+                        message = jsonException.message.orEmpty(),
+                        exception = jsonException
+                    )
                 }
-                sendAsync("track/clicked", params)
-                updateSourceUseCase(type, code)
-            } else {
-                ErrorHandler.logError("Missing notification data: type=$type, code=$code")
             }
         }
     }

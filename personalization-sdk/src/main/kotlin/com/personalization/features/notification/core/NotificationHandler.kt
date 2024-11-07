@@ -6,45 +6,42 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.features.notification.data.helpers.NotificationChannelHelper
 import com.personalization.features.notification.data.helpers.NotificationDataMapper
 import com.personalization.features.notification.domain.helpers.NotificationClickHandler
+import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
 import javax.inject.Inject
 import org.json.JSONObject
 
 class NotificationHandler @Inject constructor(
-    private val notificationClickHandler: NotificationClickHandler
+    private val updateSourceUseCase: UpdateNotificationSourceUseCase
 ) {
 
     private lateinit var context: Context
 
     internal fun initialize(context: Context) {
         this.context = context
-        NotificationChannelHelper.createNotificationChannel(context = context)
+        createNotificationChannel()
     }
+
+    private fun createNotificationChannel() = NotificationChannelHelper.createNotificationChannel(
+        context = context
+    )
 
     fun notificationClicked(
         extras: Bundle?,
         sendAsync: (String, JSONObject) -> Unit
     ) {
-        notificationClickHandler.handleNotificationClick(
+        NotificationClickHandler.handleNotificationClick(
             extras = extras,
-            sendAsync = sendAsync
+            sendAsync = sendAsync,
+            onResult = { type, code ->
+                updateSourceUseCase(
+                    type = type,
+                    id = code
+                )
+            }
         )
     }
 
     fun prepareData(remoteMessage: RemoteMessage): MutableMap<String, String> {
         return NotificationDataMapper.mapRemoteMessageToData(remoteMessage = remoteMessage)
-    }
-
-    companion object {
-        private const val NOTIFICATION_TYPE = "NOTIFICATION_TYPE"
-        private const val NOTIFICATION_ID = "NOTIFICATION_ID"
-        private const val TRACK_CLICKED = "track/clicked"
-        private const val TAG = "NotificationHandler"
-        private const val IMAGES_FIELD = "images"
-        private const val TITLE_FIELD = "title"
-        private const val IMAGE_FIELD = "image"
-        private const val ANALYTICS_LABEL_FIELD = "analytics_label"
-        private const val BODY_FIELD = "body"
-        private const val TYPE_PARAM = "type"
-        private const val CODE_PARAM = "code"
     }
 }

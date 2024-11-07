@@ -804,7 +804,7 @@ open class SDK {
         notificationReceived(remoteMessage.data)
 
         onMessageListener?.let { listener ->
-            val data = notificationHandler.prepareData(remoteMessage)
+            val data = notificationHandler.prepareData(remoteMessage = remoteMessage)
             listener.onMessage(data)
         }
     }
