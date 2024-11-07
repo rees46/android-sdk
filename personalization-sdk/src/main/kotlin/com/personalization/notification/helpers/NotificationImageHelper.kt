@@ -9,6 +9,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 
 object NotificationImageHelper {
@@ -19,34 +21,37 @@ object NotificationImageHelper {
         currentIndex: Int
     ) {
         if (!images.isNullOrEmpty() && currentIndex in images.indices) {
-            customView.setViewVisibility(R.id.smallImage, View.VISIBLE)
-            customView.setViewVisibility(R.id.largeImage, View.VISIBLE)
+            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
             customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
             customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])
-            customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
             customView.setViewVisibility(R.id.actionContainer, View.VISIBLE)
+            customView.setViewVisibility(R.id.smallImage, View.VISIBLE)
+            customView.setViewVisibility(R.id.largeImage, View.VISIBLE)
         } else {
-            customView.setViewVisibility(R.id.smallImage, View.GONE)
-            customView.setViewVisibility(R.id.expandArrow, View.GONE)
             customView.setViewVisibility(R.id.actionContainer, View.GONE)
+            customView.setViewVisibility(R.id.expandArrow, View.GONE)
+            customView.setViewVisibility(R.id.smallImage, View.GONE)
         }
     }
 
     suspend fun loadBitmaps(urls: String?): List<Bitmap> {
-        val bitmaps = mutableListOf<Bitmap>()
-        if (urls != null) {
+        return withContext(Dispatchers.IO) {
+            if (urls == null) return@withContext emptyList<Bitmap>()
+
             val urlArray = urls.split(",").toTypedArray()
-            withContext(Dispatchers.IO) {
-                for (url in urlArray) {
+
+            val bitmaps = urlArray.map { url ->
+                async {
                     try {
                         val inputStream: InputStream = URL(url).openStream()
-                        bitmaps.add(BitmapFactory.decodeStream(inputStream))
+                        BitmapFactory.decodeStream(inputStream)
                     } catch (ioException: IOException) {
-                        // Handle error
+                        null
                     }
                 }
             }
+
+            bitmaps.awaitAll().filterNotNull()
         }
-        return bitmaps
     }
 }
