@@ -16,6 +16,7 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.notification.core.NotificationHandler
+import com.personalization.notification.core.NotificationHelper
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -119,6 +120,8 @@ open class SDK {
         TAG = tag
 
         segment = getPreferencesValueUseCase.getSegment()
+
+        NotificationHelper.notificationId = notificationId
 
         notificationHandler.initialize(context)
 

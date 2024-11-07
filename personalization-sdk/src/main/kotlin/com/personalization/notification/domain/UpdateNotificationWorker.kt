@@ -6,6 +6,7 @@ import androidx.work.WorkerParameters
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
 import com.personalization.notification.helpers.NotificationImageHelper
+import com.personalization.notification.model.PushNotificationData
 import java.io.IOException
 
 class UpdateNotificationWorker(
@@ -27,10 +28,10 @@ class UpdateNotificationWorker(
             Result.failure()
         } else {
 
-            val data = mapOf(
-                NotificationHelper.NOTIFICATION_IMAGES to images,
-                NotificationHelper.NOTIFICATION_TITLE to title,
-                NotificationHelper.NOTIFICATION_BODY to body
+            val data = PushNotificationData(
+                title = title,
+                body = body,
+                images = images
             )
 
             try {

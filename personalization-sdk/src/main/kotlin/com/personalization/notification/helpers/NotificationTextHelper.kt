@@ -2,12 +2,21 @@ package com.personalization.notification.helpers
 
 import android.widget.RemoteViews
 import com.personalization.R
-import com.personalization.notification.core.NotificationHelper
+import com.personalization.notification.model.PushNotificationData
 
 object NotificationTextHelper {
 
-    fun setNotificationText(customView: RemoteViews, data: Map<String, String?>) {
-        customView.setTextViewText(R.id.title, data[NotificationHelper.NOTIFICATION_TITLE])
-        customView.setTextViewText(R.id.body, data[NotificationHelper.NOTIFICATION_BODY])
+    fun setNotificationText(
+        customView: RemoteViews,
+        data: PushNotificationData
+    ) {
+        customView.setTextViewText(
+            /* viewId = */ R.id.title,
+            /* text = */ data.title
+        )
+        customView.setTextViewText(
+            /* viewId = */ R.id.body,
+            /* text = */ data.body
+        )
     }
 }

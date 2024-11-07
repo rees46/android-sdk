@@ -5,6 +5,7 @@ import com.personalization.BuildConfig
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
 import com.personalization.notification.helpers.NotificationImageHelper
+import com.personalization.notification.model.PushNotificationData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,9 +69,12 @@ class REES46 private constructor() : SDK() {
                     NotificationHelper.createNotification(
                         context = context,
                         notificationId = data.hashCode(),
-                        data = data,
-                        images = images,
-                        currentIndex = 0
+                        data = PushNotificationData(
+                            title = data[NotificationHelper.NOTIFICATION_TITLE],
+                            body = data[NotificationHelper.NOTIFICATION_BODY],
+                            images = data[NotificationHelper.NOTIFICATION_IMAGES]
+                        ),
+                        images = images
                     )
                 }
             }

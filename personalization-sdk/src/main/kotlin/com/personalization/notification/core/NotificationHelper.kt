@@ -9,6 +9,7 @@ import com.personalization.R
 import com.personalization.notification.helpers.NotificationActionHelper
 import com.personalization.notification.helpers.NotificationImageHelper
 import com.personalization.notification.helpers.NotificationTextHelper
+import com.personalization.notification.model.PushNotificationData
 
 object NotificationHelper {
 
@@ -20,12 +21,14 @@ object NotificationHelper {
     const val NOTIFICATION_TITLE = "title"
     const val NOTIFICATION_BODY = "body"
 
+    var notificationId: String? = null
+
     fun createNotification(
         context: Context,
         notificationId: Int,
-        data: Map<String, String?>,
+        data: PushNotificationData,
         images: List<Bitmap>?,
-        currentIndex: Int
+        currentIndex: Int = 0
     ) {
         val customView = RemoteViews(context.packageName, R.layout.custom_notification)
 
@@ -52,11 +55,12 @@ object NotificationHelper {
             .setCustomBigContentView(customView)
             .setAutoCancel(true)
 
-        val notificationManager = context.getSystemService(
+        val notificationManager: NotificationManager = context.getSystemService(
             Context.NOTIFICATION_SERVICE
         ) as NotificationManager
+
         notificationManager.notify(
-            notificationId,
+            (this.notificationId ?: notificationId).hashCode(),
             notificationBuilder.build()
         )
     }

@@ -22,6 +22,7 @@ import com.personalization.notification.core.NotificationHelper.NOTIFICATION_BOD
 import com.personalization.notification.core.NotificationHelper.NOTIFICATION_IMAGES
 import com.personalization.notification.core.NotificationHelper.NOTIFICATION_TITLE
 import com.personalization.notification.helpers.NotificationImageHelper.loadBitmaps
+import com.personalization.notification.model.PushNotificationData
 import com.personalization.stories.views.StoriesView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -201,9 +202,12 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                 NotificationHelper.createNotification(
                     context = applicationContext,
                     notificationId = testData.hashCode(),
-                    data = testData,
-                    images = images,
-                    currentIndex = 0
+                    data = PushNotificationData(
+                        title = testData[NOTIFICATION_TITLE],
+                        body = testData[NOTIFICATION_BODY],
+                        images = testData[NOTIFICATION_IMAGES]
+                    ),
+                    images = images
                 )
             }
         }
