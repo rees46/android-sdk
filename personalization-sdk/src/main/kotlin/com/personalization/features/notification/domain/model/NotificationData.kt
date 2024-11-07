@@ -1,4 +1,4 @@
-package com.personalization.notification.model
+package com.personalization.features.notification.domain.model
 
 data class NotificationData(
     val title: String?,

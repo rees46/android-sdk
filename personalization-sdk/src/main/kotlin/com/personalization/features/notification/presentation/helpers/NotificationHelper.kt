@@ -1,4 +1,4 @@
-package com.personalization.notification.core
+package com.personalization.features.notification.presentation.helpers
 
 import android.app.NotificationManager
 import android.content.Context
@@ -6,11 +6,8 @@ import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.R
-import com.personalization.notification.helpers.NotificationImageHelper
-import com.personalization.notification.helpers.NotificationTextHelper
-import com.personalization.notification.helpers.NotificationViewHelper
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_CHANNEL
-import com.personalization.notification.model.NotificationData
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_CHANNEL
+import com.personalization.features.notification.domain.model.NotificationData
 
 object NotificationHelper {
 
@@ -53,7 +50,7 @@ object NotificationHelper {
         ) as NotificationManager
 
         notificationManager.notify(
-            (this.notificationId ?: notificationId).hashCode(),
+            (NotificationHelper.notificationId ?: notificationId).hashCode(),
             notificationBuilder.build()
         )
     }

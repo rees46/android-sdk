@@ -1,16 +1,16 @@
-package com.personalization.notification.domain
+package com.personalization.features.notification.data.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personalization.SDK
-import com.personalization.notification.core.NotificationHelper
-import com.personalization.notification.helpers.NotificationImageHelper
-import com.personalization.notification.model.NotificationConstants.CURRENT_IMAGE_INDEX
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_BODY
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_IMAGES
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_TITLE
-import com.personalization.notification.model.NotificationData
+import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.presentation.helpers.NotificationHelper
+import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
 import java.io.IOException
 
 class UpdateNotificationWorker(

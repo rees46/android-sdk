@@ -1,4 +1,4 @@
-package com.personalization.notification.model
+package com.personalization.features.notification.domain.model
 
 object NotificationConstants {
     const val NOTIFICATION_CHANNEL = "notification_channel"

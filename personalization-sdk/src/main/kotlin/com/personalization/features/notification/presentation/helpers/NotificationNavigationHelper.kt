@@ -1,15 +1,15 @@
-package com.personalization.notification.helpers
+package com.personalization.features.notification.presentation.helpers
 
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.personalization.notification.core.RequestCodeGenerator
-import com.personalization.notification.domain.NotificationBroadcastReceiver
-import com.personalization.notification.model.NotificationConstants.CURRENT_IMAGE_INDEX
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_BODY
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_IMAGES
-import com.personalization.notification.model.NotificationConstants.NOTIFICATION_TITLE
-import com.personalization.notification.model.NotificationData
+import com.personalization.features.notification.core.RequestCodeGenerator
+import com.personalization.features.notification.data.broadcast.NotificationBroadcastReceiver
+import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationData
 
 object NotificationNavigationHelper {
 

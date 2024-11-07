@@ -18,7 +18,7 @@
             </intent-filter>
         </service>
         <receiver
-            android:name=".notification.domain.NotificationBroadcastReceiver"
+            android:name=".features.notification.data.broadcast.NotificationBroadcastReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>

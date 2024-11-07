@@ -1,4 +1,4 @@
-package com.personalization.notification
+package com.personalization.features.notification.core
 
 import com.personalization.SDK
 
