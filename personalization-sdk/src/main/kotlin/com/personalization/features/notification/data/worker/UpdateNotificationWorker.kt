@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personalization.SDK
+import com.personalization.features.notification.core.ErrorHandler
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
@@ -40,6 +41,7 @@ class UpdateNotificationWorker(
 
             try {
                 val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
+
                 NotificationHelper.createNotification(
                     context = context,
                     notificationId = data.hashCode(),
@@ -50,7 +52,7 @@ class UpdateNotificationWorker(
 
                 Result.success()
             } catch (ioException: IOException) {
-                SDK.error("Error caught in updateNotification", ioException)
+                ErrorHandler.logError("Error caught in updateNotification", ioException)
                 Result.failure()
             }
         }

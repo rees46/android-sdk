@@ -20,7 +20,10 @@ object NotificationHelper {
         images: List<Bitmap>?,
         currentIndex: Int = 0
     ) {
-        val customView = RemoteViews(context.packageName, R.layout.custom_notification)
+        val customView = RemoteViews(
+            /* packageName = */ context.packageName,
+            /* layoutId = */ R.layout.custom_notification
+        )
 
         NotificationTextHelper.setNotificationText(
             customView = customView,
