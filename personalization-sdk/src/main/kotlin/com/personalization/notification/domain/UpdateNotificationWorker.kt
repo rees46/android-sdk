@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
+import com.personalization.notification.helpers.NotificationImageHelper
 import java.io.IOException
 
 class UpdateNotificationWorker(
@@ -33,9 +34,10 @@ class UpdateNotificationWorker(
             )
 
             try {
-                val loadedImages = NotificationHelper.loadBitmaps(urls = images)
+                val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
                 NotificationHelper.createNotification(
                     context = context,
+                    notificationId = data.hashCode(),
                     data = data,
                     images = loadedImages,
                     currentIndex = newIndex

@@ -5,7 +5,7 @@ import android.util.Log
 import com.personalization.SDK
 import com.personalization.notification.core.NotificationHelper
 import com.personalization.notification.core.NotificationHelper.createNotification
-import com.personalization.notification.core.NotificationHelper.loadBitmaps
+import com.personalization.notification.helpers.NotificationImageHelper.loadBitmaps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,6 +36,7 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
                 }
                 createNotification(
                     context = applicationContext,
+                    notificationId = data.hashCode(),
                     data = data,
                     images = images,
                     currentIndex = 0
