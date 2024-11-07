@@ -24,10 +24,10 @@ object NotificationNavigationHelper {
             putExtra(NotificationHelper.NOTIFICATION_IMAGES, data.images)
         }
         return PendingIntent.getBroadcast(
-            context,
-            RequestCodeGenerator.generateRequestCode(action, newIndex),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            /* context = */ context,
+            /* requestCode = */ RequestCodeGenerator.generateRequestCode(action, newIndex),
+            /* intent = */ intent,
+            /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 }
