@@ -5,7 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
-import com.personalization.R
+import com.personalization.features.notification.core.NotificationResources
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_CHANNEL
 import com.personalization.features.notification.domain.model.NotificationData
 
@@ -18,34 +18,34 @@ object NotificationHelper {
         notificationId: Int,
         data: NotificationData,
         images: List<Bitmap>?,
-        currentIndex: Int = 0
+        currentImageIndex: Int = 0
     ) {
-        val customView = RemoteViews(
+        val view = RemoteViews(
             /* packageName = */ context.packageName,
-            /* layoutId = */ R.layout.custom_notification
+            /* layoutId = */ NotificationResources.NOTIFICATION_LAYOUT
         )
 
         NotificationTextHelper.setNotificationText(
-            customView = customView,
+            customView = view,
             data = data
         )
         NotificationImageHelper.displayImages(
-            customView = customView,
+            customView = view,
             images = images,
-            currentIndex = currentIndex
+            currentIndex = currentImageIndex
         )
         NotificationViewHelper.setNavigationActions(
-            customView = customView,
+            customView = view,
             context = context,
             data = data,
-            currentIndex = currentIndex,
+            currentIndex = currentImageIndex,
             imageCount = images?.size ?: 0
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification_logo)
-            .setCustomContentView(customView)
-            .setCustomBigContentView(customView)
+            .setSmallIcon(NotificationResources.NOTIFICATION_ICON)
+            .setCustomContentView(view)
+            .setCustomBigContentView(view)
             .setAutoCancel(true)
 
         val notificationManager: NotificationManager = context.getSystemService(

@@ -47,7 +47,7 @@ class UpdateNotificationWorker(
                     notificationId = data.hashCode(),
                     data = data,
                     images = loadedImages,
-                    currentIndex = newIndex
+                    currentImageIndex = newIndex
                 )
 
                 Result.success()
