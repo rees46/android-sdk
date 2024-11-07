@@ -6,9 +6,9 @@ import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.R
-import com.personalization.notification.helpers.NotificationActionHelper
 import com.personalization.notification.helpers.NotificationImageHelper
 import com.personalization.notification.helpers.NotificationTextHelper
+import com.personalization.notification.helpers.NotificationViewHelper
 import com.personalization.notification.model.PushNotificationData
 
 object NotificationHelper {
@@ -41,7 +41,7 @@ object NotificationHelper {
             images = images,
             currentIndex = currentIndex
         )
-        NotificationActionHelper.setNavigationActions(
+        NotificationViewHelper.setNavigationActions(
             customView = customView,
             context = context,
             data = data,
