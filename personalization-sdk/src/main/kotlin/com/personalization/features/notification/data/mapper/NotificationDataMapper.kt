@@ -1,4 +1,4 @@
-package com.personalization.features.notification.data.helpers
+package com.personalization.features.notification.data.mapper
 
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.features.notification.domain.model.NotificationConstants.ANALYTICS_LABEL_FIELD

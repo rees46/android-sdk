@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.features.notification.data.helpers.NotificationChannelHelper
-import com.personalization.features.notification.data.helpers.NotificationDataMapper
+import com.personalization.features.notification.data.mapper.NotificationDataMapper
 import com.personalization.features.notification.domain.helpers.NotificationClickHandler
 import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
 import javax.inject.Inject
