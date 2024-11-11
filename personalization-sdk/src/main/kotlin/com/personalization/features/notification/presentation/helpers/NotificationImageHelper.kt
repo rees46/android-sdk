@@ -42,7 +42,6 @@ object NotificationImageHelper {
 
             val urlArray = urls.split(",").toTypedArray()
 
-            // Использование ограниченного пула потоков
             coroutineScope {
                 urlArray.map { url ->
                     async {

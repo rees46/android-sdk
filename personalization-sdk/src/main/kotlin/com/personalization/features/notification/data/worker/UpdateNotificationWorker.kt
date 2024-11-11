@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personalization.SDK
-import com.personalization.features.notification.core.ErrorHandler
+import com.personalization.errors.NetworkError
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
@@ -52,9 +52,17 @@ class UpdateNotificationWorker(
 
                 Result.success()
             } catch (ioException: IOException) {
-                ErrorHandler.logError("Error caught in updateNotification", ioException)
+                NetworkError(
+                    tag = TAG,
+                    functionName = FUNC_DO_WORK
+                ).logError()
                 Result.failure()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "UpdateNotificationWorker"
+        private const val FUNC_DO_WORK = "DoWork"
     }
 }

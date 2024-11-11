@@ -58,7 +58,7 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
 
                     else -> EmptyFieldError(
                         tag = TAG,
-                        functionName = ON_RECEIVE,
+                        functionName = FUNC_ON_RECEIVE,
                         message = "One of the fields is empty or null"
                     ).logError()
                 }
@@ -66,7 +66,7 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
 
             else -> ActionsError(
                 tag = TAG,
-                functionName = ON_RECEIVE,
+                functionName = FUNC_ON_RECEIVE,
                 actionName = action.orEmpty(),
                 message = "Due to unknown action"
             ).logError()
@@ -75,7 +75,7 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "NotificationBroadcastReceiver"
-        private const val ON_RECEIVE = "OnReceive"
+        private const val FUNC_ON_RECEIVE = "OnReceive"
         private const val UPDATE_WORK = "update_notification_work"
     }
 }
