@@ -1,4 +1,4 @@
-package com.personalization.features.notification.core
+package com.personalization.resources
 
 import com.personalization.R
 

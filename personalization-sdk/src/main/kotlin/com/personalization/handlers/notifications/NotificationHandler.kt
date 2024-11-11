@@ -1,4 +1,4 @@
-package com.personalization.features.notification.core
+package com.personalization.handlers.notifications
 
 import android.content.Context
 import android.os.Bundle

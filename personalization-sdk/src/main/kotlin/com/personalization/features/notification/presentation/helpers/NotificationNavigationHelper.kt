@@ -3,15 +3,18 @@ package com.personalization.features.notification.presentation.helpers
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.personalization.features.notification.core.RequestCodeGenerator
 import com.personalization.features.notification.data.broadcast.NotificationBroadcastReceiver
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 object NotificationNavigationHelper {
+
+    private val requestCodeCounter = AtomicInteger(0)
 
     fun createNavigationPendingIntent(
         context: Context,
@@ -28,9 +31,16 @@ object NotificationNavigationHelper {
         }
         return PendingIntent.getBroadcast(
             /* context = */ context,
-            /* requestCode = */ RequestCodeGenerator.generateRequestCode(action, newIndex),
+            /* requestCode = */ generateRequestCode(action, newIndex),
             /* intent = */ intent,
             /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private fun generateRequestCode(action: String, currentIndex: Int): Int {
+        val baseCode = "${action}_${currentIndex}".hashCode()
+        val uniqueCode = if (baseCode != Int.MIN_VALUE) abs(baseCode) else 0
+
+        return requestCodeCounter.incrementAndGet() + uniqueCode
     }
 }

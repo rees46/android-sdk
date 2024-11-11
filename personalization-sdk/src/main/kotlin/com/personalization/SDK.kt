@@ -15,8 +15,8 @@ import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.features.notification.core.NotificationHandler
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
+import com.personalization.handlers.notifications.NotificationHandler
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
