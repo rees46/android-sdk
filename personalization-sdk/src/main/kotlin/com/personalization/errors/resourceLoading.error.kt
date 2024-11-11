@@ -2,15 +2,16 @@ package com.personalization.errors
 
 import android.util.Log
 
-class NetworkError(
+class ResourceLoadError(
     private val tag: String,
-    private val functionName: String
+    private val functionName: String,
+    private val message: String
 ) {
 
     fun logError() {
         Log.e(
             /* tag = */ tag,
-            /* msg = */ "Error caught in $functionName : Network connection issue "
+            /* msg = */ "Error caught in $functionName: $message"
         )
     }
 }

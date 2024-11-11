@@ -1,7 +1,7 @@
 package com.personalization.features.notification.domain.helpers
 
 import android.os.Bundle
-import com.personalization.features.notification.core.ErrorHandler
+import com.personalization.errors.ParsingJsonError
 import com.personalization.features.notification.domain.model.NotificationConstants.CODE_PARAM
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ID
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TYPE
@@ -32,10 +32,11 @@ object NotificationClickHandler {
 
                     onResult(type, code)
                 } catch (jsonException: JSONException) {
-                    ErrorHandler.logError(
-                        message = jsonException.message.orEmpty(),
-                        exception = jsonException
-                    )
+                    ParsingJsonError(
+                        tag = this@NotificationClickHandler.javaClass.name,
+                        functionName = "handleNotificationClick",
+                        message = jsonException.message.orEmpty()
+                    ).logError()
                 }
             }
         }

@@ -5,7 +5,7 @@ import android.graphics.BitmapFactory
 import android.view.View
 import android.widget.RemoteViews
 import com.personalization.R
-import com.personalization.features.notification.core.ErrorHandler
+import com.personalization.errors.ResourceLoadError
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
@@ -49,7 +49,11 @@ object NotificationImageHelper {
                             val inputStream: InputStream = URL(url).openStream()
                             BitmapFactory.decodeStream(inputStream)
                         } catch (ioException: IOException) {
-                            ErrorHandler.logError("Error caught in load bitmaps", ioException)
+                            ResourceLoadError(
+                                tag = this@NotificationImageHelper.javaClass.name,
+                                functionName = "loadBitmaps",
+                                message = "Loading bitmaps"
+                            ).logError()
                             null
                         }
                     }
