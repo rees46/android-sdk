@@ -9,7 +9,8 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.personalization.features.notification.core.ErrorHandler
+import com.personalization.errors.ActionsError
+import com.personalization.errors.EmptyFieldError
 import com.personalization.features.notification.data.worker.UpdateNotificationWorker
 import com.personalization.features.notification.domain.model.NotificationConstants.ACTION_NEXT_IMAGE
 import com.personalization.features.notification.domain.model.NotificationConstants.ACTION_PREVIOUS_IMAGE
@@ -27,30 +28,54 @@ class NotificationBroadcastReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(NOTIFICATION_TITLE)
         val body = intent.getStringExtra(NOTIFICATION_BODY)
 
-        if (action == ACTION_NEXT_IMAGE || action == ACTION_PREVIOUS_IMAGE) {
-            if (!images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
-                val inputData = Data.Builder()
-                    .putString(NOTIFICATION_IMAGES, images)
-                    .putString(NOTIFICATION_TITLE, title)
-                    .putString(NOTIFICATION_BODY, body)
-                    .putInt(CURRENT_IMAGE_INDEX, currentIndex)
-                    .build()
+        when (action) {
+            ACTION_NEXT_IMAGE, ACTION_PREVIOUS_IMAGE -> {
+                when {
+                    !images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty() -> {
+                        val inputData = Data.Builder()
+                            .putString(NOTIFICATION_IMAGES, images)
+                            .putString(NOTIFICATION_TITLE, title)
+                            .putString(NOTIFICATION_BODY, body)
+                            .putInt(CURRENT_IMAGE_INDEX, currentIndex)
+                            .build()
 
-                val updateNotificationWork = OneTimeWorkRequestBuilder<UpdateNotificationWorker>()
-                    .setInputData(inputData)
-                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()) // Ограничение на сеть, если необходимо
-                    .build()
+                        val updateNotificationWork =
+                            OneTimeWorkRequestBuilder<UpdateNotificationWorker>()
+                                .setInputData(inputData)
+                                .setConstraints(
+                                    Constraints.Builder().setRequiredNetworkType(
+                                        networkType = NetworkType.UNMETERED
+                                    ).build()
+                                )
+                                .build()
 
-                WorkManager.getInstance(context).enqueueUniqueWork(
-                    "update_notification_work",
-                    ExistingWorkPolicy.APPEND_OR_REPLACE,
-                    updateNotificationWork
-                )
-            } else {
-                ErrorHandler.logError("Error caught in onReceive because one of the fields is empty or null")
+                        WorkManager.getInstance(context).enqueueUniqueWork(
+                            /* uniqueWorkName = */ UPDATE_WORK,
+                            /* existingWorkPolicy = */ ExistingWorkPolicy.APPEND_OR_REPLACE,
+                            /* work = */ updateNotificationWork
+                        )
+                    }
+
+                    else -> EmptyFieldError(
+                        tag = TAG,
+                        functionName = ON_RECEIVE,
+                        message = "One of the fields is empty or null"
+                    ).logError()
+                }
             }
-        } else {
-            ErrorHandler.logError("Error caught in onReceive due to unknown action $action")
+
+            else -> ActionsError(
+                tag = TAG,
+                functionName = ON_RECEIVE,
+                actionName = action.orEmpty(),
+                message = "Due to unknown action"
+            ).logError()
         }
+    }
+
+    companion object {
+        private const val TAG = "NotificationBroadcastReceiver"
+        private const val ON_RECEIVE = "OnReceive"
+        private const val UPDATE_WORK = "update_notification_work"
     }
 }
