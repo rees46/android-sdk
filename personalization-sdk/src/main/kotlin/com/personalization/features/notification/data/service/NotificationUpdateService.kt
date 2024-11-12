@@ -3,6 +3,7 @@ package com.personalization.features.notification.data.service
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.widget.Toast
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
@@ -19,35 +20,33 @@ import kotlinx.coroutines.launch
 class NotificationUpdateService : Service() {
 
     private val serviceJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
+    private val serviceScope = CoroutineScope(
+        context = Dispatchers.IO + serviceJob
+    )
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val currentIndex = intent?.getIntExtra(CURRENT_IMAGE_INDEX, 0) ?: 0
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int
+    ): Int {
+        val currentIndex = intent?.getIntExtra(CURRENT_IMAGE_INDEX, -1) ?: -1
         val images = intent?.getStringExtra(NOTIFICATION_IMAGES)
         val title = intent?.getStringExtra(NOTIFICATION_TITLE)
         val body = intent?.getStringExtra(NOTIFICATION_BODY)
 
-        if (!images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
-            serviceScope.launch {
-                try {
-                    val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
-
-                    NotificationHelper.createNotification(
-                        context = this@NotificationUpdateService,
-                        notificationId = (title + body).hashCode(),
-                        data = NotificationData(title = title, body = body, images = images),
-                        images = loadedImages,
-                        currentImageIndex = currentIndex
-                    )
-                } catch (ioException: IOException) {
-                    ioException.printStackTrace()
-                } finally {
-                    stopSelf(startId)
-                }
-            }
-        } else {
+        if (!isValidNotificationData(images, title, body, currentIndex)) {
+            showToast("Invalid notification data")
             stopSelf(startId)
+            return START_NOT_STICKY
         }
+
+        updateNotification(
+            images = images,
+            title = title,
+            body = body,
+            currentIndex = currentIndex,
+            startId = startId
+        )
 
         return START_NOT_STICKY
     }
@@ -57,5 +56,52 @@ class NotificationUpdateService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
+    }
+
+    private fun isValidNotificationData(
+        images: String?,
+        title: String?,
+        body: String?,
+        currentIndex: Int
+    ): Boolean {
+        return !images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty() && currentIndex >= 0
+    }
+
+    private fun updateNotification(
+        images: String?,
+        title: String?,
+        body: String?,
+        currentIndex: Int,
+        startId: Int
+    ) {
+        serviceScope.launch {
+            try {
+                val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
+                NotificationHelper.createNotification(
+                    context = this@NotificationUpdateService,
+                    notificationId = (title + body).hashCode(),
+                    data = NotificationData(
+                        title = title,
+                        body = body,
+                        images = images
+                    ),
+                    images = loadedImages,
+                    currentImageIndex = currentIndex
+                )
+            } catch (ioException: IOException) {
+                showToast("Error loading images")
+                ioException.printStackTrace()
+            } finally {
+                stopSelf(startId)
+            }
+        }
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(
+            /* context = */ applicationContext,
+            /* text = */ message,
+            /* duration = */ Toast.LENGTH_SHORT
+        ).show()
     }
 }
