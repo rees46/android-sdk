@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.widget.Toast
-import com.personalization.R
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
@@ -12,6 +11,8 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
+import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_DATA_ERROR
+import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_IMAGE_ERROR
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +39,7 @@ class NotificationService : Service() {
         if (!isValidNotificationData(images, title, body, currentIndex)) {
             showToast(
                 message = applicationContext.getString(
-                    /* resId = */ R.string.notification_data_loading_error
+                    /* resId = */ NOTIFICATION_LOADING_DATA_ERROR
                 )
             )
             stopSelf(startId)
@@ -96,7 +97,7 @@ class NotificationService : Service() {
             } catch (ioException: IOException) {
                 showToast(
                     message = applicationContext.getString(
-                        /* resId = */ R.string.notification_image_loading_error
+                        /* resId = */ NOTIFICATION_LOADING_IMAGE_ERROR
                     )
                 )
                 ioException.printStackTrace()
