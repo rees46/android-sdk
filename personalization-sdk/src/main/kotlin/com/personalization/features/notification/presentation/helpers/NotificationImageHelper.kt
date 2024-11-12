@@ -23,6 +23,7 @@ object NotificationImageHelper {
         currentIndex: Int
     ) {
         if (!images.isNullOrEmpty() && currentIndex in images.indices) {
+            customView.setViewVisibility(R.id.loadingProgressBar, View.GONE)
             customView.setImageViewResource(R.id.expandArrow, R.drawable.ic_arrow_open)
             customView.setImageViewBitmap(R.id.smallImage, images[currentIndex])
             customView.setImageViewBitmap(R.id.largeImage, images[currentIndex])

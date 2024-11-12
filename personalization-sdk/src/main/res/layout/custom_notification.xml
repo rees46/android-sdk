@@ -85,33 +85,47 @@
                 tools:src="@drawable/image_sample"
                 tools:visibility="visible" />
 
+            <ProgressBar
+                android:id="@+id/loadingProgressBar"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:layout_gravity="center"
+                android:background="@drawable/notification_roudned_background"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/colorGray"
+                android:indeterminateTintMode="src_atop"
+                android:visibility="visible"
+                tools:ignore="UnusedAttribute"
+                tools:visibility="visible" />
+
         </FrameLayout>
 
         <LinearLayout
             android:id="@+id/actionContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingVertical="@dimen/medium_margin"
             android:layout_marginHorizontal="@dimen/large_margin"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingVertical="@dimen/medium_margin">
 
             <TextView
                 android:id="@+id/action1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
                 android:layout_marginStart="@dimen/margin_small"
                 android:layout_marginEnd="@dimen/large_margin"
-                android:textStyle="bold"
-                android:text="@string/notification_button_back" />
+                android:text="@string/notification_button_back"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/action2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="@string/notification_button_forward"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:text="@string/notification_button_forward" />
+                android:textStyle="bold" />
         </LinearLayout>
 
     </LinearLayout>
