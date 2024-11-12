@@ -17,15 +17,7 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        <receiver
-            android:name=".features.notification.data.broadcast.NotificationBroadcastReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="ACTION_NEXT_IMAGE" />
-                <action android:name="ACTION_PREVIOUS_IMAGE" />
-            </intent-filter>
-        </receiver>
+        <service android:name=".features.notification.data.service.NotificationUpdateService" />
 
     </application>
 </manifest>
