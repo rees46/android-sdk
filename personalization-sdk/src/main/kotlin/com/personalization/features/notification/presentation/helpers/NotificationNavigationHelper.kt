@@ -30,12 +30,6 @@ object NotificationNavigationHelper {
             putExtra(NOTIFICATION_IMAGES, data.images)
         }
 
-        println("****DETEKT LOG**** createNavigationPendingIntent: $newIndex")
-        println("****DETEKT LOG**** createNavigationPendingIntent: $action")
-        println("****DETEKT LOG**** createNavigationPendingIntent: ${data.images}")
-        println("****DETEKT LOG**** createNavigationPendingIntent: ${data.title}")
-        println("****DETEKT LOG**** createNavigationPendingIntent: ${data.body}")
-
         return PendingIntent.getService(
             /* context = */ context,
             /* requestCode = */ generateRequestCode(action, newIndex),

@@ -26,12 +26,8 @@ class NotificationUpdateService : Service() {
         val images = intent?.getStringExtra(NOTIFICATION_IMAGES)
         val title = intent?.getStringExtra(NOTIFICATION_TITLE)
         val body = intent?.getStringExtra(NOTIFICATION_BODY)
-        println("****DETEKT LOG**** : $currentIndex")
-        println("****DETEKT LOG**** : $images")
-        println("****DETEKT LOG**** : $title")
-        println("****DETEKT LOG**** : $body")
+
         if (!images.isNullOrEmpty() && !title.isNullOrEmpty() && !body.isNullOrEmpty()) {
-            println("****DETEKT LOG**** : launch")
             serviceScope.launch {
                 try {
                     val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
