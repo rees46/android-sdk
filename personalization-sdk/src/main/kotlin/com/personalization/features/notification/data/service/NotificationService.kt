@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.widget.Toast
+import com.personalization.R
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
@@ -17,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-class NotificationUpdateService : Service() {
+class NotificationService : Service() {
 
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(
@@ -35,7 +36,11 @@ class NotificationUpdateService : Service() {
         val body = intent?.getStringExtra(NOTIFICATION_BODY)
 
         if (!isValidNotificationData(images, title, body, currentIndex)) {
-            showToast("Invalid notification data")
+            showToast(
+                message = applicationContext.getString(
+                    /* resId = */ R.string.notification_data_loading_error
+                )
+            )
             stopSelf(startId)
             return START_NOT_STICKY
         }
@@ -78,7 +83,7 @@ class NotificationUpdateService : Service() {
             try {
                 val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
                 NotificationHelper.createNotification(
-                    context = this@NotificationUpdateService,
+                    context = this@NotificationService,
                     notificationId = (title + body).hashCode(),
                     data = NotificationData(
                         title = title,
@@ -89,7 +94,11 @@ class NotificationUpdateService : Service() {
                     currentImageIndex = currentIndex
                 )
             } catch (ioException: IOException) {
-                showToast("Error loading images")
+                showToast(
+                    message = applicationContext.getString(
+                        /* resId = */ R.string.notification_image_loading_error
+                    )
+                )
                 ioException.printStackTrace()
             } finally {
                 stopSelf(startId)
