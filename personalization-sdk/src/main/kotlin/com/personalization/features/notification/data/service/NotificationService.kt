@@ -14,12 +14,16 @@ import com.personalization.features.notification.presentation.helpers.Notificati
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_DATA_ERROR
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_IMAGE_ERROR
 import java.io.IOException
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class NotificationService : Service() {
+
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
 
     private val serviceJob = Job()
     private val serviceScope = CoroutineScope(
@@ -83,7 +87,7 @@ class NotificationService : Service() {
         serviceScope.launch {
             try {
                 val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
-                NotificationHelper.createNotification(
+                notificationHelper.createNotification(
                     context = this@NotificationService,
                     notificationId = (title + body).hashCode(),
                     data = NotificationData(

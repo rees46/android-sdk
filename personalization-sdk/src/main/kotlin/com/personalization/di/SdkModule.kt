@@ -27,71 +27,72 @@ import javax.inject.Singleton
 @Module
 class SdkModule {
 
-    @Singleton
-    @Provides
-    fun provideRegisterManager(
-        getPreferencesValueUseCase: GetPreferencesValueUseCase,
-        savePreferencesValueUseCase: SavePreferencesValueUseCase,
-        updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
-        getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-        executeQueueTasksUseCase: ExecuteQueueTasksUseCase
-    ): RegisterManager = RegisterManager(
-        getPreferencesValueUseCase = getPreferencesValueUseCase,
-        savePreferencesValueUseCase = savePreferencesValueUseCase,
-        updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
-        getUserSettingsValueUseCase = getUserSettingsValueUseCase,
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase,
-        executeQueueTasksUseCase = executeQueueTasksUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideRegisterManager(
+    getPreferencesValueUseCase: GetPreferencesValueUseCase,
+    savePreferencesValueUseCase: SavePreferencesValueUseCase,
+    updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
+    getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+    executeQueueTasksUseCase: ExecuteQueueTasksUseCase
+  ): RegisterManager = RegisterManager(
+    getPreferencesValueUseCase = getPreferencesValueUseCase,
+    savePreferencesValueUseCase = savePreferencesValueUseCase,
+    updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
+    getUserSettingsValueUseCase = getUserSettingsValueUseCase,
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase,
+    executeQueueTasksUseCase = executeQueueTasksUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideRecommendationManager(
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): RecommendationManager = RecommendationManagerImpl(
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideRecommendationManager(
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase
+  ): RecommendationManager = RecommendationManagerImpl(
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideProductsManager(
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): ProductsManager = ProductsManagerImpl(
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideProductsManager(
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase
+  ): ProductsManager = ProductsManagerImpl(
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideTrackEventManager(
-        getRecommendedByUseCase: GetRecommendedByUseCase,
-        setRecommendedByUseCase: SetRecommendedByUseCase,
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): TrackEventManager = TrackEventManagerImpl(
-        getRecommendedByUseCase = getRecommendedByUseCase,
-        setRecommendedByUseCase = setRecommendedByUseCase,
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideTrackEventManager(
+    getRecommendedByUseCase: GetRecommendedByUseCase,
+    setRecommendedByUseCase: SetRecommendedByUseCase,
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase
+  ): TrackEventManager = TrackEventManagerImpl(
+    getRecommendedByUseCase = getRecommendedByUseCase,
+    setRecommendedByUseCase = setRecommendedByUseCase,
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideStoriesManager(
-        setRecommendedByUseCase: SetRecommendedByUseCase,
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): StoriesManager = StoriesManager(
-        setRecommendedByUseCase = setRecommendedByUseCase,
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideStoriesManager(
+    setRecommendedByUseCase: SetRecommendedByUseCase,
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase
+  ): StoriesManager = StoriesManager(
+    setRecommendedByUseCase = setRecommendedByUseCase,
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideSearchManager(
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
-    ): SearchManager = SearchManagerImpl(
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
+  @Singleton
+  @Provides
+  fun provideSearchManager(
+    sendNetworkMethodUseCase: SendNetworkMethodUseCase
+  ): SearchManager = SearchManagerImpl(
+    sendNetworkMethodUseCase = sendNetworkMethodUseCase
+  )
 
-    @Singleton
-    @Provides
-    fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
+  @Singleton
+  @Provides
+  fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
+
 }

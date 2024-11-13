@@ -14,6 +14,7 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
@@ -93,6 +94,9 @@ open class SDK {
     @Inject
     lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
 
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
+
 
     /**
      * @param shopId Shop key
@@ -109,7 +113,7 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        val sdkComponent = DaggerSdkComponent.factory().create()
+        val sdkComponent = DaggerSdkComponent.factory().create(AppModule(applicationContext = context))
         sdkComponent.inject(this)
 
         initPreferencesUseCase.invoke(
@@ -121,7 +125,7 @@ open class SDK {
 
         segment = getPreferencesValueUseCase.getSegment()
 
-        NotificationHelper.notificationId = notificationId
+        notificationHelper.setNotificationId(id = notificationId)
 
         notificationHandler.initialize(context)
 

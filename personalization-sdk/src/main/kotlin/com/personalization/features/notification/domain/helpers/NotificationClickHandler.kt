@@ -12,33 +12,33 @@ import org.json.JSONObject
 
 object NotificationClickHandler {
 
-    fun handleNotificationClick(
-        extras: Bundle?,
-        sendAsync: (String, JSONObject) -> Unit,
-        onResult: (type: String, code: String) -> Unit
-    ) {
-        if (extras == null) {
-            return
-        } else {
-            val type = extras.getString(NOTIFICATION_TYPE, null)
-            val code = extras.getString(NOTIFICATION_ID, null)
+  fun handleNotificationClick(
+    extras: Bundle?,
+    sendAsync: (String, JSONObject) -> Unit,
+    onResult: (type: String, code: String) -> Unit
+  ) {
+    if (extras == null) {
+      return
+    } else {
+      val type = extras.getString(NOTIFICATION_TYPE, null)
+      val code = extras.getString(NOTIFICATION_ID, null)
 
-            if (type != null && code != null) {
-                val params = JSONObject()
-                try {
-                    params.put(TYPE_PARAM, type)
-                    params.put(CODE_PARAM, code)
-                    sendAsync(TRACK_CLICKED, params)
+      if (type != null && code != null) {
+        val params = JSONObject()
+        try {
+          params.put(TYPE_PARAM, type)
+          params.put(CODE_PARAM, code)
+          sendAsync(TRACK_CLICKED, params)
 
-                    onResult(type, code)
-                } catch (jsonException: JSONException) {
-                    ParsingJsonError(
-                        tag = this@NotificationClickHandler.javaClass.name,
-                        functionName = "handleNotificationClick",
-                        message = jsonException.message.orEmpty()
-                    ).logError()
-                }
-            }
+          onResult(type, code)
+        } catch (jsonException: JSONException) {
+          ParsingJsonError(
+            tag = this@NotificationClickHandler.javaClass.name,
+            functionName = "handleNotificationClick",
+            message = jsonException.message.orEmpty()
+          ).logError()
         }
+      }
     }
+  }
 }
