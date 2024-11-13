@@ -7,7 +7,6 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
-import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +68,7 @@ class REES46 private constructor() : SDK() {
                     val images = withContext(Dispatchers.IO) {
                         NotificationImageHelper.loadBitmaps(urls = data[NOTIFICATION_IMAGES])
                     }
-                    NotificationHelper.createNotification(
+                    sdk.notificationHelper.createNotification(
                         context = context,
                         notificationId = data.hashCode(),
                         data = NotificationData(

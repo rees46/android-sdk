@@ -9,13 +9,13 @@ import javax.inject.Singleton
 @Module
 class AppModule(private val applicationContext: Context) {
 
-    @Singleton
-    @Provides
-    fun provideContext(): Context = applicationContext
+  @Singleton
+  @Provides
+  fun provideContext(): Context = applicationContext
 
-    @Singleton
-    @Provides
-    fun provideNotificationManager(context: Context): NotificationManager {
-        return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    }
+  @Singleton
+  @Provides
+  fun provideNotificationManager(context: Context): NotificationManager {
+    return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+  }
 }

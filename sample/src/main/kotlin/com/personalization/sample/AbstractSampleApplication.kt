@@ -7,7 +7,6 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
-import com.personalization.features.notification.presentation.helpers.NotificationHelper.createNotification
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +36,7 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
                 val images = withContext(Dispatchers.IO) {
                     loadBitmaps(urls = data[NOTIFICATION_IMAGES])
                 }
-                createNotification(
+                sdk.notificationHelper.createNotification(
                     context = applicationContext,
                     notificationId = data.hashCode(),
                     data = NotificationData(

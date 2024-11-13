@@ -21,7 +21,6 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
-import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
 import com.personalization.stories.views.StoriesView
 import kotlinx.coroutines.CoroutineScope
@@ -199,7 +198,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             CoroutineScope(Dispatchers.Main).launch {
                 val images = loadBitmaps(testData[NOTIFICATION_IMAGES])
 
-                NotificationHelper.createNotification(
+                sdk.notificationHelper.createNotification(
                     context = applicationContext,
                     notificationId = testData.hashCode(),
                     data = NotificationData(
