@@ -284,8 +284,15 @@ open class SDK {
      * @param extras from data notification
      */
     fun notificationClicked(extras: Bundle?) {
-        notificationHandler.notificationClicked(extras = extras,
-            sendAsync = { method, params -> sendNetworkMethodUseCase.postAsync(method, params) })
+        notificationHandler.notificationClicked(
+            extras = extras,
+            sendAsync = { method, params ->
+                sendNetworkMethodUseCase.postAsync(
+                    method = method,
+                    params = params
+                )
+            }
+        )
     }
 
     /**
