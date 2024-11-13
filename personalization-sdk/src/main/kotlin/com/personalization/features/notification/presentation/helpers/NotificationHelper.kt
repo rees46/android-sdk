@@ -49,8 +49,8 @@ class NotificationHelper @Inject constructor(
       .setAutoCancel(true)
 
     notificationManager.notify(
-      (data.title + data.body).hashCode(),
-      notificationBuilder.build()
+      /* id = */ (data.title + data.body).hashCode(),
+      /* notification = */ notificationBuilder.build()
     )
   }
 }

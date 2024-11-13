@@ -1,6 +1,7 @@
 package com.personalization.features.notification.domain.helpers
 
 import android.os.Bundle
+import com.personalization.errors.EmptyFieldError
 import com.personalization.errors.ParsingJsonError
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.notification.domain.data.NotificationDataSender
@@ -18,15 +19,19 @@ class NotificationClickProcessor @Inject constructor(
     sendAsync: (String, JSONObject) -> Unit,
     onResult: (type: String, code: String) -> Unit
   ) {
-    val (type, code) = dataExtractor.extractData(extras)
+    val (type, code) = dataExtractor.extractData(extras = extras)
 
     if (type == null || code == null) {
-      handleError("Invalid notification data", extras)
+      handleError(errorMessage = "Invalid notification data", extras = extras)
       return
     }
 
     try {
-      dataSender.sendAsyncData(type, code, sendAsync)
+      dataSender.sendAsyncData(
+        type = type,
+        code = code,
+        sendAsync = sendAsync
+      )
       onResult(type, code)
     } catch (e: JSONException) {
       ParsingJsonError(
@@ -37,7 +42,16 @@ class NotificationClickProcessor @Inject constructor(
     }
   }
 
-  private fun handleError(message: String, extras: Bundle?) {
-    //TODO Add error logging
+  private fun handleError(errorMessage: String, extras: Bundle?) {
+    EmptyFieldError(
+      tag = TAG,
+      functionName = FUNCTION_NAME,
+      message = errorMessage + extras
+    ).logError()
+  }
+
+  companion object{
+    private const val TAG = "NotificationClickProcessor"
+    private const val FUNCTION_NAME = "processClick"
   }
 }
