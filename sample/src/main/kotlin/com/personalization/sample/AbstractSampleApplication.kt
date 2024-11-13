@@ -16,42 +16,41 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 abstract class AbstractSampleApplication<out T : SDK> internal constructor(
-    private val sdk: SDK
+  private val sdk: SDK
 ) : Application() {
-    protected abstract val shopId: String
-    protected abstract val shopSecretKey: String
+  protected abstract val shopId: String
+  protected abstract val shopSecretKey: String
 
-    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+  private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
-    protected abstract fun initialize()
+  protected abstract fun initialize()
 
-    override fun onCreate() {
-        super.onCreate()
+  override fun onCreate() {
+    super.onCreate()
 
-        // Demo shop
-        initialize()
-        sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
-        sdk.setOnMessageListener { data: Map<String, String> ->
-            coroutineScope.launch {
-                val images = withContext(Dispatchers.IO) {
-                    loadBitmaps(urls = data[NOTIFICATION_IMAGES])
-                }
-                sdk.notificationHelper.createNotification(
-                    context = applicationContext,
-                    notificationId = data.hashCode(),
-                    data = NotificationData(
-                        title = data[NOTIFICATION_TITLE],
-                        body = data[NOTIFICATION_BODY],
-                        images = data[NOTIFICATION_IMAGES]
-                    ),
-                    images = images
-                )
-            }
+    // Demo shop
+    initialize()
+    sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
+    sdk.setOnMessageListener { data: Map<String, String> ->
+      coroutineScope.launch {
+        val images = withContext(Dispatchers.IO) {
+          loadBitmaps(urls = data[NOTIFICATION_IMAGES])
         }
+        sdk.notificationHelper.createNotification(
+          context = applicationContext,
+          data = NotificationData(
+            title = data[NOTIFICATION_TITLE],
+            body = data[NOTIFICATION_BODY],
+            images = data[NOTIFICATION_IMAGES]
+          ),
+          images = images
+        )
+      }
     }
+  }
 
-    override fun onTerminate() {
-        super.onTerminate()
-        coroutineScope.cancel()
-    }
+  override fun onTerminate() {
+    super.onTerminate()
+    coroutineScope.cancel()
+  }
 }

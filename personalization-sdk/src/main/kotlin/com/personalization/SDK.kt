@@ -125,8 +125,6 @@ open class SDK {
 
         segment = getPreferencesValueUseCase.getSegment()
 
-        notificationHelper.setNotificationId(id = notificationId)
-
         notificationHandler.initialize(context)
 
         initUserSettingsUseCase.invoke(

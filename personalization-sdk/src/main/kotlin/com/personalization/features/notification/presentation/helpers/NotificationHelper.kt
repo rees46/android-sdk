@@ -14,15 +14,8 @@ class NotificationHelper @Inject constructor(
   private val notificationManager: NotificationManager
 ) {
 
-  private var notificationId: String? = null
-
-  fun setNotificationId(id: String) {
-    this.notificationId = id
-  }
-
   fun createNotification(
     context: Context,
-    notificationId: Int,
     data: NotificationData,
     images: List<Bitmap>?,
     currentImageIndex: Int = 0

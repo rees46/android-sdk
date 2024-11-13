@@ -100,7 +100,6 @@ class NotificationService : Service() {
         val loadedImages = NotificationImageHelper.loadBitmaps(urls = images)
         notificationHelper.createNotification(
           context = this@NotificationService,
-          notificationId = (title + body).hashCode(),
           data = NotificationData(
             title = title,
             body = body,
