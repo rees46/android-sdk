@@ -56,7 +56,7 @@ class NotificationHelper @Inject constructor(
       .setAutoCancel(true)
 
     notificationManager.notify(
-      (this.notificationId ?: notificationId).hashCode(),
+      (data.title + data.body).hashCode(),
       notificationBuilder.build()
     )
   }

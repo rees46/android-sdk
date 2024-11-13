@@ -1,6 +1,7 @@
 package com.personalization.di
 
 import com.personalization.SDK
+import com.personalization.features.notification.data.service.NotificationService
 import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.data.di.ModelsModule
 import com.personalization.sdk.data.di.RepositoriesModule
@@ -25,4 +26,6 @@ interface SdkComponent {
     }
 
     fun inject(sdk: SDK)
+
+    fun inject(service: NotificationService)
 }
