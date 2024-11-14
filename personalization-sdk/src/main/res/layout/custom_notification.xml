@@ -95,7 +95,7 @@
                 android:indeterminate="true"
                 android:indeterminateTint="@color/colorGray"
                 android:indeterminateTintMode="src_atop"
-                android:visibility="visible"
+                android:visibility="gone"
                 tools:ignore="UnusedAttribute"
                 tools:visibility="visible" />
 
@@ -126,6 +126,18 @@
                 android:text="@string/notification_button_forward"
                 android:textSize="16sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/retryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/margin_small"
+                android:layout_marginEnd="@dimen/large_margin"
+                android:text="@string/notification_button_retry"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
         </LinearLayout>
 
     </LinearLayout>

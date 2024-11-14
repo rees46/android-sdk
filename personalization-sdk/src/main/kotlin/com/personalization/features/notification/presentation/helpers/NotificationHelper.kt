@@ -18,7 +18,8 @@ class NotificationHelper @Inject constructor(
     context: Context,
     data: NotificationData,
     images: List<Bitmap>?,
-    currentImageIndex: Int = 0
+    currentImageIndex: Int = 0,
+    hasError: Boolean = false
   ) {
     val view = RemoteViews(
       /* packageName = */ context.packageName,
@@ -39,7 +40,8 @@ class NotificationHelper @Inject constructor(
       context = context,
       data = data,
       currentIndex = currentImageIndex,
-      imageCount = images?.size ?: 0
+      imageCount = images?.size ?: 0,
+      hasError = hasError
     )
 
     val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)

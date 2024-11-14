@@ -38,6 +38,24 @@ object NotificationNavigationHelper {
         )
     }
 
+    fun createRetryPendingIntent(
+        context: Context,
+        data: NotificationData
+    ): PendingIntent {
+        val retryIntent = Intent(context, NotificationService::class.java).apply {
+            putExtra(CURRENT_IMAGE_INDEX, 0)
+            putExtra(NOTIFICATION_IMAGES, data.images)
+            putExtra(NOTIFICATION_TITLE, data.title)
+            putExtra(NOTIFICATION_BODY, data.body)
+        }
+        return PendingIntent.getService(
+            context,
+            0,
+            retryIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
     private fun generateRequestCode(action: String, currentIndex: Int): Int {
         val baseCode = "${action}_${currentIndex}".hashCode()
         val uniqueCode = if (baseCode != Int.MIN_VALUE) abs(baseCode) else 0

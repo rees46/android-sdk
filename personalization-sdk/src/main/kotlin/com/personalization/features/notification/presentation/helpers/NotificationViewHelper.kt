@@ -15,7 +15,8 @@ object NotificationViewHelper {
         context: Context,
         data: NotificationData,
         currentIndex: Int,
-        imageCount: Int
+        imageCount: Int,
+        hasError: Boolean
     ) {
         val prevPendingIntent = NotificationNavigationHelper.createNavigationPendingIntent(
             context = context,
@@ -47,5 +48,25 @@ object NotificationViewHelper {
             /* viewId = */ R.id.action2,
             /* visibility = */ if (currentIndex < imageCount - 1) View.VISIBLE else View.GONE
         )
+
+        if (hasError) {
+            val retryPendingIntent = NotificationNavigationHelper.createRetryPendingIntent(
+                context = context,
+                data = data
+            )
+            customView.setOnClickPendingIntent(
+                /* viewId = */ R.id.retryButton,
+                /* pendingIntent = */ retryPendingIntent
+            )
+            customView.setViewVisibility(
+                /* viewId = */ R.id.retryButton,
+                /* visibility = */ View.VISIBLE
+            )
+        } else {
+            customView.setViewVisibility(
+                /* viewId = */ R.id.retryButton,
+                /* visibility = */ View.GONE
+            )
+        }
     }
 }

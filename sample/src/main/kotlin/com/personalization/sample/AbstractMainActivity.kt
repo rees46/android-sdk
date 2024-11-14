@@ -196,7 +196,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
       )
 
       CoroutineScope(Dispatchers.Main).launch {
-        val images = loadBitmaps(testData[NOTIFICATION_IMAGES])
+        val (images, hasError) = loadBitmaps(testData[NOTIFICATION_IMAGES])
 
         sdk.notificationHelper.createNotification(
           context = applicationContext,
@@ -205,7 +205,8 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             body = testData[NOTIFICATION_BODY],
             images = testData[NOTIFICATION_IMAGES]
           ),
-          images = images
+          images = images,
+          hasError = hasError
         )
       }
     }

@@ -29,7 +29,7 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
     sdk.setOnMessageListener { data ->
       coroutineScope.launch {
-        val images = withContext(Dispatchers.IO) {
+        val (images, hasError) = withContext(Dispatchers.IO) {
           loadBitmaps(urls = data.images)
         }
         sdk.notificationHelper.createNotification(
@@ -39,7 +39,8 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
             body = data.body,
             images = data.images
           ),
-          images = images
+          images = images,
+          hasError = hasError
         )
       }
     }
