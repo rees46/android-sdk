@@ -16,6 +16,7 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
@@ -813,8 +814,9 @@ open class SDK {
         notificationReceived(remoteMessage.data)
 
         onMessageListener?.let { listener ->
-            val data = notificationHandler.prepareData(remoteMessage = remoteMessage)
-            listener.onMessage(data)
+            listener.onMessage(
+                data = remoteMessage.toNotificationData()
+            )
         }
     }
 

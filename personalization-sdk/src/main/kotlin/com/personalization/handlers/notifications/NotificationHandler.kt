@@ -2,11 +2,8 @@ package com.personalization.handlers.notifications
 
 import android.content.Context
 import android.os.Bundle
-import com.google.firebase.messaging.RemoteMessage
 import com.personalization.features.notification.data.helpers.NotificationChannelHelper
-import com.personalization.features.notification.data.mapper.NotificationDataMapper
 import com.personalization.features.notification.domain.helpers.NotificationClickProcessor
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.sdk.domain.usecases.notification.UpdateNotificationSourceUseCase
 import javax.inject.Inject
 import org.json.JSONObject
@@ -38,9 +35,5 @@ class NotificationHandler @Inject constructor(
         updateSourceUseCase(type = type, id = code)
       }
     )
-  }
-
-  fun prepareData(remoteMessage: RemoteMessage): NotificationData {
-    return NotificationDataMapper.mapRemoteMessageToData(remoteMessage = remoteMessage)
   }
 }
