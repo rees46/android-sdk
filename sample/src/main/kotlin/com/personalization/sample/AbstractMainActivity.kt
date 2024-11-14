@@ -17,7 +17,15 @@ import androidx.core.content.ContextCompat
 import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
 import com.personalization.stories.views.StoriesView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
     private val sdk: SDK
@@ -36,6 +44,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         initializingFragmentManager()
         initializingStoriesView()
         handleInAppNotifications()
+        handlePushNotification()
     }
 
     private fun handlePermissions() {
@@ -175,6 +184,31 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
                     Log.d(this.localClassName, ": onPositiveClick")
                 },
             )
+        }
+    }
+
+    private fun handlePushNotification() {
+        findViewById<Button>(R.id.pushNotificationButton).setOnClickListener {
+            val testData = mapOf(
+                NOTIFICATION_TITLE to "Test Notification Title",
+                NOTIFICATION_BODY to "This is a test notification body",
+                NOTIFICATION_IMAGES to "https://img10.hotstar.com/image/upload/f_auto/sources/r1/cms/prod/1468/1727698041468-i,https://static1.srcdn.com/wordpress/wp-content/uploads/2024/07/futurana-season-12-poster-featuring-fry-bender-leela-and-nibbler-1.jpg,https://www.hollywoodreporter.com/wp-content/uploads/2022/02/TCDFUTU_FE007-H2-2022.jpg?w=1296&h=730&crop=1"
+            )
+
+            CoroutineScope(Dispatchers.Main).launch {
+                val (images, hasError) = loadBitmaps(testData[NOTIFICATION_IMAGES])
+
+                sdk.notificationHelper.createNotification(
+                    context = applicationContext,
+                    data = NotificationData(
+                        title = testData[NOTIFICATION_TITLE],
+                        body = testData[NOTIFICATION_BODY],
+                        images = testData[NOTIFICATION_IMAGES]
+                    ),
+                    images = images,
+                    hasError = hasError
+                )
+            }
         }
     }
 }

@@ -16,7 +16,7 @@
         android:layout_height="@dimen/progress_bar_height"
         android:background="@color/progress_primary"
         android:visibility="invisible"
-        tools:visibility="visible"/>
+        tools:visibility="visible" />
 
     <View
         android:id="@+id/max_progress"

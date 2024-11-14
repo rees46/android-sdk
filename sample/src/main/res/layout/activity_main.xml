@@ -11,12 +11,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:code="fcaa8d3168ab7d7346e4b4f1a1c92214"
-        app:need_opening_web_view="true"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:need_opening_web_view="true" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/large_margin"
         android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -39,33 +40,45 @@
 
         <Button
             android:id="@+id/button"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
             android:text="Send email" />
 
         <Button
             android:id="@+id/alertDialogButton"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
             android:text="Default pop-up" />
 
         <Button
             android:id="@+id/fullScreenDialogButton"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
             android:text="Full screen pop-up" />
 
         <Button
             android:id="@+id/bottomSheetDialogButton"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
             android:text="Bottom sheet pop-up" />
 
         <Button
             android:id="@+id/snackBarButton"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
             android:text="Show snack bar" />
+
+        <Button
+            android:id="@+id/pushNotificationButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/large_margin"
+            android:text="Send push notification" />
 
     </LinearLayout>
 

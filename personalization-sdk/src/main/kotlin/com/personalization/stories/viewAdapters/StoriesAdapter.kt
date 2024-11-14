@@ -18,7 +18,7 @@ import com.personalization.stories.Settings
 import com.personalization.stories.models.Story
 import com.personalization.stories.views.StoriesView
 
-class StoriesAdapter (
+class StoriesAdapter(
     private val storiesView: StoriesView,
     private val data: List<Story>,
     private val listener: ClickListener
@@ -59,7 +59,8 @@ class StoriesAdapter (
                 Glide.with(image.context).load(firstSlide.background).preload()
             }
             if (storiesView.settings.new_campaign_border_color != null) {
-                border.strokeWidth = border.context.resources.getDimension(R.dimen.story_avatar_border)
+                border.strokeWidth =
+                    border.context.resources.getDimension(R.dimen.story_avatar_border)
                 border.strokeColor = ColorStateList.valueOf(
                     Color.parseColor(
                         if (story.isViewed) settings.visited_campaign_border_color
@@ -68,7 +69,8 @@ class StoriesAdapter (
                 )
             } else {
                 //Default border style for old api
-                border.strokeWidth = if (story.isViewed) 0f else border.context.resources.getDimension(R.dimen.story_avatar_border)
+                border.strokeWidth =
+                    if (story.isViewed) 0f else border.context.resources.getDimension(R.dimen.story_avatar_border)
             }
             itemView.alpha = if (story.isViewed) settings.visited_campaign_transparency else 1f
 
@@ -90,13 +92,16 @@ class StoriesAdapter (
             name.setTextColor(Color.parseColor(settings.label_font_color))
             name.textSize = settings.label_font_size.toFloat()
             name.typeface = settings.label_font_family
-            name.width = ((if (settings.label_width != null) settings.label_width!! else settings.icon_size) * scale).toInt()
+            name.width =
+                ((if (settings.label_width != null) settings.label_width!! else settings.icon_size) * scale).toInt()
 
             pin.visibility = if (story.isPinned) View.VISIBLE else View.GONE
             pin.text = settings.pin_symbol
-            val shapeAppearanceModel = ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, 50f).build()
+            val shapeAppearanceModel =
+                ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, 50f).build()
             val shapeDrawable = MaterialShapeDrawable(shapeAppearanceModel)
-            shapeDrawable.fillColor = ColorStateList.valueOf(Color.parseColor(settings.background_pin))
+            shapeDrawable.fillColor =
+                ColorStateList.valueOf(Color.parseColor(settings.background_pin))
             ViewCompat.setBackground(pin, shapeDrawable)
         }
 
@@ -106,7 +111,8 @@ class StoriesAdapter (
     }
 
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(viewGroup.context).inflate(R.layout.story_avatar, viewGroup, false)
+        val view =
+            LayoutInflater.from(viewGroup.context).inflate(R.layout.story_avatar, viewGroup, false)
 
         return ViewHolder(view, listener)
     }

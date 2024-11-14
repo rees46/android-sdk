@@ -14,9 +14,11 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.notification.NotificationHandler
-import com.personalization.notification.NotificationHelper
+import com.personalization.features.notification.data.mapper.toNotificationData
+import com.personalization.features.notification.presentation.helpers.NotificationHelper
+import com.personalization.handlers.notifications.NotificationHandler
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -93,6 +95,9 @@ open class SDK {
     @Inject
     lateinit var getAllNotificationsUseCase: GetAllNotificationsUseCase
 
+    @Inject
+    lateinit var notificationHelper: NotificationHelper
+
 
     /**
      * @param shopId Shop key
@@ -109,7 +114,8 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        val sdkComponent = DaggerSdkComponent.factory().create()
+        val sdkComponent =
+            DaggerSdkComponent.factory().create(AppModule(applicationContext = context))
         sdkComponent.inject(this)
 
         initPreferencesUseCase.invoke(
@@ -120,9 +126,6 @@ open class SDK {
         TAG = tag
 
         segment = getPreferencesValueUseCase.getSegment()
-
-        NotificationHelper.notificationType = notificationType
-        NotificationHelper.notificationId = notificationId
 
         notificationHandler.initialize(context)
 
@@ -283,8 +286,15 @@ open class SDK {
      * @param extras from data notification
      */
     fun notificationClicked(extras: Bundle?) {
-        notificationHandler.notificationClicked(extras = extras,
-            sendAsync = { method, params -> sendNetworkMethodUseCase.postAsync(method, params) })
+        notificationHandler.notificationClicked(
+            extras = extras,
+            sendAsync = { method, params ->
+                sendNetworkMethodUseCase.postAsync(
+                    method = method,
+                    params = params
+                )
+            }
+        )
     }
 
     /**
@@ -805,8 +815,9 @@ open class SDK {
         notificationReceived(remoteMessage.data)
 
         onMessageListener?.let { listener ->
-            val data = notificationHandler.prepareData(remoteMessage)
-            listener.onMessage(data)
+            listener.onMessage(
+                data = remoteMessage.toNotificationData()
+            )
         }
     }
 

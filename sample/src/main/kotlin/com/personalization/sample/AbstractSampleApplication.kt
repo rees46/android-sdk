@@ -3,9 +3,8 @@ package com.personalization.sample
 import android.app.Application
 import android.util.Log
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper
-import com.personalization.notification.NotificationHelper.createNotification
-import com.personalization.notification.NotificationHelper.loadBitmaps
+import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -26,19 +25,22 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     override fun onCreate() {
         super.onCreate()
 
-        // Demo shop
         initialize()
         sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
-        sdk.setOnMessageListener { data: Map<String, String> ->
+        sdk.setOnMessageListener { data ->
             coroutineScope.launch {
-                val images = withContext(Dispatchers.IO) {
-                    loadBitmaps(urls = data[NotificationHelper.NOTIFICATION_IMAGES])
+                val (images, hasError) = withContext(Dispatchers.IO) {
+                    loadBitmaps(urls = data.images)
                 }
-                createNotification(
+                sdk.notificationHelper.createNotification(
                     context = applicationContext,
-                    data = data,
+                    data = NotificationData(
+                        title = data.title,
+                        body = data.body,
+                        images = data.images
+                    ),
                     images = images,
-                    currentIndex = 0
+                    hasError = hasError
                 )
             }
         }

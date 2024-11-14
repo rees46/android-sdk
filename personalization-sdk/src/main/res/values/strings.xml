@@ -1,25 +1,28 @@
 <resources>
-	<string name="notification_channel_id" translatable="false">notification_channel</string>
-	<string name="notification_channel_name" translatable="false">notification_channel</string>
+    <string name="notification_channel_id" translatable="false">notification_channel</string>
+    <string name="notification_channel_name" translatable="false">notification_channel</string>
 
-	<item name="stories" type="id" />
-	<item name="avatar" type="id" />
-	<item name="avatar_border" type="id" />
-	<item name="avatar_size" type="id" />
+    <item name="stories" type="id" />
+    <item name="avatar" type="id" />
+    <item name="avatar_border" type="id" />
+    <item name="avatar_size" type="id" />
 
-	<dimen name="viewpager_current_item_horizontal_margin">32dp</dimen>
-	<dimen name="product_price_box_radius">8dp</dimen>
-	<color name="product_discount_color">#F97316</color>
-	<color name="product_promocode_color">#17AADF</color>
+    <dimen name="viewpager_current_item_horizontal_margin">32dp</dimen>
+    <dimen name="product_price_box_radius">8dp</dimen>
+    <color name="product_discount_color">#F97316</color>
+    <color name="product_promocode_color">#17AADF</color>
 
-	<string name="failed_load_text">Failed to retrieve data. Please check your connection and try again.</string>
-	<string name="notification_button_back">Previous</string>
-	<string name="notification_button_forward">Next</string>
+    <string name="failed_load_text">Failed to retrieve data. Please check your connection and try again.</string>
+    <string name="notification_button_back">Previous</string>
+    <string name="notification_button_forward">Next</string>
+    <string name="notification_button_retry">Retry</string>
 
-	<string name="alert_dialog_button_accept_title">Accept</string>
-	<string name="alert_dialog_button_decline_title">Cancel</string>
-	<string name="alert_dialog_title">Pizza ipsum dolor meat lovers buffalo.</string>
-	<string name="alert_dialog_message">Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef.</string>
-	<string name="alert_dialog_full_screen_message">Pizza ipsum dolor meat lovers buffalo. Garlic sauce party sautéed ipsum cheese. Meatball mayo extra peppers Chicago spinach olives. Philly black crust pineapple steak ranch large large. Chicken hand pie tossed pan mushrooms large Bianca deep. Mozzarella roll string party mouth style lovers Hawaiian pan. Ricotta mayo red pizza fresh style string string. Broccoli meatball wing cheese sautéed. Peppers ipsum Aussie cheese olives Philly Hawaiian Aussie cheese personal. Pork dolor sausage bell mozzarella pepperoni thin deep mushrooms.</string>
+    <string name="alert_dialog_button_accept_title">Accept</string>
+    <string name="alert_dialog_button_decline_title">Cancel</string>
+    <string name="alert_dialog_title">Pizza ipsum dolor meat lovers buffalo.</string>
+    <string name="alert_dialog_message">Pizza ipsum dolor meat lovers buffalo. Cheese ranch Philly red marinara ricotta lovers steak NY beef.</string>
+    <string name="alert_dialog_full_screen_message">Pizza ipsum dolor meat lovers buffalo. Garlic sauce party sautéed ipsum cheese. Meatball mayo extra peppers Chicago spinach olives. Philly black crust pineapple steak ranch large large. Chicken hand pie tossed pan mushrooms large Bianca deep. Mozzarella roll string party mouth style lovers Hawaiian pan. Ricotta mayo red pizza fresh style string string. Broccoli meatball wing cheese sautéed. Peppers ipsum Aussie cheese olives Philly Hawaiian Aussie cheese personal. Pork dolor sausage bell mozzarella pepperoni thin deep mushrooms.</string>
+    <string name="notification_image_loading_error">Error loading images.</string>
+    <string name="notification_data_loading_error">Invalid notification data.</string>
 
 </resources>

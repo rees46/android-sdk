@@ -23,7 +23,8 @@ object ColorUtils {
                 if (percentsString.isNotEmpty()) {
                     percents = percentsString.substring(0, percentsString.length - 1).toInt()
                 }
-            } catch (ignored: NumberFormatException) {}
+            } catch (ignored: NumberFormatException) {
+            }
         }
 
         return MAX_COLOR_CHANNEL_VALUE * percents / 100

@@ -8,7 +8,7 @@ object EnumUtils {
         return enums.joinToString(",") { it.toString() }
     }
 
-    infix fun<T: Enum<T>> EnumSet<T>.and(other: T): EnumSet<T> {
+    infix fun <T : Enum<T>> EnumSet<T>.and(other: T): EnumSet<T> {
         this.add(other)
         return this
     }

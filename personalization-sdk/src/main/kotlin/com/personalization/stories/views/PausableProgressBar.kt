@@ -91,7 +91,16 @@ internal class PausableProgressBar @JvmOverloads constructor(
     fun startProgress() {
         maxProgressView.visibility = GONE
 
-        animation = PausableScaleAnimation(0f, 1f, 1f, 1f, Animation.ABSOLUTE, 0f, Animation.RELATIVE_TO_SELF, 0f)
+        animation = PausableScaleAnimation(
+            0f,
+            1f,
+            1f,
+            1f,
+            Animation.ABSOLUTE,
+            0f,
+            Animation.RELATIVE_TO_SELF,
+            0f
+        )
         animation?.let { animation ->
             animation.duration = duration
             animation.interpolator = LinearInterpolator()
@@ -133,13 +142,18 @@ internal class PausableProgressBar @JvmOverloads constructor(
         animation = null
     }
 
-    class PausableScaleAnimation internal constructor(fromX: Float, toX: Float, fromY: Float,
+    class PausableScaleAnimation internal constructor(
+        fromX: Float, toX: Float, fromY: Float,
         toY: Float, pivotXType: Int, pivotXValue: Float, pivotYType: Int, pivotYValue: Float
     ) : ScaleAnimation(fromX, toX, fromY, toY, pivotXType, pivotXValue, pivotYType, pivotYValue) {
         private var mElapsedAtPause: Long = 0
         private var mPaused = false
 
-        override fun getTransformation(currentTime: Long, outTransformation: Transformation, scale: Float): Boolean {
+        override fun getTransformation(
+            currentTime: Long,
+            outTransformation: Transformation,
+            scale: Float
+        ): Boolean {
             if (mPaused && mElapsedAtPause == 0L) {
                 mElapsedAtPause = currentTime - startTime
             }

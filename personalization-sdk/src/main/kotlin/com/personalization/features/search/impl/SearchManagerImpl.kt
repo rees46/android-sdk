@@ -3,14 +3,14 @@ package com.personalization.features.search.impl
 import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.api.params.SearchParams
 import com.personalization.api.managers.SearchManager
+import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.api.responses.search.SearchInstantResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import org.json.JSONObject
 import javax.inject.Inject
+import org.json.JSONObject
 
 internal class SearchManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
@@ -25,7 +25,8 @@ internal class SearchManagerImpl @Inject constructor(
         search(query, TYPE.FULL, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val searchFullResponse = Gson().fromJson(it.toString(), SearchFullResponse::class.java)
+                    val searchFullResponse =
+                        Gson().fromJson(it.toString(), SearchFullResponse::class.java)
                     onSearchFull(searchFullResponse)
                 }
             }
@@ -44,12 +45,13 @@ internal class SearchManagerImpl @Inject constructor(
     ) {
         val searchParams = SearchParams()
 
-        if(locations != null) searchParams.put(LOCATIONS_PARAMETER, locations)
+        if (locations != null) searchParams.put(LOCATIONS_PARAMETER, locations)
 
         search(query, TYPE.INSTANT, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val searchInstantResponse = Gson().fromJson(it.toString(), SearchInstantResponse::class.java)
+                    val searchInstantResponse =
+                        Gson().fromJson(it.toString(), SearchInstantResponse::class.java)
                     onSearchInstant(searchInstantResponse)
                 }
             }
@@ -64,18 +66,22 @@ internal class SearchManagerImpl @Inject constructor(
         onSearchBlank: (SearchBlankResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
-        sendNetworkMethodUseCase.get(BLANK_SEARCH_REQUEST, Params().build(), object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    val searchBlankResponse = Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
-                    onSearchBlank(searchBlankResponse)
+        sendNetworkMethodUseCase.get(
+            BLANK_SEARCH_REQUEST,
+            Params().build(),
+            object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response?.let {
+                        val searchBlankResponse =
+                            Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
+                        onSearchBlank(searchBlankResponse)
+                    }
                 }
-            }
 
-            override fun onError(code: Int, msg: String?) {
-                onError(code, msg)
-            }
-        })
+                override fun onError(code: Int, msg: String?) {
+                    onError(code, msg)
+                }
+            })
     }
 
     private fun search(

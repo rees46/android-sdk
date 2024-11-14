@@ -105,7 +105,7 @@ class RegisterManager @Inject constructor(
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            Log.i(TAG,"Sending init request with params: $params")
+            Log.i(TAG, "Sending init request with params: $params")
             sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
                 @Volatile
                 private var attempt = 0

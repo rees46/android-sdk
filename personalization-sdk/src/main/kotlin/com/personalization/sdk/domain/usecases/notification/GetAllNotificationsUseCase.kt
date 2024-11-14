@@ -8,10 +8,10 @@ import com.personalization.api.responses.notifications.GetAllNotificationsRespon
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.utils.EnumUtils
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import javax.inject.Inject
 
 class GetAllNotificationsUseCase @Inject constructor(
     private val notificationRepository: NotificationRepository,

@@ -4,6 +4,6 @@ import com.personalization.sdk.domain.models.RecommendedBy
 
 interface RecommendationRepository {
 
-    fun getRecommendedBy() : RecommendedBy?
+    fun getRecommendedBy(): RecommendedBy?
     fun setRecommendedBy(recommendedBy: RecommendedBy?)
 }

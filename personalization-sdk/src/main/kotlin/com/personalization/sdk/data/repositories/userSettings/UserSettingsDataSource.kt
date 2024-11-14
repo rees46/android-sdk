@@ -45,8 +45,11 @@ class UserSettingsDataSource @AssistedInject constructor(
         return params
     }
 
-    internal fun getSidLastActTime(): Long = preferencesDataSource.getValue(SID_LAST_ACT_KEY, DEFAULT_SID_LAST_ACT_TIME)
-    internal fun saveSidLastActTime(value: Long) = preferencesDataSource.saveValue(SID_LAST_ACT_KEY, value)
+    internal fun getSidLastActTime(): Long =
+        preferencesDataSource.getValue(SID_LAST_ACT_KEY, DEFAULT_SID_LAST_ACT_TIME)
+
+    internal fun saveSidLastActTime(value: Long) =
+        preferencesDataSource.saveValue(SID_LAST_ACT_KEY, value)
 
     internal fun getSid(): String = preferencesDataSource.getValue(SID_KEY, DEFAULT_SID)
     internal fun saveSid(value: String) = preferencesDataSource.saveValue(SID_KEY, value)

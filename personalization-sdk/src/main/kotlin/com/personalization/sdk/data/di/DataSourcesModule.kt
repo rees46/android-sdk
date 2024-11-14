@@ -43,6 +43,6 @@ class DataSourcesModule {
     fun provideNotificationDataSource(
         preferencesDataSource: PreferencesDataSource
     ) = NotificationDataSource(
-            preferencesDataSource = preferencesDataSource
-        )
+        preferencesDataSource = preferencesDataSource
+    )
 }

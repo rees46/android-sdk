@@ -3,8 +3,8 @@ package com.personalization.sdk.data.repositories.userSettings
 import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import org.json.JSONObject
 import javax.inject.Inject
+import org.json.JSONObject
 
 class UserSettingsRepositoryImpl @Inject constructor(
     private val userSettingsDataSourceFactory: DataSourcesModule.UserSettingsDataSourceFactory,

@@ -30,7 +30,11 @@ internal class PullDismissLayout : FrameLayout {
         init(context)
     }
 
-    constructor(context: Context, attrs: AttributeSet?, defStyle: Int) : super(context, attrs, defStyle) {
+    constructor(context: Context, attrs: AttributeSet?, defStyle: Int) : super(
+        context,
+        attrs,
+        defStyle
+    ) {
         init(context)
     }
 
@@ -85,7 +89,8 @@ internal class PullDismissLayout : FrameLayout {
             }
             if (!dragHelper.shouldInterceptTouchEvent(event) && pullingDown) {
                 if (dragHelper.viewDragState == ViewDragHelper.STATE_IDLE
-                    && dragHelper.checkTouchSlop(ViewDragHelper.DIRECTION_VERTICAL)) {
+                    && dragHelper.checkTouchSlop(ViewDragHelper.DIRECTION_VERTICAL)
+                ) {
                     val child = getChildAt(0)
                     if (child != null && listener?.onShouldInterceptTouchEvent() != true) {
                         dragHelper.captureChildView(child, event.getPointerId(0))
@@ -108,7 +113,8 @@ internal class PullDismissLayout : FrameLayout {
         return false
     }
 
-    private class ViewDragCallback(private val pullDismissLayout: PullDismissLayout) : ViewDragHelper.Callback() {
+    private class ViewDragCallback(private val pullDismissLayout: PullDismissLayout) :
+        ViewDragHelper.Callback() {
         private var startTop = 0
         private var dragPercent = 0.0f
         private var capturedView: View? = null
@@ -151,7 +157,7 @@ internal class PullDismissLayout : FrameLayout {
 
         override fun onViewReleased(view: View, xv: Float, yv: Float) {
             dismissed = dragPercent >= 0.50f
-                    || (abs(xv.toDouble()) > pullDismissLayout.minFlingVelocity && dragPercent > 0.20f)
+                || (abs(xv.toDouble()) > pullDismissLayout.minFlingVelocity && dragPercent > 0.20f)
             val finalTop = if (dismissed) pullDismissLayout.height else startTop
             if (!dismissed) {
                 pullDismissLayout.listener?.onReleased()

@@ -1,7 +1,7 @@
 package com.personalization.stories.models.elements
 
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class HeaderElement(json: JSONObject) : LinkElement {
     val title: String = json.optString("title", "")
@@ -13,9 +13,9 @@ class HeaderElement(json: JSONObject) : LinkElement {
         if (this === other) return true
         if (other !is HeaderElement) return false
         return title == other.title
-                && subtitle == other.subtitle
-                && link == other.link
-                && icon == other.icon
+            && subtitle == other.subtitle
+            && link == other.link
+            && icon == other.icon
     }
 
     override fun hashCode(): Int {

@@ -1,9 +1,9 @@
 package com.personalization.api.managers
 
+import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.api.responses.search.SearchInstantResponse
-import com.personalization.api.params.SearchParams
 
 interface SearchManager {
 

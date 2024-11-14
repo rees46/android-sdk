@@ -1,11 +1,10 @@
 package com.rees46.sdk
 
 import android.content.Context
-import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.FragmentManager
 import com.personalization.BuildConfig
 import com.personalization.SDK
-import com.personalization.notification.NotificationHelper
+import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,16 +60,20 @@ class REES46 private constructor() : SDK() {
                 autoSendPushToken = autoSendPushToken
             )
 
-            sdk.setOnMessageListener { data: Map<String, String> ->
+            sdk.setOnMessageListener { data ->
                 coroutineScope.launch {
-                    val images = withContext(Dispatchers.IO) {
-                        NotificationHelper.loadBitmaps(urls = data[NotificationHelper.NOTIFICATION_IMAGES])
+                    val (images, hasError) = withContext(Dispatchers.IO) {
+                        NotificationImageHelper.loadBitmaps(urls = data.images)
                     }
-                    NotificationHelper.createNotification(
+                    sdk.notificationHelper.createNotification(
                         context = context,
-                        data = data,
+                        data = NotificationData(
+                            title = data.title,
+                            body = data.body,
+                            images = data.images
+                        ),
                         images = images,
-                        currentIndex = 0
+                        hasError = hasError
                     )
                 }
             }

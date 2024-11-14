@@ -8,10 +8,6 @@ import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
-import org.json.JSONTokener
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.IOException
@@ -24,6 +20,10 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.Collections
 import javax.inject.Inject
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import org.json.JSONTokener
 
 class NetworkRepositoryImpl @Inject constructor(
     private val networkDataSourceFactory: DataSourcesModule.NetworkDataSourceFactory,
@@ -125,7 +125,9 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (userSettingsRepository.getDid().isNotEmpty() && userSettingsRepository.getIsInitialized()) {
+        if (userSettingsRepository.getDid()
+                .isNotEmpty() && userSettingsRepository.getIsInitialized()
+        ) {
             thread.start()
         } else {
             addTaskToQueue(thread)
@@ -164,7 +166,8 @@ class NetworkRepositoryImpl @Inject constructor(
     ) {
         userSettingsRepository.updateSidLastActTime()
 
-        val notificationSource = notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
+        val notificationSource =
+            notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
 
         try {
             val newParams = userSettingsRepository.addParams(
@@ -230,7 +233,7 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         params: JSONObject
     ): Uri {
-        if(networkDataSource == null) throw Exception("Network not initialized.")
+        if (networkDataSource == null) throw Exception("Network not initialized.")
 
         val builder = Uri.parse(networkDataSource!!.baseUrl + networkMethod.method).buildUpon()
 
@@ -246,8 +249,8 @@ class NetworkRepositoryImpl @Inject constructor(
     private fun getUrl(
         networkMethod: NetworkMethod,
         buildUri: Uri
-    ) : URL {
-        if(networkDataSource == null) throw Exception("Network not initialized.")
+    ): URL {
+        if (networkDataSource == null) throw Exception("Network not initialized.")
 
         return if (networkMethod is NetworkMethod.POST) {
             URL(networkDataSource!!.baseUrl + networkMethod.method)
@@ -260,7 +263,7 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         url: URL,
         params: JSONObject
-    ) : HttpURLConnection {
+    ): HttpURLConnection {
         val connection = url.openConnection() as HttpURLConnection
         connection.setRequestProperty("User-Agent", SDK.userAgent())
         connection.requestMethod = networkMethod.type
@@ -270,7 +273,8 @@ class NetworkRepositoryImpl @Inject constructor(
             connection.setRequestProperty("Content-Type", "application/json")
             connection.doOutput = true
             connection.doInput = true
-            val os = BufferedWriter(OutputStreamWriter(connection.outputStream, StandardCharsets.UTF_8))
+            val os =
+                BufferedWriter(OutputStreamWriter(connection.outputStream, StandardCharsets.UTF_8))
             os.write(params.toString())
             os.flush()
             os.close()

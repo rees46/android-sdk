@@ -12,7 +12,8 @@ This SDK can be used to integrate in your own app for Android in few steps.
 
 ## Documentation
 
-For detailed information on methods, please refer to the documentation available at the following link:
+For detailed information on methods, please refer to the documentation available at the following
+link:
 
 [Official API references](https://reference.api.rees46.com/?kotlin#introduction)
 

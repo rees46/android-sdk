@@ -39,9 +39,11 @@ object TextUtils {
                     else -> R.font.droid_serif_regular
                 }
             }
+
             "sans-serif" -> {
                 if (bold) R.font.droid_sans_bold else R.font.droid_sans_regular
             }
+
             "monospaced" -> R.font.droid_sans_mono
             else -> R.font.droid_sans_mono
         }

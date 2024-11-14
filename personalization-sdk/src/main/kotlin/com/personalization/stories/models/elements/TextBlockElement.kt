@@ -1,7 +1,7 @@
 package com.personalization.stories.models.elements
 
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class TextBlockElement(json: JSONObject) : Element {
     val isBold: Boolean = json.optBoolean("bold", false)
@@ -13,27 +13,41 @@ class TextBlockElement(json: JSONObject) : Element {
     val textAlign: String = json.optString("text_align", "")
     val textColor: String = json.optString("text_color", "")
     val textLineSpacing: Double = json.optDouble("text_line_spacing", 0.0)
-    val textBackgroundColor: String = json.optString("text_background_color", DEFAULT_TEXT_BACKGROUND_COLOR)
-    val textBackgroundColorOpacity: String = json.optString("text_background_color_opacity", DEFAULT_TEXT_BACKGROUND_COLOR_OPACITY)
+    val textBackgroundColor: String =
+        json.optString("text_background_color", DEFAULT_TEXT_BACKGROUND_COLOR)
+    val textBackgroundColorOpacity: String =
+        json.optString("text_background_color_opacity", DEFAULT_TEXT_BACKGROUND_COLOR_OPACITY)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is TextBlockElement) return false
         return yOffset == other.yOffset
-                && fontSize == other.fontSize
-                && textLineSpacing.compareTo(other.textLineSpacing) == 0
-                && isBold == other.isBold
-                && isItalic == other.isItalic
-                && textInput == other.textInput
-                && fontType == other.fontType
-                && textAlign == other.textAlign
-                && textColor == other.textColor
-                && textBackgroundColor == other.textBackgroundColor
-                && textBackgroundColorOpacity == other.textBackgroundColorOpacity
+            && fontSize == other.fontSize
+            && textLineSpacing.compareTo(other.textLineSpacing) == 0
+            && isBold == other.isBold
+            && isItalic == other.isItalic
+            && textInput == other.textInput
+            && fontType == other.fontType
+            && textAlign == other.textAlign
+            && textColor == other.textColor
+            && textBackgroundColor == other.textBackgroundColor
+            && textBackgroundColorOpacity == other.textBackgroundColorOpacity
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(isBold, isItalic, textInput, yOffset, fontType, fontSize, textAlign, textColor, textLineSpacing, textBackgroundColor, textBackgroundColorOpacity)
+        return Objects.hash(
+            isBold,
+            isItalic,
+            textInput,
+            yOffset,
+            fontType,
+            fontSize,
+            textAlign,
+            textColor,
+            textLineSpacing,
+            textBackgroundColor,
+            textBackgroundColorOpacity
+        )
     }
 
     override fun toString(): String {

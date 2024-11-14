@@ -1,8 +1,8 @@
 package com.personalization.stories.models.elements
 
 import com.personalization.Product
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class ProductElement(json: JSONObject) : Element {
     val title: String = json.optString("title", "")
@@ -19,7 +19,7 @@ class ProductElement(json: JSONObject) : Element {
         if (this === other) return true
         if (other !is ProductElement) return false
         return title == other.title
-                && item == other.item
+            && item == other.item
     }
 
     override fun hashCode(): Int {

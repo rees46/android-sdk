@@ -1,7 +1,7 @@
 package com.personalization.stories.models
 
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class Story(json: JSONObject) {
     val id: Int = json.optInt("id", 0)
@@ -32,12 +32,12 @@ class Story(json: JSONObject) {
         if (this === other) return true
         if (other !is Story) return false
         return id == other.id
-                && isViewed == other.isViewed
-                && isPinned == other.isPinned
-                && startPosition == other.startPosition
-                && avatar == other.avatar
-                && name == other.name
-                && slides == other.slides
+            && isViewed == other.isViewed
+            && isPinned == other.isPinned
+            && startPosition == other.startPosition
+            && avatar == other.avatar
+            && name == other.name
+            && slides == other.slides
     }
 
     override fun hashCode(): Int {

@@ -6,9 +6,9 @@ import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
-import org.json.JSONObject
 import java.io.Serializable
 import java.util.Objects
+import org.json.JSONObject
 
 class Slide(json: JSONObject) : Serializable {
     val id: String = json.optString("id", "")
@@ -40,17 +40,26 @@ class Slide(json: JSONObject) : Serializable {
         if (this === other) return true
         if (other !is Slide) return false
         return duration == other.duration
-                && isPrepared == other.isPrepared
-                && id == other.id
-                && background == other.background
-                && backgroundColor == other.backgroundColor
-                && preview == other.preview
-                && type == other.type
-                && elements == other.elements
+            && isPrepared == other.isPrepared
+            && id == other.id
+            && background == other.background
+            && backgroundColor == other.backgroundColor
+            && preview == other.preview
+            && type == other.type
+            && elements == other.elements
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(id, background, backgroundColor, preview, type, elements, duration, isPrepared)
+        return Objects.hash(
+            id,
+            background,
+            backgroundColor,
+            preview,
+            type,
+            elements,
+            duration,
+            isPrepared
+        )
     }
 
     override fun toString(): String {

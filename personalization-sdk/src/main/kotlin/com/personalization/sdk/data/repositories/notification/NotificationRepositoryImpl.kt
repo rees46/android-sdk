@@ -8,8 +8,8 @@ import com.personalization.sdk.data.models.params.GetAllNotificationsParams
 import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NotificationRepository
-import org.json.JSONObject
 import javax.inject.Inject
+import org.json.JSONObject
 
 class NotificationRepositoryImpl @Inject constructor(
     private val notificationDataSource: NotificationDataSource,
@@ -61,11 +61,12 @@ class NotificationRepositoryImpl @Inject constructor(
     override fun getAllNotificationListener(
         onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
         onError: (Int, String?) -> Unit
-    ) : OnApiCallbackListener =
+    ): OnApiCallbackListener =
         object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 response?.let {
-                    val getAllNotificationsResponse = Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
+                    val getAllNotificationsResponse =
+                        Gson().fromJson(it.toString(), GetAllNotificationsResponse::class.java)
                     onGetAllNotifications(getAllNotificationsResponse)
                 }
             }
