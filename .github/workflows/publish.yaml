@@ -80,7 +80,7 @@ jobs:
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   release:
-    needs: [ publish-rees, version ]
+    needs: [publish-rees, version]
     uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
     permissions: write-all
     with:
