@@ -22,7 +22,6 @@ object NotificationImageHelper {
         hasError: Boolean = false
     ) {
       if (hasError) {
-        println("****DETEKT LOG**** : $hasError")
         customView.setViewVisibility(R.id.loadingProgressBar, View.GONE)
         customView.setViewVisibility(R.id.retryButton, View.VISIBLE)
         customView.setImageViewResource(R.id.largeImage, R.drawable.image_error)
@@ -43,7 +42,9 @@ object NotificationImageHelper {
     }
 
   suspend fun loadBitmaps(urls: String?): Pair<List<Bitmap>, Boolean> {
+
     return withContext(Dispatchers.IO) {
+
       if (urls == null) return@withContext Pair(emptyList(), true)
 
       val urlArray = urls.split(",").toTypedArray()
@@ -57,7 +58,6 @@ object NotificationImageHelper {
               val inputStream: InputStream = URL(url).openStream()
               BitmapFactory.decodeStream(inputStream)
             } catch (exception: Exception) {
-              println("****DETEKT LOG**** : ${ exception}")
               hasError = true
               null
             }

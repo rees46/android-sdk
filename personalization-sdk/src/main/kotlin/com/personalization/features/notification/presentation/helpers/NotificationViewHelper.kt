@@ -18,37 +18,65 @@ object NotificationViewHelper {
         imageCount: Int,
         hasError: Boolean
     ) {
-        val prevPendingIntent = NotificationNavigationHelper.createNavigationPendingIntent(
+        setActionButton(
+            customView = customView,
             context = context,
             data = data,
+            actionId = R.id.action1,
+            action = ACTION_PREVIOUS_IMAGE,
             newIndex = currentIndex - 1,
-            action = ACTION_PREVIOUS_IMAGE
+            isVisible = currentIndex > 0
         )
-        val nextPendingIntent = NotificationNavigationHelper.createNavigationPendingIntent(
+
+        setActionButton(
+            customView = customView,
             context = context,
             data = data,
+            actionId = R.id.action2,
+            action = ACTION_NEXT_IMAGE,
             newIndex = currentIndex + 1,
-            action = ACTION_NEXT_IMAGE
+            isVisible = currentIndex < imageCount - 1
         )
 
+        setRetryButtonVisibility(
+            customView = customView,
+            context = context,
+            data = data,
+            hasError = hasError
+        )
+    }
+
+    private fun setActionButton(
+        customView: RemoteViews,
+        context: Context,
+        data: NotificationData,
+        actionId: Int,
+        action: String,
+        newIndex: Int,
+        isVisible: Boolean
+    ) {
+        val pendingIntent = NotificationNavigationHelper.createNavigationPendingIntent(
+            context = context,
+            data = data,
+            newIndex = newIndex,
+            action = action
+        )
         customView.setOnClickPendingIntent(
-            /* viewId = */ R.id.action1,
-            /* pendingIntent = */ prevPendingIntent
-        )
-        customView.setOnClickPendingIntent(
-            /* viewId = */ R.id.action2,
-            /* pendingIntent = */ nextPendingIntent
-        )
-
-        customView.setViewVisibility(
-            /* viewId = */ R.id.action1,
-            /* visibility = */ if (currentIndex > 0) View.VISIBLE else View.GONE
+            /* viewId = */ actionId,
+            /* pendingIntent = */ pendingIntent
         )
         customView.setViewVisibility(
-            /* viewId = */ R.id.action2,
-            /* visibility = */ if (currentIndex < imageCount - 1) View.VISIBLE else View.GONE
+            /* viewId = */ actionId,
+            /* visibility = */ if (isVisible) View.VISIBLE else View.GONE
         )
+    }
 
+    private fun setRetryButtonVisibility(
+        customView: RemoteViews,
+        context: Context,
+        data: NotificationData,
+        hasError: Boolean
+    ) {
         if (hasError) {
             val retryPendingIntent = NotificationNavigationHelper.createRetryPendingIntent(
                 context = context,
@@ -58,15 +86,10 @@ object NotificationViewHelper {
                 /* viewId = */ R.id.retryButton,
                 /* pendingIntent = */ retryPendingIntent
             )
-            customView.setViewVisibility(
-                /* viewId = */ R.id.retryButton,
-                /* visibility = */ View.VISIBLE
-            )
-        } else {
-            customView.setViewVisibility(
-                /* viewId = */ R.id.retryButton,
-                /* visibility = */ View.GONE
-            )
         }
+        customView.setViewVisibility(
+            /* viewId = */ R.id.retryButton,
+            /* visibility = */ if (hasError) View.VISIBLE else View.GONE
+        )
     }
 }
