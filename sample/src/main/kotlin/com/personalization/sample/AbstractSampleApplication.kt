@@ -13,41 +13,41 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 abstract class AbstractSampleApplication<out T : SDK> internal constructor(
-  private val sdk: SDK
+    private val sdk: SDK
 ) : Application() {
-  protected abstract val shopId: String
-  protected abstract val shopSecretKey: String
+    protected abstract val shopId: String
+    protected abstract val shopSecretKey: String
 
-  private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
-  protected abstract fun initialize()
+    protected abstract fun initialize()
 
-  override fun onCreate() {
-    super.onCreate()
+    override fun onCreate() {
+        super.onCreate()
 
-    initialize()
-    sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
-    sdk.setOnMessageListener { data ->
-      coroutineScope.launch {
-        val (images, hasError) = withContext(Dispatchers.IO) {
-          loadBitmaps(urls = data.images)
+        initialize()
+        sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
+        sdk.setOnMessageListener { data ->
+            coroutineScope.launch {
+                val (images, hasError) = withContext(Dispatchers.IO) {
+                    loadBitmaps(urls = data.images)
+                }
+                sdk.notificationHelper.createNotification(
+                    context = applicationContext,
+                    data = NotificationData(
+                        title = data.title,
+                        body = data.body,
+                        images = data.images
+                    ),
+                    images = images,
+                    hasError = hasError
+                )
+            }
         }
-        sdk.notificationHelper.createNotification(
-          context = applicationContext,
-          data = NotificationData(
-            title = data.title,
-            body = data.body,
-            images = data.images
-          ),
-          images = images,
-          hasError = hasError
-        )
-      }
     }
-  }
 
-  override fun onTerminate() {
-    super.onTerminate()
-    coroutineScope.cancel()
-  }
+    override fun onTerminate() {
+        super.onTerminate()
+        coroutineScope.cancel()
+    }
 }

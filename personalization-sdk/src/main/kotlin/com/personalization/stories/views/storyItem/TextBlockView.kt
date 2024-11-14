@@ -14,7 +14,10 @@ class TextBlockView(context: Context) : AppCompatTextView(context) {
 
     @SuppressLint("ResourceAsColor")
     fun updateView(element: TextBlockElement, parentHeight: Int, parentTopOffset: Int) {
-        val layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT)
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        )
         setLayoutParams(layoutParams)
 
         text = element.textInput

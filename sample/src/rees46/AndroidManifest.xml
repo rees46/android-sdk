@@ -15,7 +15,9 @@
         tools:ignore="GoogleAppIndexingWarning"
         tools:targetApi="m">
 
-        <activity android:exported="true" android:name="com.rees46.sample.MainActivity">
+        <activity
+            android:exported="true"
+            android:name="com.rees46.sample.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

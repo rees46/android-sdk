@@ -67,6 +67,7 @@ class Button @JvmOverloads constructor(
 
         typedArray.recycle()
     }
+
     private val Int.dpToPx: Int
         get() = (this * context.resources.displayMetrics.density).toInt()
 

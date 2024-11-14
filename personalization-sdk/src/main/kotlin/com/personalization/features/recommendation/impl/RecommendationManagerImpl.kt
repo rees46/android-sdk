@@ -70,8 +70,16 @@ internal class RecommendationManagerImpl @Inject constructor(
         )
     }
 
-    override fun getRecommendation(recommenderCode: String, params: Params, listener: OnApiCallbackListener) {
-        sendNetworkMethodUseCase.getAsync("$GET_RECOMMENDATION_REQUEST/$recommenderCode", params.build(), listener)
+    override fun getRecommendation(
+        recommenderCode: String,
+        params: Params,
+        listener: OnApiCallbackListener
+    ) {
+        sendNetworkMethodUseCase.getAsync(
+            "$GET_RECOMMENDATION_REQUEST/$recommenderCode",
+            params.build(),
+            listener
+        )
     }
 
     companion object {

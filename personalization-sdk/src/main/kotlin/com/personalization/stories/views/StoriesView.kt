@@ -90,7 +90,8 @@ class StoriesView : ConstraintLayout, ClickListener {
     private fun parseAttrs(attrs: AttributeSet?) {
         val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StoriesView)
         val code = typedArray.getString(R.styleable.StoriesView_code)
-        val openingWebView = typedArray.getBoolean(R.styleable.StoriesView_need_opening_web_view, true)
+        val openingWebView =
+            typedArray.getBoolean(R.styleable.StoriesView_need_opening_web_view, true)
         if (code == null) {
             SDK.error("Code is set incorrectly")
             return

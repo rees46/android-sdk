@@ -5,14 +5,14 @@ import android.os.Looper
 import android.util.Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.models.RecommendedBy
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.stories.models.Story
 import com.personalization.stories.views.StoriesView
+import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
-import javax.inject.Inject
 
 class StoriesManager @Inject constructor(
     val setRecommendedByUseCase: SetRecommendedByUseCase,
@@ -132,12 +132,12 @@ class StoriesManager @Inject constructor(
     }
 
     companion object {
-         const val TRACK_STORIES_METHOD = "track/stories"
-         const val REQUEST_STORIES_METHOD = "stories/%s"
+        const val TRACK_STORIES_METHOD = "track/stories"
+        const val REQUEST_STORIES_METHOD = "stories/%s"
 
-         const val EVENT_PARAMS_NAME = "event"
-         const val STORY_ID_PARAMS_NAME = "story_id"
-         const val SLIDE_ID_PARAMS_NAME = "slide_id"
-         const val CODE_PARAMS_NAME = "code"
+        const val EVENT_PARAMS_NAME = "event"
+        const val STORY_ID_PARAMS_NAME = "story_id"
+        const val SLIDE_ID_PARAMS_NAME = "slide_id"
+        const val CODE_PARAMS_NAME = "code"
     }
 }

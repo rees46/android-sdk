@@ -11,7 +11,7 @@ class UpdateNotificationSourceUseCase @Inject constructor(
         type: String,
         id: String
     ) = notificationRepository.updateNotificationSource(
-            type = type,
-            id = id
-        )
+        type = type,
+        id = id
+    )
 }

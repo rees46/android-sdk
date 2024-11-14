@@ -20,7 +20,9 @@ class PreferencesDataSource {
     internal fun getToken(): String = getValue(TOKEN_KEY, DEFAULT_TOKEN)
     internal fun saveToken(value: String) = saveValue(TOKEN_KEY, value)
 
-    internal fun getLastPushTokenDate() = getValue(LAST_PUSH_TOKEN_DATE_KEY, DEFAULT_LAST_PUSH_TOKEN_DATE)
+    internal fun getLastPushTokenDate() =
+        getValue(LAST_PUSH_TOKEN_DATE_KEY, DEFAULT_LAST_PUSH_TOKEN_DATE)
+
     internal fun saveLastPushTokenDate(value: Long) = saveValue(LAST_PUSH_TOKEN_DATE_KEY, value)
 
     internal fun getSegment(): String {
@@ -28,10 +30,13 @@ class PreferencesDataSource {
         return getValue(field, DEFAULT_SEGMENT)
     }
 
-    internal fun getValue(field: String, defaultValue: String): String = sharedPreferences?.getString(field, defaultValue) ?: defaultValue
-    internal fun getValue(field: String, defaultValue: Long): Long = sharedPreferences?.getLong(field, defaultValue) ?: defaultValue
+    internal fun getValue(field: String, defaultValue: String): String =
+        sharedPreferences?.getString(field, defaultValue) ?: defaultValue
 
-    internal fun<T> saveValue(field: String, value: T) {
+    internal fun getValue(field: String, defaultValue: Long): Long =
+        sharedPreferences?.getLong(field, defaultValue) ?: defaultValue
+
+    internal fun <T> saveValue(field: String, value: T) {
         val putEditor = sharedPreferences?.let { sharedPreferences ->
             with(sharedPreferences.edit()) {
                 when (value) {

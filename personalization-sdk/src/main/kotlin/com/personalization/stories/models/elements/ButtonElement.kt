@@ -1,7 +1,7 @@
 package com.personalization.stories.models.elements
 
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class ButtonElement(json: JSONObject) : LinkElement {
     val title: String = json.optString("title", "")
@@ -14,10 +14,10 @@ class ButtonElement(json: JSONObject) : LinkElement {
         if (this === other) return true
         if (other !is ButtonElement) return false
         return textBold == other.textBold
-                && title == other.title
-                && background == other.background
-                && color == other.color
-                && link == other.link
+            && title == other.title
+            && background == other.background
+            && color == other.color
+            && link == other.link
     }
 
     override fun hashCode(): Int {

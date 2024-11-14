@@ -9,31 +9,31 @@ import javax.inject.Inject
 import org.json.JSONObject
 
 class NotificationHandler @Inject constructor(
-  private val updateSourceUseCase: UpdateNotificationSourceUseCase,
-  private val notificationClickProcessor: NotificationClickProcessor
+    private val updateSourceUseCase: UpdateNotificationSourceUseCase,
+    private val notificationClickProcessor: NotificationClickProcessor
 ) {
 
-  private lateinit var context: Context
+    private lateinit var context: Context
 
-  internal fun initialize(context: Context) {
-    this.context = context
-    createNotificationChannel()
-  }
+    internal fun initialize(context: Context) {
+        this.context = context
+        createNotificationChannel()
+    }
 
-  private fun createNotificationChannel() {
-    NotificationChannelHelper.createNotificationChannel(context = context)
-  }
+    private fun createNotificationChannel() {
+        NotificationChannelHelper.createNotificationChannel(context = context)
+    }
 
-  fun notificationClicked(
-    extras: Bundle?,
-    sendAsync: (String, JSONObject) -> Unit
-  ) {
-    notificationClickProcessor.processClick(
-      extras = extras,
-      sendAsync = sendAsync,
-      onResult = { type, code ->
-        updateSourceUseCase(type = type, id = code)
-      }
-    )
-  }
+    fun notificationClicked(
+        extras: Bundle?,
+        sendAsync: (String, JSONObject) -> Unit
+    ) {
+        notificationClickProcessor.processClick(
+            extras = extras,
+            sendAsync = sendAsync,
+            onResult = { type, code ->
+                updateSourceUseCase(type = type, id = code)
+            }
+        )
+    }
 }

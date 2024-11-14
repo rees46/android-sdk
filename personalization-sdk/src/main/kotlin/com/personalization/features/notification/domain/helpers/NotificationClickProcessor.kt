@@ -10,48 +10,48 @@ import org.json.JSONException
 import org.json.JSONObject
 
 class NotificationClickProcessor @Inject constructor(
-  private val dataExtractor: NotificationDataExtractor,
-  private val dataSender: NotificationDataSender
+    private val dataExtractor: NotificationDataExtractor,
+    private val dataSender: NotificationDataSender
 ) {
 
-  fun processClick(
-    extras: Bundle?,
-    sendAsync: (String, JSONObject) -> Unit,
-    onResult: (type: String, code: String) -> Unit
-  ) {
-    val (type, code) = dataExtractor.extractData(extras = extras)
+    fun processClick(
+        extras: Bundle?,
+        sendAsync: (String, JSONObject) -> Unit,
+        onResult: (type: String, code: String) -> Unit
+    ) {
+        val (type, code) = dataExtractor.extractData(extras = extras)
 
-    if (type == null || code == null) {
-      handleError(errorMessage = "Invalid notification data", extras = extras)
-      return
+        if (type == null || code == null) {
+            handleError(errorMessage = "Invalid notification data", extras = extras)
+            return
+        }
+
+        try {
+            dataSender.sendAsyncData(
+                type = type,
+                code = code,
+                sendAsync = sendAsync
+            )
+            onResult(type, code)
+        } catch (e: JSONException) {
+            ParsingJsonError(
+                tag = this@NotificationClickProcessor.javaClass.name,
+                functionName = "processClick",
+                message = e.message.orEmpty()
+            ).logError()
+        }
     }
 
-    try {
-      dataSender.sendAsyncData(
-        type = type,
-        code = code,
-        sendAsync = sendAsync
-      )
-      onResult(type, code)
-    } catch (e: JSONException) {
-      ParsingJsonError(
-        tag = this@NotificationClickProcessor.javaClass.name,
-        functionName = "processClick",
-        message = e.message.orEmpty()
-      ).logError()
+    private fun handleError(errorMessage: String, extras: Bundle?) {
+        EmptyFieldError(
+            tag = TAG,
+            functionName = FUNCTION_NAME,
+            message = errorMessage + extras
+        ).logError()
     }
-  }
 
-  private fun handleError(errorMessage: String, extras: Bundle?) {
-    EmptyFieldError(
-      tag = TAG,
-      functionName = FUNCTION_NAME,
-      message = errorMessage + extras
-    ).logError()
-  }
-
-  companion object{
-    private const val TAG = "NotificationClickProcessor"
-    private const val FUNCTION_NAME = "processClick"
-  }
+    companion object {
+        private const val TAG = "NotificationClickProcessor"
+        private const val FUNCTION_NAME = "processClick"
+    }
 }

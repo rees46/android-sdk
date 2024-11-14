@@ -8,12 +8,12 @@ import org.json.JSONObject
 
 class NotificationDataSender @Inject constructor() {
 
-  fun sendAsyncData(type: String, code: String, sendAsync: (String, JSONObject) -> Unit) {
-    val params = JSONObject().apply {
-      put(TYPE_PARAM, type)
-      put(CODE_PARAM, code)
+    fun sendAsyncData(type: String, code: String, sendAsync: (String, JSONObject) -> Unit) {
+        val params = JSONObject().apply {
+            put(TYPE_PARAM, type)
+            put(CODE_PARAM, code)
+        }
+        sendAsync(TRACK_CLICKED, params)
     }
-    sendAsync(TRACK_CLICKED, params)
-  }
 
 }

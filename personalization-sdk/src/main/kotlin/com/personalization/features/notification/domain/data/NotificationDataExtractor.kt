@@ -7,10 +7,10 @@ import javax.inject.Inject
 
 class NotificationDataExtractor @Inject constructor() {
 
-  fun extractData(extras: Bundle?): Pair<String?, String?> {
-    val type = extras?.getString(NOTIFICATION_TYPE)
-    val code = extras?.getString(NOTIFICATION_ID)
-    return Pair(type, code)
-  }
+    fun extractData(extras: Bundle?): Pair<String?, String?> {
+        val type = extras?.getString(NOTIFICATION_TYPE)
+        val code = extras?.getString(NOTIFICATION_ID)
+        return Pair(type, code)
+    }
 
 }

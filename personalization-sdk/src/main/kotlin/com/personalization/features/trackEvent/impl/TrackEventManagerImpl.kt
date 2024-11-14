@@ -47,13 +47,27 @@ internal class TrackEventManagerImpl @Inject constructor(
     ) {
         val params = Params()
         params.put(EVENT_PARAMETER, event)
-        if (email != null) { params.put(EMAIL_PARAMETER, email) }
-        if (phone != null) { params.put(PHONE_PARAMETER, phone) }
-        if (loyaltyId != null) { params.put(LOYALTY_ID_PARAMETER, loyaltyId) }
-        if (externalId != null) { params.put(EXTERNAL_ID_PARAMETER, externalId) }
-        if (category != null) { params.put(CATEGORY_PARAMETER, category) }
-        if (label != null) { params.put(LABEL_PARAMETER, label) }
-        if (value != null) { params.put(VALUE_PARAMETER, value) }
+        if (email != null) {
+            params.put(EMAIL_PARAMETER, email)
+        }
+        if (phone != null) {
+            params.put(PHONE_PARAMETER, phone)
+        }
+        if (loyaltyId != null) {
+            params.put(LOYALTY_ID_PARAMETER, loyaltyId)
+        }
+        if (externalId != null) {
+            params.put(EXTERNAL_ID_PARAMETER, externalId)
+        }
+        if (category != null) {
+            params.put(CATEGORY_PARAMETER, category)
+        }
+        if (label != null) {
+            params.put(LABEL_PARAMETER, label)
+        }
+        if (value != null) {
+            params.put(VALUE_PARAMETER, value)
+        }
 
         sendNetworkMethodUseCase.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
     }

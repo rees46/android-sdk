@@ -8,7 +8,7 @@ class GetRecommendedByUseCase @Inject constructor(
     private val recommendationRepository: RecommendationRepository
 ) {
 
-    operator fun invoke() : RecommendedBy? {
+    operator fun invoke(): RecommendedBy? {
         return recommendationRepository.getRecommendedBy()
     }
 }

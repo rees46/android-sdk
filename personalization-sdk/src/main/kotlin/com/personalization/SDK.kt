@@ -114,7 +114,8 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        val sdkComponent = DaggerSdkComponent.factory().create(AppModule(applicationContext = context))
+        val sdkComponent =
+            DaggerSdkComponent.factory().create(AppModule(applicationContext = context))
         sdkComponent.inject(this)
 
         initPreferencesUseCase.invoke(

@@ -1,8 +1,8 @@
 package com.personalization.stories.models.elements
 
 import com.personalization.Product
-import org.json.JSONObject
 import java.util.Objects
+import org.json.JSONObject
 
 class ProductsElement(json: JSONObject) : Element {
     var labelHide: String = ""
@@ -31,8 +31,8 @@ class ProductsElement(json: JSONObject) : Element {
         if (this === other) return true
         if (other !is ProductsElement) return false
         return labelHide == other.labelHide
-                && labelShow == other.labelShow
-                && products == other.products
+            && labelShow == other.labelShow
+            && products == other.products
     }
 
     override fun hashCode(): Int {

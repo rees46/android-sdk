@@ -42,13 +42,13 @@ internal class StoriesProgressView : LinearLayout {
     }
 
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int)
-            : super(context, attrs, defStyleAttr) {
+        : super(context, attrs, defStyleAttr) {
         init(context, attrs)
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int)
-            : super(context, attrs, defStyleAttr, defStyleRes) {
+        : super(context, attrs, defStyleAttr, defStyleRes) {
         init(context, attrs)
     }
 

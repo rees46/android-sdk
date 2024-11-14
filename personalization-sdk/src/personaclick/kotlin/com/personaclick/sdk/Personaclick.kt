@@ -17,7 +17,7 @@ class Personaclick private constructor() : SDK() {
         private const val NOTIFICATION_TYPE: String = "PERSONACLICK_NOTIFICATION_TYPE"
         private const val NOTIFICATION_ID: String = "PERSONACLICK_NOTIFICATION_ID"
 
-        fun getInstance() : SDK = instance
+        fun getInstance(): SDK = instance
 
         /**
          * Initialize api
@@ -41,7 +41,7 @@ class Personaclick private constructor() : SDK() {
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID,
                 notificationType = NOTIFICATION_TYPE,
-                notificationId =  NOTIFICATION_ID,
+                notificationId = NOTIFICATION_ID,
                 autoSendPushToken = autoSendPushToken
             )
         }

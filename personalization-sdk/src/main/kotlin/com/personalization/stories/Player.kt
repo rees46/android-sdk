@@ -34,7 +34,9 @@ class Player(context: Context) {
             val mediaSource = ProgressiveMediaSource.Factory(
                 CacheDataSource.Factory()
                     .setCache(cache!!)
-                    .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent()))
+                    .setUpstreamDataSourceFactory(
+                        DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent())
+                    )
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             ).createMediaSource(MediaItem.fromUri(url))
             player.setMediaSource(mediaSource)
@@ -52,7 +54,7 @@ class Player(context: Context) {
     }
 
     companion object {
-		var player: ExoPlayer? = null
+        var player: ExoPlayer? = null
         private var cache: SimpleCache? = null
     }
 }

@@ -11,48 +11,48 @@ import com.personalization.resources.NotificationResources
 import javax.inject.Inject
 
 class NotificationHelper @Inject constructor(
-  private val notificationManager: NotificationManager
+    private val notificationManager: NotificationManager
 ) {
 
-  fun createNotification(
-    context: Context,
-    data: NotificationData,
-    images: List<Bitmap>?,
-    currentImageIndex: Int = 0,
-    hasError: Boolean = false
-  ) {
-    val view = RemoteViews(
-      /* packageName = */ context.packageName,
-      /* layoutId = */ NotificationResources.NOTIFICATION_LAYOUT
-    )
+    fun createNotification(
+        context: Context,
+        data: NotificationData,
+        images: List<Bitmap>?,
+        currentImageIndex: Int = 0,
+        hasError: Boolean = false
+    ) {
+        val view = RemoteViews(
+            /* packageName = */ context.packageName,
+            /* layoutId = */ NotificationResources.NOTIFICATION_LAYOUT
+        )
 
-    NotificationTextHelper.setNotificationText(
-      customView = view,
-      data = data
-    )
-    NotificationImageHelper.displayImages(
-      customView = view,
-      images = images,
-      currentIndex = currentImageIndex
-    )
-    NotificationViewHelper.setNavigationActions(
-      customView = view,
-      context = context,
-      data = data,
-      currentIndex = currentImageIndex,
-      imageCount = images?.size ?: 0,
-      hasError = hasError
-    )
+        NotificationTextHelper.setNotificationText(
+            customView = view,
+            data = data
+        )
+        NotificationImageHelper.displayImages(
+            customView = view,
+            images = images,
+            currentIndex = currentImageIndex
+        )
+        NotificationViewHelper.setNavigationActions(
+            customView = view,
+            context = context,
+            data = data,
+            currentIndex = currentImageIndex,
+            imageCount = images?.size ?: 0,
+            hasError = hasError
+        )
 
-    val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-      .setSmallIcon(NotificationResources.NOTIFICATION_ICON)
-      .setCustomContentView(view)
-      .setCustomBigContentView(view)
-      .setAutoCancel(true)
+        val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
+            .setSmallIcon(NotificationResources.NOTIFICATION_ICON)
+            .setCustomContentView(view)
+            .setCustomBigContentView(view)
+            .setAutoCancel(true)
 
-    notificationManager.notify(
-      /* id = */ (data.title + data.body).hashCode(),
-      /* notification = */ notificationBuilder.build()
-    )
-  }
+        notificationManager.notify(
+            /* id = */ (data.title + data.body).hashCode(),
+            /* notification = */ notificationBuilder.build()
+        )
+    }
 }
