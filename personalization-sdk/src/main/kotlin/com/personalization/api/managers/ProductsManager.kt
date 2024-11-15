@@ -14,4 +14,10 @@ interface ProductsManager {
         filters: Map<String, Any>?,
         listener: OnApiCallbackListener? = null
     )
+
+    fun getProductInfo(
+        shopId: String,
+        itemId: String,
+        listener: OnApiCallbackListener?
+    )
 }
