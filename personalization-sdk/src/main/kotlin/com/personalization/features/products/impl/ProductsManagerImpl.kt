@@ -37,14 +37,12 @@ internal class ProductsManagerImpl @Inject constructor(
     }
 
     override fun getProductInfo(
-        shopId: String,
         itemId: String,
         listener: OnApiCallbackListener?
     ) {
         sendNetworkMethodUseCase.getAsync(
             method = GET_PRODUCT_INFO_REQUEST,
             params = Params().buildParams(
-                shopId = shopId,
                 itemId = itemId,
             ).build(),
             listener = listener
@@ -52,7 +50,6 @@ internal class ProductsManagerImpl @Inject constructor(
     }
 
     private fun Params.buildParams(
-        shopId: String? = null,
         itemId: String? = null,
         brands: String? = null,
         merchants: String? = null,
@@ -62,7 +59,6 @@ internal class ProductsManagerImpl @Inject constructor(
         page: Int? = null,
         filters: Map<String, Any>? = null,
     ): Params = this.apply {
-        shopId?.let { put(SHOP_ID_KEY, it) }
         itemId?.let { put(ITEM_ID_KEY, it) }
         limit?.let { put(LIMIT_KEY, it) }
         page?.let { put(PAGE_KEY, it) }
@@ -87,7 +83,6 @@ internal class ProductsManagerImpl @Inject constructor(
         private const val BRANDS_KEY = "brands"
         private const val MERCHANTS_KEY = "merchants"
         private const val CATEGORIES_KEY = "categories"
-        private const val SHOP_ID_KEY = "shop_id"
         private const val ITEM_ID_KEY = "item_id"
         private const val FILTERS_KEY = ""
     }
