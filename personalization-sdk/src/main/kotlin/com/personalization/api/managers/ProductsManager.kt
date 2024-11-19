@@ -16,7 +16,6 @@ interface ProductsManager {
     )
 
     fun getProductInfo(
-        shopId: String,
         itemId: String,
         listener: OnApiCallbackListener?
     )
