@@ -1,6 +1,5 @@
 package com.personalization
 
-import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.provider.Settings
 import android.util.Log
@@ -36,17 +35,21 @@ class RegisterManager @Inject constructor(
     private var autoSendPushToken: Boolean = false
 
     private lateinit var contentResolver: ContentResolver
+    private val isTestDevice: Boolean
+        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
+            contentResolver, FIREBASE_TEST_LAB
+        )
 
     /**
      * Get did from properties or generate a new did
      */
-    @SuppressLint("HardwareIds")
     internal fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
         var did = getUserSettingsValueUseCase.getDid()
         init()
+        //TODO Revert after mapping in app notification
 //        if (did.isEmpty()) {
 //            did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 //
@@ -80,17 +83,20 @@ class RegisterManager @Inject constructor(
 
             if (autoSendPushToken && (tokenField.isEmpty() || tokenField != token || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)) {
                 Log.i(TAG, "Calling setPushTokenNotification with token: $token")
-                setPushTokenNotification(token, object : OnApiCallbackListener() {
-                    override fun onSuccess(response: JSONObject?) {
-                        savePreferencesValueUseCase.saveLastPushTokenDate(currentDate.time)
-                        savePreferencesValueUseCase.saveToken(token)
-                        Log.d(TAG, "Push token successfully sent and saved")
-                    }
+                setPushTokenNotification(
+                    token = token,
+                    listener = object : OnApiCallbackListener() {
+                        override fun onSuccess(response: JSONObject?) {
+                            savePreferencesValueUseCase.saveLastPushTokenDate(value = currentDate.time)
+                            savePreferencesValueUseCase.saveToken(value = token)
+                            Log.d(TAG, "Push token successfully sent and saved")
+                        }
 
-                    override fun onError(code: Int, msg: String?) {
-                        Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
+                        override fun onError(code: Int, msg: String?) {
+                            Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
+                        }
                     }
-                })
+                )
             }
         }
     }
@@ -107,7 +113,6 @@ class RegisterManager @Inject constructor(
             params.put("stream", "android")
 
             Log.i(TAG, "Sending init request with params: $params")
-            println("****DETEKT LOG**** PARAMS: ${params}")
             sendNetworkMethodUseCase.get(
                 method = "init",
                 params = params,
@@ -197,17 +202,18 @@ class RegisterManager @Inject constructor(
         initToken()
     }
 
-    private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
-            contentResolver, FIREBASE_TEST_LAB
-        )
+
 
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
         val params = HashMap<String, String>()
         params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
         params[TOKEN_FIELD] = token
         Log.d(TAG, "Sending push token to server: $token")
-        sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params.toMap()), listener)
+        sendNetworkMethodUseCase.post(
+            method = MOBILE_PUSH_TOKENS,
+            params = JSONObject(params.toMap()),
+            listener = listener
+        )
     }
 
     private fun alphanumeric(length: Int): String {
