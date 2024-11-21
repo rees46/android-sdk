@@ -10,7 +10,13 @@ import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
-class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
+class InAppNotificationManagerImpl @Inject constructor(
+    private val fragmentManager: FragmentManager
+) : InAppNotificationManager {
+
+    init {
+        println("****DETEKT LOG fragmentManager**** : $fragmentManager")
+    }
 
     override fun showAlertDialog(
         fragmentManager: FragmentManager,

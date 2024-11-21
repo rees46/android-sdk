@@ -1,5 +1,7 @@
 package com.personalization.di
 
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
 import com.personalization.RegisterManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
@@ -94,7 +96,15 @@ class SdkModule {
 
     @Singleton
     @Provides
-    fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
+    fun provideFragmentManager(activity: FragmentActivity): FragmentManager {
+        return activity.supportFragmentManager
+    }
+
+    @Singleton
+    @Provides
+    fun provideInAppNotificationManager(fragmentManager: FragmentManager): InAppNotificationManager {
+        return InAppNotificationManagerImpl(fragmentManager)
+    }
 
     @Singleton
     @Provides

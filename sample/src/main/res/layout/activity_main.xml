@@ -46,27 +46,6 @@
             android:text="Send email" />
 
         <Button
-            android:id="@+id/alertDialogButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/large_margin"
-            android:text="Default pop-up" />
-
-        <Button
-            android:id="@+id/fullScreenDialogButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/large_margin"
-            android:text="Full screen pop-up" />
-
-        <Button
-            android:id="@+id/bottomSheetDialogButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/large_margin"
-            android:text="Bottom sheet pop-up" />
-
-        <Button
             android:id="@+id/snackBarButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

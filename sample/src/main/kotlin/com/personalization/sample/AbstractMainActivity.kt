@@ -13,7 +13,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
@@ -41,7 +40,6 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         handlePermissions()
         handleNotification()
         handleEmailSending()
-        initializingFragmentManager()
         initializingStoriesView()
         handleInAppNotifications()
         handlePushNotification()
@@ -89,10 +87,6 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         }
     }
 
-    private fun initializingFragmentManager() = sdk.initializeFragmentManager(
-        fragmentManager = supportFragmentManager
-    )
-
     private fun initializingStoriesView() {
         val storiesView: StoriesView = findViewById(R.id.stories_view)
         sdk.initializeStoriesView(storiesView)
@@ -105,71 +99,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
     }
 
     private fun handleInAppNotifications() {
-        val debugFullScreenMessage = resources.getString(R.string.alert_dialog_full_screen_message)
         val buttonNegative = resources.getString(R.string.alert_dialog_button_decline_title)
         val buttonPositive = resources.getString(R.string.alert_dialog_button_accept_title)
-        val debugMessage = resources.getString(R.string.alert_dialog_message)
         val debugTitle = resources.getString(R.string.alert_dialog_title)
-
-        val buttonPositiveColor = ContextCompat.getColor(this, R.color.buttonAcceptColor)
-        val buttonNegativeColor = ContextCompat.getColor(this, R.color.colorGray)
-
-        val debugImageUrl =
-            "https://mir-s3-cdn-cf.behance.net/projects/404/01d316151239201.Y3JvcCwzMzA0LDI1ODUsMzQzLDA.png"
-
-        findViewById<Button>(R.id.alertDialogButton).setOnClickListener {
-            sdk.showAlertDialog(
-                title = debugTitle,
-                message = debugMessage,
-                imageUrl = debugImageUrl,
-                buttonNegativeText = buttonNegative,
-                buttonPositiveText = buttonPositive,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveColor = buttonPositiveColor,
-                onNegativeClick = {
-                    Log.d(this.localClassName, ": onNegativeClick")
-                },
-                onPositiveClick = {
-                    Log.d(this.localClassName, ": onPositiveClick")
-                },
-            )
-        }
-
-        findViewById<Button>(R.id.fullScreenDialogButton).setOnClickListener {
-            sdk.showFullScreenDialog(
-                title = debugTitle,
-                message = debugFullScreenMessage,
-                imageUrl = debugImageUrl,
-                buttonNegativeText = buttonNegative,
-                buttonPositiveText = buttonPositive,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveColor = buttonPositiveColor,
-                onNegativeClick = {
-                    Log.d(this.localClassName, ": onNegativeClick")
-                },
-                onPositiveClick = {
-                    Log.d(this.localClassName, ": onPositiveClick")
-                },
-            )
-        }
-
-        findViewById<Button>(R.id.bottomSheetDialogButton).setOnClickListener {
-            sdk.showBottomSheetDialog(
-                title = debugTitle,
-                message = debugMessage,
-                imageUrl = debugImageUrl,
-                buttonNegativeText = null,
-                buttonPositiveText = buttonPositive,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveColor = buttonPositiveColor,
-                onNegativeClick = {
-                    Log.d(this.localClassName, ": onNegativeClick")
-                },
-                onPositiveClick = {
-                    Log.d(this.localClassName, ": onPositiveClick")
-                },
-            )
-        }
 
         findViewById<Button>(R.id.snackBarButton).setOnClickListener {
             sdk.inAppNotificationManager.showSnackBar(
