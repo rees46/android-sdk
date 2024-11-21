@@ -41,6 +41,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
         handleNotification()
         handleEmailSending()
         initializingStoriesView()
+        initializingFragmentManager()
         handleInAppNotifications()
         handlePushNotification()
     }
@@ -97,6 +98,10 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
             override fun onClick(product: Product): Boolean = false
         }
     }
+
+    private fun initializingFragmentManager() = sdk.initializeFragmentManager(
+        fragmentManager = supportFragmentManager
+    )
 
     private fun handleInAppNotifications() {
         val buttonNegative = resources.getString(R.string.alert_dialog_button_decline_title)

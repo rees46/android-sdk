@@ -5,8 +5,9 @@ import androidx.fragment.app.FragmentManager
 
 interface InAppNotificationManager {
 
+    fun initFragmentManager(fragmentManager: FragmentManager)
+
     fun showAlertDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String,
@@ -19,7 +20,6 @@ interface InAppNotificationManager {
     )
 
     fun showFullScreenDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
@@ -32,7 +32,6 @@ interface InAppNotificationManager {
     )
 
     fun showBottomSheetDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
@@ -52,4 +51,5 @@ interface InAppNotificationManager {
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )
+
 }

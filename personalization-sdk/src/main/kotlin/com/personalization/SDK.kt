@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.core.util.Consumer
+import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
@@ -142,6 +143,10 @@ open class SDK {
             contentResolver = context.contentResolver,
             autoSendPushToken = autoSendPushToken
         )
+    }
+
+    fun initializeFragmentManager(fragmentManager: FragmentManager) {
+        inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {

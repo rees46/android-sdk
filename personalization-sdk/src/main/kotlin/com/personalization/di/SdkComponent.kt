@@ -1,7 +1,5 @@
 package com.personalization.di
 
-import android.app.Activity
-import androidx.fragment.app.FragmentManager
 import com.personalization.SDK
 import com.personalization.features.notification.data.service.NotificationService
 import com.personalization.sdk.data.di.DataSourcesModule
@@ -24,12 +22,13 @@ interface SdkComponent {
 
     @Component.Factory
     interface Factory {
-        fun create(appModule: AppModule): SdkComponent
+        fun create(
+            appModule: AppModule
+        ): SdkComponent
     }
 
     fun inject(sdk: SDK)
 
     fun inject(service: NotificationService)
 
-    fun fragmentManager(activity: Activity): FragmentManager
 }

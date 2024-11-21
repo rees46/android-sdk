@@ -10,16 +10,15 @@ import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
-class InAppNotificationManagerImpl @Inject constructor(
-    private val fragmentManager: FragmentManager
-) : InAppNotificationManager {
+class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
 
-    init {
-        println("****DETEKT LOG fragmentManager**** : $fragmentManager")
+    private lateinit var fragmentManager: FragmentManager
+
+    override fun initFragmentManager(fragmentManager: FragmentManager) {
+        this.fragmentManager = fragmentManager
     }
 
     override fun showAlertDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String,
@@ -54,7 +53,6 @@ class InAppNotificationManagerImpl @Inject constructor(
     }
 
     override fun showFullScreenDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
@@ -89,7 +87,6 @@ class InAppNotificationManagerImpl @Inject constructor(
     }
 
     override fun showBottomSheetDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
