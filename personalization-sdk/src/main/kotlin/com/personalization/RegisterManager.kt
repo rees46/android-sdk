@@ -6,7 +6,6 @@ import android.provider.Settings
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
-import com.personalization.SDK.Companion.TAG
 import com.personalization.SDK.Companion.debug
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
@@ -47,16 +46,16 @@ class RegisterManager @Inject constructor(
         this.autoSendPushToken = autoSendPushToken
 
         var did = getUserSettingsValueUseCase.getDid()
-
-        if (did.isEmpty()) {
-            did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-
-            updateUserSettingsValueUseCase.updateDid(did)
-
-            init()
-        } else {
-            initializeSdk(null)
-        }
+        init()
+//        if (did.isEmpty()) {
+//            did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+//
+//            updateUserSettingsValueUseCase.updateDid(did)
+//
+//            init()
+//        } else {
+//            initializeSdk(null)
+//        }
     }
 
     /**
@@ -105,51 +104,60 @@ class RegisterManager @Inject constructor(
         try {
             val params = JSONObject()
             params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
+            params.put("stream", "android")
+
             Log.i(TAG, "Sending init request with params: $params")
-            sendNetworkMethodUseCase.get("init", params, object : OnApiCallbackListener() {
-                @Volatile
-                private var attempt = 0
+            println("****DETEKT LOG**** PARAMS: ${params}")
+            sendNetworkMethodUseCase.get(
+                method = "init",
+                params = params,
+                listener = object : OnApiCallbackListener() {
+                    @Volatile
+                    private var attempt = 0
 
-                override fun onSuccess(response: JSONObject?) {
-                    if (response == null) {
-                        SDK.error("Init response is not correct.")
-                        Log.e(TAG, "Init response is null or incorrect.")
-                        return
-                    }
-
-                    val did = response.optString("did")
-                    if (did.isNullOrEmpty()) {
-                        SDK.error("Init response does not contain the correct did field.")
-                        return
-                    }
-
-                    updateUserSettingsValueUseCase.updateDid(did)
-
-                    val seance = response.optString("seance")
-                    if (seance.isNullOrEmpty()) {
-                        SDK.error("Init response does not contain the correct seance field.")
-                        return
-                    }
-
-                    initializeSdk(seance)
-                }
-
-                override fun onError(code: Int, msg: String?) {
-                    if (code >= 500 || code <= 0) {
-                        Log.e(TAG, "Init error: code: $code, message: $msg")
-                        if (attempt < 5) {
-                            attempt++
+                    override fun onSuccess(response: JSONObject?) {
+                        if (response == null) {
+                            SDK.error("Init response is not correct.")
+                            Log.e(TAG, "Init response is null or incorrect.")
+                            return
+                        } else {
+                            println("****DETEKT LOG get**** REGISTER object : ${response}")
                         }
-                        CoroutineScope(Dispatchers.Main).launch {
-                            delay(1000L * attempt)
-                            Log.d(TAG, "Retrying init, attempt: $attempt")
-                            init()
+
+                        val did = response.optString("did")
+                        if (did.isNullOrEmpty()) {
+                            SDK.error("Init response does not contain the correct did field.")
+                            return
                         }
-                    } else {
-                        SDK.error("Init error: code: $code, message: $msg")
+
+                        updateUserSettingsValueUseCase.updateDid(did)
+
+                        val seance = response.optString("seance")
+                        if (seance.isNullOrEmpty()) {
+                            SDK.error("Init response does not contain the correct seance field.")
+                            return
+                        }
+
+                        initializeSdk(sid = seance)
+                    }
+
+                    override fun onError(code: Int, msg: String?) {
+                        if (code >= 500 || code <= 0) {
+                            Log.e(TAG, "Init error: code: $code, message: $msg")
+                            if (attempt < 5) {
+                                attempt++
+                            }
+                            CoroutineScope(Dispatchers.Main).launch {
+                                delay(1000L * attempt)
+                                Log.d(TAG, "Retrying init, attempt: $attempt")
+                                init()
+                            }
+                        } else {
+                            SDK.error("Init error: code: $code, message: $msg")
+                        }
                     }
                 }
-            })
+            )
         } catch (e: Exception) {
             SDK.error(e.message, e)
         }
@@ -212,7 +220,7 @@ class RegisterManager @Inject constructor(
     }
 
     companion object {
-
+        private const val TAG = "RegisterManager"
         private const val IS_TEST_DEVICE_FIELD = "true"
         private const val FIREBASE_TEST_LAB = "firebase.test.lab"
         private const val PLATFORM_FIELD = "platform"

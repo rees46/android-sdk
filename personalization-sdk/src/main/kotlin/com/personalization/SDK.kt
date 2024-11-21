@@ -114,12 +114,14 @@ open class SDK {
         notificationId: String,
         autoSendPushToken: Boolean = true
     ) {
-        val sdkComponent =
-            DaggerSdkComponent.factory().create(AppModule(applicationContext = context))
-        sdkComponent.inject(this)
+        val sdkComponent = DaggerSdkComponent.factory().create(
+            appModule = AppModule(applicationContext = context)
+        )
+        sdkComponent.inject(sdk = this)
 
         initPreferencesUseCase.invoke(
-            context = context, preferencesKey = preferencesKey
+            context = context,
+            preferencesKey = preferencesKey
         )
 
         this.context = context
@@ -127,15 +129,21 @@ open class SDK {
 
         segment = getPreferencesValueUseCase.getSegment()
 
-        notificationHandler.initialize(context)
+        notificationHandler.initialize(context = context)
 
         initUserSettingsUseCase.invoke(
-            shopId = shopId, shopSecretKey = shopSecretKey, segment = segment, stream = stream
+            shopId = shopId,
+            shopSecretKey = shopSecretKey,
+            segment = segment,
+            stream = stream
         )
         initNetworkUseCase.invoke(
             baseUrl = apiUrl
         )
-        registerManager.initialize(context.contentResolver, autoSendPushToken)
+        registerManager.initialize(
+            contentResolver = context.contentResolver,
+            autoSendPushToken = autoSendPushToken
+        )
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {
