@@ -42,7 +42,7 @@ class JsonResponseErrorHandler(
      * Logs the error message with the associated tag.
      * @param message The error message to log.
      */
-    private fun logError(message: String) {
+    fun logError(message: String) {
         Log.e(tag, message)
     }
 }

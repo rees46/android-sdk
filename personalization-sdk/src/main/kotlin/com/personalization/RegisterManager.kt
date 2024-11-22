@@ -9,6 +9,7 @@ import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.errors.BaseInfoError
 import com.personalization.errors.FirebaseError
 import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
@@ -117,22 +118,31 @@ class RegisterManager @Inject constructor(
     }
 
     private fun sendPushTokenToServer(token: String, currentDate: Long) {
-        setPushTokenNotification(token, object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                savePreferencesValueUseCase.saveLastPushTokenDate(currentDate)
-                savePreferencesValueUseCase.saveToken(token)
-                Log.d(TAG, "Push token successfully sent and saved")
-            }
+        setPushTokenNotification(
+            token = token,
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    savePreferencesValueUseCase.saveLastPushTokenDate(currentDate)
+                    savePreferencesValueUseCase.saveToken(token)
+                    Log.d(TAG, "Push token successfully sent and saved")
+                }
 
-            override fun onError(code: Int, msg: String?) {
-                Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
+                override fun onError(code: Int, msg: String?) {
+                    BaseInfoError(
+                        tag = TAG,
+                        message = "Failed to send push token. Code: $code, Message: $msg"
+                    ).logError()
+                }
             }
-        })
+        )
     }
 
     private fun init() {
         if (isTestDevice) {
-            Log.w(TAG, "Disable working on Google Play Pre-Launch report devices")
+            BaseInfoError(
+                tag = TAG,
+                message = "Disable working on Google Play Pre-Launch report devices"
+            ).logError()
             return
         }
 
@@ -148,7 +158,11 @@ class RegisterManager @Inject constructor(
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         handleInitSuccess(response)
-                        Log.i(TAG, "Initialization response $response")
+
+                        JsonResponseErrorHandler(
+                            tag = TAG,
+                            response = response
+                        ).logError("Initialization response")
                     }
 
                     override fun onError(code: Int, msg: String?) {
@@ -194,7 +208,10 @@ class RegisterManager @Inject constructor(
                 }
             }
         } else {
-            SDK.error("Init error: code: $code, message: $msg")
+            BaseInfoError(
+                TAG,
+                message = "Init error: code: $code, message: $msg"
+            ).logError()
         }
     }
 
