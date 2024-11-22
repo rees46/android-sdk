@@ -12,6 +12,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.errors.BaseInfoError
 import com.personalization.errors.FirebaseError
 import com.personalization.errors.JsonResponseErrorHandler
+import com.personalization.sdk.data.mappers.mapToSdkInitResponse
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
@@ -51,7 +52,6 @@ class RegisterManager @Inject constructor(
         this.autoSendPushToken = autoSendPushToken
 
         val did = ""/*getUserSettingsValueUseCase.getDid()*/ //TODO uncomment value
-        initializeSdk(null)
         when {
             did.isEmpty() -> initializeNewDevice()
             else -> initializeSdk(null)
@@ -185,6 +185,9 @@ class RegisterManager @Inject constructor(
 
         if (!errorHandler.validateResponse()) {
             return
+        } else {
+            val result = response?.mapToSdkInitResponse()
+            println("****DETEKT LOG**** : ${result?.popup?.id}")
         }
 
         val did = errorHandler.getRequiredField(fieldName = "did") ?: return
@@ -211,9 +214,9 @@ class RegisterManager @Inject constructor(
     }
 
     private fun initializeSdk(seance: String?) {
-        updateUserSettingsValueUseCase.updateIsInitialized(true)
+        updateUserSettingsValueUseCase.updateIsInitialized(value = true)
         val finalSeance = seance ?: generateOrRetrieveSeance()
-        updateUserSettingsValueUseCase.updateSid(finalSeance)
+        updateUserSettingsValueUseCase.updateSid(value = finalSeance)
         executeQueueTasksUseCase.invoke()
         initToken()
     }
