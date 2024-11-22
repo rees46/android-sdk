@@ -3,13 +3,15 @@ package com.personalization.features.inAppNotification.impl
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
+import com.personalization.R
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.responses.initialization.Popup
 import com.personalization.api.responses.initialization.Position
+import com.personalization.errors.EmptyFieldError
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
@@ -29,7 +31,11 @@ class InAppNotificationManagerImpl @Inject constructor(
 
     private fun openUrlInBrowser(url: String?) {
         if (url.isNullOrEmpty()) {
-            // TODO: Add logging or handle empty url case
+            EmptyFieldError(
+                tag = TAG,
+                functionName = FUNC_OPENING_BROWSER,
+                message = "Deep link is empty or null"
+            )
             return
         }
 
@@ -46,6 +52,8 @@ class InAppNotificationManagerImpl @Inject constructor(
 
     override fun shopPopUp(popup: Popup) {
         val deepLink = popup.popupActions?.link?.linkAndroid ?: popup.popupActions?.link?.linkWeb
+        val buttonPositiveColor = ContextCompat.getColor(context, R.color.buttonAcceptColor)
+        val buttonNegativeColor = ContextCompat.getColor(context, R.color.colorGray)
         val buttonNegativeText = popup.popupActions?.close?.buttonText
         val buttonPositiveText = popup.popupActions?.link?.buttonText
         val imageUrl: String? = popup.components?.image
@@ -58,8 +66,8 @@ class InAppNotificationManagerImpl @Inject constructor(
                 title = title.orEmpty(),
                 message = message.orEmpty(),
                 imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = Color.BLACK,
-                buttonNegativeColor = Color.BLACK,
+                buttonPositiveColor = buttonPositiveColor,
+                buttonNegativeColor = buttonNegativeColor,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
                 onPositiveClick = {
@@ -71,8 +79,8 @@ class InAppNotificationManagerImpl @Inject constructor(
                 title = title.orEmpty(),
                 message = message.orEmpty(),
                 imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = Color.BLACK,
-                buttonNegativeColor = Color.BLACK,
+                buttonPositiveColor = buttonPositiveColor,
+                buttonNegativeColor = buttonNegativeColor,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
                 onPositiveClick = {
@@ -84,8 +92,8 @@ class InAppNotificationManagerImpl @Inject constructor(
                 title = title.orEmpty(),
                 message = message.orEmpty(),
                 imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = Color.BLACK,
-                buttonNegativeColor = Color.BLACK,
+                buttonPositiveColor = buttonPositiveColor,
+                buttonNegativeColor = buttonNegativeColor,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
                 onPositiveClick = {
@@ -215,5 +223,10 @@ class InAppNotificationManagerImpl @Inject constructor(
             onPositiveClick = onPositiveClick,
             onNegativeClick = onNegativeClick
         )
+    }
+
+    companion object {
+        private const val TAG = "InAppNotificationManagerImpl"
+        private const val FUNC_OPENING_BROWSER = "openUrlInBrowser"
     }
 }
