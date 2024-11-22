@@ -1,5 +1,6 @@
 package com.personalization.features.inAppNotification.impl
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -28,10 +29,18 @@ class InAppNotificationManagerImpl @Inject constructor(
 
     private fun openUrlInBrowser(url: String?) {
         if (url.isNullOrEmpty()) {
-//TODO Add logging
-        } else {
+            // TODO: Add logging or handle empty url case
+            return
+        }
+
+        try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
