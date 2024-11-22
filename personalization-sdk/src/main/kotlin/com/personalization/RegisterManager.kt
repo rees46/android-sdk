@@ -12,7 +12,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.errors.BaseInfoError
 import com.personalization.errors.FirebaseError
 import com.personalization.errors.JsonResponseErrorHandler
-import com.personalization.sdk.data.mappers.mapToSdkInitResponse
+import com.personalization.sdk.data.mappers.SdkInitializationMapper.mapToSdkInitResponse
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
