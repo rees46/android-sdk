@@ -1,11 +1,13 @@
+@file:SuppressLint("HardwareIds")
+
 package com.personalization
 
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.provider.Settings
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
-import com.personalization.SDK.Companion.debug
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -14,7 +16,6 @@ import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueU
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
 import java.security.SecureRandom
-import java.sql.Timestamp
 import java.util.Date
 import java.util.TimeZone
 import javax.inject.Inject
@@ -32,73 +33,96 @@ class RegisterManager @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
     private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase
 ) {
-    private var autoSendPushToken: Boolean = false
 
+    private var autoSendPushToken = false
     private lateinit var contentResolver: ContentResolver
+
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
-            contentResolver, FIREBASE_TEST_LAB
+            contentResolver,
+            FIREBASE_TEST_LAB
         )
 
-    /**
-     * Get did from properties or generate a new did
-     */
-    internal fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
+    fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        var did = getUserSettingsValueUseCase.getDid()
-        init()
-        //TODO Revert after mapping in app notification
-//        if (did.isEmpty()) {
-//            did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-//
-//            updateUserSettingsValueUseCase.updateDid(did)
-//
-//            init()
-//        } else {
-//            initializeSdk(null)
-//        }
+        val did = ""/*getUserSettingsValueUseCase.getDid()*/ //TODO uncomment value
+        initializeSdk(null)
+        when {
+            did.isEmpty() -> initializeNewDevice()
+            else -> initializeSdk(null)
+        }
     }
 
-    /**
-     * Init device token
-     */
+    private fun initializeNewDevice() {
+        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        updateUserSettingsValueUseCase.updateDid(value = androidId)
+        initializeSdk(seance = null)
+        init()
+    }
+
     private fun initToken() {
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task: Task<String> ->
-            if (!task.isSuccessful) {
-                SDK.error("Failed to retrieve Firebase token: ${task.exception?.message}")
-                return@addOnCompleteListener
-            }
-            if (task.result == null) {
-                SDK.error("Firebase result is null")
-                return@addOnCompleteListener
-            }
-
-            val token = task.result
-            Log.i(TAG, "Retrieved Firebase token: $token")
-
-            val tokenField = getPreferencesValueUseCase.getToken()
-            val currentDate = Date()
-
-            if (autoSendPushToken && (tokenField.isEmpty() || tokenField != token || (currentDate.time - getPreferencesValueUseCase.getLastPushTokenDate()) >= ONE_WEEK_MILLISECONDS)) {
-                Log.i(TAG, "Calling setPushTokenNotification with token: $token")
-                setPushTokenNotification(
-                    token = token,
-                    listener = object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            savePreferencesValueUseCase.saveLastPushTokenDate(value = currentDate.time)
-                            savePreferencesValueUseCase.saveToken(value = token)
-                            Log.d(TAG, "Push token successfully sent and saved")
-                        }
-
-                        override fun onError(code: Int, msg: String?) {
-                            Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
-                        }
-                    }
-                )
-            }
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            handleFirebaseTokenResult(task = task)
         }
+    }
+
+    private fun handleFirebaseTokenResult(task: Task<String>) {
+        if (!task.isSuccessful || task.result.isNullOrEmpty()) {
+            logFirebaseTokenError(task)
+            return
+        }
+        processFirebaseToken(token = task.result)
+    }
+
+    private fun logFirebaseTokenError(task: Task<String>) {
+        SDK.error("Failed to retrieve Firebase token: ${task.exception?.message ?: "Unknown error"}")
+    }
+
+    private fun processFirebaseToken(token: String) {
+        val savedToken = getPreferencesValueUseCase.getToken()
+        val lastUpdate = getPreferencesValueUseCase.getLastPushTokenDate()
+        val currentDate = Date().time
+        val isShouldSendToken = shouldSendToken(
+            savedToken = savedToken,
+            newToken = token,
+            currentDate = currentDate,
+            lastUpdate = lastUpdate
+        )
+
+        when {
+            isShouldSendToken -> sendPushTokenToServer(
+                token = token,
+                currentDate = currentDate
+            )
+
+            else -> Log.i(TAG, "Token was send")
+        }
+    }
+
+    private fun shouldSendToken(
+        savedToken: String,
+        newToken: String,
+        currentDate: Long,
+        lastUpdate: Long
+    ): Boolean {
+        return autoSendPushToken &&
+            (savedToken.isEmpty() || savedToken != newToken || (currentDate - lastUpdate >= ONE_WEEK_MILLISECONDS))
+    }
+
+    private fun sendPushTokenToServer(token: String, currentDate: Long) {
+        setPushTokenNotification(token, object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                savePreferencesValueUseCase.saveLastPushTokenDate(currentDate)
+                savePreferencesValueUseCase.saveToken(token)
+                Log.d(TAG, "Push token successfully sent and saved")
+            }
+
+            override fun onError(code: Int, msg: String?) {
+                Log.e(TAG, "Failed to send push token. Code: $code, Message: $msg")
+            }
+        })
     }
 
     private fun init() {
@@ -107,59 +131,23 @@ class RegisterManager @Inject constructor(
             return
         }
 
-        try {
-            val params = JSONObject()
-            params.put("tz", (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
-            params.put("stream", "android")
+        sendInitRequestWithRetry()
+    }
 
-            Log.i(TAG, "Sending init request with params: $params")
+    private fun sendInitRequestWithRetry(attempt: Int = 0) {
+        try {
+            val params = buildInitParams()
             sendNetworkMethodUseCase.get(
-                method = "init",
+                method = GET_INIT_METHOD,
                 params = params,
                 listener = object : OnApiCallbackListener() {
-                    @Volatile
-                    private var attempt = 0
-
                     override fun onSuccess(response: JSONObject?) {
-                        if (response == null) {
-                            SDK.error("Init response is not correct.")
-                            Log.e(TAG, "Init response is null or incorrect.")
-                            return
-                        } else {
-                            println("****DETEKT LOG get**** REGISTER object : ${response}")
-                        }
-
-                        val did = response.optString("did")
-                        if (did.isNullOrEmpty()) {
-                            SDK.error("Init response does not contain the correct did field.")
-                            return
-                        }
-
-                        updateUserSettingsValueUseCase.updateDid(did)
-
-                        val seance = response.optString("seance")
-                        if (seance.isNullOrEmpty()) {
-                            SDK.error("Init response does not contain the correct seance field.")
-                            return
-                        }
-
-                        initializeSdk(sid = seance)
+                        handleInitSuccess(response)
+                        Log.i(TAG, "Initialization response $response")
                     }
 
                     override fun onError(code: Int, msg: String?) {
-                        if (code >= 500 || code <= 0) {
-                            Log.e(TAG, "Init error: code: $code, message: $msg")
-                            if (attempt < 5) {
-                                attempt++
-                            }
-                            CoroutineScope(Dispatchers.Main).launch {
-                                delay(1000L * attempt)
-                                Log.d(TAG, "Retrying init, attempt: $attempt")
-                                init()
-                            }
-                        } else {
-                            SDK.error("Init error: code: $code, message: $msg")
-                        }
+                        handleInitError(code, msg, attempt)
                     }
                 }
             )
@@ -168,61 +156,73 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    private fun initializeSdk(sid: String?) {
-        updateUserSettingsValueUseCase.updateIsInitialized(true)
-        var seance = sid
+    private fun buildInitParams(): JSONObject {
+        return JSONObject().apply {
+            put(PARAM_TZ, (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
+            put(PARAM_STREAM, PARAM_ANDROID)
+        }
+    }
 
-        //If there is no session, try to find it in the storage
-        //We need to separate sessions by time.
-        //To do this, it is enough to track the time of the last action for the session and, if it is more than N hours, then create a new session.
+    private fun handleInitSuccess(response: JSONObject?) {
+        if (response == null) {
+            SDK.error("Init response is null or incorrect.")
+            return
+        }
 
-        if (seance == null) {
-            val newSid = getUserSettingsValueUseCase.getSid()
-            if (newSid.isNotEmpty() && getUserSettingsValueUseCase.getSidLastActTime() >= System.currentTimeMillis() - SESSION_CODE_EXPIRE * 3600 * 1000) {
-                seance = newSid
+        val did = response.optString("did").takeIf { it.isNotEmpty() } ?: run {
+            SDK.error("Init response does not contain the correct did field.")
+            return
+        }
+
+        val seance = response.optString("seance").takeIf { it.isNotEmpty() } ?: run {
+            SDK.error("Init response does not contain the correct seance field.")
+            return
+        }
+
+        updateUserSettingsValueUseCase.updateDid(did)
+        initializeSdk(seance)
+    }
+
+    private fun handleInitError(code: Int, msg: String?, attempt: Int) {
+        if (code in 500..Int.MAX_VALUE || code <= 0) {
+            if (attempt < MAX_INIT_RETRIES) {
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(RETRY_DELAY_MILLISECONDS * (attempt + 1))
+                    sendInitRequestWithRetry(attempt + 1)
+                }
             }
+        } else {
+            SDK.error("Init error: code: $code, message: $msg")
         }
+    }
 
-
-        //If there is no session, generate a new one
-        if (seance == null) {
-            debug("Generate new seance")
-            seance = alphanumeric(10)
-        }
-
-        updateUserSettingsValueUseCase.updateSid(seance)
-        debug(
-            "Device ID: " + getUserSettingsValueUseCase.getDid() + ", seance: " + seance + ", last act: " + Timestamp(
-                getUserSettingsValueUseCase.getSidLastActTime()
-            )
-        )
-
+    private fun initializeSdk(seance: String?) {
+        updateUserSettingsValueUseCase.updateIsInitialized(true)
+        val finalSeance = seance ?: generateOrRetrieveSeance()
+        updateUserSettingsValueUseCase.updateSid(finalSeance)
         executeQueueTasksUseCase.invoke()
-
         initToken()
     }
 
-
-
-    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        val params = HashMap<String, String>()
-        params[PLATFORM_FIELD] = PLATFORM_ANDROID_FIELD
-        params[TOKEN_FIELD] = token
-        Log.d(TAG, "Sending push token to server: $token")
-        sendNetworkMethodUseCase.post(
-            method = MOBILE_PUSH_TOKENS,
-            params = JSONObject(params.toMap()),
-            listener = listener
-        )
+    private fun generateOrRetrieveSeance(): String {
+        val storedSeance = getUserSettingsValueUseCase.getSid()
+        val lastActTime = getUserSettingsValueUseCase.getSidLastActTime()
+        return if (storedSeance.isNotEmpty() && lastActTime >= System.currentTimeMillis() - SESSION_CODE_EXPIRE) {
+            storedSeance
+        } else {
+            alphanumeric()
+        }
     }
 
-    private fun alphanumeric(length: Int): String {
-        val sb = StringBuilder(length)
-        val secureRandom = SecureRandom()
-        for (i in 0 until length) {
-            sb.append(SOURCE[secureRandom.nextInt(SOURCE.length)])
-        }
-        return sb.toString()
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
+        val params = mapOf(PLATFORM_FIELD to PLATFORM_ANDROID_FIELD, TOKEN_FIELD to token)
+        sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params), listener)
+    }
+
+    private fun alphanumeric(): String = SecureRandom().let { random ->
+        (1..ALPHANUMERIC_VALUE).map {
+            SOURCE[random.nextInt(SOURCE.length)]
+        }.joinToString("")
     }
 
     companion object {
@@ -233,9 +233,16 @@ class RegisterManager @Inject constructor(
         private const val PLATFORM_ANDROID_FIELD = "android"
         private const val TOKEN_FIELD = "token"
         private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
-        private const val SESSION_CODE_EXPIRE = 2
-        private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcefghijklmnopqrstuvwxyz"
+        private const val SESSION_CODE_EXPIRE = 2 * 3600 * 1000L
+        private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60 * 1000L
+        private const val MAX_INIT_RETRIES = 5
+        private const val RETRY_DELAY_MILLISECONDS = 1000L
+        private const val ALPHANUMERIC_VALUE = 10
 
-        private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60
+        private const val GET_INIT_METHOD = "init"
+        private const val PARAM_TZ = "tz"
+        private const val PARAM_STREAM = "stream"
+        private const val PARAM_ANDROID = "stream"
     }
 }
