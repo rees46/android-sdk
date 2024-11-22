@@ -18,8 +18,7 @@ interface InAppNotificationManager {
         buttonNegativeText: String,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showFullScreenDialog(
@@ -30,8 +29,7 @@ interface InAppNotificationManager {
         buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showBottomSheetDialog(
@@ -42,8 +40,7 @@ interface InAppNotificationManager {
         buttonNegativeText: String?,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showSnackBar(

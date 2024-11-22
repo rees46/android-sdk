@@ -1,5 +1,6 @@
 package com.personalization.di
 
+import android.content.Context
 import com.personalization.RegisterManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
@@ -105,8 +106,10 @@ class SdkModule {
 
     @Singleton
     @Provides
-    fun provideInAppNotificationManager(): InAppNotificationManager {
-        return InAppNotificationManagerImpl()
+    fun provideInAppNotificationManager(
+        context: Context
+    ): InAppNotificationManager {
+        return InAppNotificationManagerImpl(context)
     }
 
     @Singleton

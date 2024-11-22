@@ -1,6 +1,9 @@
 package com.personalization.features.inAppNotification.impl
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
@@ -13,12 +16,23 @@ import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
-class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationManager {
+class InAppNotificationManagerImpl @Inject constructor(
+    private val context: Context
+) : InAppNotificationManager {
 
     private lateinit var fragmentManager: FragmentManager
 
     override fun initFragmentManager(fragmentManager: FragmentManager) {
         this.fragmentManager = fragmentManager
+    }
+
+    private fun openUrlInBrowser(url: String?) {
+        if (url.isNullOrEmpty()) {
+//TODO Add logging
+        } else {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        }
     }
 
     override fun shopPopUp(popup: Popup) {
@@ -34,13 +48,14 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             Position.CENTERED -> showAlertDialog(
                 title = title.orEmpty(),
                 message = message.orEmpty(),
-                imageUrl = "",
+                imageUrl = imageUrl.orEmpty(),
                 buttonPositiveColor = Color.BLACK,
                 buttonNegativeColor = Color.BLACK,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {},
-                onNegativeClick = {}
+                onPositiveClick = {
+                    openUrlInBrowser(url = deepLink)
+                }
             )
 
             Position.BOTTOM -> showBottomSheetDialog(
@@ -51,8 +66,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
                 buttonNegativeColor = Color.BLACK,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {},
-                onNegativeClick = {}
+                onPositiveClick = {
+                    openUrlInBrowser(url = deepLink)
+                }
             )
 
             else -> showFullScreenDialog(
@@ -63,8 +79,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
                 buttonNegativeColor = Color.BLACK,
                 buttonPositiveText = buttonPositiveText.orEmpty(),
                 buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {},
-                onNegativeClick = {}
+                onPositiveClick = {
+                    openUrlInBrowser(url = deepLink)
+                }
             )
         }
     }
@@ -77,8 +94,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         buttonNegativeText: String,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     ) {
         val dialog = AlertDialog.newInstance(
             title = title,
@@ -93,7 +109,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         dialog.setListener(
             object : NotificationClickListener {
                 override fun onPositiveClick() = onPositiveClick()
-                override fun onNegativeClick() = onNegativeClick()
+                override fun onNegativeClick() {
+                    dialog.dismiss()
+                }
             }
         )
 
@@ -111,8 +129,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     ) {
         val dialog = FullScreenDialog.newInstance(
             title = title,
@@ -127,7 +144,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         dialog.setListener(
             object : NotificationClickListener {
                 override fun onPositiveClick() = onPositiveClick()
-                override fun onNegativeClick() = onNegativeClick()
+                override fun onNegativeClick() {
+                    dialog.dismiss()
+                }
             }
         )
 
@@ -145,8 +164,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         buttonNegativeText: String?,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     ) {
         val dialog = BottomSheetDialog.newInstance(
             title = title,
@@ -161,7 +179,9 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         dialog.setListener(
             object : NotificationClickListener {
                 override fun onPositiveClick() = onPositiveClick()
-                override fun onNegativeClick() = onNegativeClick()
+                override fun onNegativeClick() {
+                    dialog.dismiss()
+                }
             }
         )
 
@@ -179,7 +199,7 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        Snackbar(view).show(
+        val snackBar = Snackbar(view).show(
             message = message,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
@@ -187,8 +207,4 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             onNegativeClick = onNegativeClick
         )
     }
-}
-
-enum class PopUpPosition {
-    CENTER
 }

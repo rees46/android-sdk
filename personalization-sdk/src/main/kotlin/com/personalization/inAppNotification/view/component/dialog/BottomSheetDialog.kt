@@ -59,6 +59,8 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
         if (imageUrl.isNotBlank()) {
             binding.backgroundImageView.loadImage(imageUrl)
+        } else {
+            binding.imageContainer.isVisible = false
         }
     }
 
