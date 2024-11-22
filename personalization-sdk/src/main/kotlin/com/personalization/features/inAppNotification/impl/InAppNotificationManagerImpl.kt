@@ -3,6 +3,7 @@ package com.personalization.features.inAppNotification.impl
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.responses.initialization.Popup
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
@@ -16,6 +17,10 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
 
     override fun initFragmentManager(fragmentManager: FragmentManager) {
         this.fragmentManager = fragmentManager
+    }
+
+    override fun shopPopUp(popup: Popup) {
+        println("****DETEKT LOG InAppNotificationManagerImpl**** : ${popup.id}")
     }
 
     override fun showAlertDialog(

@@ -36,14 +36,16 @@ class SdkModule {
         updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-        executeQueueTasksUseCase: ExecuteQueueTasksUseCase
+        executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
+        inAppNotificationManager: InAppNotificationManager
     ): RegisterManager = RegisterManager(
         getPreferencesValueUseCase = getPreferencesValueUseCase,
         savePreferencesValueUseCase = savePreferencesValueUseCase,
         updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
         getUserSettingsValueUseCase = getUserSettingsValueUseCase,
         sendNetworkMethodUseCase = sendNetworkMethodUseCase,
-        executeQueueTasksUseCase = executeQueueTasksUseCase
+        executeQueueTasksUseCase = executeQueueTasksUseCase,
+        inAppNotificationManager = inAppNotificationManager
     )
 
     @Singleton

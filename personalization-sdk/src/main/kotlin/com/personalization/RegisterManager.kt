@@ -9,6 +9,7 @@ import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.errors.BaseInfoError
 import com.personalization.errors.FirebaseError
 import com.personalization.errors.JsonResponseErrorHandler
@@ -35,7 +36,8 @@ class RegisterManager @Inject constructor(
     private val updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
     private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-    private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase
+    private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
+    private val inAppNotificationManager: InAppNotificationManager
 ) {
 
     private var autoSendPushToken = false
@@ -186,8 +188,10 @@ class RegisterManager @Inject constructor(
         if (!errorHandler.validateResponse()) {
             return
         } else {
-            val result = response?.mapToSdkInitResponse()
-            println("****DETEKT LOG**** : ${result?.popup?.id}")
+            val popUpData = response?.mapToSdkInitResponse()?.popup
+            if (popUpData != null) {
+                inAppNotificationManager.shopPopUp(popup = popUpData)
+            }
         }
 
         val did = errorHandler.getRequiredField(fieldName = "did") ?: return
