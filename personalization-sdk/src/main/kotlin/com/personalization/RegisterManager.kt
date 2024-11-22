@@ -53,7 +53,7 @@ class RegisterManager @Inject constructor(
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        val did = ""/*getUserSettingsValueUseCase.getDid()*/ //TODO uncomment value
+        val did = getUserSettingsValueUseCase.getDid()
         when {
             did.isEmpty() -> initializeNewDevice()
             else -> initializeSdk(null)

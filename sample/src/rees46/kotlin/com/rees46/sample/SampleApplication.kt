@@ -8,7 +8,7 @@ class SampleApplication : AbstractSampleApplication<REES46>(REES46.getInstance()
 
     override val shopId: String
         get() = when {
-            !BuildConfig.DEBUG -> DEBUG_SHOP_IP
+            BuildConfig.DEBUG -> DEBUG_SHOP_IP
             else -> RELEASE_SHOP_IP
         }
 
