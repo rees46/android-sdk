@@ -16,11 +16,13 @@ class JsonResponseErrorHandler(
      * @return true if the response is valid, false otherwise.
      */
     fun validateResponse(): Boolean {
-        if (response == null) {
+        return if (response == null) {
             logError("Response is null or incorrect.")
-            return false
+            false
+        } else {
+            Log.i(tag, "Response is : $response")
+            true
         }
-        return true
     }
 
     /**

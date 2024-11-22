@@ -158,11 +158,6 @@ class RegisterManager @Inject constructor(
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
                         handleInitSuccess(response)
-
-                        JsonResponseErrorHandler(
-                            tag = TAG,
-                            response = response
-                        ).logError("Initialization response")
                     }
 
                     override fun onError(code: Int, msg: String?) {
@@ -234,7 +229,7 @@ class RegisterManager @Inject constructor(
     }
 
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        val params = mapOf(PLATFORM_FIELD to PLATFORM_ANDROID_FIELD, TOKEN_FIELD to token)
+        val params = mapOf(PLATFORM_FIELD to PARAM_ANDROID, TOKEN_FIELD to token)
         sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params), listener)
     }
 
@@ -246,22 +241,21 @@ class RegisterManager @Inject constructor(
 
     companion object {
         private const val TAG = "RegisterManager"
-        private const val IS_TEST_DEVICE_FIELD = "true"
-        private const val FIREBASE_TEST_LAB = "firebase.test.lab"
-        private const val PLATFORM_FIELD = "platform"
-        private const val PLATFORM_ANDROID_FIELD = "android"
-        private const val TOKEN_FIELD = "token"
-        private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
-        private const val SESSION_CODE_EXPIRE = 2 * 3600 * 1000L
+
         private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60 * 1000L
-        private const val MAX_INIT_RETRIES = 5
+        private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
+        private const val FIREBASE_TEST_LAB = "firebase.test.lab"
+        private const val SESSION_CODE_EXPIRE = 2 * 3600 * 1000L
         private const val RETRY_DELAY_MILLISECONDS = 1000L
-        private const val ALPHANUMERIC_VALUE = 10
-
+        private const val IS_TEST_DEVICE_FIELD = "true"
+        private const val PLATFORM_FIELD = "platform"
+        private const val PARAM_ANDROID = "android"
         private const val GET_INIT_METHOD = "init"
-        private const val PARAM_TZ = "tz"
+        private const val ALPHANUMERIC_VALUE = 10
         private const val PARAM_STREAM = "stream"
-        private const val PARAM_ANDROID = "stream"
+        private const val TOKEN_FIELD = "token"
+        private const val MAX_INIT_RETRIES = 5
+        private const val PARAM_TZ = "tz"
     }
 }
