@@ -45,8 +45,8 @@ class InAppNotificationManagerImpl @Inject constructor(
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (exception: Exception) {
+            exception.printStackTrace()
         }
     }
 
@@ -57,8 +57,8 @@ class InAppNotificationManagerImpl @Inject constructor(
         val buttonNegativeText = popup.popupActions?.close?.buttonText
         val buttonPositiveText = popup.popupActions?.link?.buttonText
         val imageUrl: String? = popup.components?.image
-        val title: String? = popup.components?.text
-        val message: String? = popup.components?.header
+        val title: String? = popup.components?.header
+        val message: String? = popup.components?.text
         val position: Position = popup.position
 
         when (position) {
@@ -216,7 +216,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     ) {
-        val snackBar = Snackbar(view).show(
+        Snackbar(view).show(
             message = message,
             buttonPositiveText = buttonPositiveText,
             buttonNegativeText = buttonNegativeText,
