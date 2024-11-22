@@ -9,6 +9,8 @@ import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.errors.FirebaseError
+import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
@@ -77,7 +79,10 @@ class RegisterManager @Inject constructor(
     }
 
     private fun logFirebaseTokenError(task: Task<String>) {
-        SDK.error("Failed to retrieve Firebase token: ${task.exception?.message ?: "Unknown error"}")
+        FirebaseError(
+            tag = TAG,
+            exception = task.exception
+        ).logError()
     }
 
     private fun processFirebaseToken(token: String) {
@@ -164,20 +169,17 @@ class RegisterManager @Inject constructor(
     }
 
     private fun handleInitSuccess(response: JSONObject?) {
-        if (response == null) {
-            SDK.error("Init response is null or incorrect.")
+        val errorHandler = JsonResponseErrorHandler(
+            tag = TAG,
+            response = response
+        )
+
+        if (!errorHandler.validateResponse()) {
             return
         }
 
-        val did = response.optString("did").takeIf { it.isNotEmpty() } ?: run {
-            SDK.error("Init response does not contain the correct did field.")
-            return
-        }
-
-        val seance = response.optString("seance").takeIf { it.isNotEmpty() } ?: run {
-            SDK.error("Init response does not contain the correct seance field.")
-            return
-        }
+        val did = errorHandler.getRequiredField(fieldName = "did") ?: return
+        val seance = errorHandler.getRequiredField(fieldName = "seance") ?: return
 
         updateUserSettingsValueUseCase.updateDid(did)
         initializeSdk(seance)
