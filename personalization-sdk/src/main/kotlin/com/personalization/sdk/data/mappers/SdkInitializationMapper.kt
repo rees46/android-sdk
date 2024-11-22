@@ -5,12 +5,15 @@ import com.personalization.api.responses.initialization.Components
 import com.personalization.api.responses.initialization.Link
 import com.personalization.api.responses.initialization.Popup
 import com.personalization.api.responses.initialization.PopupActions
+import com.personalization.api.responses.initialization.Position
 import com.personalization.api.responses.initialization.SdkInitializationResponse
+import com.personalization.errors.JsonResponseErrorHandler
 import org.json.JSONArray
 import org.json.JSONObject
 
 object SdkInitializationMapper {
 
+    private const val TAG = "SdkInitializationMapper"
     private const val PARAM_ID = "id"
     private const val PARAM_CHANNELS = "channels"
     private const val PARAM_POSITION = "position"
@@ -51,7 +54,9 @@ object SdkInitializationMapper {
                 Popup(
                     id = popupJson.optInt(PARAM_ID),
                     channels = popupJson.optJSONArray(PARAM_CHANNELS)?.toList() ?: emptyList(),
-                    position = popupJson.optString(PARAM_POSITION),
+                    position = Position.fromString(
+                        value = popupJson.optString(PARAM_POSITION)
+                    ) ?: Position.UNKNOWN,
                     delay = popupJson.optInt(PARAM_DELAY),
                     html = popupJson.optString(PARAM_HTML),
                     components = popupJson.optString(PARAM_COMPONENTS)?.let {
@@ -106,8 +111,14 @@ object SdkInitializationMapper {
                 webPushSettings = null,
                 recone = this.optBoolean(PARAM_RECONE)
             )
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (exception: Exception) {
+            JsonResponseErrorHandler(
+                tag = TAG,
+                response = null
+            ).logError(
+                message = "Error caught in mapToSdkInitResponse",
+                exception = exception
+            )
             null
         }
     }

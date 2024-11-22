@@ -1,9 +1,11 @@
 package com.personalization.features.inAppNotification.impl
 
+import android.graphics.Color
 import android.view.View
 import androidx.fragment.app.FragmentManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.responses.initialization.Popup
+import com.personalization.api.responses.initialization.Position
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
@@ -20,7 +22,51 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
     }
 
     override fun shopPopUp(popup: Popup) {
-        println("****DETEKT LOG InAppNotificationManagerImpl**** : ${popup.id}")
+        val deepLink = popup.popupActions?.link?.linkAndroid ?: popup.popupActions?.link?.linkWeb
+        val buttonNegativeText = popup.popupActions?.close?.buttonText
+        val buttonPositiveText = popup.popupActions?.link?.buttonText
+        val imageUrl: String? = popup.components?.image
+        val title: String? = popup.components?.text
+        val message: String? = popup.components?.header
+        val position: Position = popup.position
+
+        when (position) {
+            Position.CENTERED -> showAlertDialog(
+                title = title.orEmpty(),
+                message = message.orEmpty(),
+                imageUrl = "",
+                buttonPositiveColor = Color.BLACK,
+                buttonNegativeColor = Color.BLACK,
+                buttonPositiveText = buttonPositiveText.orEmpty(),
+                buttonNegativeText = buttonNegativeText.orEmpty(),
+                onPositiveClick = {},
+                onNegativeClick = {}
+            )
+
+            Position.BOTTOM -> showBottomSheetDialog(
+                title = title.orEmpty(),
+                message = message.orEmpty(),
+                imageUrl = imageUrl.orEmpty(),
+                buttonPositiveColor = Color.BLACK,
+                buttonNegativeColor = Color.BLACK,
+                buttonPositiveText = buttonPositiveText.orEmpty(),
+                buttonNegativeText = buttonNegativeText.orEmpty(),
+                onPositiveClick = {},
+                onNegativeClick = {}
+            )
+
+            else -> showFullScreenDialog(
+                title = title.orEmpty(),
+                message = message.orEmpty(),
+                imageUrl = imageUrl.orEmpty(),
+                buttonPositiveColor = Color.BLACK,
+                buttonNegativeColor = Color.BLACK,
+                buttonPositiveText = buttonPositiveText.orEmpty(),
+                buttonNegativeText = buttonNegativeText.orEmpty(),
+                onPositiveClick = {},
+                onNegativeClick = {}
+            )
+        }
     }
 
     override fun showAlertDialog(
@@ -141,4 +187,8 @@ class InAppNotificationManagerImpl @Inject constructor() : InAppNotificationMana
             onNegativeClick = onNegativeClick
         )
     }
+}
+
+enum class PopUpPosition {
+    CENTER
 }
