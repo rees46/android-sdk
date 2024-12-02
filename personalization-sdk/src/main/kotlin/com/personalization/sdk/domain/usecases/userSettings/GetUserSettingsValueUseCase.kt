@@ -9,6 +9,8 @@ class GetUserSettingsValueUseCase @Inject constructor(
 
     fun getDid(): String = userSettingsRepository.getDid()
 
+    fun removeDid(): String? = userSettingsRepository.removeDid()
+
     fun getSid(): String = userSettingsRepository.getSid()
 
     fun getSidLastActTime(): Long = userSettingsRepository.getSidLastActTime()

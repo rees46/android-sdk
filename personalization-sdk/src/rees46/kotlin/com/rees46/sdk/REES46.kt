@@ -57,7 +57,8 @@ class REES46 private constructor() : SDK() {
                 stream = PLATFORM_ANDROID,
                 notificationType = NOTIFICATION_TYPE,
                 notificationId = NOTIFICATION_ID,
-                autoSendPushToken = autoSendPushToken
+                autoSendPushToken = autoSendPushToken,
+                needReInitialization = true
             )
 
             sdk.setOnMessageListener { data ->

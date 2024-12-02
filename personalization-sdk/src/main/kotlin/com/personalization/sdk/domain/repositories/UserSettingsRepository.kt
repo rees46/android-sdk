@@ -13,6 +13,7 @@ interface UserSettingsRepository {
     )
 
     fun getDid(): String
+    fun removeDid(): String?
     fun updateDid(value: String)
 
     fun updateSid(value: String)

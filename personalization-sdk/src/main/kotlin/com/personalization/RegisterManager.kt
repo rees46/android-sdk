@@ -42,13 +42,20 @@ class RegisterManager @Inject constructor(
      * Get did from properties or generate a new did
      */
     @SuppressLint("HardwareIds")
-    internal fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
+    internal fun initialize(
+        contentResolver: ContentResolver,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean = false
+    ) {
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        var did = getUserSettingsValueUseCase.getDid()
+        var did: String? = when {
+            needReInitialization -> getUserSettingsValueUseCase.removeDid()
+            else -> getUserSettingsValueUseCase.getDid()
+        }
 
-        if (did.isEmpty()) {
+        if (did.isNullOrEmpty()) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
             updateUserSettingsValueUseCase.updateDid(did)
