@@ -1,5 +1,9 @@
 package com.personalization.api.responses.initialization
 
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
+import com.personalization.sdk.data.models.dto.popUp.WebPushSettings
+import com.personalization.sdk.data.models.dto.search.Search
+
 data class SdkInitializationResponse(
     val did: String,
     val seance: String,
@@ -11,7 +15,7 @@ data class SdkInitializationResponse(
     val autoCssRecommender: Boolean,
     val cms: String,
     val snippets: List<String>,
-    val popup: Popup?,
+    val popupDto: PopupDto?,
     val search: Search?,
     val webPushSettings: WebPushSettings?,
     val recone: Boolean

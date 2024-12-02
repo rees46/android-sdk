@@ -9,13 +9,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.api.responses.initialization.Popup
-import com.personalization.api.responses.initialization.Position
 import com.personalization.errors.EmptyFieldError
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
+import com.personalization.sdk.data.models.dto.popUp.Position
 import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
@@ -50,16 +50,17 @@ class InAppNotificationManagerImpl @Inject constructor(
         }
     }
 
-    override fun shopPopUp(popup: Popup) {
-        val deepLink = popup.popupActions?.link?.linkAndroid ?: popup.popupActions?.link?.linkWeb
+    override fun shopPopUp(popupDto: PopupDto) {
+        val deepLink =
+            popupDto.popupActions?.link?.linkAndroid ?: popupDto.popupActions?.link?.linkWeb
         val buttonPositiveColor = ContextCompat.getColor(context, R.color.buttonAcceptColor)
         val buttonNegativeColor = ContextCompat.getColor(context, R.color.colorGray)
-        val buttonNegativeText = popup.popupActions?.close?.buttonText
-        val buttonPositiveText = popup.popupActions?.link?.buttonText
-        val imageUrl: String? = popup.components?.image
-        val title: String? = popup.components?.header
-        val message: String? = popup.components?.text
-        val position: Position = popup.position
+        val buttonNegativeText = popupDto.popupActions?.close?.buttonText
+        val buttonPositiveText = popupDto.popupActions?.link?.buttonText
+        val imageUrl: String? = popupDto.components?.image
+        val title: String? = popupDto.components?.header
+        val message: String? = popupDto.components?.text
+        val position: Position = popupDto.position
 
         when (position) {
             Position.CENTERED -> showAlertDialog(

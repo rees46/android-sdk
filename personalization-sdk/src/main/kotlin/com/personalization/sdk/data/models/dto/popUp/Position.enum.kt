@@ -1,4 +1,4 @@
-package com.personalization.api.responses.initialization
+package com.personalization.sdk.data.models.dto.popUp
 
 enum class Position(val value: String) {
     CENTERED("centered"),

@@ -1,4 +1,4 @@
-package com.personalization.api.responses.initialization
+package com.personalization.sdk.data.models.dto.search
 
 data class Search(
     val enabled: Boolean,

@@ -1,4 +1,4 @@
-package com.personalization.api.responses.initialization
+package com.personalization.sdk.data.models.dto.popUp
 
 data class Components(
     val text: String,

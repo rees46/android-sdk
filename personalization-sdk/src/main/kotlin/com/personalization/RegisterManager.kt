@@ -188,9 +188,9 @@ class RegisterManager @Inject constructor(
         if (!errorHandler.validateResponse()) {
             return
         } else {
-            val popUpData = response?.mapToSdkInitResponse()?.popup
+            val popUpData = response?.mapToSdkInitResponse()?.popupDto
             if (popUpData != null) {
-                inAppNotificationUseCase.execute(popup = popUpData)
+                inAppNotificationUseCase.execute(popupDto = popUpData)
             }
         }
 

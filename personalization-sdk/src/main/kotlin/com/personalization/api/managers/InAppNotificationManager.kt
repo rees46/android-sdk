@@ -2,13 +2,13 @@ package com.personalization.api.managers
 
 import android.view.View
 import androidx.fragment.app.FragmentManager
-import com.personalization.api.responses.initialization.Popup
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
 
 interface InAppNotificationManager {
 
     fun initFragmentManager(fragmentManager: FragmentManager)
 
-    fun shopPopUp(popup: Popup)
+    fun shopPopUp(popupDto: PopupDto)
 
     fun showAlertDialog(
         title: String,
