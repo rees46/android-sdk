@@ -41,7 +41,7 @@ class REES46 private constructor() : SDK() {
             shopId: String,
             shopSecretKey: String,
             apiHost: String? = null,
-            autoSendPushToken: Boolean = true
+            autoSendPushToken: Boolean = true,
         ) {
             val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
 
@@ -57,7 +57,7 @@ class REES46 private constructor() : SDK() {
                 stream = PLATFORM_ANDROID,
                 notificationType = NOTIFICATION_TYPE,
                 notificationId = NOTIFICATION_ID,
-                autoSendPushToken = autoSendPushToken
+                autoSendPushToken = autoSendPushToken,
             )
 
             sdk.setOnMessageListener { data ->

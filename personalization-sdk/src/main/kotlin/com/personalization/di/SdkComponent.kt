@@ -22,10 +22,13 @@ interface SdkComponent {
 
     @Component.Factory
     interface Factory {
-        fun create(appModule: AppModule): SdkComponent
+        fun create(
+            appModule: AppModule
+        ): SdkComponent
     }
 
     fun inject(sdk: SDK)
 
     fun inject(service: NotificationService)
+
 }

@@ -2,11 +2,15 @@ package com.personalization.api.managers
 
 import android.view.View
 import androidx.fragment.app.FragmentManager
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
 
 interface InAppNotificationManager {
 
+    fun initFragmentManager(fragmentManager: FragmentManager)
+
+    fun shopPopUp(popupDto: PopupDto)
+
     fun showAlertDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String,
@@ -14,12 +18,10 @@ interface InAppNotificationManager {
         buttonNegativeText: String,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showFullScreenDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
@@ -27,12 +29,10 @@ interface InAppNotificationManager {
         buttonNegativeColor: Int,
         buttonPositiveText: String,
         buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showBottomSheetDialog(
-        fragmentManager: FragmentManager,
         title: String,
         message: String,
         imageUrl: String?,
@@ -40,8 +40,7 @@ interface InAppNotificationManager {
         buttonNegativeText: String?,
         buttonPositiveColor: Int,
         buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        onPositiveClick: () -> Unit
     )
 
     fun showSnackBar(
@@ -52,4 +51,5 @@ interface InAppNotificationManager {
         onPositiveClick: () -> Unit,
         onNegativeClick: () -> Unit
     )
+
 }
