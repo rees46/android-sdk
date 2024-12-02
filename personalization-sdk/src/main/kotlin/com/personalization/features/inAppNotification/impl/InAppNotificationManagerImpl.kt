@@ -34,7 +34,6 @@ class InAppNotificationManagerImpl @Inject constructor(
             EmptyFieldError(
                 tag = TAG,
                 functionName = FUNC_OPENING_BROWSER,
-                message = "Deep link is empty or null"
             )
             return
         }

@@ -13,7 +13,6 @@ import com.personalization.features.products.impl.ProductsManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
 import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
-import com.personalization.sdk.domain.usecases.inAppNotification.InAppNotificationUseCase
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
@@ -39,7 +38,7 @@ class SdkModule {
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
         executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
-        inAppNotificationUseCase: InAppNotificationUseCase
+        inAppNotificationManager: InAppNotificationManager
     ): RegisterManager = RegisterManager(
         getPreferencesValueUseCase = getPreferencesValueUseCase,
         savePreferencesValueUseCase = savePreferencesValueUseCase,
@@ -47,7 +46,7 @@ class SdkModule {
         getUserSettingsValueUseCase = getUserSettingsValueUseCase,
         sendNetworkMethodUseCase = sendNetworkMethodUseCase,
         executeQueueTasksUseCase = executeQueueTasksUseCase,
-        inAppNotificationUseCase = inAppNotificationUseCase
+        inAppNotificationManager = inAppNotificationManager
     )
 
     @Singleton
@@ -94,14 +93,6 @@ class SdkModule {
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): SearchManager = SearchManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
-    )
-
-    @Singleton
-    @Provides
-    fun provideSendPopupToNotificationManagerUseCase(
-        inAppNotificationManager: InAppNotificationManager
-    ): InAppNotificationUseCase = InAppNotificationUseCase(
-        inAppNotificationManager = inAppNotificationManager
     )
 
     @Singleton

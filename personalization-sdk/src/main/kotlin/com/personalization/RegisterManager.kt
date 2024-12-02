@@ -9,11 +9,11 @@ import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.errors.BaseInfoError
 import com.personalization.errors.FirebaseError
 import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.sdk.data.mappers.SdkInitializationMapper.mapToSdkInitResponse
-import com.personalization.sdk.domain.usecases.inAppNotification.InAppNotificationUseCase
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
@@ -37,7 +37,7 @@ class RegisterManager @Inject constructor(
     private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
     private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
-    private val inAppNotificationUseCase: InAppNotificationUseCase
+    private val inAppNotificationManager: InAppNotificationManager
 ) {
 
     private var autoSendPushToken = false
@@ -190,7 +190,7 @@ class RegisterManager @Inject constructor(
         } else {
             val popUpData = response?.mapToSdkInitResponse()?.popupDto
             if (popUpData != null) {
-                inAppNotificationUseCase.execute(popupDto = popUpData)
+                inAppNotificationManager.shopPopUp(popupDto = popUpData)
             }
         }
 
