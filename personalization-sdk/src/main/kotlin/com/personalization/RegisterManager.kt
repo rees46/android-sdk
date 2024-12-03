@@ -39,8 +39,8 @@ class RegisterManager @Inject constructor(
     private val executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
     private val inAppNotificationManager: InAppNotificationManager
 ) {
+    private var autoSendPushToken: Boolean = false
 
-    private var autoSendPushToken = false
     private lateinit var contentResolver: ContentResolver
 
     private val isTestDevice: Boolean
@@ -49,13 +49,17 @@ class RegisterManager @Inject constructor(
             FIREBASE_TEST_LAB
         )
 
-    fun initialize(contentResolver: ContentResolver, autoSendPushToken: Boolean) {
+    fun initialize(
+        contentResolver: ContentResolver,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean = false
+    ) {
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
         val did = getUserSettingsValueUseCase.getDid()
         when {
-            did.isEmpty() -> initializeNewDevice()
+            did.isEmpty() || needReInitialization -> initializeNewDevice()
             else -> initializeSdk(null)
         }
     }

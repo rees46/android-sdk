@@ -111,7 +111,8 @@ open class SDK {
         stream: String,
         notificationType: String,
         notificationId: String,
-        autoSendPushToken: Boolean = true
+        autoSendPushToken: Boolean = true,
+        needReInitialization: Boolean = false
     ) {
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
@@ -141,16 +142,17 @@ open class SDK {
         )
         registerManager.initialize(
             contentResolver = context.contentResolver,
-            autoSendPushToken = autoSendPushToken
+            autoSendPushToken = autoSendPushToken,
+            needReInitialization = needReInitialization
         )
-    }
-
-    fun initializeFragmentManager(fragmentManager: FragmentManager) {
-        inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {
         storiesManager.initialize(storiesView)
+    }
+
+    fun initializeFragmentManager(fragmentManager: FragmentManager) {
+        inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
     }
 
     /**

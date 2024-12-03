@@ -56,6 +56,7 @@ class UserSettingsDataSource @AssistedInject constructor(
 
     internal fun getDid(): String = preferencesDataSource.getValue(DID_KEY, DEFAULT_DID)
     internal fun saveDid(value: String) = preferencesDataSource.saveValue(DID_KEY, value)
+    internal fun removeDid() = preferencesDataSource.removeValue(DID_KEY)
 
     internal fun getIsInitialized(): Boolean = isInitialized
     internal fun setIsInitialized(value: Boolean) {

@@ -26,8 +26,9 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override fun getDid(): String =
-        userSettingsDataSource.getDid()
+    override fun getDid(): String {
+        return userSettingsDataSource.getDid()
+    }
 
     override fun updateDid(value: String) {
         userSettingsDataSource.saveDid(value)
@@ -38,8 +39,13 @@ class UserSettingsRepositoryImpl @Inject constructor(
         updateSidLastActTime()
     }
 
-    override fun getSid(): String =
-        userSettingsDataSource.getSid()
+    override fun getSid(): String {
+        return userSettingsDataSource.getSid()
+    }
+
+    override fun removeDid() {
+        userSettingsDataSource.removeDid()
+    }
 
     override fun updateSidLastActTime() {
         userSettingsDataSource.saveSidLastActTime(System.currentTimeMillis())
