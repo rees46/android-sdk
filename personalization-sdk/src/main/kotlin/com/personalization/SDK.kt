@@ -151,6 +151,10 @@ open class SDK {
         storiesManager.initialize(storiesView)
     }
 
+    fun initializeFragmentManager(fragmentManager: FragmentManager) {
+        inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
+    }
+
     /**
      * @param listener
      */
