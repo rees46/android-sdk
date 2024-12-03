@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
@@ -58,6 +59,8 @@ class AlertDialog : DialogFragment() {
         val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
         if (imageUrl.isNotBlank()) {
             binding.backgroundImageView.loadImage(imageUrl)
+        } else {
+            binding.imageContainer.isVisible = false
         }
     }
 

@@ -1,4 +1,4 @@
-package com.personalization.sdk.data.mappers
+package com.personalization.sdk.data.mappers.notification
 
 import com.personalization.sdk.data.models.NotificationSourceDto
 import com.personalization.sdk.domain.models.NotificationSource

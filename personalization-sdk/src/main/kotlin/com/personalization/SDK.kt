@@ -39,7 +39,6 @@ open class SDK {
 
     internal lateinit var context: Context
     private lateinit var segment: String
-    lateinit var fragmentManager: FragmentManager
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
@@ -116,7 +115,7 @@ open class SDK {
         needReInitialization: Boolean = false
     ) {
         val sdkComponent = DaggerSdkComponent.factory().create(
-            AppModule(applicationContext = context)
+            appModule = AppModule(applicationContext = context)
         )
         sdkComponent.inject(sdk = this)
 
@@ -130,7 +129,7 @@ open class SDK {
 
         segment = getPreferencesValueUseCase.getSegment()
 
-        notificationHandler.initialize(context)
+        notificationHandler.initialize(context = context)
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
@@ -168,78 +167,6 @@ open class SDK {
         storiesManager.showStories(context.mainLooper, code)
     }
 
-    fun initializeFragmentManager(fragmentManager: FragmentManager) {
-        this.fragmentManager = fragmentManager
-    }
-
-    fun showAlertDialog(
-        title: String,
-        message: String,
-        imageUrl: String,
-        buttonNegativeText: String,
-        buttonPositiveText: String,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
-    ) = inAppNotificationManager.showAlertDialog(
-        fragmentManager = fragmentManager,
-        title = title,
-        message = message,
-        imageUrl = imageUrl,
-        buttonPositiveColor = buttonPositiveColor,
-        buttonNegativeColor = buttonNegativeColor,
-        buttonNegativeText = buttonNegativeText,
-        buttonPositiveText = buttonPositiveText,
-        onNegativeClick = onNegativeClick,
-        onPositiveClick = onPositiveClick,
-    )
-
-    fun showFullScreenDialog(
-        title: String,
-        message: String,
-        imageUrl: String,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        buttonNegativeText: String,
-        buttonPositiveText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
-    ) = inAppNotificationManager.showFullScreenDialog(
-        fragmentManager = fragmentManager,
-        title = title,
-        message = message,
-        imageUrl = imageUrl,
-        buttonPositiveColor = buttonPositiveColor,
-        buttonNegativeColor = buttonNegativeColor,
-        buttonNegativeText = buttonNegativeText,
-        buttonPositiveText = buttonPositiveText,
-        onNegativeClick = onNegativeClick,
-        onPositiveClick = onPositiveClick,
-    )
-
-    fun showBottomSheetDialog(
-        title: String,
-        message: String,
-        imageUrl: String?,
-        buttonPositiveText: String,
-        buttonNegativeText: String?,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
-    ) = inAppNotificationManager.showBottomSheetDialog(
-        fragmentManager = fragmentManager,
-        title = title,
-        message = message,
-        imageUrl = imageUrl,
-        buttonNegativeText = buttonNegativeText,
-        buttonPositiveText = buttonPositiveText,
-        buttonPositiveColor = buttonPositiveColor,
-        buttonNegativeColor = buttonNegativeColor,
-        onNegativeClick = onNegativeClick,
-        onPositiveClick = onPositiveClick,
-    )
 
     /**
      * Triggers a story event

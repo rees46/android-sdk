@@ -4,7 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_margin="@dimen/large_margin"
     app:cardCornerRadius="@dimen/default_radius"
     app:cardUseCompatPadding="true">
 
@@ -14,6 +13,7 @@
         android:orientation="vertical">
 
         <FrameLayout
+            android:id="@+id/imageContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 

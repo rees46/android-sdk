@@ -3,7 +3,7 @@ package com.personalization.sdk.data.repositories.notification
 import com.google.gson.Gson
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
-import com.personalization.sdk.data.mappers.NotificationMapper
+import com.personalization.sdk.data.mappers.notification.NotificationMapper
 import com.personalization.sdk.data.models.params.GetAllNotificationsParams
 import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
 import com.personalization.sdk.domain.models.NotificationSource

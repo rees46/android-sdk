@@ -1,5 +1,6 @@
 package com.personalization.di
 
+import android.content.Context
 import com.personalization.RegisterManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
@@ -36,14 +37,16 @@ class SdkModule {
         updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-        executeQueueTasksUseCase: ExecuteQueueTasksUseCase
+        executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
+        inAppNotificationManager: InAppNotificationManager
     ): RegisterManager = RegisterManager(
         getPreferencesValueUseCase = getPreferencesValueUseCase,
         savePreferencesValueUseCase = savePreferencesValueUseCase,
         updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
         getUserSettingsValueUseCase = getUserSettingsValueUseCase,
         sendNetworkMethodUseCase = sendNetworkMethodUseCase,
-        executeQueueTasksUseCase = executeQueueTasksUseCase
+        executeQueueTasksUseCase = executeQueueTasksUseCase,
+        inAppNotificationManager = inAppNotificationManager
     )
 
     @Singleton
@@ -94,7 +97,11 @@ class SdkModule {
 
     @Singleton
     @Provides
-    fun provideInAppNotificationManager(): InAppNotificationManager = InAppNotificationManagerImpl()
+    fun provideInAppNotificationManager(
+        context: Context
+    ): InAppNotificationManager {
+        return InAppNotificationManagerImpl(context)
+    }
 
     @Singleton
     @Provides
