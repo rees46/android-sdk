@@ -43,9 +43,8 @@ class UserSettingsRepositoryImpl @Inject constructor(
         return userSettingsDataSource.getSid()
     }
 
-    override fun removeDid(): String? {
+    override fun removeDid() {
         userSettingsDataSource.removeDid()
-        return null
     }
 
     override fun updateSidLastActTime() {

@@ -50,12 +50,9 @@ class RegisterManager @Inject constructor(
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
-        var did: String? = when {
-            needReInitialization -> getUserSettingsValueUseCase.removeDid()
-            else -> getUserSettingsValueUseCase.getDid()
-        }
+        var did: String = getUserSettingsValueUseCase.getDid()
 
-        if (did.isNullOrEmpty()) {
+        if (did.isEmpty() || needReInitialization) {
             did = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
 
             updateUserSettingsValueUseCase.updateDid(did)
