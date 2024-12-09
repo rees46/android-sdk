@@ -4,7 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.view.View
+import android.widget.Toast
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
@@ -14,6 +18,7 @@ import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
+import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.sdk.data.models.dto.popUp.Position
 import com.personalization.ui.click.NotificationClickListener
@@ -29,76 +34,76 @@ class InAppNotificationManagerImpl @Inject constructor(
         this.fragmentManager = fragmentManager
     }
 
-    private fun openUrlInBrowser(url: String?) {
-        if (url.isNullOrEmpty()) {
-            EmptyFieldError(
-                tag = TAG,
-                functionName = FUNC_OPENING_BROWSER,
-            )
-            return
-        }
-
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            if (context !is Activity) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        } catch (exception: Exception) {
-            exception.printStackTrace()
-        }
+    override fun shopPopUp(popupDto: PopupDto) {
+        val dialogData = extractDialogData(popupDto)
+        showDialog(dialogData)
     }
 
-    override fun shopPopUp(popupDto: PopupDto) {
+    private fun extractDialogData(popupDto: PopupDto): DialogDataDto {
         val deepLink =
             popupDto.popupActions?.link?.linkAndroid ?: popupDto.popupActions?.link?.linkWeb
         val buttonPositiveColor = ContextCompat.getColor(context, R.color.buttonAcceptColor)
         val buttonNegativeColor = ContextCompat.getColor(context, R.color.colorGray)
+        val buttonSubscription = popupDto.popupActions?.pushSubscribe?.buttonText
         val buttonNegativeText = popupDto.popupActions?.close?.buttonText
-        val buttonPositiveText = popupDto.popupActions?.link?.buttonText
+        val buttonPositiveText = buttonSubscription ?: popupDto.popupActions?.link?.buttonText
         val imageUrl: String? = popupDto.components?.image
         val title: String? = popupDto.components?.header
         val message: String? = popupDto.components?.text
         val position: Position = popupDto.position
 
-        when (position) {
+        val onPositiveClick = if (buttonSubscription != null) {
+            { requestPushNotifications() }
+        } else {
+            { openUrlInBrowser(url = deepLink) }
+        }
+
+        return DialogDataDto(
+            title = title.orEmpty(),
+            message = message.orEmpty(),
+            imageUrl = imageUrl.orEmpty(),
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
+            buttonPositiveText = buttonPositiveText.orEmpty(),
+            buttonNegativeText = buttonNegativeText.orEmpty(),
+            onPositiveClick = onPositiveClick,
+            position = position
+        )
+    }
+
+    private fun showDialog(dialogData: DialogDataDto) {
+        when (dialogData.position) {
             Position.CENTERED -> showAlertDialog(
-                title = title.orEmpty(),
-                message = message.orEmpty(),
-                imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = buttonPositiveColor,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveText = buttonPositiveText.orEmpty(),
-                buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {
-                    openUrlInBrowser(url = deepLink)
-                }
+                title = dialogData.title,
+                message = dialogData.message,
+                imageUrl = dialogData.imageUrl,
+                buttonPositiveColor = dialogData.buttonPositiveColor,
+                buttonNegativeColor = dialogData.buttonNegativeColor,
+                buttonPositiveText = dialogData.buttonPositiveText,
+                buttonNegativeText = dialogData.buttonNegativeText,
+                onPositiveClick = dialogData.onPositiveClick
             )
 
             Position.BOTTOM -> showBottomSheetDialog(
-                title = title.orEmpty(),
-                message = message.orEmpty(),
-                imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = buttonPositiveColor,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveText = buttonPositiveText.orEmpty(),
-                buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {
-                    openUrlInBrowser(url = deepLink)
-                }
+                title = dialogData.title,
+                message = dialogData.message,
+                imageUrl = dialogData.imageUrl,
+                buttonPositiveColor = dialogData.buttonPositiveColor,
+                buttonNegativeColor = dialogData.buttonNegativeColor,
+                buttonPositiveText = dialogData.buttonPositiveText,
+                buttonNegativeText = dialogData.buttonNegativeText,
+                onPositiveClick = dialogData.onPositiveClick
             )
 
             else -> showFullScreenDialog(
-                title = title.orEmpty(),
-                message = message.orEmpty(),
-                imageUrl = imageUrl.orEmpty(),
-                buttonPositiveColor = buttonPositiveColor,
-                buttonNegativeColor = buttonNegativeColor,
-                buttonPositiveText = buttonPositiveText.orEmpty(),
-                buttonNegativeText = buttonNegativeText.orEmpty(),
-                onPositiveClick = {
-                    openUrlInBrowser(url = deepLink)
-                }
+                title = dialogData.title,
+                message = dialogData.message,
+                imageUrl = dialogData.imageUrl,
+                buttonPositiveColor = dialogData.buttonPositiveColor,
+                buttonNegativeColor = dialogData.buttonNegativeColor,
+                buttonPositiveText = dialogData.buttonPositiveText,
+                buttonNegativeText = dialogData.buttonNegativeText,
+                onPositiveClick = dialogData.onPositiveClick
             )
         }
     }
@@ -223,6 +228,52 @@ class InAppNotificationManagerImpl @Inject constructor(
             onPositiveClick = onPositiveClick,
             onNegativeClick = onNegativeClick
         )
+    }
+
+    private fun openUrlInBrowser(url: String?) {
+        if (url.isNullOrEmpty()) {
+            EmptyFieldError(
+                tag = TAG,
+                functionName = FUNC_OPENING_BROWSER,
+            )
+            return
+        }
+
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (exception: Exception) {
+            exception.printStackTrace()
+        }
+    }
+
+    private fun requestPushNotifications() {
+        val notificationManager = NotificationManagerCompat.from(context)
+        if (!notificationManager.areNotificationsEnabled()) {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                }
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+            }
+
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } else {
+            Toast.makeText(
+                /* context = */ context,
+                /* text = */ context.getText(R.string.has_notification_permission_message),
+                /* duration = */ Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     companion object {

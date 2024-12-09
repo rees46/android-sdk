@@ -24,6 +24,7 @@ object SdkInitializationParams {
     const val PARAM_BUTTON_TEXT = "button_text"
     const val PARAM_LINK_ANDROID = "link_android"
     const val PARAM_CLOSE = "close"
+    const val PARAM_PUSH_SUBSCRIPTION = "system_mobile_push_subscribe"
     const val PARAM_DID = "did"
     const val PARAM_SEANCE = "seance"
     const val PARAM_CURRENCY = "currency"
