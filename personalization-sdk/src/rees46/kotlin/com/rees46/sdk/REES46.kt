@@ -24,7 +24,7 @@ class REES46 private constructor() : SDK() {
         private const val NOTIFICATION_ID = "REES46_NOTIFICATION_ID"
 
         private val API_URL: String = when {
-            !BuildConfig.DEBUG -> DEBUG_API_URL
+            BuildConfig.DEBUG -> DEBUG_API_URL
             else -> RELEASE_API_URL
         }
         private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
@@ -50,7 +50,7 @@ class REES46 private constructor() : SDK() {
             sdk.initialize(
                 context = context,
                 shopSecretKey = shopSecretKey,
-                shopId = "357382bf66ac0ce2f1722677c59511",
+                shopId = shopId,
                 apiUrl = apiUrl,
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
