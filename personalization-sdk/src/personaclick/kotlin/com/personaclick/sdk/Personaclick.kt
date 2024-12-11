@@ -27,7 +27,6 @@ class Personaclick private constructor() : SDK() {
         fun initialize(
             context: Context,
             shopId: String,
-            shopSecretKey: String,
             autoSendPushToken: Boolean = true
         ) {
             val sdk = getInstance()
@@ -35,7 +34,6 @@ class Personaclick private constructor() : SDK() {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                shopSecretKey = shopSecretKey,
                 apiUrl = API_URL,
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,

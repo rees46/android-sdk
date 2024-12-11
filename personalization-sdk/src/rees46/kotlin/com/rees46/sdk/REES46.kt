@@ -39,7 +39,6 @@ class REES46 private constructor() : SDK() {
         fun initialize(
             context: Context,
             shopId: String,
-            shopSecretKey: String,
             apiHost: String? = null,
             autoSendPushToken: Boolean = true
         ) {
@@ -49,7 +48,6 @@ class REES46 private constructor() : SDK() {
 
             sdk.initialize(
                 context = context,
-                shopSecretKey = shopSecretKey,
                 shopId = shopId,
                 apiUrl = apiUrl,
                 tag = TAG,

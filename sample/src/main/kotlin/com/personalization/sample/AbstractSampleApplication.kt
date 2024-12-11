@@ -16,7 +16,6 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
     private val sdk: SDK
 ) : Application() {
     protected abstract val shopId: String
-    protected abstract val shopSecretKey: String
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 

@@ -37,6 +37,7 @@ class Params : AbstractParams<Params>() {
         CATEGORY("category"),
         SEARCH_QUERY("search_query"),
         EXTENDED("extended"),
+        WITH_LOCATIONS("with_locations"),
     }
 
     /**

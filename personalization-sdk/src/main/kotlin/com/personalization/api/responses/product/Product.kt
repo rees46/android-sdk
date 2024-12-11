@@ -9,6 +9,8 @@ data class Product(
     val categories: List<Category>,
     @SerializedName("category_ids")
     val categoryIds: List<String>,
+    @SerializedName("location_ids")
+    val locationIds: List<String>,
     @SerializedName("currency")
     val currency: String,
     @SerializedName("description")

@@ -11,7 +11,6 @@ import org.json.JSONObject
 class UserSettingsDataSource @AssistedInject constructor(
     private val preferencesDataSource: PreferencesDataSource,
     @Assisted("shopId") private val shopId: String,
-    @Assisted("shopSecretKey") private val shopSecretKey: String,
     @Assisted("segment") private val segment: String,
     @Assisted("stream") private val stream: String
 ) {
@@ -21,13 +20,8 @@ class UserSettingsDataSource @AssistedInject constructor(
     internal fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?,
-        isSecret: Boolean = false
     ): JSONObject {
         params.put(UserSettingsParams.SHOP_ID, shopId)
-
-        if (isSecret) {
-            params.put(UserSettingsParams.SHOP_SECRET_KEY, shopSecretKey)
-        }
 
         addOptionalParam(params, UserSettingsParams.DID, getDid())
         addOptionalParam(params, UserSettingsParams.SID, getSid())
