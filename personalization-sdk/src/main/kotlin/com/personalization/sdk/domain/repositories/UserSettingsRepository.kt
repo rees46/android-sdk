@@ -7,7 +7,6 @@ interface UserSettingsRepository {
 
     fun initialize(
         shopId: String,
-        shopSecretKey: String,
         segment: String,
         stream: String
     )
@@ -28,6 +27,5 @@ interface UserSettingsRepository {
     fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?,
-        isSecret: Boolean = false
     ): JSONObject
 }

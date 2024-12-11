@@ -154,7 +154,6 @@ class NetworkRepositoryImpl @Inject constructor(
             networkMethod = networkMethod,
             params = params,
             listener = listener,
-            isSecret = true
         )
     }
 
@@ -162,7 +161,6 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         params: JSONObject,
         listener: OnApiCallbackListener?,
-        isSecret: Boolean = false
     ) {
         userSettingsRepository.updateSidLastActTime()
 
@@ -173,7 +171,6 @@ class NetworkRepositoryImpl @Inject constructor(
             val newParams = userSettingsRepository.addParams(
                 params = params,
                 notificationSource = notificationSource,
-                isSecret = isSecret
             )
 
             executeMethod(networkMethod, newParams, listener)

@@ -3,7 +3,6 @@ package com.personalization.sdk.data.models.params
 class UserSettingsParams {
     companion object {
         const val SHOP_ID = "shop_id"
-        const val SHOP_SECRET_KEY = "shop_secret"
         const val DID = "did"
         const val SEANCE = "seance"
         const val SID = "sid"

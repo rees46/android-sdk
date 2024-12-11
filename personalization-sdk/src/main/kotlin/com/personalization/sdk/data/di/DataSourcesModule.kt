@@ -29,7 +29,6 @@ class DataSourcesModule {
     interface UserSettingsDataSourceFactory {
         fun create(
             @Assisted("shopId") shopId: String,
-            @Assisted("shopSecretKey") shopSecretKey: String,
             @Assisted("segment") segment: String,
             @Assisted("stream") stream: String
         ): UserSettingsDataSource

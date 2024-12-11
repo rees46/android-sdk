@@ -104,7 +104,6 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        shopSecretKey: String,
         apiUrl: String,
         tag: String,
         preferencesKey: String,
@@ -133,7 +132,6 @@ open class SDK {
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            shopSecretKey = shopSecretKey,
             segment = segment,
             stream = stream
         )

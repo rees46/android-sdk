@@ -14,13 +14,11 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun initialize(
         shopId: String,
-        shopSecretKey: String,
         segment: String,
         stream: String
     ) {
         userSettingsDataSource = userSettingsDataSourceFactory.create(
             shopId = shopId,
-            shopSecretKey = shopSecretKey,
             segment = segment,
             stream = stream
         )
@@ -63,12 +61,10 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun addParams(
         params: JSONObject,
-        notificationSource: NotificationSource?,
-        isSecret: Boolean
+        notificationSource: NotificationSource?
     ): JSONObject =
         userSettingsDataSource.addParams(
             params = params,
             notificationSource = notificationSource,
-            isSecret = isSecret
         )
 }
