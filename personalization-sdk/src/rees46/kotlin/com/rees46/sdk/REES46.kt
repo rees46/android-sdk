@@ -1,7 +1,9 @@
 package com.rees46.sdk
 
 import android.content.Context
+import android.util.Log
 import com.personalization.BuildConfig
+import com.personalization.Params
 import com.personalization.SDK
 import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
