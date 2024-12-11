@@ -9,6 +9,7 @@ import android.graphics.drawable.RippleDrawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Build
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
@@ -72,6 +73,10 @@ class Button @JvmOverloads constructor(
         get() = (this * context.resources.displayMetrics.density).toInt()
 
     private fun pxToSp(context: Context, px: Float): Float {
-        return px / context.resources.displayMetrics.scaledDensity
+        return px / TypedValue.applyDimension(
+            /* unit = */ TypedValue.COMPLEX_UNIT_SP,
+            /* value = */ 1f,
+            /* metrics = */ context.resources.displayMetrics
+        )
     }
 }
