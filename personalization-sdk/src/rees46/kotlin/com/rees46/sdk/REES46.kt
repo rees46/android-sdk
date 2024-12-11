@@ -1,9 +1,7 @@
 package com.rees46.sdk
 
 import android.content.Context
-import android.util.Log
 import com.personalization.BuildConfig
-import com.personalization.Params
 import com.personalization.SDK
 import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
@@ -41,7 +39,6 @@ class REES46 private constructor() : SDK() {
         fun initialize(
             context: Context,
             shopId: String,
-            shopSecretKey: String,
             apiHost: String? = null,
             autoSendPushToken: Boolean = true
         ) {
