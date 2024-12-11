@@ -9,6 +9,8 @@ data class Product(
     val categories: List<Category>,
     @SerializedName("category_ids")
     val categoryIds: List<String>,
+    @SerializedName("location_ids")
+    val locationIds: List<String>,
     @SerializedName("currency")
     val currency: String,
     @SerializedName("description")
@@ -42,7 +44,5 @@ data class Product(
     @SerializedName("url")
     val url: String,
     @SerializedName("url_handle")
-    val urlHandle: String,
-    @SerializedName("locations")
-    val locations: List<Location>? = null
+    val urlHandle: String
 )
