@@ -59,7 +59,7 @@ internal class RecommendationManagerImpl @Inject constructor(
                             it.toString(),
                             GetExtendedRecommendationResponse::class.java
                         )
-                        onGetExtendedRecommendation.invoke(getExtendedRecommendationResponse)
+                        onGetExtendedRecommendation(getExtendedRecommendationResponse)
                     }
                 }
 

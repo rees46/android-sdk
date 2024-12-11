@@ -42,5 +42,7 @@ data class Product(
     @SerializedName("url")
     val url: String,
     @SerializedName("url_handle")
-    val urlHandle: String
+    val urlHandle: String,
+    @SerializedName("locations")
+    val locations: List<Location>? = null
 )
