@@ -19,7 +19,6 @@ class REES46 private constructor() : SDK() {
         private const val DEBUG_API_URL: String = "http://dev.api.rees46.com:8000/"
         private const val RELEASE_API_URL: String = "https://api.rees46.ru/"
         private const val PREFERENCES_KEY: String = "rees46.sdk"
-        private const val PLATFORM_ANDROID: String = "android"
 
         private val API_URL: String = when {
             BuildConfig.DEBUG -> DEBUG_API_URL
@@ -38,7 +37,6 @@ class REES46 private constructor() : SDK() {
             context: Context,
             shopId: String,
             apiHost: String? = null,
-            autoSendPushToken: Boolean = true
         ) {
             val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
 
@@ -48,11 +46,6 @@ class REES46 private constructor() : SDK() {
                 context = context,
                 shopId = shopId,
                 apiUrl = apiUrl,
-                tag = TAG,
-                preferencesKey = PREFERENCES_KEY,
-                stream = PLATFORM_ANDROID,
-                autoSendPushToken = autoSendPushToken,
-                needReInitialization = true
             )
 
             sdk.setOnMessageListener { data ->
