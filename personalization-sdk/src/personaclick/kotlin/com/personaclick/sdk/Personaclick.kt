@@ -7,9 +7,6 @@ import com.personalization.SDK
 class Personaclick private constructor() : SDK() {
 
     companion object {
-        private const val TAG: String = "PERSONACLICK"
-        private const val PREFERENCES_KEY: String = "personaclick.sdk"
-        private const val PLATFORM_ANDROID: String = "android"
         private val API_URL: String = when {
             BuildConfig.DEBUG -> "http://192.168.1.8:8080/"
             else -> "https://api.personaclick.com/"
@@ -25,18 +22,23 @@ class Personaclick private constructor() : SDK() {
         fun initialize(
             context: Context,
             shopId: String,
-            autoSendPushToken: Boolean = true
+            apiHost: String? = null
         ) {
             val sdk = getInstance()
 
+            initSdk(
+                sdk = sdk,
+                context = context,
+                shopId = shopId,
+                apiHost = apiHost
+            )
+        }
+
+        private fun initSdk(sdk: SDK, context: Context, shopId: String, apiHost: String?) {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                apiUrl = API_URL,
-                tag = TAG,
-                preferencesKey = PREFERENCES_KEY,
-                stream = PLATFORM_ANDROID,
-                autoSendPushToken = autoSendPushToken
+                apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
             )
         }
     }
