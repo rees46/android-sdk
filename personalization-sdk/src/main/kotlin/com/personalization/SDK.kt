@@ -104,7 +104,7 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        apiUrl: String? = this.let { "https://$it/" },
+        apiUrl: String? = null,
         tag: String = TAG,
         preferencesKey: String = DEFAULT_STORAGE_KEY,
         stream: String = ANDROID,
@@ -134,7 +134,7 @@ open class SDK {
             stream = stream
         )
         initNetworkUseCase.invoke(
-            baseUrl = apiUrl
+            baseUrl = apiUrl.orEmpty()
         )
         registerManager.initialize(
             contentResolver = context.contentResolver,
