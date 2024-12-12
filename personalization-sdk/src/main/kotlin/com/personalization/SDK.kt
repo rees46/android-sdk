@@ -104,13 +104,14 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        apiUrl: String? = null,
+        apiDomain: String? = null,
         tag: String = TAG,
         preferencesKey: String = DEFAULT_STORAGE_KEY,
         stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false
     ) {
+
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
         )
@@ -133,14 +134,24 @@ open class SDK {
             segment = segment,
             stream = stream
         )
-        initNetworkUseCase.invoke(
-            baseUrl = apiUrl.orEmpty()
+
+        initNetworkUseCase(
+            url = apiDomain?.let { "https://$it/" }
         )
+
         registerManager.initialize(
             contentResolver = context.contentResolver,
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+    }
+
+    private fun initNetworkUseCase(url: String?) {
+        if (url != null) {
+            initNetworkUseCase.invoke(
+                baseUrl = url
+            )
+        }
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {

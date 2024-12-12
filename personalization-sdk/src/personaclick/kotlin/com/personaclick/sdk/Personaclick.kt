@@ -7,9 +7,9 @@ import com.personalization.SDK
 class Personaclick private constructor() : SDK() {
 
     companion object {
-        private val API_URL: String = when {
-            BuildConfig.DEBUG -> "http://192.168.1.8:8080/"
-            else -> "https://api.personaclick.com/"
+        private val DOMAIN_API: String = when {
+            BuildConfig.DEBUG -> "192.168.1.8:8080"
+            else -> "api.personaclick.com"
         }
 
         fun getInstance(): SDK = instance
@@ -38,7 +38,7 @@ class Personaclick private constructor() : SDK() {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
+                apiDomain = apiHost ?: DOMAIN_API
             )
         }
     }

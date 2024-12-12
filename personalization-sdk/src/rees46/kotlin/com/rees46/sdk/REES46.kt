@@ -18,8 +18,8 @@ class REES46 private constructor() : SDK() {
         private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
         private val API_URL: String = when {
-            BuildConfig.DEBUG -> "http://dev.api.rees46.com:8000/"
-            else -> "https://api.rees46.ru/"
+            BuildConfig.DEBUG -> "dev.api.rees46.com:8000"
+            else -> "api.rees46.ru"
         }
 
         fun getInstance(): SDK = instance
@@ -53,7 +53,7 @@ class REES46 private constructor() : SDK() {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
+                apiDomain = apiHost ?: API_URL
             )
         }
 
