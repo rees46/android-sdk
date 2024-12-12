@@ -104,7 +104,7 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        apiUrl: String,
+        apiUrl: String? = this.let { "https://$it/" },
         tag: String = TAG,
         preferencesKey: String = DEFAULT_STORAGE_KEY,
         stream: String = ANDROID,
