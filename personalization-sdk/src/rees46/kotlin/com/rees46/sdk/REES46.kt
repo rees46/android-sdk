@@ -15,16 +15,12 @@ class REES46 private constructor() : SDK() {
 
     companion object {
 
-        private const val TAG: String = "REES46"
-        private const val DEBUG_API_URL: String = "http://dev.api.rees46.com:8000/"
-        private const val RELEASE_API_URL: String = "https://api.rees46.ru/"
-        private const val PREFERENCES_KEY: String = "rees46.sdk"
+        private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
         private val API_URL: String = when {
-            BuildConfig.DEBUG -> DEBUG_API_URL
-            else -> RELEASE_API_URL
+            BuildConfig.DEBUG -> "http://dev.api.rees46.com:8000/"
+            else -> "https://api.rees46.ru/"
         }
-        private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
         fun getInstance(): SDK = instance
 
