@@ -14,8 +14,6 @@ class Personaclick private constructor() : SDK() {
             BuildConfig.DEBUG -> "http://192.168.1.8:8080/"
             else -> "https://api.personaclick.com/"
         }
-        private const val NOTIFICATION_TYPE: String = "PERSONACLICK_NOTIFICATION_TYPE"
-        private const val NOTIFICATION_ID: String = "PERSONACLICK_NOTIFICATION_ID"
 
         fun getInstance(): SDK = instance
 
@@ -38,8 +36,6 @@ class Personaclick private constructor() : SDK() {
                 tag = TAG,
                 preferencesKey = PREFERENCES_KEY,
                 stream = PLATFORM_ANDROID,
-                notificationType = NOTIFICATION_TYPE,
-                notificationId = NOTIFICATION_ID,
                 autoSendPushToken = autoSendPushToken
             )
         }
