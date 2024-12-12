@@ -105,9 +105,9 @@ open class SDK {
         context: Context,
         shopId: String,
         apiUrl: String,
-        tag: String,
-        preferencesKey: String,
-        stream: String,
+        tag: String = TAG,
+        preferencesKey: String = DEFAULT_STORAGE_KEY,
+        stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false
     ) {
@@ -767,7 +767,9 @@ open class SDK {
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
+        private const val DEFAULT_STORAGE_KEY = "DEFAULT_STORAGE_KEY"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
+        private const val ANDROID: String = "android"
         private const val BLANK_SEARCH_FIELD = "search/blank"
         private const val SEGMENT_GET_FIELD = "segments/get"
         private const val TRACK_RECEIVED = "track/received"
