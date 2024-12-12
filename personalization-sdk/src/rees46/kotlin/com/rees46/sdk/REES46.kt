@@ -34,16 +34,30 @@ class REES46 private constructor() : SDK() {
             shopId: String,
             apiHost: String? = null,
         ) {
-            val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
-
             val sdk = getInstance()
 
+            initSdk(
+                sdk = sdk,
+                context = context,
+                shopId = shopId,
+                apiHost = apiHost
+            )
+
+            performNotification(
+                sdk = sdk,
+                context = context
+            )
+        }
+
+        private fun initSdk(sdk: SDK, context: Context, shopId: String, apiHost: String?) {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                apiUrl = apiUrl,
+                apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
             )
+        }
 
+        private fun performNotification(sdk: SDK, context: Context) {
             sdk.setOnMessageListener { data ->
                 coroutineScope.launch {
                     val (images, hasError) = withContext(Dispatchers.IO) {

@@ -22,13 +22,23 @@ class Personaclick private constructor() : SDK() {
         fun initialize(
             context: Context,
             shopId: String,
+            apiHost: String? = null
         ) {
             val sdk = getInstance()
 
+            initSdk(
+                sdk = sdk,
+                context = context,
+                shopId = shopId,
+                apiHost = apiHost
+            )
+        }
+
+        private fun initSdk(sdk: SDK, context: Context, shopId: String, apiHost: String) {
             sdk.initialize(
                 context = context,
                 shopId = shopId,
-                apiUrl = API_URL,
+                apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
             )
         }
     }

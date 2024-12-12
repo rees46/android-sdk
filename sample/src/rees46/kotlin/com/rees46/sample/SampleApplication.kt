@@ -15,8 +15,7 @@ class SampleApplication : AbstractSampleApplication<REES46>(REES46.getInstance()
     override fun initialize() {
         REES46.initialize(
             context = applicationContext,
-            shopId = shopId,
-            apiHost = null
+            shopId = shopId
         )
     }
 
