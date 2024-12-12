@@ -108,8 +108,6 @@ open class SDK {
         tag: String,
         preferencesKey: String,
         stream: String,
-        notificationType: String,
-        notificationId: String,
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false
     ) {
