@@ -6,7 +6,7 @@ import android.content.Intent
 import com.personalization.features.notification.data.service.NotificationService
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
-import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
 import java.util.concurrent.atomic.AtomicInteger
@@ -27,7 +27,7 @@ object NotificationNavigationHelper {
             putExtra(CURRENT_IMAGE_INDEX, newIndex)
             putExtra(NOTIFICATION_TITLE, data.title)
             putExtra(NOTIFICATION_BODY, data.body)
-            putExtra(NOTIFICATION_IMAGES, data.images)
+            putExtra(NOTIFICATION_IMAGE, data.image)
         }
 
         return PendingIntent.getService(
@@ -44,7 +44,7 @@ object NotificationNavigationHelper {
     ): PendingIntent {
         val retryIntent = Intent(context, NotificationService::class.java).apply {
             putExtra(CURRENT_IMAGE_INDEX, 0)
-            putExtra(NOTIFICATION_IMAGES, data.images)
+            putExtra(NOTIFICATION_IMAGE, data.image)
             putExtra(NOTIFICATION_TITLE, data.title)
             putExtra(NOTIFICATION_BODY, data.body)
         }

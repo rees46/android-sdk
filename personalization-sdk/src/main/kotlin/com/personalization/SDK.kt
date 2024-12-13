@@ -751,11 +751,9 @@ open class SDK {
     private fun receiveMessage(remoteMessage: RemoteMessage) {
         notificationReceived(remoteMessage.data)
 
-        onMessageListener?.let { listener ->
-            listener.onMessage(
-                data = remoteMessage.toNotificationData()
-            )
-        }
+        onMessageListener?.onMessage(
+            data = remoteMessage.toNotificationData()
+        )
     }
 
     companion object {

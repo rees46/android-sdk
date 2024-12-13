@@ -29,14 +29,20 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
         sdk.setOnMessageListener { data ->
             coroutineScope.launch {
                 val (images, hasError) = withContext(Dispatchers.IO) {
-                    loadBitmaps(urls = data.images)
+                    loadBitmaps(urls = data.image)
                 }
                 sdk.notificationHelper.createNotification(
                     context = applicationContext,
                     data = NotificationData(
+                        id = data.id,
                         title = data.title,
                         body = data.body,
-                        images = data.images
+                        icon = data.icon,
+                        type = data.type,
+                        actions = data.actions,
+                        actionUrls = data.actionUrls,
+                        image = data.image,
+                        event = data.event,
                     ),
                     images = images,
                     hasError = hasError
