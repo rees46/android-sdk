@@ -6,10 +6,8 @@ import android.os.IBinder
 import android.widget.Toast
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
-import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
-import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGES
-import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
@@ -47,32 +45,36 @@ class NotificationService : Service() {
         startId: Int
     ): Int {
         val currentIndex = intent?.getIntExtra(CURRENT_IMAGE_INDEX, -1) ?: -1
-        val images = intent?.getStringExtra(NOTIFICATION_IMAGES)
-        val title = intent?.getStringExtra(NOTIFICATION_TITLE)
-        val body = intent?.getStringExtra(NOTIFICATION_BODY)
+        val data: NotificationData? = intent?.toNotificationData()
 
-        if (!isValidNotificationData(images, title, body, currentIndex)) {
-            showToast(
-                message = applicationContext.getString(
-                    /* resId = */ NOTIFICATION_LOADING_DATA_ERROR
-                )
-            )
-            stopSelf(startId)
-            return START_NOT_STICKY
+        if (!isValidNotificationData(data?.image, data?.title, data?.body, currentIndex)) {
+            return onStopService(startId = startId)
         }
 
-        updateNotification(
-            images = images,
-            title = title,
-            body = body,
-            currentIndex = currentIndex,
-            startId = startId
-        )
+        when {
+            data != null -> updateNotification(
+                data,
+                currentIndex = currentIndex,
+                startId = startId
+            )
+
+            else -> onStopService(startId)
+        }
 
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun onStopService(startId: Int): Int {
+        showToast(
+            message = applicationContext.getString(
+                /* resId = */ NOTIFICATION_LOADING_DATA_ERROR
+            )
+        )
+        stopSelf(startId)
+        return START_NOT_STICKY
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -89,21 +91,25 @@ class NotificationService : Service() {
     }
 
     private fun updateNotification(
-        images: String?,
-        title: String?,
-        body: String?,
+        data: NotificationData,
         currentIndex: Int,
         startId: Int
     ) {
         serviceScope.launch {
             try {
-                val (loadedImages, hasError) = NotificationImageHelper.loadBitmaps(urls = images)
+                val (loadedImages, hasError) = NotificationImageHelper.loadBitmaps(urls = data.image)
                 notificationHelper.createNotification(
                     context = this@NotificationService,
                     data = NotificationData(
-                        title = title,
-                        body = body,
-                        images = images
+                        id = data.id,
+                        title = data.title,
+                        body = data.body,
+                        icon = data.icon,
+                        type = data.type,
+                        actions = data.actions,
+                        actionUrls = data.actionUrls,
+                        image = data.image,
+                        event = data.event,
                     ),
                     images = loadedImages,
                     currentImageIndex = currentIndex,
