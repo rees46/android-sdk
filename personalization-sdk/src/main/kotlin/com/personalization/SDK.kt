@@ -30,6 +30,7 @@ import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValue
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
+import com.personalization.utils.DomainFormattingUtils.formatApiDomain
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -136,7 +137,7 @@ open class SDK {
         )
 
         initNetworkUseCase(
-            url = apiDomain?.let { "https://$it/" }
+            url = apiDomain?.let { formatApiDomain(it) }
         )
 
         registerManager.initialize(
