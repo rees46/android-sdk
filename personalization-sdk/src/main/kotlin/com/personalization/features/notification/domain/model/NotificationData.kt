@@ -1,8 +1,13 @@
 package com.personalization.features.notification.domain.model
 
 data class NotificationData(
+    val id: String?,
     val title: String?,
     val body: String?,
-    val images: String?,
-    val analyticsLabel: String? = null
+    val icon: String?,
+    val type: String?,
+    val actions: List<NotificationAction>?,
+    val actionUrls: List<String>?,
+    val image: String?,
+    val event: NotificationEvent?
 )

@@ -1,27 +1,25 @@
 package com.personalization.features.notification.data.mapper
 
 import com.google.firebase.messaging.RemoteMessage
-import com.personalization.features.notification.domain.model.NotificationConstants
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTIONS
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTION_URLS
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_EVENT
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ICON
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_PARAM_ID
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
 import com.personalization.features.notification.domain.model.NotificationData
 
-fun RemoteMessage.toNotificationData(): NotificationData {
-    var title: String? = null
-    var body: String? = null
-    var imageUrl: String? = null
-
-    this.notification?.let { notification ->
-        title = notification.title?.takeIf { it.isNotEmpty() }
-        body = notification.body?.takeIf { it.isNotEmpty() }
-        imageUrl = notification.imageUrl?.toString()
-    }
-
-    val analyticsLabel: String? =
-        this.data[NotificationConstants.ANALYTICS_LABEL_FIELD]?.takeIf { it.isNotEmpty() }
-
-    return NotificationData(
-        title = title,
-        body = body,
-        images = imageUrl,
-        analyticsLabel = analyticsLabel
-    )
-}
+fun RemoteMessage.toNotificationData(): NotificationData = NotificationData(
+    id = this.data[NOTIFICATION_PARAM_ID],
+    title = this.data[NOTIFICATION_TITLE],
+    body = this.data[NOTIFICATION_BODY],
+    icon = this.data[NOTIFICATION_ICON],
+    type = this.data[TYPE_PARAM],
+    actions = parseNotificationActions(this.data[NOTIFICATION_ACTIONS]),
+    actionUrls = parseActionUrls(this.data[NOTIFICATION_ACTION_URLS]),
+    image = this.data[NOTIFICATION_IMAGE],
+    event = parseNotificationEvent(this.data[NOTIFICATION_EVENT])
+)
