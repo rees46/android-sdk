@@ -9,7 +9,6 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class DomainFormattingUtilsTest {
 
-
     @Test
     fun formatsDomainWithoutScheme() {
         assertEquals("https://example.com", DomainFormattingUtils.formatApiDomain("example.com"))
@@ -53,5 +52,9 @@ class DomainFormattingUtilsTest {
             DomainFormattingUtils.formatApiDomain("ftp://example.com")
         }
         assertEquals("Invalid domain: ftp://example.com", exception.message)
+    }
+
+    companion object {
+
     }
 }
