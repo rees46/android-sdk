@@ -26,6 +26,7 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
 
         initialize()
         sdk.getSid { sid -> Log.d("APP", "sid: $sid") }
+
         sdk.setOnMessageListener { data ->
             coroutineScope.launch {
                 val (images, hasError) = withContext(Dispatchers.IO) {
