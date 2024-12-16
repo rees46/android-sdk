@@ -12,32 +12,35 @@ class DomainFormattingUtilsTest {
     @Test
     fun formatsDomainWithoutScheme() {
         assertEquals(
-            HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN,
-            DomainFormattingUtils.formatApiDomain(TEST_EXAMPLE_DOMAIN)
+            /* expected = */ HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN,
+            /* actual = */ DomainFormattingUtils.formatApiDomain(apiDomain = TEST_EXAMPLE_DOMAIN)
         )
     }
 
     @Test
     fun returnsDomainUnchangedWithHttpsScheme() {
         assertEquals(
-            TEST_EXAMPLE_HTTPS_URL,
-            DomainFormattingUtils.formatApiDomain(TEST_EXAMPLE_HTTPS_URL)
+            /* expected = */ HTTPS_TEST_URL,
+            /* actual = */ DomainFormattingUtils.formatApiDomain(apiDomain = HTTPS_TEST_URL)
         )
     }
 
     @Test
     fun returnsDomainUnchangedWithHttpScheme() {
         assertEquals(
-            /* expected = */ TEST_EXAMPLE_HTTP_URL,
-            /* actual = */ DomainFormattingUtils.formatApiDomain("http://example.com")
+            /* expected = */ HTTP_TEST_URL,
+            /* actual = */ DomainFormattingUtils.formatApiDomain(apiDomain = HTTP_TEST_URL)
         )
     }
 
     @Test
     fun removesTrailingSlashesFromDomain() {
         val domain = "$TEST_EXAMPLE_DOMAIN////"
-        val formattedDomain = DomainFormattingUtils.formatApiDomain(domain)
-        assertEquals(HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN, formattedDomain)
+        val formattedDomain = DomainFormattingUtils.formatApiDomain(apiDomain = domain)
+        assertEquals(
+            /* expected = */ HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN,
+            /* actual = */ formattedDomain
+        )
     }
 
     @Test
@@ -45,7 +48,10 @@ class DomainFormattingUtilsTest {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             DomainFormattingUtils.formatApiDomain("")
         }
-        assertEquals(BLANK_DOMAIN_MESSAGE, exception.message)
+        assertEquals(
+            /* expected = */ BLANK_DOMAIN_MESSAGE,
+            /* actual = */ exception.message
+        )
     }
 
     @Test
@@ -53,14 +59,16 @@ class DomainFormattingUtilsTest {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             DomainFormattingUtils.formatApiDomain("ftp://example.com")
         }
-        assertEquals(INVALID_SCHEME_MESSAGE + "ftp://example.com", exception.message)
+        assertEquals(
+            /* expected = */ INVALID_SCHEME_MESSAGE + "ftp://example.com",
+            /* actual = */ exception.message
+        )
     }
 
     companion object {
-        private const val TEST_EXAMPLE_HTTPS_URL = "https://example.com"
-        private const val TEST_EXAMPLE_HTTP_URL = "http://example.com"
+        private const val HTTPS_TEST_URL = "https://example.com"
+        private const val HTTP_TEST_URL = "http://example.com"
         private const val TEST_EXAMPLE_DOMAIN = "example.com"
-        private const val HTTP_SCHEME = "http://"
         private const val HTTPS_SCHEME = "https://"
         private const val INVALID_SCHEME_MESSAGE = "Invalid domain: "
         private const val BLANK_DOMAIN_MESSAGE = "API domain cannot be blank"
