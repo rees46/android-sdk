@@ -110,22 +110,29 @@ open class SDK {
         preferencesKey: String = DEFAULT_STORAGE_KEY,
         stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
-        needReInitialization: Boolean = false
+        needReInitialization: Boolean = false,
+        addTrailingSlash: Boolean = true
     ) {
 
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
         )
+
+        val baseUrl = apiDomain?.let {
+            formatApiDomain(
+                apiDomain = it,
+                addTrailingSlash = addTrailingSlash
+            )
+        }
+
         sdkComponent.inject(sdk = this)
+        this.context = context
+        TAG = tag
 
         initPreferencesUseCase.invoke(
             context = context,
             preferencesKey = preferencesKey
         )
-
-        this.context = context
-        TAG = tag
-
         segment = getPreferencesValueUseCase.getSegment()
 
         notificationHandler.initialize(context = context)
@@ -136,9 +143,7 @@ open class SDK {
             stream = stream
         )
 
-        initNetworkUseCase(
-            url = apiDomain?.let { formatApiDomain(it) }
-        )
+        initNetworkUseCase(url = baseUrl)
 
         registerManager.initialize(
             contentResolver = context.contentResolver,
