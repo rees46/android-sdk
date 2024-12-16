@@ -12,26 +12,14 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
 import com.personalization.features.notification.domain.model.NotificationData
 
-fun Intent.toNotificationData(): NotificationData {
-    val id = getStringExtra(NOTIFICATION_PARAM_ID)
-    val title = getStringExtra(NOTIFICATION_TITLE)
-    val body = getStringExtra(NOTIFICATION_BODY)
-    val icon = getStringExtra(NOTIFICATION_ICON)
-    val type = getStringExtra(TYPE_PARAM)
-    val actionsJson = getStringExtra(NOTIFICATION_ACTIONS)
-    val actionUrlsJson = getStringExtra(NOTIFICATION_ACTION_URLS)
-    val image = getStringExtra(NOTIFICATION_IMAGE)
-    val eventJson = getStringExtra(NOTIFICATION_EVENT)
-
-    return NotificationData(
-        id = id,
-        title = title,
-        body = body,
-        icon = icon,
-        type = type,
-        actions = parseNotificationActions(actionsJson),
-        actionUrls = parseActionUrls(actionUrlsJson),
-        image = image,
-        event = parseNotificationEvent(eventJson)
-    )
-}
+fun Intent.toNotificationData(): NotificationData = NotificationData(
+    id = getStringExtra(NOTIFICATION_PARAM_ID),
+    title = getStringExtra(NOTIFICATION_TITLE),
+    body = getStringExtra(NOTIFICATION_BODY),
+    icon = getStringExtra(NOTIFICATION_ICON),
+    type = getStringExtra(TYPE_PARAM),
+    actions = parseNotificationActions(getStringExtra(NOTIFICATION_ACTIONS)),
+    actionUrls = parseActionUrls(getStringExtra(NOTIFICATION_ACTION_URLS)),
+    image = getStringExtra(NOTIFICATION_IMAGE),
+    event = parseNotificationEvent(getStringExtra(NOTIFICATION_EVENT))
+)
