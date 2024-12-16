@@ -1,3 +1,5 @@
+package com.personalization.utils
+
 object DomainFormattingUtils {
 
     private val URL_REGEX = Regex("^(https?://)?.+\\..+")
