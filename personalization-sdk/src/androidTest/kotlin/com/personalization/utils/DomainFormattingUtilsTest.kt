@@ -33,10 +33,9 @@ class DomainFormattingUtilsTest {
 
     @Test
     fun removesTrailingSlashesFromDomain() {
-        assertEquals(
-            "https://example.com",
-            DomainFormattingUtils.formatApiDomain("example.com////")
-        )
+        val domain = "example.com////"
+        val formattedDomain = DomainFormattingUtils.formatApiDomain(domain)
+        assertEquals("https://example.com", formattedDomain)
     }
 
     @Test
@@ -46,6 +45,7 @@ class DomainFormattingUtilsTest {
         }
         assertEquals("API domain cannot be blank", exception.message)
     }
+
 
     @Test
     fun throwsExceptionForInvalidDomain() {
