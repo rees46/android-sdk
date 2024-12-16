@@ -1,4 +1,4 @@
-package com.personalization.features.notification.data.mapper
+package com.personalization.features.notification.actions.mapper
 
 import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.features.notification.domain.model.NotificationAction

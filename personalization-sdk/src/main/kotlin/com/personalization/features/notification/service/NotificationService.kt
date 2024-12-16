@@ -1,4 +1,4 @@
-package com.personalization.features.notification.data.service
+package com.personalization.features.notification.service
 
 import android.app.Service
 import android.content.Intent
@@ -6,11 +6,11 @@ import android.os.IBinder
 import android.widget.Toast
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
-import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
+import com.personalization.features.notification.service.mapper.toNotificationData
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_DATA_ERROR
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_IMAGE_ERROR
 import java.io.IOException
