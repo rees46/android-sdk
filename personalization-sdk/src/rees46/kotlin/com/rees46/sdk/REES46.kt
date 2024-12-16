@@ -15,17 +15,12 @@ class REES46 private constructor() : SDK() {
 
     companion object {
 
-        private const val TAG: String = "REES46"
-        private const val DEBUG_API_URL: String = "http://dev.api.rees46.com:8000/"
-        private const val RELEASE_API_URL: String = "https://api.rees46.ru/"
-        private const val PREFERENCES_KEY: String = "rees46.sdk"
-        private const val PLATFORM_ANDROID: String = "android"
+        private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
         private val API_URL: String = when {
-            BuildConfig.DEBUG -> DEBUG_API_URL
-            else -> RELEASE_API_URL
+            BuildConfig.DEBUG -> "dev.api.rees46.com:8000"
+            else -> "api.rees46.ru"
         }
-        private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
         fun getInstance(): SDK = instance
 
@@ -38,23 +33,34 @@ class REES46 private constructor() : SDK() {
             context: Context,
             shopId: String,
             apiHost: String? = null,
-            autoSendPushToken: Boolean = true
         ) {
-            val apiUrl = apiHost?.let { "https://$it/" } ?: API_URL
-
             val sdk = getInstance()
 
-            sdk.initialize(
+            initSdk(
+                sdk = sdk,
                 context = context,
                 shopId = shopId,
-                apiUrl = apiUrl,
-                tag = TAG,
-                preferencesKey = PREFERENCES_KEY,
-                stream = PLATFORM_ANDROID,
-                autoSendPushToken = autoSendPushToken,
-                needReInitialization = true
+                apiHost = apiHost
             )
 
+            performNotification(
+                sdk = sdk,
+                context = context
+            )
+        }
+
+        private fun initSdk(
+            sdk: SDK,
+            context: Context,
+            shopId: String,
+            apiHost: String?
+        ) = sdk.initialize(
+            context = context,
+            shopId = shopId,
+            apiDomain = apiHost ?: API_URL
+        )
+
+        private fun performNotification(sdk: SDK, context: Context) {
             sdk.setOnMessageListener { data ->
                 coroutineScope.launch {
                     val (images, hasError) = withContext(Dispatchers.IO) {

@@ -30,6 +30,7 @@ import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValue
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
+import com.personalization.utils.DomainFormattingUtils.formatApiDomain
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -104,26 +105,34 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        apiUrl: String,
-        tag: String,
-        preferencesKey: String,
-        stream: String,
+        apiDomain: String? = null,
+        tag: String = TAG,
+        preferencesKey: String = DEFAULT_STORAGE_KEY,
+        stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
-        needReInitialization: Boolean = false
+        needReInitialization: Boolean = false,
+        addTrailingSlash: Boolean = true
     ) {
+
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
         )
+
+        val baseUrl = apiDomain?.let {
+            formatApiDomain(
+                apiDomain = it,
+                addTrailingSlash = addTrailingSlash
+            )
+        }
+
         sdkComponent.inject(sdk = this)
+        this.context = context
+        TAG = tag
 
         initPreferencesUseCase.invoke(
             context = context,
             preferencesKey = preferencesKey
         )
-
-        this.context = context
-        TAG = tag
-
         segment = getPreferencesValueUseCase.getSegment()
 
         notificationHandler.initialize(context = context)
@@ -133,14 +142,22 @@ open class SDK {
             segment = segment,
             stream = stream
         )
-        initNetworkUseCase.invoke(
-            baseUrl = apiUrl
-        )
+
+        initNetworkUseCase(url = baseUrl)
+
         registerManager.initialize(
             contentResolver = context.contentResolver,
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+    }
+
+    private fun initNetworkUseCase(url: String?) {
+        if (url != null) {
+            initNetworkUseCase.invoke(
+                baseUrl = url
+            )
+        }
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {
@@ -767,7 +784,9 @@ open class SDK {
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
+        private const val DEFAULT_STORAGE_KEY = "DEFAULT_STORAGE_KEY"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
+        private const val ANDROID: String = "android"
         private const val BLANK_SEARCH_FIELD = "search/blank"
         private const val SEGMENT_GET_FIELD = "segments/get"
         private const val TRACK_RECEIVED = "track/received"
