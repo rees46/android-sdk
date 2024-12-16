@@ -1,4 +1,7 @@
-package com.personalization.features.notification.domain.model
+package com.personalization.sdk.data.models.dto.notification
+
+import com.personalization.features.notification.actions.model.NotificationAction
+import com.personalization.features.notification.event.model.NotificationEvent
 
 data class NotificationData(
     val id: String?,

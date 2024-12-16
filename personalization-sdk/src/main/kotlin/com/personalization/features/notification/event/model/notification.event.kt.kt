@@ -1,4 +1,4 @@
-package com.personalization.features.notification.domain.model
+package com.personalization.features.notification.event.model
 
 data class NotificationEvent(
     val type: String?,

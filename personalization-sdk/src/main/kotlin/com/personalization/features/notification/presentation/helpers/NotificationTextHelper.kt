@@ -2,7 +2,7 @@ package com.personalization.features.notification.presentation.helpers
 
 import android.widget.RemoteViews
 import com.personalization.R
-import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 
 object NotificationTextHelper {
 

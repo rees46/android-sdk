@@ -3,8 +3,8 @@ package com.personalization.sample
 import android.app.Application
 import android.util.Log
 import com.personalization.SDK
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

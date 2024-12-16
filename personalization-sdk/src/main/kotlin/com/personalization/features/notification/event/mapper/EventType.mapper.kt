@@ -4,7 +4,7 @@ import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_PAYLOAD
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_URI
 import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
-import com.personalization.features.notification.domain.model.NotificationEvent
+import com.personalization.features.notification.event.model.NotificationEvent
 import org.json.JSONObject
 
 fun parseNotificationEvent(eventJson: String?): NotificationEvent {

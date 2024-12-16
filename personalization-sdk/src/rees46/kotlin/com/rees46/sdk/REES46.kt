@@ -3,8 +3,8 @@ package com.rees46.sdk
 import android.content.Context
 import com.personalization.BuildConfig
 import com.personalization.SDK
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

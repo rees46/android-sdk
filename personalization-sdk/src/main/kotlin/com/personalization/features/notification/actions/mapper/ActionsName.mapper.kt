@@ -1,7 +1,7 @@
 package com.personalization.features.notification.actions.mapper
 
 import com.personalization.errors.JsonResponseErrorHandler
-import com.personalization.features.notification.domain.model.NotificationAction
+import com.personalization.features.notification.actions.model.NotificationAction
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTION
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import org.json.JSONArray

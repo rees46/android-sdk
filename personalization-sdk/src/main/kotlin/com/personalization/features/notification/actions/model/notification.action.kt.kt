@@ -1,4 +1,4 @@
-package com.personalization.features.notification.domain.model
+package com.personalization.features.notification.actions.model
 
 data class NotificationAction(
     val action: String,
