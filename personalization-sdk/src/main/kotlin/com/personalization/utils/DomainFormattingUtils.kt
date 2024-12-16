@@ -1,14 +1,7 @@
 package com.personalization.utils
 
-/**
- * Utility class for formatting API domain names by ensuring they follow a specific format:
- * - If the domain does not contain a scheme (http:// or https://), it will default to https://
- * - If the domain contains a valid scheme (http:// or https://), it will be returned as-is
- * - If the domain contains any other scheme (e.g., ftp://), an exception is thrown
- * - Any trailing slashes at the end of the domain are removed
- *
- * This utility helps ensure that API domain names are always returned in a standardized format
- */
+import com.personalization.errors.InvalidDomainError
+
 object DomainFormattingUtils {
 
     private const val HTTP_SCHEME = "http://"
@@ -25,14 +18,21 @@ object DomainFormattingUtils {
      * 3. If the domain contains a valid scheme (http:// or https://), it is returned unchanged with any trailing slashes removed
      * 4. If the domain does not contain a scheme, "https://" is added as the default scheme, and trailing slashes are removed
      *
-     * @param apiDomain The input domain to be formatted
-     * @return The formatted domain
-     * @throws IllegalArgumentException If the domain is blank or contains an unsupported scheme
      */
+
     fun formatApiDomain(apiDomain: String): String {
 
+        // Initialize the error logger
+        val errorLogger = InvalidDomainError(
+            tag = "DomainFormatting",
+            functionName = "formatApiDomain"
+        )
+
         // Ensure the domain is not blank, else throw an exception with an appropriate message
-        require(value = apiDomain.isNotBlank()) { BLANK_DOMAIN_MESSAGE }
+        require(value = apiDomain.isNotBlank()) {
+            errorLogger.logBlankDomainError()
+            BLANK_DOMAIN_MESSAGE
+        }
 
         // Check if the domain contains a scheme (e.g., http://, https://)
         val hasScheme = apiDomain.contains("://")
@@ -42,7 +42,8 @@ object DomainFormattingUtils {
 
         // If the domain has a scheme, but it's not http:// or https://, throw an exception
         if (hasScheme && !isValidScheme) {
-            throw IllegalArgumentException(s = "$INVALID_SCHEME_MESSAGE$apiDomain")
+            errorLogger.logInvalidDomainError(apiDomain = apiDomain)
+            throw IllegalArgumentException("$INVALID_SCHEME_MESSAGE$apiDomain")
         }
 
         // Remove trailing slashes from the domain
