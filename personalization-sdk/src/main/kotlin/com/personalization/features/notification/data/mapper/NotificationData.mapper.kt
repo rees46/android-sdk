@@ -1,6 +1,8 @@
 package com.personalization.features.notification.data.mapper
 
-import android.content.Intent
+import com.google.firebase.messaging.RemoteMessage
+import com.personalization.features.notification.actions.mapper.parseActionUrls
+import com.personalization.features.notification.actions.mapper.parseNotificationActions
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTIONS
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTION_URLS
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
@@ -11,15 +13,16 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
 import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.event.mapper.parseNotificationEvent
 
-fun Intent.toNotificationData(): NotificationData = NotificationData(
-    id = getStringExtra(NOTIFICATION_PARAM_ID),
-    title = getStringExtra(NOTIFICATION_TITLE),
-    body = getStringExtra(NOTIFICATION_BODY),
-    icon = getStringExtra(NOTIFICATION_ICON),
-    type = getStringExtra(TYPE_PARAM),
-    actions = parseNotificationActions(getStringExtra(NOTIFICATION_ACTIONS)),
-    actionUrls = parseActionUrls(getStringExtra(NOTIFICATION_ACTION_URLS)),
-    image = getStringExtra(NOTIFICATION_IMAGE),
-    event = parseNotificationEvent(getStringExtra(NOTIFICATION_EVENT))
+fun RemoteMessage.toNotificationData(): NotificationData = NotificationData(
+    id = this.data[NOTIFICATION_PARAM_ID],
+    title = this.data[NOTIFICATION_TITLE],
+    body = this.data[NOTIFICATION_BODY],
+    icon = this.data[NOTIFICATION_ICON],
+    type = this.data[TYPE_PARAM],
+    actions = parseNotificationActions(this.data[NOTIFICATION_ACTIONS]),
+    actionUrls = parseActionUrls(this.data[NOTIFICATION_ACTION_URLS]),
+    image = this.data[NOTIFICATION_IMAGE],
+    event = parseNotificationEvent(this.data[NOTIFICATION_EVENT])
 )

@@ -3,12 +3,12 @@ package com.personalization.features.notification.presentation.helpers
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.personalization.features.notification.data.service.NotificationService
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.features.notification.service.NotificationService
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 

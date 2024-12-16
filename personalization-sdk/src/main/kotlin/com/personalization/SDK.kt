@@ -749,7 +749,7 @@ open class SDK {
     }
 
     private fun receiveMessage(remoteMessage: RemoteMessage) {
-        notificationReceived(remoteMessage.data)
+        notificationReceived(data = remoteMessage.data)
 
         onMessageListener?.onMessage(
             data = remoteMessage.toNotificationData()

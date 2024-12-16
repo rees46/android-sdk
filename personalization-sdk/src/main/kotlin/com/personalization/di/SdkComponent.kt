@@ -1,7 +1,7 @@
 package com.personalization.di
 
 import com.personalization.SDK
-import com.personalization.features.notification.data.service.NotificationService
+import com.personalization.features.notification.service.NotificationService
 import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.data.di.ModelsModule
 import com.personalization.sdk.data.di.RepositoriesModule
