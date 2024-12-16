@@ -4,8 +4,8 @@ import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.ProductsManager
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 internal class ProductsManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
@@ -49,6 +49,14 @@ internal class ProductsManagerImpl @Inject constructor(
         )
     }
 
+    override fun getClientShoppingCart(listener: OnApiCallbackListener?) {
+        sendNetworkMethodUseCase.getAsync(
+            method = GET_CLIENT_SHOPPING_CART,
+            params = Params().build(),
+            listener = listener
+        )
+    }
+
     private fun Params.buildParams(
         itemId: String? = null,
         brands: String? = null,
@@ -76,6 +84,7 @@ internal class ProductsManagerImpl @Inject constructor(
     companion object {
         const val GET_PRODUCT_LIST_REQUEST = "products"
         const val GET_PRODUCT_INFO_REQUEST = "products/get"
+        const val GET_CLIENT_SHOPPING_CART = "products/cart"
 
         private const val LIMIT_KEY = "limit"
         private const val PAGE_KEY = "page"
