@@ -7,8 +7,8 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.service.NotificationService
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 

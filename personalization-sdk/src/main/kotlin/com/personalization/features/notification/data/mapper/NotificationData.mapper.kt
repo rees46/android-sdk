@@ -12,8 +12,8 @@ import com.personalization.features.notification.domain.model.NotificationConsta
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_PARAM_ID
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
 import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.event.mapper.parseNotificationEvent
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 
 fun RemoteMessage.toNotificationData(): NotificationData = NotificationData(
     id = this.data[NOTIFICATION_PARAM_ID],
