@@ -5,7 +5,7 @@ object DomainFormattingUtils {
     fun formatApiDomain(apiDomain: String): String {
         require(apiDomain.isNotBlank()) { "API domain cannot be blank" }
 
-        if (apiDomain.startsWith("ftp://")) {
+        if (apiDomain.contains("://") && !apiDomain.startsWith("http://") && !apiDomain.startsWith("https://")) {
             throw IllegalArgumentException("Invalid domain: $apiDomain")
         }
 
@@ -21,10 +21,7 @@ object DomainFormattingUtils {
                 "https://$domainWithoutTrailingSlashes"
             }
 
-        if (!(domainWithScheme.startsWith("http://") || domainWithScheme.startsWith("https://"))) {
-            throw IllegalArgumentException("Invalid domain: $domainWithScheme")
-        }
-
         return domainWithScheme
     }
 }
+
