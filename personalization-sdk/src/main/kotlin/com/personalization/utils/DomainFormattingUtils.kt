@@ -2,26 +2,30 @@ package com.personalization.utils
 
 object DomainFormattingUtils {
 
-    fun formatApiDomain(apiDomain: String): String {
-        require(apiDomain.isNotBlank()) { "API domain cannot be blank" }
+    private const val HTTP_SCHEME = "http://"
+    private const val HTTPS_SCHEME = "https://"
+    private const val INVALID_SCHEME_MESSAGE = "Invalid domain: "
+    private const val BLANK_DOMAIN_MESSAGE = "API domain cannot be blank"
 
-        if (apiDomain.contains("://") && !apiDomain.startsWith("http://") && !apiDomain.startsWith("https://")) {
-            throw IllegalArgumentException("Invalid domain: $apiDomain")
+    fun formatApiDomain(apiDomain: String): String {
+        require(apiDomain.isNotBlank()) { BLANK_DOMAIN_MESSAGE }
+
+        if (apiDomain.contains("://") && !apiDomain.startsWith(HTTP_SCHEME) && !apiDomain.startsWith(
+                HTTPS_SCHEME
+            )
+        ) {
+            throw IllegalArgumentException("$INVALID_SCHEME_MESSAGE$apiDomain")
         }
 
         val domainWithoutTrailingSlashes = apiDomain.trimEnd('/')
 
-        val domainWithScheme =
-            if (domainWithoutTrailingSlashes.startsWith("http://") || domainWithoutTrailingSlashes.startsWith(
-                    "https://"
-                )
-            ) {
-                domainWithoutTrailingSlashes
+        return if (domainWithoutTrailingSlashes.startsWith(HTTP_SCHEME) || domainWithoutTrailingSlashes.startsWith(
+                HTTPS_SCHEME
+            )
+        ) {
+            domainWithoutTrailingSlashes
         } else {
-                "https://$domainWithoutTrailingSlashes"
-            }
-
-        return domainWithScheme
+            "$HTTPS_SCHEME$domainWithoutTrailingSlashes"
+        }
     }
 }
-

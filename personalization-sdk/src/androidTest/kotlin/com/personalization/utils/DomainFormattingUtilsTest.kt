@@ -11,30 +11,33 @@ class DomainFormattingUtilsTest {
 
     @Test
     fun formatsDomainWithoutScheme() {
-        assertEquals("https://example.com", DomainFormattingUtils.formatApiDomain("example.com"))
+        assertEquals(
+            HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN,
+            DomainFormattingUtils.formatApiDomain(TEST_EXAMPLE_DOMAIN)
+        )
     }
 
     @Test
     fun returnsDomainUnchangedWithHttpsScheme() {
         assertEquals(
-            "https://example.com",
-            DomainFormattingUtils.formatApiDomain("https://example.com")
+            TEST_EXAMPLE_HTTPS_URL,
+            DomainFormattingUtils.formatApiDomain(TEST_EXAMPLE_HTTPS_URL)
         )
     }
 
     @Test
     fun returnsDomainUnchangedWithHttpScheme() {
         assertEquals(
-            "http://example.com",
-            DomainFormattingUtils.formatApiDomain("http://example.com")
+            /* expected = */ TEST_EXAMPLE_HTTP_URL,
+            /* actual = */ DomainFormattingUtils.formatApiDomain("http://example.com")
         )
     }
 
     @Test
     fun removesTrailingSlashesFromDomain() {
-        val domain = "example.com////"
+        val domain = "$TEST_EXAMPLE_DOMAIN////"
         val formattedDomain = DomainFormattingUtils.formatApiDomain(domain)
-        assertEquals("https://example.com", formattedDomain)
+        assertEquals(HTTPS_SCHEME + TEST_EXAMPLE_DOMAIN, formattedDomain)
     }
 
     @Test
@@ -42,19 +45,24 @@ class DomainFormattingUtilsTest {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             DomainFormattingUtils.formatApiDomain("")
         }
-        assertEquals("API domain cannot be blank", exception.message)
+        assertEquals(BLANK_DOMAIN_MESSAGE, exception.message)
     }
-
 
     @Test
     fun throwsExceptionForInvalidDomain() {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             DomainFormattingUtils.formatApiDomain("ftp://example.com")
         }
-        assertEquals("Invalid domain: ftp://example.com", exception.message)
+        assertEquals(INVALID_SCHEME_MESSAGE + "ftp://example.com", exception.message)
     }
 
     companion object {
-
+        private const val TEST_EXAMPLE_HTTPS_URL = "https://example.com"
+        private const val TEST_EXAMPLE_HTTP_URL = "http://example.com"
+        private const val TEST_EXAMPLE_DOMAIN = "example.com"
+        private const val HTTP_SCHEME = "http://"
+        private const val HTTPS_SCHEME = "https://"
+        private const val INVALID_SCHEME_MESSAGE = "Invalid domain: "
+        private const val BLANK_DOMAIN_MESSAGE = "API domain cannot be blank"
     }
 }
