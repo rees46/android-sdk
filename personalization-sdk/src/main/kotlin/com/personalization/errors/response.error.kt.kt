@@ -9,6 +9,7 @@ import org.json.JSONObject
 class JsonResponseErrorHandler(
     private val tag: String,
     private val response: JSONObject?,
+    private val message: String? = "Response is null or incorrect"
 ) {
 
     /**
@@ -44,7 +45,10 @@ class JsonResponseErrorHandler(
      * Logs the error message with the associated tag
      * @param message The error message to log
      */
-    fun logError(message: String, exception: Exception? = null) {
+    fun logError(
+        message: String? = this.message,
+        exception: Exception? = null
+    ) {
         Log.e(tag, message, exception)
     }
 }
