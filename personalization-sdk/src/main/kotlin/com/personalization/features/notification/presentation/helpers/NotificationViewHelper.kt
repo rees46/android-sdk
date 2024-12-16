@@ -6,7 +6,7 @@ import android.widget.RemoteViews
 import com.personalization.R
 import com.personalization.features.notification.domain.model.NotificationConstants.ACTION_NEXT_IMAGE
 import com.personalization.features.notification.domain.model.NotificationConstants.ACTION_PREVIOUS_IMAGE
-import com.personalization.features.notification.domain.model.NotificationData
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 
 object NotificationViewHelper {
 

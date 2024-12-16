@@ -6,8 +6,8 @@ import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_CHANNEL
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.resources.NotificationResources
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 import javax.inject.Inject
 
 class NotificationHelper @Inject constructor(

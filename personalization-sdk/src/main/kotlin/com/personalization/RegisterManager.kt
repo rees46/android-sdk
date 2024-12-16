@@ -93,6 +93,7 @@ class RegisterManager @Inject constructor(
     }
 
     private fun processFirebaseToken(token: String) {
+
         val savedToken = getPreferencesValueUseCase.getToken()
         val lastUpdate = getPreferencesValueUseCase.getLastPushTokenDate()
         val currentDate = Date().time

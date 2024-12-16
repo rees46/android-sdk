@@ -3,8 +3,8 @@ package com.personalization.sample
 import android.app.Application
 import android.util.Log
 import com.personalization.SDK
-import com.personalization.features.notification.domain.model.NotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationImageHelper.loadBitmaps
+import com.personalization.sdk.data.models.dto.notification.NotificationData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,14 +30,20 @@ abstract class AbstractSampleApplication<out T : SDK> internal constructor(
         sdk.setOnMessageListener { data ->
             coroutineScope.launch {
                 val (images, hasError) = withContext(Dispatchers.IO) {
-                    loadBitmaps(urls = data.images)
+                    loadBitmaps(urls = data.image)
                 }
                 sdk.notificationHelper.createNotification(
                     context = applicationContext,
                     data = NotificationData(
+                        id = data.id,
                         title = data.title,
                         body = data.body,
-                        images = data.images
+                        icon = data.icon,
+                        type = data.type,
+                        actions = data.actions,
+                        actionUrls = data.actionUrls,
+                        image = data.image,
+                        event = data.event,
                     ),
                     images = images,
                     hasError = hasError
