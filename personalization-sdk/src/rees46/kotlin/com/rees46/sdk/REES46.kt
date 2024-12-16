@@ -49,13 +49,16 @@ class REES46 private constructor() : SDK() {
             )
         }
 
-        private fun initSdk(sdk: SDK, context: Context, shopId: String, apiHost: String?) {
-            sdk.initialize(
-                context = context,
-                shopId = shopId,
-                apiDomain = apiHost ?: API_URL
-            )
-        }
+        private fun initSdk(
+            sdk: SDK,
+            context: Context,
+            shopId: String,
+            apiHost: String?
+        ) = sdk.initialize(
+            context = context,
+            shopId = shopId,
+            apiDomain = apiHost ?: API_URL
+        )
 
         private fun performNotification(sdk: SDK, context: Context) {
             sdk.setOnMessageListener { data ->

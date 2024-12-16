@@ -17,10 +17,11 @@ object DomainFormattingUtils {
      *    with the message "Invalid domain: <apiDomain>"
      * 3. If the domain contains a valid scheme (http:// or https://), it is returned unchanged with any trailing slashes removed
      * 4. If the domain does not contain a scheme, "https://" is added as the default scheme, and trailing slashes are removed
+     * 5. If the domain is valid, an optional trailing slash can be added
      *
      */
 
-    fun formatApiDomain(apiDomain: String): String {
+    fun formatApiDomain(apiDomain: String, addTrailingSlash: Boolean = false): String {
 
         // Initialize the error logger
         val errorLogger = InvalidDomainError(
@@ -47,13 +48,18 @@ object DomainFormattingUtils {
         }
 
         // Remove trailing slashes from the domain
-        val domainWithoutTrailingSlashes = apiDomain.trimEnd('/')
+        var domainWithoutTrailingSlashes = apiDomain.trimEnd('/')
 
         // If the domain already has a valid scheme, return it as-is
         // If not, add the "https://" scheme by default
+        if (!isValidScheme) {
+            domainWithoutTrailingSlashes = "$HTTPS_SCHEME$domainWithoutTrailingSlashes"
+        }
+
+        // Optionally add a trailing slash if required
         return when {
-            isValidScheme -> domainWithoutTrailingSlashes
-            else -> "$HTTPS_SCHEME$domainWithoutTrailingSlashes"
+            addTrailingSlash -> "$domainWithoutTrailingSlashes/"
+            else -> domainWithoutTrailingSlashes
         }
     }
 }

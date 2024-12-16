@@ -34,12 +34,15 @@ class Personaclick private constructor() : SDK() {
             )
         }
 
-        private fun initSdk(sdk: SDK, context: Context, shopId: String, apiHost: String?) {
-            sdk.initialize(
-                context = context,
-                shopId = shopId,
-                apiDomain = apiHost ?: DOMAIN_API
-            )
-        }
+        private fun initSdk(
+            sdk: SDK,
+            context: Context,
+            shopId: String,
+            apiHost: String?
+        ) = sdk.initialize(
+            context = context,
+            shopId = shopId,
+            apiDomain = apiHost ?: DOMAIN_API
+        )
     }
 }
