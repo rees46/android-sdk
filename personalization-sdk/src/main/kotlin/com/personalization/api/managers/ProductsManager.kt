@@ -19,8 +19,4 @@ interface ProductsManager {
         itemId: String,
         listener: OnApiCallbackListener?
     )
-
-    fun getClientShoppingCart(
-        listener: OnApiCallbackListener?
-    )
 }
