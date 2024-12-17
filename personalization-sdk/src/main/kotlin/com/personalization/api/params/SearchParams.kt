@@ -24,7 +24,8 @@ class SearchParams : AbstractParams<SearchParams>() {
         COLORS("colors"),
         FASHION_SIZES("fashion_sizes"),
         EXCLUDE("exclude"),
-        NO_CLARIFICATION("no_clarification")
+        NO_CLARIFICATION("no_clarification"),
+        BRAND_LIMIT("brand_limit"),
     }
 
     class SearchFilters {
