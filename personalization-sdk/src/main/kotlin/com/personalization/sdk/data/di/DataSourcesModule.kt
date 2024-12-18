@@ -2,6 +2,7 @@ package com.personalization.sdk.data.di
 
 import com.personalization.sdk.data.repositories.network.NetworkDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSource
+import com.personalization.sdk.data.repositories.notification.NotificationDataSourceImpl
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSource
@@ -35,18 +36,22 @@ class DataSourcesModule {
     @Provides
     @Singleton
     fun provideRecommendationDataSource() = RecommendationDataSource()
-
-    @Provides
-    fun provideNotificationDataSource(
-        preferencesDataSource: PreferencesDataSource
-    ) = NotificationDataSource(
-        preferencesDataSource = preferencesDataSource
-    )
 }
 
 @Module
-abstract class AbstractDataSourcesModule {
+interface AbstractDataSourcesModule {
+
     @Binds
     @Singleton
-    abstract fun bindPreferencesDataSource(impl: PreferencesDataSourceImpl): PreferencesDataSource
+    fun bindPreferencesDataSource(impl: PreferencesDataSourceImpl): PreferencesDataSource
+
+    companion object {
+
+        @Provides
+        fun provideNotificationDataSource(
+            preferencesDataSource: PreferencesDataSource
+        ): NotificationDataSource = NotificationDataSourceImpl(
+            preferencesDataSource = preferencesDataSource
+        )
+    }
 }
