@@ -3,8 +3,10 @@ package com.personalization.sdk.data.di
 import com.personalization.sdk.data.repositories.network.NetworkDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSource
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
+import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSource
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsDataSource
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.assisted.Assisted
@@ -13,10 +15,6 @@ import javax.inject.Singleton
 
 @Module
 class DataSourcesModule {
-
-    @Provides
-    @Singleton
-    fun providePreferencesDataSource() = PreferencesDataSource()
 
     @AssistedFactory
     interface NetworkDataSourceFactory {
@@ -44,4 +42,11 @@ class DataSourcesModule {
     ) = NotificationDataSource(
         preferencesDataSource = preferencesDataSource
     )
+}
+
+@Module
+abstract class AbstractDataSourcesModule {
+    @Binds
+    @Singleton
+    abstract fun bindPreferencesDataSource(impl: PreferencesDataSourceImpl): PreferencesDataSource
 }
