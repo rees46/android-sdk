@@ -6,6 +6,7 @@ import com.personalization.sdk.data.repositories.preferences.PreferencesDataSour
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSource
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsDataSource
+import com.personalization.sdk.data.repositories.userSettings.UserSettingsDataSourceImpl
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -15,15 +16,6 @@ import javax.inject.Singleton
 
 @Module
 class DataSourcesModule {
-
-    @AssistedFactory
-    interface UserSettingsDataSourceFactory {
-        fun create(
-            @Assisted("shopId") shopId: String,
-            @Assisted("segment") segment: String,
-            @Assisted("stream") stream: String
-        ): UserSettingsDataSource
-    }
 
     @Provides
     @Singleton
@@ -45,5 +37,28 @@ interface AbstractDataSourcesModule {
         ): NotificationDataSource = NotificationDataSourceImpl(
             preferencesDataSource = preferencesDataSource
         )
+
+        @Provides
+        @Singleton
+        fun bindUserSettingsDataSource(
+            preferencesDataSource: PreferencesDataSource,
+            shopId: String,
+            segment: String,
+            stream: String
+        ): UserSettingsDataSource = UserSettingsDataSourceImpl(
+            preferencesDataSource = preferencesDataSource,
+            shopId = shopId,
+            segment = segment,
+            stream = stream
+        )
     }
+}
+
+@AssistedFactory
+interface UserSettingsDataSourceFactory {
+    fun create(
+        @Assisted("shopId") shopId: String,
+        @Assisted("segment") segment: String,
+        @Assisted("stream") stream: String
+    ): UserSettingsDataSourceImpl
 }
