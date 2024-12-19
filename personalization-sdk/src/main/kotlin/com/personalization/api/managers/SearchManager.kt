@@ -33,6 +33,7 @@ interface SearchManager {
     fun searchInstant(
         query: String,
         locations: String? = null,
+        excludeMerchants: String? = null,
         onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )
