@@ -4,8 +4,8 @@ import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.ProductsManager
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 internal class ProductsManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,

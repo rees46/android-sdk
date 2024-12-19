@@ -9,6 +9,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
@@ -58,6 +59,9 @@ open class SDK {
 
     @Inject
     lateinit var productsManager: ProductsManager
+
+    @Inject
+    lateinit var cartManager: CartManager
 
     @Inject
     lateinit var trackEventManager: TrackEventManager

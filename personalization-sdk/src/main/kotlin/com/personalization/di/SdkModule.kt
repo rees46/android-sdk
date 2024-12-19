@@ -2,11 +2,13 @@ package com.personalization.di
 
 import android.content.Context
 import com.personalization.RegisterManager
+import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.features.cart.CartManagerImpl
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.products.impl.ProductsManagerImpl
@@ -62,6 +64,14 @@ class SdkModule {
     fun provideProductsManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): ProductsManager = ProductsManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideCartManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): CartManager = CartManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
     )
 
