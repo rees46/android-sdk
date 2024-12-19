@@ -10,6 +10,8 @@ import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
 
+private const val GET_CLIENT_SHOPPING_CART = "products/cart"
+
 internal class CartManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
 ) : CartManager {
@@ -36,9 +38,5 @@ internal class CartManagerImpl @Inject constructor(
                 }
             }
         )
-    }
-
-    companion object {
-        const val GET_CLIENT_SHOPPING_CART = "products/cart"
     }
 }
