@@ -1,6 +1,5 @@
 package com.personalization.sdk.data.di
 
-import com.personalization.sdk.data.repositories.network.NetworkDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSourceImpl
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
@@ -16,13 +15,6 @@ import javax.inject.Singleton
 
 @Module
 class DataSourcesModule {
-
-    @AssistedFactory
-    interface NetworkDataSourceFactory {
-        fun create(
-            baseUrl: String
-        ): NetworkDataSource
-    }
 
     @AssistedFactory
     interface UserSettingsDataSourceFactory {
