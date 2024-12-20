@@ -4,7 +4,14 @@ import android.content.Context
 import android.content.SharedPreferences
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.roundToInt
+
+private const val DEFAULT_TOKEN = ""
+private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
+private val DEFAULT_SEGMENT = arrayOf("A", "B").random()
+
+private const val TOKEN_KEY = "token"
+private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
+private const val SEGMENT_KEY = ".segment"
 
 @Singleton
 class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
@@ -72,15 +79,5 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
 
     override fun removeValue(field: String) {
         sharedPreferences?.edit()?.remove(field)?.apply()
-    }
-
-    companion object {
-        private const val DEFAULT_TOKEN = ""
-        private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
-        private val DEFAULT_SEGMENT = arrayOf("A", "B")[Math.random().roundToInt()]
-
-        private const val TOKEN_KEY = "token"
-        private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
-        private const val SEGMENT_KEY = ".segment"
     }
 }

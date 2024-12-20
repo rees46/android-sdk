@@ -8,6 +8,14 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import org.json.JSONObject
 
+private const val DEFAULT_DID = ""
+private const val DEFAULT_SID = ""
+private const val DEFAULT_SID_LAST_ACT_TIME = 0L
+
+private const val DID_KEY = "did"
+private const val SID_KEY = "sid"
+private const val SID_LAST_ACT_KEY = "sid_last_act"
+
 class UserSettingsDataSourceImpl @AssistedInject constructor(
     private val preferencesDataSource: PreferencesDataSource,
     @Assisted("shopId") private val shopId: String,
@@ -55,16 +63,5 @@ class UserSettingsDataSourceImpl @AssistedInject constructor(
     override fun getIsInitialized(): Boolean = isInitialized
     override fun setIsInitialized(value: Boolean) {
         isInitialized = value
-    }
-
-    companion object {
-
-        private const val DEFAULT_DID = ""
-        private const val DEFAULT_SID = ""
-        private const val DEFAULT_SID_LAST_ACT_TIME = 0L
-
-        private const val DID_KEY = "did"
-        private const val SID_KEY = "sid"
-        private const val SID_LAST_ACT_KEY = "sid_last_act"
     }
 }
