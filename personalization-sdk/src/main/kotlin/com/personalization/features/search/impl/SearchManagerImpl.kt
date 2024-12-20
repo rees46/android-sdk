@@ -1,6 +1,5 @@
 package com.personalization.features.search.impl
 
-import android.util.Log
 import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
@@ -10,8 +9,8 @@ import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.api.responses.search.SearchInstantResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 internal class SearchManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
@@ -41,16 +40,17 @@ internal class SearchManagerImpl @Inject constructor(
     override fun searchInstant(
         query: String,
         locations: String?,
-        excludeMerchants: String?,
+        excludedMerchants: List<String>?,
         onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         val searchParams = SearchParams()
-
-        if (locations != null){
+        locations?.let {
             searchParams.put(LOCATIONS_PARAMETER, locations)
-            if(excludeMerchants!=null)
-                searchParams.put(EXCLUDED_MERCHANTS_PARAMETER, excludeMerchants)
+            excludedMerchants?.let {
+                val excludeMerchantsString = excludedMerchants.joinToString(",")
+                searchParams.put(EXCLUDED_MERCHANTS_PARAMETER,excludeMerchantsString)
+            }
         }
 
         search(query, TYPE.INSTANT, searchParams, object : OnApiCallbackListener() {
@@ -110,7 +110,7 @@ internal class SearchManagerImpl @Inject constructor(
         private const val TYPE_PARAMETER = "type"
         private const val QUERY_PARAMETER = "search_query"
         private const val LOCATIONS_PARAMETER = "locations"
-        private const val EXCLUDED_MERCHANTS_PARAMETER = "exclude_merchants"
+        private const val EXCLUDED_MERCHANTS_PARAMETER = "excluded_merchants"
     }
 
     private enum class TYPE(var value: String) {
