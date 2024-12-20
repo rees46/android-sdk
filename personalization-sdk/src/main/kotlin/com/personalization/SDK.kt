@@ -602,13 +602,6 @@ open class SDK {
      * @param subscriptions
      * @param listener
      */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param subscriptions
-     */
     fun manageSubscription(
         email: String?,
         phone: String?,
@@ -636,16 +629,6 @@ open class SDK {
      * @param telegramId
      * @param subscriptions
      * @param listener
-     */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param externalId
-     * @param loyaltyId
-     * @param telegramId
-     * @param subscriptions
      */
     @JvmOverloads
     fun manageSubscription(
