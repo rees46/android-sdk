@@ -2,7 +2,6 @@ package com.personalization.di
 
 import com.personalization.SDK
 import com.personalization.features.notification.service.NotificationService
-import com.personalization.sdk.data.di.AbstractDataSourcesModule
 import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.data.di.ModelsModule
 import com.personalization.sdk.data.di.RepositoriesModule
@@ -15,7 +14,6 @@ import javax.inject.Singleton
         DataSourcesModule::class,
         RepositoriesModule::class,
         ModelsModule::class,
-        AbstractDataSourcesModule::class,
         SdkModule::class,
         AppModule::class
     ]

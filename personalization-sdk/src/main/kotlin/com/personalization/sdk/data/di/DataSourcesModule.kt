@@ -5,6 +5,7 @@ import com.personalization.sdk.data.repositories.notification.NotificationDataSo
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSource
+import com.personalization.sdk.data.repositories.recommendation.RecommendationDataSourceImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsDataSource
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsDataSourceImpl
 import dagger.Binds
@@ -15,19 +16,15 @@ import dagger.assisted.AssistedFactory
 import javax.inject.Singleton
 
 @Module
-class DataSourcesModule {
-
-    @Provides
-    @Singleton
-    fun provideRecommendationDataSource() = RecommendationDataSource()
-}
-
-@Module
-interface AbstractDataSourcesModule {
+interface DataSourcesModule {
 
     @Binds
     @Singleton
     fun bindPreferencesDataSource(impl: PreferencesDataSourceImpl): PreferencesDataSource
+
+    @Binds
+    @Singleton
+    fun bindRecommendationDataSource(impl: RecommendationDataSourceImpl): RecommendationDataSource
 
     companion object {
 
@@ -40,7 +37,7 @@ interface AbstractDataSourcesModule {
 
         @Provides
         @Singleton
-        fun bindUserSettingsDataSource(
+        fun provideUserSettingsDataSource(
             preferencesDataSource: PreferencesDataSource,
             shopId: String,
             segment: String,
