@@ -12,6 +12,11 @@ import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
 
+private const val SEARCH_REQUEST = "search"
+private const val BLANK_SEARCH_REQUEST = "search/blank"
+private const val TYPE_PARAMETER = "type"
+private const val QUERY_PARAMETER = "search_query"
+
 internal class SearchManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : SearchManager {
@@ -46,10 +51,10 @@ internal class SearchManagerImpl @Inject constructor(
     ) {
         val searchParams = SearchParams()
         locations?.let {
-            searchParams.put(LOCATIONS_PARAMETER, locations)
+            searchParams.put(SearchParams.Parameter.LOCATIONS, locations)
             excludedMerchants?.let {
                 val excludeMerchantsString = excludedMerchants.joinToString(",")
-                searchParams.put(EXCLUDED_MERCHANTS_PARAMETER,excludeMerchantsString)
+                searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludeMerchantsString)
             }
         }
 
@@ -101,16 +106,6 @@ internal class SearchManagerImpl @Inject constructor(
             .put(QUERY_PARAMETER, query)
 
         sendNetworkMethodUseCase.get(SEARCH_REQUEST, params.build(), listener)
-    }
-
-    companion object {
-        private const val SEARCH_REQUEST = "search"
-        private const val BLANK_SEARCH_REQUEST = "search/blank"
-
-        private const val TYPE_PARAMETER = "type"
-        private const val QUERY_PARAMETER = "search_query"
-        private const val LOCATIONS_PARAMETER = "locations"
-        private const val EXCLUDED_MERCHANTS_PARAMETER = "excluded_merchants"
     }
 
     private enum class TYPE(var value: String) {

@@ -1,7 +1,6 @@
 package com.personalization.sdk.data.repositories.network
 
 import android.net.Uri
-import android.util.Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.data.di.DataSourcesModule
