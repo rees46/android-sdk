@@ -29,9 +29,13 @@ import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCas
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
+import com.personalization.sdk.domain.usecases.userSettings.FetchGaIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -102,6 +106,8 @@ open class SDK {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
+    @Inject
+    lateinit var fetchGaIdUseCase: FetchGaIdUseCase
 
     /**
      * @param shopId Shop key
@@ -154,6 +160,10 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            fetchGaIdUseCase.invoke(context)
+        }
     }
 
     private fun initNetworkUseCase(url: String?) {

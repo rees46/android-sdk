@@ -3,8 +3,8 @@ package com.personalization.sdk.data.repositories.userSettings
 import com.personalization.sdk.data.di.DataSourcesModule
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 class UserSettingsRepositoryImpl @Inject constructor(
     private val userSettingsDataSourceFactory: DataSourcesModule.UserSettingsDataSourceFactory,
@@ -57,6 +57,10 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun updateIsInitialized(value: Boolean) {
         userSettingsDataSource.setIsInitialized(value)
+    }
+
+    override fun saveGaId(value: String) {
+        userSettingsDataSource.saveGAID(value)
     }
 
     override fun addParams(
