@@ -212,7 +212,7 @@ open class SDK {
      *
      * @param data profile data
      */
-    fun profile(data: HashMap<String, String>, listener: OnApiCallbackListener? = null) {
+    fun profile(data: HashMap<String, Any>, listener: OnApiCallbackListener? = null) {
         sendAsync(SET_PROFILE_FIELD, JSONObject(data.toMap()), listener)
     }
 
