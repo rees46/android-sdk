@@ -2,7 +2,7 @@ package com.personalization.sdk.data.repositories.userSettings
 
 import com.personalization.sdk.data.models.params.UserSettingsParams
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
-import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
+import com.personalization.sdk.data.utils.QueryParamsUtils.addMultipleParams
 import com.personalization.sdk.domain.models.NotificationSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -29,21 +29,19 @@ class UserSettingsDataSourceImpl @AssistedInject constructor(
         params: JSONObject,
         notificationSource: NotificationSource?,
     ): JSONObject {
-        params.put(UserSettingsParams.SHOP_ID, shopId)
-
-        addOptionalParam(params, UserSettingsParams.DID, getDid())
-        addOptionalParam(params, UserSettingsParams.SID, getSid())
-        addOptionalParam(params, UserSettingsParams.SEANCE, getSid())
-        params.put(UserSettingsParams.SEGMENT, segment)
-        params.put(UserSettingsParams.STREAM, stream)
-
-        notificationSource?.let {
-            val notificationObject = JSONObject()
-                .put(UserSettingsParams.SOURCE_FROM, it.type)
-                .put(UserSettingsParams.SOURCE_CODE, it.id)
-            params.put(UserSettingsParams.SOURCE, notificationObject)
-        }
-
+        addMultipleParams(
+            params = params,
+            paramsToAdd = mapOf(
+                UserSettingsParams.SHOP_ID to shopId,
+                UserSettingsParams.DID to getDid(),
+                UserSettingsParams.SID to getSid(),
+                UserSettingsParams.SEANCE to getSid(),
+                UserSettingsParams.SEGMENT to segment,
+                UserSettingsParams.STREAM to stream,
+                UserSettingsParams.SOURCE_FROM to notificationSource?.type,
+                UserSettingsParams.SOURCE_CODE to notificationSource?.id
+            )
+        )
         return params
     }
 
