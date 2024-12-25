@@ -71,7 +71,7 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 
         button.setOnClickListener {
             if (emailEditText.text.toString().isNotEmpty()) {
-                val params = HashMap<String, String>()
+                val params = HashMap<String, Any>()
                 params["email"] = emailEditText.text.toString()
                 sdk.profile(params)
                 Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
