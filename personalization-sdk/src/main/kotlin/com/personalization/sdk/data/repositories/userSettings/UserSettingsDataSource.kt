@@ -20,7 +20,4 @@ interface UserSettingsDataSource {
     fun getDid(): String
     fun saveDid(value: String)
     fun removeDid()
-
-    fun getIsInitialized(): Boolean
-    fun setIsInitialized(value: Boolean)
 }

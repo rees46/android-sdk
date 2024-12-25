@@ -52,13 +52,6 @@ class UserSettingsRepositoryImpl @Inject constructor(
     override fun getSidLastActTime(): Long =
         userSettingsDataSource.getSidLastActTime()
 
-    override fun getIsInitialized(): Boolean =
-        userSettingsDataSource.getIsInitialized()
-
-    override fun updateIsInitialized(value: Boolean) {
-        userSettingsDataSource.setIsInitialized(value)
-    }
-
     override fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?

@@ -123,7 +123,7 @@ class NetworkRepositoryImpl @Inject constructor(
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
         if (userSettingsRepository.getDid()
-                .isNotEmpty() && userSettingsRepository.getIsInitialized()
+                .isNotEmpty()
         ) {
             thread.start()
         } else {

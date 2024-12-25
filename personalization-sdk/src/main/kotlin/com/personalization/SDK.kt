@@ -32,10 +32,10 @@ import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseC
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
-import java.util.Locale
-import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
+import java.util.Locale
+import javax.inject.Inject
 
 open class SDK {
 
@@ -230,14 +230,7 @@ open class SDK {
         replaceWith = ReplaceWith("getSid(): String")
     )
     fun getSid(listener: Consumer<String?>) {
-        val thread = Thread {
-            listener.accept(getSid())
-        }
-        if (getUserSettingsValueUseCase.getIsInitialized()) {
-            thread.start()
-        } else {
-            addTaskToQueueUseCase.invoke(thread)
-        }
+        listener.accept(getSid())
     }
 
     /**

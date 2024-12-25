@@ -23,8 +23,6 @@ class UserSettingsDataSourceImpl @AssistedInject constructor(
     @Assisted("stream") private val stream: String
 ) : UserSettingsDataSource {
 
-    private var isInitialized: Boolean = false
-
     override fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?,
@@ -57,9 +55,4 @@ class UserSettingsDataSourceImpl @AssistedInject constructor(
     override fun getDid(): String = preferencesDataSource.getValue(DID_KEY, DEFAULT_DID)
     override fun saveDid(value: String) = preferencesDataSource.saveValue(DID_KEY, value)
     override fun removeDid() = preferencesDataSource.removeValue(DID_KEY)
-
-    override fun getIsInitialized(): Boolean = isInitialized
-    override fun setIsInitialized(value: Boolean) {
-        isInitialized = value
-    }
 }
