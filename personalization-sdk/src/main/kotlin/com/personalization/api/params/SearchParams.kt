@@ -17,6 +17,7 @@ class SearchParams : AbstractParams<SearchParams>() {
         SORT_BY("sort_by"),
         SORT_DIR("sort_dir"),
         LOCATIONS("locations"),
+        EXCLUDED_MERCHANTS("excluded_merchants"),
         BRANDS("brands"),
         FILTERS("filters"),
         PRICE_MIN("price_min"),

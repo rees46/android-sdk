@@ -9,8 +9,13 @@ import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.api.responses.search.SearchInstantResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
+
+private const val SEARCH_REQUEST = "search"
+private const val BLANK_SEARCH_REQUEST = "search/blank"
+private const val TYPE_PARAMETER = "type"
+private const val QUERY_PARAMETER = "search_query"
 
 internal class SearchManagerImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
@@ -40,12 +45,18 @@ internal class SearchManagerImpl @Inject constructor(
     override fun searchInstant(
         query: String,
         locations: String?,
+        excludedMerchants: List<String>?,
         onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
         val searchParams = SearchParams()
-
-        if (locations != null) searchParams.put(LOCATIONS_PARAMETER, locations)
+        locations?.let {
+            searchParams.put(SearchParams.Parameter.LOCATIONS, locations)
+            excludedMerchants?.let {
+                val excludeMerchantsString = excludedMerchants.joinToString(",")
+                searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludeMerchantsString)
+            }
+        }
 
         search(query, TYPE.INSTANT, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
@@ -95,15 +106,6 @@ internal class SearchManagerImpl @Inject constructor(
             .put(QUERY_PARAMETER, query)
 
         sendNetworkMethodUseCase.get(SEARCH_REQUEST, params.build(), listener)
-    }
-
-    companion object {
-        private const val SEARCH_REQUEST = "search"
-        private const val BLANK_SEARCH_REQUEST = "search/blank"
-
-        private const val TYPE_PARAMETER = "type"
-        private const val QUERY_PARAMETER = "search_query"
-        private const val LOCATIONS_PARAMETER = "locations"
     }
 
     private enum class TYPE(var value: String) {
