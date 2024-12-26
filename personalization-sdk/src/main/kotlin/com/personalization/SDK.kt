@@ -29,7 +29,7 @@ import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCas
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
-import com.personalization.sdk.domain.usecases.userSettings.FetchAdvertisingIdUseCase
+import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
@@ -48,6 +48,9 @@ open class SDK {
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
+
+    @Inject
+    internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -106,9 +109,6 @@ open class SDK {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
-    @Inject
-    lateinit var fetchAdvertisingIdUseCase: FetchAdvertisingIdUseCase
-
     /**
      * @param shopId Shop key
      */
@@ -162,7 +162,7 @@ open class SDK {
         )
 
         CoroutineScope(Dispatchers.IO).launch {
-            fetchAdvertisingIdUseCase.invoke()
+            initializeAdvertisingIdUseCase.invoke()
         }
     }
 

@@ -4,7 +4,7 @@ import com.personalization.sdk.domain.repositories.AdvertisingRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import javax.inject.Inject
 
-class FetchAdvertisingIdUseCase @Inject constructor(
+internal class InitializeAdvertisingIdUseCase @Inject constructor(
     private val advertisingRepository: AdvertisingRepository,
     private val userSettingsRepository: UserSettingsRepository
 ) {
