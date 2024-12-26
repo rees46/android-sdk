@@ -1,12 +1,12 @@
 package com.personalization.sdk.data.di
 
-import com.personalization.sdk.data.repositories.gaid.GaIdRepositoryImpl
+import com.personalization.sdk.data.repositories.advertising.AdvertisingRepositoryImpl
 import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.data.repositories.notification.NotificationRepositoryImpl
 import com.personalization.sdk.data.repositories.preferences.PreferencesRepositoryImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationRepositoryImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
-import com.personalization.sdk.domain.repositories.GaIdRepository
+import com.personalization.sdk.domain.repositories.AdvertisingRepository
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.PreferencesRepository
@@ -37,6 +37,6 @@ abstract class RepositoriesModule {
     abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
 
     @Binds
-    abstract fun bindGaIdRepository(impl: GaIdRepositoryImpl): GaIdRepository
+    abstract fun bindAdvertisingRepository(impl: AdvertisingRepositoryImpl): AdvertisingRepository
 
 }

@@ -24,7 +24,7 @@ interface UserSettingsRepository {
     fun getIsInitialized(): Boolean
     fun updateIsInitialized(value: Boolean)
 
-    fun saveGaId(value: String)
+    fun saveAdvertisingId(value: String)
 
     fun addParams(
         params: JSONObject,

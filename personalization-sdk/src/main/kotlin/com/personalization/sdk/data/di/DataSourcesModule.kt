@@ -1,6 +1,5 @@
 package com.personalization.sdk.data.di
 
-import com.personalization.sdk.data.repositories.gaid.GaIdDataSource
 import com.personalization.sdk.data.repositories.network.NetworkDataSource
 import com.personalization.sdk.data.repositories.notification.NotificationDataSource
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
@@ -45,8 +44,4 @@ class DataSourcesModule {
     ) = NotificationDataSource(
         preferencesDataSource = preferencesDataSource
     )
-
-    @Provides
-    @Singleton
-    fun provideGaIdDataSource() = GaIdDataSource()
 }

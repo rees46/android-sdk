@@ -52,7 +52,8 @@ class UserSettingsDataSource @AssistedInject constructor(
     internal fun saveDid(value: String) = preferencesDataSource.saveValue(DID_KEY, value)
     internal fun removeDid() = preferencesDataSource.removeValue(DID_KEY)
 
-    internal fun saveGAID(value: String) = preferencesDataSource.saveValue(GAID_KEY, value)
+    internal fun saveAdvertisingId(value: String) =
+        preferencesDataSource.saveValue(ADVERTISING_ID_KEY, value)
 
     internal fun getIsInitialized(): Boolean = isInitialized
     internal fun setIsInitialized(value: Boolean) {
@@ -67,7 +68,7 @@ class UserSettingsDataSource @AssistedInject constructor(
 
         private const val DID_KEY = "did"
         private const val SID_KEY = "sid"
-        private const val GAID_KEY = "google_ad_id"
+        private const val ADVERTISING_ID_KEY = "google_ad_id"
         private const val SID_LAST_ACT_KEY = "sid_last_act"
     }
 }

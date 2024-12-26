@@ -59,8 +59,8 @@ class UserSettingsRepositoryImpl @Inject constructor(
         userSettingsDataSource.setIsInitialized(value)
     }
 
-    override fun saveGaId(value: String) {
-        userSettingsDataSource.saveGAID(value)
+    override fun saveAdvertisingId(value: String) {
+        userSettingsDataSource.saveAdvertisingId(value)
     }
 
     override fun addParams(
