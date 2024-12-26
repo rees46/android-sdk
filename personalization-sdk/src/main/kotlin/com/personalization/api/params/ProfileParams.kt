@@ -3,6 +3,7 @@ package com.personalization.api.params
 import org.json.JSONObject
 import java.util.Date
 
+//TODO use data loader
 class ProfileParams private constructor(
     private val params: JSONObject = JSONObject()
 ) {
