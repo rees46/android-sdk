@@ -232,6 +232,11 @@ open class SDK {
     fun getSid(): String = getUserSettingsValueUseCase.getSid()
 
     /**
+     * Return the Advertising ID
+     */
+    fun getAdvertisingId(): String = getUserSettingsValueUseCase.getAdvertisingId()
+
+    /**
      * Returns the session ID
      */
     @Deprecated(
