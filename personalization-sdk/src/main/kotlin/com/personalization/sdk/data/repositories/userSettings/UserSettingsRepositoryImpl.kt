@@ -63,6 +63,9 @@ class UserSettingsRepositoryImpl @Inject constructor(
         userSettingsDataSource.saveAdvertisingId(value)
     }
 
+    override fun getAdvertisingId(): String =
+        userSettingsDataSource.getAdvertisingId()
+
     override fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?

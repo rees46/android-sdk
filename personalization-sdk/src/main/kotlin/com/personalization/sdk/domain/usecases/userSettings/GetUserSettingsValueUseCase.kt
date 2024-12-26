@@ -16,4 +16,6 @@ class GetUserSettingsValueUseCase @Inject constructor(
     fun getSidLastActTime(): Long = userSettingsRepository.getSidLastActTime()
 
     fun getIsInitialized(): Boolean = userSettingsRepository.getIsInitialized()
+
+    fun getAdvertisingId(): String = userSettingsRepository.getAdvertisingId()
 }

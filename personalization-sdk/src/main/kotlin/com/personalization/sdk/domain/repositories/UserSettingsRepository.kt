@@ -25,6 +25,7 @@ interface UserSettingsRepository {
     fun updateIsInitialized(value: Boolean)
 
     fun saveAdvertisingId(value: String)
+    fun getAdvertisingId(): String
 
     fun addParams(
         params: JSONObject,
