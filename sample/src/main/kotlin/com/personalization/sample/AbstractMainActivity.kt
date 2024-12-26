@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import com.personalization.OnClickListener
 import com.personalization.Product
 import com.personalization.SDK
+import com.personalization.api.params.ProfileParams
 import com.personalization.stories.views.StoriesView
 
 abstract class AbstractMainActivity<out T : SDK> internal constructor(
@@ -71,8 +72,9 @@ abstract class AbstractMainActivity<out T : SDK> internal constructor(
 
         button.setOnClickListener {
             if (emailEditText.text.toString().isNotEmpty()) {
-                val params = HashMap<String, Any>()
-                params["email"] = emailEditText.text.toString()
+                val params = ProfileParams.Builder()
+                    .put("email", emailEditText.toString())
+                    .build()
                 sdk.profile(params)
                 Toast.makeText(applicationContext, "Email sent", Toast.LENGTH_LONG).show()
             }
