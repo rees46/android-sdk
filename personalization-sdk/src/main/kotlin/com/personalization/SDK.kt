@@ -15,6 +15,7 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.api.params.ProfileParams
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -212,8 +213,8 @@ open class SDK {
      *
      * @param data profile data
      */
-    fun profile(data: HashMap<String, String>, listener: OnApiCallbackListener? = null) {
-        sendAsync(SET_PROFILE_FIELD, JSONObject(data.toMap()), listener)
+    fun profile(data: ProfileParams, listener: OnApiCallbackListener? = null) {
+        sendAsync(SET_PROFILE_FIELD, data.toJson(), listener)
     }
 
     /**
