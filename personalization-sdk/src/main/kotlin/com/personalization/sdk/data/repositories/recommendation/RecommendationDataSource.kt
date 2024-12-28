@@ -1,15 +1,10 @@
 package com.personalization.sdk.data.repositories.recommendation
 
 import com.personalization.sdk.domain.models.RecommendedBy
-import javax.inject.Inject
 
-class RecommendationDataSource @Inject constructor() {
+interface RecommendationDataSource {
 
-    private var recommendedBy: RecommendedBy? = null
+    fun getRecommendedBy(): RecommendedBy?
 
-    fun getRecommendedBy(): RecommendedBy? = recommendedBy
-
-    fun setRecommendedBy(recommendedBy: RecommendedBy?) {
-        this.recommendedBy = recommendedBy
-    }
+    fun setRecommendedBy(recommendedBy: RecommendedBy?)
 }

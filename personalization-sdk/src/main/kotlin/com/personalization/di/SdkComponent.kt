@@ -30,5 +30,4 @@ interface SdkComponent {
     fun inject(sdk: SDK)
 
     fun inject(service: NotificationService)
-
 }

@@ -1,83 +1,29 @@
 package com.personalization.sdk.data.repositories.preferences
 
 import android.content.Context
-import android.content.SharedPreferences
-import kotlin.math.roundToInt
 
-class PreferencesDataSource {
+interface PreferencesDataSource {
 
-    private var sharedPreferences: SharedPreferences? = null
-    private var preferencesKey: String? = null
-
-    internal fun initialize(
+    fun initialize(
         context: Context,
         preferencesKey: String
-    ) {
-        this.sharedPreferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
-        this.preferencesKey = preferencesKey
-    }
+    )
 
-    internal fun getToken(): String = getValue(TOKEN_KEY, DEFAULT_TOKEN)
-    internal fun saveToken(value: String) = saveValue(TOKEN_KEY, value)
+    fun getToken(): String
 
-    internal fun getLastPushTokenDate(): Long {
-        return getValue(
-            field = LAST_PUSH_TOKEN_DATE_KEY,
-            defaultValue = DEFAULT_LAST_PUSH_TOKEN_DATE
-        )
-    }
+    fun saveToken(value: String)
 
-    internal fun saveLastPushTokenDate(value: Long) {
-        saveValue(
-            field = LAST_PUSH_TOKEN_DATE_KEY,
-            value = value
-        )
-    }
+    fun getLastPushTokenDate(): Long
 
-    internal fun getSegment(): String {
-        val field = preferencesKey + SEGMENT_KEY
-        return getValue(
-            field = field,
-            defaultValue = DEFAULT_SEGMENT
-        )
-    }
+    fun saveLastPushTokenDate(value: Long)
 
-    internal fun getValue(field: String, defaultValue: String): String {
-        return sharedPreferences?.getString(field, defaultValue) ?: defaultValue
-    }
+    fun getSegment(): String
 
-    internal fun getValue(field: String, defaultValue: Long): Long {
-        return sharedPreferences?.getLong(field, defaultValue) ?: defaultValue
-    }
+    fun getValue(field: String, defaultValue: String): String
 
-    internal fun <T> saveValue(field: String, value: T) {
-        val putEditor = sharedPreferences?.let { sharedPreferences ->
-            with(sharedPreferences.edit()) {
-                when (value) {
-                    is Boolean -> putBoolean(field, value)
-                    is String -> putString(field, value)
-                    is Long -> putLong(field, value)
-                    is Float -> putFloat(field, value)
-                    is Int -> putInt(field, value)
-                    else -> null
-                }
-            }
-        }
+    fun getValue(field: String, defaultValue: Long): Long
 
-        putEditor?.apply()
-    }
+    fun <T> saveValue(field: String, value: T)
 
-    internal fun removeValue(field: String) {
-        sharedPreferences?.edit()?.remove(field)?.apply()
-    }
-
-    companion object {
-        private const val DEFAULT_TOKEN = ""
-        private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
-        private val DEFAULT_SEGMENT = arrayOf("A", "B")[Math.random().roundToInt()]
-
-        private const val TOKEN_KEY = "token"
-        private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
-        private const val SEGMENT_KEY = ".segment"
-    }
+    fun removeValue(field: String)
 }

@@ -21,9 +21,6 @@ interface UserSettingsRepository {
     fun updateSidLastActTime()
     fun getSidLastActTime(): Long
 
-    fun getIsInitialized(): Boolean
-    fun updateIsInitialized(value: Boolean)
-
     fun addParams(
         params: JSONObject,
         notificationSource: NotificationSource?,

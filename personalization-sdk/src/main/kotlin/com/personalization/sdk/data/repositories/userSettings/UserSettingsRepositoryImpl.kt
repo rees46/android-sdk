@@ -1,16 +1,16 @@
 package com.personalization.sdk.data.repositories.userSettings
 
-import com.personalization.sdk.data.di.DataSourcesModule
+import com.personalization.sdk.data.di.UserSettingsDataSourceFactory
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 class UserSettingsRepositoryImpl @Inject constructor(
-    private val userSettingsDataSourceFactory: DataSourcesModule.UserSettingsDataSourceFactory,
+    private val userSettingsDataSourceFactory: UserSettingsDataSourceFactory,
 ) : UserSettingsRepository {
 
-    private lateinit var userSettingsDataSource: UserSettingsDataSource
+    private lateinit var userSettingsDataSource: UserSettingsDataSourceImpl
 
     override fun initialize(
         shopId: String,
@@ -51,13 +51,6 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun getSidLastActTime(): Long =
         userSettingsDataSource.getSidLastActTime()
-
-    override fun getIsInitialized(): Boolean =
-        userSettingsDataSource.getIsInitialized()
-
-    override fun updateIsInitialized(value: Boolean) {
-        userSettingsDataSource.setIsInitialized(value)
-    }
 
     override fun addParams(
         params: JSONObject,

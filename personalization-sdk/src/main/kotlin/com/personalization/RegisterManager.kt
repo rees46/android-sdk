@@ -20,15 +20,15 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
-import java.security.SecureRandom
-import java.util.Date
-import java.util.TimeZone
-import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.security.SecureRandom
+import java.util.Date
+import java.util.TimeZone
+import javax.inject.Inject
 
 class RegisterManager @Inject constructor(
     private val getPreferencesValueUseCase: GetPreferencesValueUseCase,
@@ -121,7 +121,7 @@ class RegisterManager @Inject constructor(
         lastUpdate: Long
     ): Boolean {
         return autoSendPushToken &&
-            (savedToken.isEmpty() || savedToken != newToken || (currentDate - lastUpdate >= ONE_WEEK_MILLISECONDS))
+                (savedToken.isEmpty() || savedToken != newToken || (currentDate - lastUpdate >= ONE_WEEK_MILLISECONDS))
     }
 
     private fun sendPushTokenToServer(token: String, currentDate: Long) {
@@ -223,7 +223,6 @@ class RegisterManager @Inject constructor(
     }
 
     private fun initializeSdk(seance: String?) {
-        updateUserSettingsValueUseCase.updateIsInitialized(value = true)
         val finalSeance = seance ?: generateOrRetrieveSeance()
         updateUserSettingsValueUseCase.updateSid(value = finalSeance)
         executeQueueTasksUseCase.invoke()
