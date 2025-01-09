@@ -7,11 +7,9 @@ import javax.inject.Singleton
 
 private const val DEFAULT_TOKEN = ""
 private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
-private val DEFAULT_SEGMENT = arrayOf("A", "B").random()
 
 private const val TOKEN_KEY = "token"
 private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
-private const val SEGMENT_KEY = ".segment"
 
 @Singleton
 class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
@@ -41,14 +39,6 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
         saveValue(
             field = LAST_PUSH_TOKEN_DATE_KEY,
             value = value
-        )
-    }
-
-    override fun getSegment(): String {
-        val field = preferencesKey + SEGMENT_KEY
-        return getValue(
-            field = field,
-            defaultValue = DEFAULT_SEGMENT
         )
     }
 

@@ -17,8 +17,6 @@ interface PreferencesDataSource {
 
     fun saveLastPushTokenDate(value: Long)
 
-    fun getSegment(): String
-
     fun getValue(field: String, defaultValue: String): String
 
     fun getValue(field: String, defaultValue: Long): Long

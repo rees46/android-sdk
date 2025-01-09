@@ -3,7 +3,10 @@ package com.personalization.sdk.data.repositories.network
 import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.sdk.data.models.params.UserBasicParams
+import com.personalization.sdk.data.utils.QueryParamsUtils.addMultipleParams
 import com.personalization.sdk.domain.models.NetworkMethod
+import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
@@ -165,7 +168,7 @@ class NetworkRepositoryImpl @Inject constructor(
             notificationRepository.getNotificationSource(TimeUtils.TWO_DAYS.inWholeMilliseconds)
 
         try {
-            val newParams = userSettingsRepository.addParams(
+            val newParams = addBasicQueryParams(
                 params = params,
                 notificationSource = notificationSource,
             )
@@ -174,6 +177,26 @@ class NetworkRepositoryImpl @Inject constructor(
         } catch (e: JSONException) {
             SDK.error(e.message, e)
         }
+    }
+
+    private fun addBasicQueryParams(
+        params: JSONObject,
+        notificationSource: NotificationSource?
+    ): JSONObject {
+        addMultipleParams(
+            params = params,
+            paramsToAdd = mapOf(
+                UserBasicParams.SHOP_ID to userSettingsRepository.getShopId(),
+                UserBasicParams.DID to userSettingsRepository.getDid(),
+                UserBasicParams.SID to userSettingsRepository.getSid(),
+                UserBasicParams.SEANCE to userSettingsRepository.getSid(),
+                UserBasicParams.SEGMENT to userSettingsRepository.getSegmentForABTesting(),
+                UserBasicParams.STREAM to userSettingsRepository.getStream(),
+                UserBasicParams.SOURCE_FROM to notificationSource?.type,
+                UserBasicParams.SOURCE_CODE to notificationSource?.id
+            )
+        )
+        return params
     }
 
     private fun executeMethod(

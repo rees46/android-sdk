@@ -40,7 +40,6 @@ import javax.inject.Inject
 open class SDK {
 
     internal lateinit var context: Context
-    private lateinit var segment: String
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
@@ -137,13 +136,11 @@ open class SDK {
             context = context,
             preferencesKey = preferencesKey
         )
-        segment = getPreferencesValueUseCase.getSegment()
 
         notificationHandler.initialize(context = context)
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            segment = segment,
             stream = stream
         )
 
@@ -662,7 +659,7 @@ open class SDK {
     /**
      * Returns the current segment for A/B testing
      */
-    fun getSegment(): String = instance.segment
+    fun getSegment(): String = getUserSettingsValueUseCase.getSegmentForABTesting()
 
     /**
      * Add user to a segment

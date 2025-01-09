@@ -25,6 +25,4 @@ class PreferencesRepositoryImpl @Inject constructor(
     override fun saveLastPushTokenDate(value: Long) {
         preferencesDataSource.saveLastPushTokenDate(value)
     }
-
-    override fun getSegment(): String = preferencesDataSource.getSegment()
 }
