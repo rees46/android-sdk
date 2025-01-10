@@ -3,9 +3,8 @@ package com.personalization.sdk.data.repositories.advertising
 import android.content.Context
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.personalization.sdk.domain.repositories.AdvertisingRepository
+import java.util.UUID
 import javax.inject.Inject
-
-private const val DEFAULT_ADVERTISING_ID = "00000000-0000-0000-0000-000000000000"
 
 class AdvertisingRepositoryImpl @Inject constructor(
     private val context: Context
@@ -14,7 +13,11 @@ class AdvertisingRepositoryImpl @Inject constructor(
         try {
             AdvertisingIdClient.getAdvertisingIdInfo(context).id
         } catch (e: Exception) {
-            DEFAULT_ADVERTISING_ID
+            generateDefaultAdvertisingId()
         }
+
+    private fun generateDefaultAdvertisingId(): String {
+        return UUID(0L, 0L).toString()
+    }
 
 }
