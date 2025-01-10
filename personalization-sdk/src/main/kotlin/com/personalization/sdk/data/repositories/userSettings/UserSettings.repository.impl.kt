@@ -1,6 +1,7 @@
 package com.personalization.sdk.data.repositories.userSettings
 
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
+import com.personalization.sdk.data.utils.AdvertisingUtils
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import javax.inject.Inject
 
@@ -9,7 +10,6 @@ private const val DEFAULT_SID = ""
 private const val DEFAULT_SID_LAST_ACT_TIME = 0L
 private const val DEFAULT_SHOP_ID = ""
 private const val DEFAULT_STREAM = "android"
-private const val DEFAULT_ADVERTISING_ID = "00000000-0000-0000-0000-000000000000"
 
 private const val DID_KEY = "did"
 private const val SID_KEY = "sid"
@@ -102,7 +102,7 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun getAdvertisingId(): String = preferencesDataSource.getValue(
         field = ADVERTISING_ID_KEY,
-        defaultValue = DEFAULT_ADVERTISING_ID
+        defaultValue = AdvertisingUtils.DEFAULT_ADVERTISING_ID
     )
 
     override fun updateAdvertisingId(value: String) {
