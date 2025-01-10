@@ -30,9 +30,13 @@ import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCas
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
+import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -45,6 +49,9 @@ open class SDK {
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
+
+    @Inject
+    internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -103,7 +110,6 @@ open class SDK {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
-
     /**
      * @param shopId Shop key
      */
@@ -155,6 +161,10 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            initializeAdvertisingIdUseCase.invoke()
+        }
     }
 
     private fun initNetworkUseCase(url: String?) {
@@ -221,6 +231,11 @@ open class SDK {
      * Return the session ID
      */
     fun getSid(): String = getUserSettingsValueUseCase.getSid()
+
+    /**
+     * Return the Advertising ID
+     */
+    fun getAdvertisingId(): String = getUserSettingsValueUseCase.getAdvertisingId()
 
     /**
      * Returns the session ID
