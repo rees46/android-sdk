@@ -28,7 +28,7 @@ class UserSettingsRepositoryImpl @Inject constructor(
 
     override fun updateDid(value: String) {
         preferencesDataSource.saveValue(
-            field = SID_KEY,
+            field = DID_KEY,
             value = value
         )
     }
