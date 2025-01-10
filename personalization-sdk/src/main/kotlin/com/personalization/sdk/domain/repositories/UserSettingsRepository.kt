@@ -21,6 +21,6 @@ interface UserSettingsRepository {
     fun getStream(): String
     fun updateStream(value: String)
 
-    fun saveAdvertisingId(value: String)
     fun getAdvertisingId(): String
+    fun updateAdvertisingId(value: String)
 }

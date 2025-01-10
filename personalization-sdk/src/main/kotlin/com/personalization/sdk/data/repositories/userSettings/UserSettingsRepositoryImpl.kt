@@ -9,6 +9,7 @@ private const val DEFAULT_SID = ""
 private const val DEFAULT_SID_LAST_ACT_TIME = 0L
 private const val DEFAULT_SHOP_ID = ""
 private const val DEFAULT_STREAM = "android"
+private const val DEFAULT_ADVERTISING_ID = "00000000-0000-0000-0000-000000000000"
 
 private const val DID_KEY = "did"
 private const val SID_KEY = "sid"
@@ -16,6 +17,7 @@ private const val SID_LAST_ACT_KEY = "sid_last_act"
 private const val SHOP_ID_KEY = "shop_id"
 private const val SEGMENT_AB_TESTING_KEY = "segment_ab_testing"
 private const val STREAM_KEY = "stream"
+private const val ADVERTISING_ID_KEY = "google_ad_id"
 
 class UserSettingsRepositoryImpl @Inject constructor(
     private val preferencesDataSource: PreferencesDataSource,
@@ -98,11 +100,17 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override fun saveAdvertisingId(value: String) {
+    override fun getAdvertisingId(): String = preferencesDataSource.getValue(
+        field = ADVERTISING_ID_KEY,
+        defaultValue = DEFAULT_ADVERTISING_ID
+    )
 
+    override fun updateAdvertisingId(value: String) {
+        preferencesDataSource.saveValue(
+            field = ADVERTISING_ID_KEY,
+            value = value
+        )
     }
-
-    override fun getAdvertisingId(): String =
 
     private fun generateRandomSegmentValue(): String = arrayOf("A", "B").random()
 }
