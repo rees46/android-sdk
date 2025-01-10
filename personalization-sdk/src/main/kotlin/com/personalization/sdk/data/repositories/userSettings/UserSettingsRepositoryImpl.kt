@@ -98,5 +98,11 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
+    override fun saveAdvertisingId(value: String) {
+
+    }
+
+    override fun getAdvertisingId(): String =
+
     private fun generateRandomSegmentValue(): String = arrayOf("A", "B").random()
 }

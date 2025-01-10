@@ -15,6 +15,7 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.api.params.ProfileParams
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -29,13 +30,17 @@ import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCas
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
+import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
-import org.json.JSONException
-import org.json.JSONObject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
+import org.json.JSONException
+import org.json.JSONObject
 
 open class SDK {
 
@@ -43,6 +48,9 @@ open class SDK {
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
+
+    @Inject
+    internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -101,7 +109,6 @@ open class SDK {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
-
     /**
      * @param shopId Shop key
      */
@@ -151,6 +158,10 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            initializeAdvertisingIdUseCase.invoke()
+        }
     }
 
     private fun initNetworkUseCase(url: String?) {
@@ -209,14 +220,19 @@ open class SDK {
      *
      * @param data profile data
      */
-    fun profile(data: HashMap<String, String>, listener: OnApiCallbackListener? = null) {
-        sendAsync(SET_PROFILE_FIELD, JSONObject(data.toMap()), listener)
+    fun profile(data: ProfileParams, listener: OnApiCallbackListener? = null) {
+        sendAsync(SET_PROFILE_FIELD, data.toJson(), listener)
     }
 
     /**
      * Return the session ID
      */
     fun getSid(): String = getUserSettingsValueUseCase.getSid()
+
+    /**
+     * Return the Advertising ID
+     */
+    fun getAdvertisingId(): String = getUserSettingsValueUseCase.getAdvertisingId()
 
     /**
      * Returns the session ID

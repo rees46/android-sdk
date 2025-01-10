@@ -6,7 +6,7 @@ plugins {
     id 'kotlin-kapt'
 }
 
-version='2.0.48'
+version='2.0.51'
 
 android {
     compileSdkVersion 34
@@ -97,6 +97,8 @@ dependencies {
     implementation("androidx.test:core:1.6.1")
     implementation("androidx.test:rules:1.6.1")
     implementation("androidx.test.ext:junit:1.2.1")
+
+    implementation("com.google.android.gms:play-services-ads-identifier:17.0.0")
 
     kapt 'com.google.dagger:dagger-compiler:2.48'
 }
