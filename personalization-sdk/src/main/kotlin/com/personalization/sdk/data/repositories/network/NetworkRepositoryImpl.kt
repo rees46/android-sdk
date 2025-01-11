@@ -3,11 +3,18 @@ package com.personalization.sdk.data.repositories.network
 import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.data.di.DataSourcesModule
+import com.personalization.sdk.data.models.params.UserBasicParams
+import com.personalization.sdk.data.utils.QueryParamsUtils.addMultipleParams
 import com.personalization.sdk.domain.models.NetworkMethod
+import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
+import com.personalization.utils.TimeUtils
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.IOException
@@ -20,27 +27,20 @@ import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.util.Collections
 import javax.inject.Inject
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
-import org.json.JSONTokener
 
 class NetworkRepositoryImpl @Inject constructor(
-    private val networkDataSourceFactory: DataSourcesModule.NetworkDataSourceFactory,
     private val userSettingsRepository: UserSettingsRepository,
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
 ) : NetworkRepository {
 
-    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
+    private lateinit var baseUrl: String
 
-    private var networkDataSource: NetworkDataSource? = null
+    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
     override fun initialize(
         baseUrl: String
     ) {
-        networkDataSource = networkDataSourceFactory.create(
-            baseUrl = baseUrl
-        )
+        this.baseUrl = baseUrl
     }
 
     override fun post(
@@ -126,7 +126,7 @@ class NetworkRepositoryImpl @Inject constructor(
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
         if (userSettingsRepository.getDid()
-                .isNotEmpty() && userSettingsRepository.getIsInitialized()
+                .isNotEmpty()
         ) {
             thread.start()
         } else {
@@ -165,10 +165,10 @@ class NetworkRepositoryImpl @Inject constructor(
         userSettingsRepository.updateSidLastActTime()
 
         val notificationSource =
-            notificationRepository.getNotificationSource(NetworkDataSource.sourceTimeDuration)
+            notificationRepository.getNotificationSource(TimeUtils.TWO_DAYS.inWholeMilliseconds)
 
         try {
-            val newParams = userSettingsRepository.addParams(
+            val newParams = addBasicQueryParams(
                 params = params,
                 notificationSource = notificationSource,
             )
@@ -177,6 +177,26 @@ class NetworkRepositoryImpl @Inject constructor(
         } catch (e: JSONException) {
             SDK.error(e.message, e)
         }
+    }
+
+    private fun addBasicQueryParams(
+        params: JSONObject,
+        notificationSource: NotificationSource?
+    ): JSONObject {
+        addMultipleParams(
+            params = params,
+            paramsToAdd = mapOf(
+                UserBasicParams.SHOP_ID to userSettingsRepository.getShopId(),
+                UserBasicParams.DID to userSettingsRepository.getDid(),
+                UserBasicParams.SID to userSettingsRepository.getSid(),
+                UserBasicParams.SEANCE to userSettingsRepository.getSid(),
+                UserBasicParams.SEGMENT to userSettingsRepository.getSegmentForABTesting(),
+                UserBasicParams.STREAM to userSettingsRepository.getStream(),
+                UserBasicParams.SOURCE_FROM to notificationSource?.type,
+                UserBasicParams.SOURCE_CODE to notificationSource?.id
+            )
+        )
+        return params
     }
 
     private fun executeMethod(
@@ -230,9 +250,8 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         params: JSONObject
     ): Uri {
-        if (networkDataSource == null) throw Exception("Network not initialized.")
 
-        val builder = Uri.parse(networkDataSource!!.baseUrl + networkMethod.method).buildUpon()
+        val builder = Uri.parse(baseUrl + networkMethod.method).buildUpon()
 
         val it = params.keys()
         while (it.hasNext()) {
@@ -247,10 +266,9 @@ class NetworkRepositoryImpl @Inject constructor(
         networkMethod: NetworkMethod,
         buildUri: Uri
     ): URL {
-        if (networkDataSource == null) throw Exception("Network not initialized.")
 
         return if (networkMethod is NetworkMethod.POST) {
-            URL(networkDataSource!!.baseUrl + networkMethod.method)
+            URL(baseUrl + networkMethod.method)
         } else {
             URL(buildUri.toString())
         }

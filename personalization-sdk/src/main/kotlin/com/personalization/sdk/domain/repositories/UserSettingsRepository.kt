@@ -1,15 +1,6 @@
 package com.personalization.sdk.domain.repositories
 
-import com.personalization.sdk.domain.models.NotificationSource
-import org.json.JSONObject
-
 interface UserSettingsRepository {
-
-    fun initialize(
-        shopId: String,
-        segment: String,
-        stream: String
-    )
 
     fun getDid(): String
     fun removeDid()
@@ -21,14 +12,15 @@ interface UserSettingsRepository {
     fun updateSidLastActTime()
     fun getSidLastActTime(): Long
 
-    fun getIsInitialized(): Boolean
-    fun updateIsInitialized(value: Boolean)
+    fun getShopId(): String
+    fun updateShopId(value: String)
 
-    fun saveAdvertisingId(value: String)
+    fun getSegmentForABTesting(): String
+    fun updateSegmentForABTesting()
+
+    fun getStream(): String
+    fun updateStream(value: String)
+
     fun getAdvertisingId(): String
-
-    fun addParams(
-        params: JSONObject,
-        notificationSource: NotificationSource?,
-    ): JSONObject
+    fun updateAdvertisingId(value: String)
 }

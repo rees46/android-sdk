@@ -2,8 +2,8 @@ package com.personalization.sdk.data.repositories.advertising
 
 import android.content.Context
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
+import com.personalization.sdk.data.utils.AdvertisingUtils
 import com.personalization.sdk.domain.repositories.AdvertisingRepository
-import java.util.UUID
 import javax.inject.Inject
 
 class AdvertisingRepositoryImpl @Inject constructor(
@@ -13,11 +13,6 @@ class AdvertisingRepositoryImpl @Inject constructor(
         try {
             AdvertisingIdClient.getAdvertisingIdInfo(context).id
         } catch (e: Exception) {
-            generateDefaultAdvertisingId()
+            AdvertisingUtils.DEFAULT_ADVERTISING_ID
         }
-
-    private fun generateDefaultAdvertisingId(): String {
-        return UUID(0L, 0L).toString()
-    }
-
 }

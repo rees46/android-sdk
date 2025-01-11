@@ -5,11 +5,11 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.sdk.data.mappers.notification.NotificationMapper
 import com.personalization.sdk.data.models.params.GetAllNotificationsParams
-import com.personalization.sdk.data.utils.ParamsEnumUtils.addOptionalParam
+import com.personalization.sdk.data.utils.QueryParamsUtils.formNewJSONWithMultipleParams
 import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NotificationRepository
-import javax.inject.Inject
 import org.json.JSONObject
+import javax.inject.Inject
 
 class NotificationRepositoryImpl @Inject constructor(
     private val notificationDataSource: NotificationDataSource,
@@ -42,21 +42,19 @@ class NotificationRepositoryImpl @Inject constructor(
         channel: String,
         page: Int?,
         limit: Int?
-    ): JSONObject {
-        val params = JSONObject()
-
-        addOptionalParam(params, GetAllNotificationsParams.EMAIL, email)
-        addOptionalParam(params, GetAllNotificationsParams.PHONE, phone)
-        addOptionalParam(params, GetAllNotificationsParams.EXTERNAL_ID, externalId)
-        addOptionalParam(params, GetAllNotificationsParams.LOYALTY_ID, loyaltyId)
-        params.put(GetAllNotificationsParams.DATE_FROM, dateFrom)
-        params.put(GetAllNotificationsParams.TYPE, type)
-        params.put(GetAllNotificationsParams.CHANNEL, channel)
-        addOptionalParam(params, GetAllNotificationsParams.PAGE, page)
-        addOptionalParam(params, GetAllNotificationsParams.LIMIT, limit)
-
-        return params
-    }
+    ): JSONObject = formNewJSONWithMultipleParams(
+        mapOf(
+            GetAllNotificationsParams.EMAIL to email,
+            GetAllNotificationsParams.PHONE to phone,
+            GetAllNotificationsParams.EXTERNAL_ID to externalId,
+            GetAllNotificationsParams.LOYALTY_ID to loyaltyId,
+            GetAllNotificationsParams.DATE_FROM to dateFrom,
+            GetAllNotificationsParams.TYPE to type,
+            GetAllNotificationsParams.CHANNEL to channel,
+            GetAllNotificationsParams.PAGE to page,
+            GetAllNotificationsParams.LIMIT to limit,
+        )
+    )
 
     override fun getAllNotificationListener(
         onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,

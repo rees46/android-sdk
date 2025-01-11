@@ -45,7 +45,6 @@ import org.json.JSONObject
 open class SDK {
 
     internal lateinit var context: Context
-    private lateinit var segment: String
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
@@ -144,13 +143,11 @@ open class SDK {
             context = context,
             preferencesKey = preferencesKey
         )
-        segment = getPreferencesValueUseCase.getSegment()
 
         notificationHandler.initialize(context = context)
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            segment = segment,
             stream = stream
         )
 
@@ -246,14 +243,7 @@ open class SDK {
         replaceWith = ReplaceWith("getSid(): String")
     )
     fun getSid(listener: Consumer<String?>) {
-        val thread = Thread {
-            listener.accept(getSid())
-        }
-        if (getUserSettingsValueUseCase.getIsInitialized()) {
-            thread.start()
-        } else {
-            addTaskToQueueUseCase.invoke(thread)
-        }
+        listener.accept(getSid())
     }
 
     /**
@@ -618,13 +608,6 @@ open class SDK {
      * @param subscriptions
      * @param listener
      */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param subscriptions
-     */
     fun manageSubscription(
         email: String?,
         phone: String?,
@@ -652,16 +635,6 @@ open class SDK {
      * @param telegramId
      * @param subscriptions
      * @param listener
-     */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param externalId
-     * @param loyaltyId
-     * @param telegramId
-     * @param subscriptions
      */
     @JvmOverloads
     fun manageSubscription(
@@ -702,7 +675,7 @@ open class SDK {
     /**
      * Returns the current segment for A/B testing
      */
-    fun getSegment(): String = instance.segment
+    fun getSegment(): String = getUserSettingsValueUseCase.getSegmentForABTesting()
 
     /**
      * Add user to a segment

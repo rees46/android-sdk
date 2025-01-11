@@ -10,6 +10,4 @@ class GetPreferencesValueUseCase @Inject constructor(
     fun getToken(): String = preferencesRepository.getToken()
 
     fun getLastPushTokenDate(): Long = preferencesRepository.getLastPushTokenDate()
-
-    fun getSegment(): String = preferencesRepository.getSegment()
 }
