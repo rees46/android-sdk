@@ -21,12 +21,6 @@ interface NetworkRepository {
         listener: OnApiCallbackListener? = null
     )
 
-    fun postSecretAsync(
-        method: String,
-        params: JSONObject,
-        listener: OnApiCallbackListener? = null
-    )
-
     fun get(
         method: String,
         params: JSONObject,
@@ -34,12 +28,6 @@ interface NetworkRepository {
     )
 
     fun getAsync(
-        method: String,
-        params: JSONObject,
-        listener: OnApiCallbackListener? = null
-    )
-
-    fun getSecretAsync(
         method: String,
         params: JSONObject,
         listener: OnApiCallbackListener? = null

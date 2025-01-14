@@ -51,7 +51,7 @@ class GetAllNotificationsUseCase @Inject constructor(
             onError = onError
         )
 
-        networkRepository.getSecretAsync(
+        networkRepository.getAsync(
             method = GET_ALL_NOTIFICATIONS_REQUEST,
             params = params,
             listener = listener
