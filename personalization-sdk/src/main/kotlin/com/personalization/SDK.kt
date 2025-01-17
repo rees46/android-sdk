@@ -30,9 +30,13 @@ import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCas
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
+import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -41,10 +45,12 @@ import org.json.JSONObject
 open class SDK {
 
     internal lateinit var context: Context
-    private lateinit var segment: String
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
+
+    @Inject
+    internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -103,7 +109,6 @@ open class SDK {
     @Inject
     lateinit var notificationHelper: NotificationHelper
 
-
     /**
      * @param shopId Shop key
      */
@@ -138,13 +143,11 @@ open class SDK {
             context = context,
             preferencesKey = preferencesKey
         )
-        segment = getPreferencesValueUseCase.getSegment()
 
         notificationHandler.initialize(context = context)
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            segment = segment,
             stream = stream
         )
 
@@ -155,6 +158,10 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            initializeAdvertisingIdUseCase.invoke()
+        }
     }
 
     private fun initNetworkUseCase(url: String?) {
@@ -223,6 +230,11 @@ open class SDK {
     fun getSid(): String = getUserSettingsValueUseCase.getSid()
 
     /**
+     * Return the Advertising ID
+     */
+    fun getAdvertisingId(): String = getUserSettingsValueUseCase.getAdvertisingId()
+
+    /**
      * Returns the session ID
      */
     @Deprecated(
@@ -231,14 +243,7 @@ open class SDK {
         replaceWith = ReplaceWith("getSid(): String")
     )
     fun getSid(listener: Consumer<String?>) {
-        val thread = Thread {
-            listener.accept(getSid())
-        }
-        if (getUserSettingsValueUseCase.getIsInitialized()) {
-            thread.start()
-        } else {
-            addTaskToQueueUseCase.invoke(thread)
-        }
+        listener.accept(getSid())
     }
 
     /**
@@ -603,13 +608,6 @@ open class SDK {
      * @param subscriptions
      * @param listener
      */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param subscriptions
-     */
     fun manageSubscription(
         email: String?,
         phone: String?,
@@ -637,16 +635,6 @@ open class SDK {
      * @param telegramId
      * @param subscriptions
      * @param listener
-     */
-    /**
-     * Manage subscriptions
-     *
-     * @param email
-     * @param phone
-     * @param externalId
-     * @param loyaltyId
-     * @param telegramId
-     * @param subscriptions
      */
     @JvmOverloads
     fun manageSubscription(
@@ -687,7 +675,7 @@ open class SDK {
     /**
      * Returns the current segment for A/B testing
      */
-    fun getSegment(): String = instance.segment
+    fun getSegment(): String = getUserSettingsValueUseCase.getSegmentForABTesting()
 
     /**
      * Add user to a segment

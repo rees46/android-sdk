@@ -14,6 +14,4 @@ interface PreferencesRepository {
 
     fun getLastPushTokenDate(): Long
     fun saveLastPushTokenDate(value: Long)
-
-    fun getSegment(): String
 }
