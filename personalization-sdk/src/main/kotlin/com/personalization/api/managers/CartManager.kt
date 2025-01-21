@@ -2,7 +2,6 @@ package com.personalization.api.managers
 
 import com.personalization.api.params.CartParams
 import com.personalization.api.responses.cart.CartContent
-import org.json.JSONObject
 
 interface CartManager {
 
@@ -28,7 +27,7 @@ interface CartManager {
     fun clearClientShoppingCartContent(
         shopSecret: String,
         params: CartParams,
-        onCartCleared: (JSONObject?) -> Unit,
+        onCartCleared: (Boolean) -> Unit,
         onError: (code: Int, msg: String?) -> Unit = { _: Int, _: String? -> }
     )
 }

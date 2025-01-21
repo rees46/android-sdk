@@ -7,6 +7,7 @@ import com.personalization.api.managers.CartManager
 import com.personalization.api.params.CartParams
 import com.personalization.api.responses.cart.CartContent
 import com.personalization.api.responses.cart.CartContentResponse
+import com.personalization.api.responses.cart.ClearCartResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
@@ -46,7 +47,7 @@ internal class CartManagerImpl @Inject constructor(
     override fun clearClientShoppingCartContent(
         shopSecret: String,
         params: CartParams,
-        onCartCleared: (JSONObject?) -> Unit,
+        onCartCleared: (Boolean) -> Unit,
         onError: (code: Int, msg: String?) -> Unit
     ) {
         sendNetworkMethodUseCase.getAsync(
@@ -55,7 +56,10 @@ internal class CartManagerImpl @Inject constructor(
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     response?.let {
-                        onCartCleared(response)
+                        val cartContentResponse = Gson().fromJson(
+                            it.toString(), ClearCartResponse::class.java
+                        )
+                        onCartCleared(cartContentResponse.isSuccess())
                     }
                 }
 
