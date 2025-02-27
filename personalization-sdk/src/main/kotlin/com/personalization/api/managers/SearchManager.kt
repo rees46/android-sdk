@@ -34,6 +34,7 @@ interface SearchManager {
         query: String,
         locations: String? = null,
         excludedMerchants: List<String>? = null,
+        excludedBrands: List<String>? = null,
         onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
     )

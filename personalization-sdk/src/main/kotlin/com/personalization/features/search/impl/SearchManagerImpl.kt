@@ -46,6 +46,7 @@ internal class SearchManagerImpl @Inject constructor(
         query: String,
         locations: String?,
         excludedMerchants: List<String>?,
+        excludedBrands: List<String>?,
         onSearchInstant: (SearchInstantResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ) {
@@ -56,6 +57,9 @@ internal class SearchManagerImpl @Inject constructor(
                 val excludeMerchantsString = excludedMerchants.joinToString(",")
                 searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludeMerchantsString)
             }
+        }
+        excludedBrands?.let {
+            searchParams.put(SearchParams.Parameter.EXCLUDED_BRANDS, excludedBrands.joinToString(","))
         }
 
         search(query, TYPE.INSTANT, searchParams, object : OnApiCallbackListener() {
