@@ -69,20 +69,6 @@ class NetworkRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun postSecretAsync(
-        method: String,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    ) {
-        sendAsync {
-            sendSecretMethod(
-                networkMethod = NetworkMethod.POST(method),
-                params = params,
-                listener = listener
-            )
-        }
-    }
-
     override fun get(
         method: String,
         params: JSONObject,
@@ -109,25 +95,9 @@ class NetworkRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getSecretAsync(
-        method: String,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    ) {
-        sendAsync {
-            sendSecretMethod(
-                networkMethod = NetworkMethod.GET(method),
-                params = params,
-                listener = listener
-            )
-        }
-    }
-
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (userSettingsRepository.getDid()
-                .isNotEmpty()
-        ) {
+        if (userSettingsRepository.getDid().isNotEmpty()) {
             thread.start()
         } else {
             addTaskToQueue(thread)
@@ -143,18 +113,6 @@ class NetworkRepositoryImpl @Inject constructor(
 
     override fun addTaskToQueue(thread: Thread) {
         queue.add(thread)
-    }
-
-    private fun sendSecretMethod(
-        networkMethod: NetworkMethod,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    ) {
-        sendMethod(
-            networkMethod = networkMethod,
-            params = params,
-            listener = listener,
-        )
     }
 
     private fun sendMethod(
