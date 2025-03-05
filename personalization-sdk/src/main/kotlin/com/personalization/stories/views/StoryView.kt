@@ -32,7 +32,8 @@ import com.personalization.stories.views.storyItem.StoryItemView.OnPageListener
 internal class StoryView(
     private val storiesView: StoriesView,
     private val storyStateListener: StoryDialog.OnStoryStateListener,
-    private val needOpeningWebView: Boolean
+    private val needOpeningWebView: Boolean,
+    private val sdk: SDK
 ) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
 
     private lateinit var storiesProgressView: StoriesProgressView
@@ -110,7 +111,7 @@ internal class StoryView(
                         }
 
                         if (storiesStarted) {
-                            SDK.instance.trackStory(
+                            sdk.trackStory(
                                 event = "view",
                                 code = storiesView.code,
                                 storyId = story.id,
@@ -320,7 +321,8 @@ internal class StoryView(
                     settings = storiesView.settings,
                     itemClickListener = storiesView.itemClickListener,
                     storyStateListener = storyStateListener,
-                    needOpeningWebView = needOpeningWebView
+                    needOpeningWebView = needOpeningWebView,
+                    sdk = sdk
                 )
             )
         }
@@ -447,7 +449,7 @@ internal class StoryView(
             if (!storiesStarted) {
                 storiesStarted = true
                 playVideo()
-                SDK.instance.trackStory(
+                sdk.trackStory(
                     event = "view",
                     code = storiesView.code,
                     storyId = story.id,

@@ -21,9 +21,10 @@ class StoriesManager @Inject constructor(
 
     private lateinit var storiesView: StoriesView
 
-    internal fun initialize(storiesView: StoriesView) {
+    internal fun initialize(storiesView: StoriesView, sdk: SDK) {
         Log.d("StoriesManager", "initialize called")
         this.storiesView = storiesView
+        storiesView.sdk = sdk
         updateStories()
     }
 
