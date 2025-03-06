@@ -4,6 +4,8 @@ package com.personalization.stories.views.storyItem
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -577,6 +579,14 @@ class StoryItemView(
         val textBlockView = TextBlockView(context)
 
         textBlockView.updateView(element, viewHeight, viewTopOffset)
+
+        textBlockView.setOnClickListener {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("TextBlock", element.textInput)
+            clipboard.setPrimaryClip(clip)
+
+            Log.d("TextBlockView", "Text copied: ${element.textInput}")
+        }
 
         textBlocksLayout.addView(textBlockView)
     }
