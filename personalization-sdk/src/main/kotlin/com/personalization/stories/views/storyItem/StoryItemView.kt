@@ -314,13 +314,6 @@ class StoryItemView(
                         is ButtonElement -> link = element.link
                     }
                 }
-                try {
-                    println(link.toString())
-                    println(product.toString())
-
-                }catch (e: Exception){
-                    Log.d(SDK.TAG, e.message.toString())
-                }
 
                 val isHandled = when {
                     product != null && itemClickListener?.onClick(product) == false -> true
@@ -329,8 +322,6 @@ class StoryItemView(
                 }
 
                 if (!isHandled) {
-                    Log.d(SDK.TAG, "Default action for: ${product?.id ?: link}")
-
                     SDK.instance.trackStory(
                         event = "click",
                         code = code,
