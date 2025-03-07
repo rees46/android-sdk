@@ -4,6 +4,8 @@ package com.personalization.stories.views.storyItem
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -65,7 +67,8 @@ class StoryItemView(
     private val settings: Settings,
     private val itemClickListener: com.personalization.OnClickListener?,
     private val storyStateListener: StoryDialog.OnStoryStateListener,
-    private val needOpeningWebView: Boolean
+    private val needOpeningWebView: Boolean,
+    private val productBannerTapDefaultMessage: String
 ) : ConstraintLayout(context) {
 
     interface OnPageListener {
@@ -577,6 +580,13 @@ class StoryItemView(
         val textBlockView = TextBlockView(context)
 
         textBlockView.updateView(element, viewHeight, viewTopOffset)
+
+        textBlockView.setOnClickListener {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("TextBlock", element.textInput)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, productBannerTapDefaultMessage, Toast.LENGTH_SHORT).show()
+        }
 
         textBlocksLayout.addView(textBlockView)
     }

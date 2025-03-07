@@ -25,7 +25,8 @@ class StoryDialog(
     private val startPosition: Int,
     private val completeShowStory: () -> Unit,
     private val cancelShowStory: () -> Unit,
-    private val needOpeningWebView: Boolean
+    private val needOpeningWebView: Boolean,
+    private val productBannerTapDefaultMessage: String
 ) : Dialog(
     storiesView.context,
     android.R.style.Theme_Translucent_NoTitleBar
@@ -173,7 +174,8 @@ class StoryDialog(
                 StoryView(
                     storiesView = storiesView,
                     storyStateListener = storyStateListener,
-                    needOpeningWebView = needOpeningWebView
+                    needOpeningWebView = needOpeningWebView,
+                    productBannerTapDefaultMessage = productBannerTapDefaultMessage
                 )
             )
         }
