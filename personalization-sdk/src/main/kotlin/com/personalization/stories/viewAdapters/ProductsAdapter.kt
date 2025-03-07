@@ -26,7 +26,8 @@ internal class ProductsAdapter(
     private val itemClickListener: OnClickListener?,
     private val code: String,
     private val settings: Settings,
-    private val onCloseStories: () -> Unit
+    private val onCloseStories: () -> Unit,
+    private val sdk: SDK
 ) : RecyclerView.Adapter<ProductsAdapter.ViewHolder>() {
 
     private var products: List<Product> = emptyList()
@@ -121,6 +122,8 @@ internal class ProductsAdapter(
 
                         else -> itemView.openLinkInBrowser(Uri.parse(urlString))
                     }
+                }else {
+                    onCloseStories.invoke()
                 }
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
@@ -130,6 +133,6 @@ internal class ProductsAdapter(
 
     private fun View.openLinkInBrowser(uri: Uri) {
         context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-        SDK.instance.trackStory("click", code, storyId, slideId)
+        sdk.trackStory("click", code, storyId, slideId)
     }
 }

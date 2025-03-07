@@ -173,7 +173,7 @@ open class SDK {
     }
 
     fun initializeStoriesView(storiesView: StoriesView) {
-        storiesManager.initialize(storiesView)
+        storiesManager.initialize(storiesView, this)
     }
 
     fun initializeFragmentManager(fragmentManager: FragmentManager) {

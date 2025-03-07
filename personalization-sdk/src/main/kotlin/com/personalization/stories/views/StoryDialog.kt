@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView.ItemDecoration
 import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import com.personalization.R
+import com.personalization.SDK
 import com.personalization.stories.StoryState
 import com.personalization.stories.models.Story
 import kotlin.math.abs
@@ -25,7 +26,8 @@ class StoryDialog(
     private val startPosition: Int,
     private val completeShowStory: () -> Unit,
     private val cancelShowStory: () -> Unit,
-    private val needOpeningWebView: Boolean
+    private val needOpeningWebView: Boolean,
+    private val sdk: SDK
 ) : Dialog(
     storiesView.context,
     android.R.style.Theme_Translucent_NoTitleBar
@@ -173,7 +175,8 @@ class StoryDialog(
                 StoryView(
                     storiesView = storiesView,
                     storyStateListener = storyStateListener,
-                    needOpeningWebView = needOpeningWebView
+                    needOpeningWebView = needOpeningWebView,
+                    sdk = sdk
                 )
             )
         }
