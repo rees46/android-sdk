@@ -32,7 +32,8 @@ import com.personalization.stories.views.storyItem.StoryItemView.OnPageListener
 internal class StoryView(
     private val storiesView: StoriesView,
     private val storyStateListener: StoryDialog.OnStoryStateListener,
-    private val needOpeningWebView: Boolean
+    private val needOpeningWebView: Boolean,
+    private val productBannerTapDefaultMessage: String
 ) : ConstraintLayout(storiesView.context), StoriesListener, Player.Listener {
 
     private lateinit var storiesProgressView: StoriesProgressView
@@ -320,7 +321,8 @@ internal class StoryView(
                     settings = storiesView.settings,
                     itemClickListener = storiesView.itemClickListener,
                     storyStateListener = storyStateListener,
-                    needOpeningWebView = needOpeningWebView
+                    needOpeningWebView = needOpeningWebView,
+                    productBannerTapDefaultMessage = productBannerTapDefaultMessage
                 )
             )
         }

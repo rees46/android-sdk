@@ -26,6 +26,7 @@ class StoriesView : ConstraintLayout, ClickListener {
 
     lateinit var code: String
     private var needOpeningWebView: Boolean = true
+    private var productBannerTapDefaultMessage = "Copied"
 
     private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
@@ -39,10 +40,12 @@ class StoriesView : ConstraintLayout, ClickListener {
     constructor(
         context: Context?,
         code: String,
-        needOpeningWebView: Boolean
+        needOpeningWebView: Boolean,
+        productBannerTapDefaultMessage: String
     ) : super(context!!) {
         this.code = code
         this.needOpeningWebView = needOpeningWebView
+        this.productBannerTapDefaultMessage = productBannerTapDefaultMessage
     }
 
     constructor(context: Context?, attrs: AttributeSet?) : super(context!!, attrs) {
@@ -92,12 +95,15 @@ class StoriesView : ConstraintLayout, ClickListener {
         val code = typedArray.getString(R.styleable.StoriesView_code)
         val openingWebView =
             typedArray.getBoolean(R.styleable.StoriesView_need_opening_web_view, true)
+        val productBannerTapMessage =
+            typedArray.getString(R.styleable.StoriesView_product_banner_tap_default_message) ?: "Copied"
         if (code == null) {
             SDK.error("Code is set incorrectly")
             return
         }
         this.code = code
         this.needOpeningWebView = openingWebView
+        this.productBannerTapDefaultMessage = productBannerTapMessage
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -158,7 +164,8 @@ class StoriesView : ConstraintLayout, ClickListener {
             startPosition = startPosition,
             completeShowStory = completeShowStory,
             cancelShowStory = cancelShowStory,
-            needOpeningWebView = needOpeningWebView
+            needOpeningWebView = needOpeningWebView,
+            productBannerTapDefaultMessage = productBannerTapDefaultMessage
         )
         dialog.show()
     }
