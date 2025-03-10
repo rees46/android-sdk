@@ -43,6 +43,17 @@ interface InAppNotificationManager {
         onPositiveClick: () -> Unit
     )
 
+    fun showTopSheetDialog(
+        title: String,
+        message: String,
+        imageUrl: String?,
+        buttonPositiveText: String,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit
+    )
+
     fun showSnackBar(
         view: View,
         message: String,
