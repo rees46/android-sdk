@@ -17,6 +17,7 @@ import com.personalization.errors.EmptyFieldError
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
+import com.personalization.inAppNotification.view.component.dialog.TopSheetDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
@@ -85,6 +86,17 @@ class InAppNotificationManagerImpl @Inject constructor(
             )
 
             Position.BOTTOM -> showBottomSheetDialog(
+                title = dialogData.title,
+                message = dialogData.message,
+                imageUrl = dialogData.imageUrl,
+                buttonPositiveColor = dialogData.buttonPositiveColor,
+                buttonNegativeColor = dialogData.buttonNegativeColor,
+                buttonPositiveText = dialogData.buttonPositiveText,
+                buttonNegativeText = dialogData.buttonNegativeText,
+                onPositiveClick = dialogData.onPositiveClick
+            )
+
+            Position.TOP -> showTopSheetDialog(
                 title = dialogData.title,
                 message = dialogData.message,
                 imageUrl = dialogData.imageUrl,
@@ -210,6 +222,41 @@ class InAppNotificationManagerImpl @Inject constructor(
         dialog.show(
             /* manager = */ fragmentManager,
             /* tag = */ BottomSheetDialog.TAG
+        )
+    }
+
+    override fun showTopSheetDialog(
+        title: String,
+        message: String,
+        imageUrl: String?,
+        buttonPositiveText: String,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int,
+        buttonNegativeColor: Int,
+        onPositiveClick: () -> Unit
+    ) {
+        val dialog = TopSheetDialog.newInstance(
+            title = title,
+            message = message,
+            imageUrl = imageUrl,
+            buttonPositiveColor = buttonPositiveColor,
+            buttonNegativeColor = buttonNegativeColor,
+            buttonPositiveText = buttonPositiveText,
+            buttonNegativeText = buttonNegativeText,
+        )
+
+        dialog.setListener(
+            object : NotificationClickListener {
+                override fun onPositiveClick() = onPositiveClick()
+                override fun onNegativeClick() {
+                    dialog.dismiss()
+                }
+            }
+        )
+
+        dialog.show(
+            /* manager = */ fragmentManager,
+            /* tag = */ TopSheetDialog.TAG
         )
     }
 
