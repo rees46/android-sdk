@@ -49,8 +49,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/rounded_background"
                 android:orientation="vertical"
-                android:paddingTop="@dimen/large_margin"
-                android:translationY="-16dp">
+                android:paddingVertical ="@dimen/large_margin">
 
                 <include
                     android:id="@+id/textContainer"
