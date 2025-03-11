@@ -9,7 +9,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.TopSheetDialogBinding
@@ -56,7 +55,7 @@ class TopSheetDialog : DialogFragment() {
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             setGravity(Gravity.TOP)
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            setDimAmount(0.5f)
         }
     }
 
