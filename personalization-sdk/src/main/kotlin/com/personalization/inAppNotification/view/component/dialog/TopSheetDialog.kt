@@ -15,6 +15,15 @@ import com.personalization.databinding.TopSheetDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
 import com.personalization.ui.click.NotificationClickListener
 
+const val AMOUNT = 0.5f
+const val TITLE_KEY = "TITLE_KEY"
+const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
+const val MESSAGE_KEY = "MESSAGE_KEY"
+const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
+const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
+const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
+const val BUTTON_NEGATIVE_TEXT_KEY = "BUTTON_NEGATIVE_TEXT_KEY"
+
 class TopSheetDialog : DialogFragment() {
 
     private var listener: NotificationClickListener? = null
@@ -55,7 +64,7 @@ class TopSheetDialog : DialogFragment() {
             setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             setGravity(Gravity.TOP)
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setDimAmount(0.5f)
+            setDimAmount(AMOUNT)
         }
     }
 
@@ -136,14 +145,7 @@ class TopSheetDialog : DialogFragment() {
 
     companion object {
         const val TAG = "TopSheetDialog"
-        const val TITLE_KEY = "TITLE_KEY"
-        const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
-        const val MESSAGE_KEY = "MESSAGE_KEY"
-        const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
-        const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
-        const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
-        const val BUTTON_NEGATIVE_TEXT_KEY = "BUTTON_NEGATIVE_TEXT_KEY"
-
+        
         fun newInstance(
             title: String,
             message: String,
