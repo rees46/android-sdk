@@ -5,17 +5,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="bottom"
-        app:cardCornerRadius="@dimen/default_radius">
+        app:cardPreventCornerOverlap="false"
+        app:cardBackgroundColor="@color/white"
+        app:shapeAppearanceOverlay="@style/custom_top_corners">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="bottom"
             android:gravity="bottom"
+            android:background="@android:color/transparent"
             android:orientation="vertical">
 
             <FrameLayout
@@ -47,9 +50,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/rounded_background"
                 android:orientation="vertical"
-                android:paddingVertical ="@dimen/large_margin">
+                android:paddingVertical="@dimen/large_margin">
 
                 <include
                     android:id="@+id/textContainer"
@@ -66,9 +68,6 @@
                     android:layout_height="wrap_content" />
 
             </LinearLayout>
-
         </LinearLayout>
-
-    </androidx.cardview.widget.CardView>
-
+    </com.google.android.material.card.MaterialCardView>
 </FrameLayout>
