@@ -27,6 +27,7 @@ class StoryDialog(
     private val completeShowStory: () -> Unit,
     private val cancelShowStory: () -> Unit,
     private val needOpeningWebView: Boolean,
+    private val productBannerTapDefaultMessage: String,
     private val sdk: SDK
 ) : Dialog(
     storiesView.context,
@@ -176,6 +177,7 @@ class StoryDialog(
                     storiesView = storiesView,
                     storyStateListener = storyStateListener,
                     needOpeningWebView = needOpeningWebView,
+                    productBannerTapDefaultMessage = productBannerTapDefaultMessage,
                     sdk = sdk
                 )
             )
