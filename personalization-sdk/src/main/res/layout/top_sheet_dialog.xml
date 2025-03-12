@@ -3,28 +3,29 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:layout_gravity="top">
 
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_gravity="bottom"
-        app:cardPreventCornerOverlap="false"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        app:cardElevation="8dp"
+        android:layout_marginBottom="8dp"
         app:cardBackgroundColor="@color/white"
-        app:shapeAppearanceOverlay="@style/custom_top_corners">
+        app:shapeAppearanceOverlay="@style/custom_bottom_corners">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="bottom"
-            android:gravity="bottom"
-            android:background="@android:color/transparent"
-            android:orientation="vertical">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="top">
 
             <FrameLayout
                 android:id="@+id/imageContainer"
                 android:layout_width="match_parent"
-                android:layout_height="400dp">
+                android:layout_height="300dp"
+                android:layout_gravity="top">
 
                 <com.personalization.inAppNotification.view.component.image.ImageView
                     android:id="@+id/backgroundImageView"
@@ -32,7 +33,6 @@
                     android:layout_height="match_parent"
                     android:layout_gravity="top"
                     android:adjustViewBounds="true"
-                    android:minWidth="400dp"
                     android:scaleType="centerCrop"
                     tools:src="@drawable/image_sample" />
 
@@ -50,6 +50,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/rounded_background"
                 android:orientation="vertical"
                 android:paddingVertical="@dimen/large_margin">
 
@@ -66,8 +67,10 @@
                     layout="@layout/alert_button_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
-
             </LinearLayout>
+
         </LinearLayout>
+
     </com.google.android.material.card.MaterialCardView>
+
 </FrameLayout>

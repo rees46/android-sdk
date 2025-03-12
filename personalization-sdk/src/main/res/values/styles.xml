@@ -6,6 +6,18 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <style name="custom_top_corners" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">16dp</item>
+        <item name="cornerSizeTopRight">16dp</item>
+    </style>
+
+    <style name="custom_bottom_corners" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeBottomLeft">16dp</item>
+        <item name="cornerSizeBottomRight">16dp</item>
+    </style>
+
     <declare-styleable name="StoriesProgressView">
         <attr name="progressCount" format="integer|reference" />
     </declare-styleable>

@@ -74,11 +74,16 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun initAcceptButton() {
+        val buttonText = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY)?:""
         val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
+                if(buttonText.isEmpty()) {
+                    buttonAcceptContainer.isVisible = false
+                    return
+                }
                 buttonAcceptContainer.addPressEffectDeclarative()
-                buttonAccept.text = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+                buttonAccept.text = buttonText
                 if (positiveButtonColor != null) {
                     buttonAccept.setBackgroundColor(positiveButtonColor)
                 }
@@ -90,15 +95,16 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun initDeclineButton() {
+        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY)?:""
         val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
-        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY)
         with(binding) {
             buttonContainer.apply {
-                buttonDeclineContainer.addPressEffectDeclarative()
-                buttonDeclineContainer.isVisible = buttonText.isNullOrEmpty().not()
-                if (buttonText != null) {
-                    buttonDecline.text = buttonText
+                if(buttonText.isEmpty()) {
+                    buttonDeclineContainer.isVisible = false
+                    return
                 }
+                buttonDeclineContainer.addPressEffectDeclarative()
+                buttonDecline.text = buttonText
                 if (negativeButtonColor != null) {
                     buttonDecline.setBackgroundColor(negativeButtonColor)
                 }

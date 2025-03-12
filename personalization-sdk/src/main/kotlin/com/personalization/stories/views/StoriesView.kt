@@ -31,6 +31,8 @@ class StoriesView : ConstraintLayout, ClickListener {
     private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
 
+    internal lateinit var sdk: SDK
+
     val settings: Settings = Settings()
     var itemClickListener: com.personalization.OnClickListener? = null
     var isMute: Boolean = true
@@ -165,7 +167,8 @@ class StoriesView : ConstraintLayout, ClickListener {
             completeShowStory = completeShowStory,
             cancelShowStory = cancelShowStory,
             needOpeningWebView = needOpeningWebView,
-            productBannerTapDefaultMessage = productBannerTapDefaultMessage
+            productBannerTapDefaultMessage = productBannerTapDefaultMessage,
+            sdk = sdk
         )
         dialog.show()
     }

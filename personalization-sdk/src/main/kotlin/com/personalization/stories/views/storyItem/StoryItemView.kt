@@ -68,7 +68,8 @@ class StoryItemView(
     private val itemClickListener: com.personalization.OnClickListener?,
     private val storyStateListener: StoryDialog.OnStoryStateListener,
     private val needOpeningWebView: Boolean,
-    private val productBannerTapDefaultMessage: String
+    private val productBannerTapDefaultMessage: String,
+    private val sdk: SDK
 ) : ConstraintLayout(context) {
 
     interface OnPageListener {
@@ -180,7 +181,8 @@ class StoryItemView(
             settings = settings,
             onCloseStories = {
                 hideProducts()
-            }
+            },
+            sdk = sdk
         )
         products.adapter = productsAdapter
 
@@ -315,25 +317,28 @@ class StoryItemView(
                         is ButtonElement -> link = element.link
                     }
                 }
-                Log.d(
-                    SDK.TAG,
-                    "open link: " + link + (if (product != null) " with product: `" + product.id + "`" else "")
-                )
 
-                storyStateListener.onStoryStateChanged(StoryState.CLOSE)
-
-                SDK.instance.trackStory(
-                    event = "click",
-                    code = code,
-                    storyId = storyId,
-                    slideId = slide.id
-                )
-
-                if (needOpeningWebView && link != null) {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse(link))
-                    )
+                val isHandled = when {
+                    product != null && itemClickListener?.onClick(product) == false -> true
+                    link != null && itemClickListener?.onClick(link) == false -> true
+                    else -> false
                 }
+
+                if (!isHandled) {
+                    SDK.instance.trackStory(
+                        event = "click",
+                        code = code,
+                        storyId = storyId,
+                        slideId = slide.id
+                    )
+
+                    if (needOpeningWebView && link != null) {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                        )
+                    }
+                }
+                storyStateListener.onStoryStateChanged(StoryState.CLOSE)
             } catch (e: ActivityNotFoundException) {
                 Log.e(SDK.TAG, e.message, e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
@@ -427,7 +432,7 @@ class StoryItemView(
                         )
                     )
                 }
-                SDK.instance.trackStory(
+                sdk.trackStory(
                     event = "click",
                     code = code,
                     storyId = storyId,
@@ -521,6 +526,7 @@ class StoryItemView(
     }
 
     private fun hideProducts() {
+        storyStateListener.onStoryStateChanged(StoryState.CLOSE)
         buttonProducts.isActivated = false
         buttonProducts.text = buttonTextShow
         toggleProductsVisibility(false)
