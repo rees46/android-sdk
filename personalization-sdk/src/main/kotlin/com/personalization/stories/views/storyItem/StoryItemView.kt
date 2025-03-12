@@ -587,11 +587,13 @@ class StoryItemView(
 
         textBlockView.updateView(element, viewHeight, viewTopOffset)
 
-        textBlockView.setOnClickListener {
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("TextBlock", element.textInput)
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(context, productBannerTapDefaultMessage, Toast.LENGTH_SHORT).show()
+        if(element.promocode!=null){
+            textBlockView.setOnClickListener {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("TextBlock", element.promocode)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, productBannerTapDefaultMessage, Toast.LENGTH_SHORT).show()
+            }
         }
 
         textBlocksLayout.addView(textBlockView)

@@ -13,6 +13,7 @@ class TextBlockElement(json: JSONObject) : Element {
     val textAlign: String = json.optString("text_align", "")
     val textColor: String = json.optString("text_color", "")
     val textLineSpacing: Double = json.optDouble("text_line_spacing", 0.0)
+    val promocode: String? = json.optString("promocode", null)
     val textBackgroundColor: String =
         json.optString("text_background_color", DEFAULT_TEXT_BACKGROUND_COLOR)
     val textBackgroundColorOpacity: String =
@@ -32,6 +33,7 @@ class TextBlockElement(json: JSONObject) : Element {
             && textColor == other.textColor
             && textBackgroundColor == other.textBackgroundColor
             && textBackgroundColorOpacity == other.textBackgroundColorOpacity
+            && promocode == other.promocode
     }
 
     override fun hashCode(): Int {
@@ -46,12 +48,13 @@ class TextBlockElement(json: JSONObject) : Element {
             textColor,
             textLineSpacing,
             textBackgroundColor,
-            textBackgroundColorOpacity
+            textBackgroundColorOpacity,
+            promocode
         )
     }
 
     override fun toString(): String {
-        return "TextBlockElement{bold=$isBold, italic=$isItalic, textInput='$textInput', yOffset=$yOffset, fontType='$fontType', fontSize=$fontSize, textAlign='$textAlign', textColor='$textColor', textLineSpacing=$textLineSpacing, textBackgroundColor='$textBackgroundColor', textBackgroundColorOpacity='$textBackgroundColorOpacity'}"
+        return "TextBlockElement{bold=$isBold, italic=$isItalic, textInput='$textInput', yOffset=$yOffset, fontType='$fontType', fontSize=$fontSize, textAlign='$textAlign', textColor='$textColor', textLineSpacing=$textLineSpacing, textBackgroundColor='$textBackgroundColor', textBackgroundColorOpacity='$textBackgroundColorOpacity', promocode = '$promocode'}"
     }
 
     companion object {
