@@ -10,7 +10,7 @@ on:
 
 jobs:
   run:
-    uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@refactor/android-sync
+    uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@master
     permissions: write-all
     secrets:
       token: ${{ secrets.JADE_SMITH_BOT_TOKEN }}
