@@ -12,6 +12,14 @@ on:
   # workflow_dispatch:
 
 jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug vars
+        run: |
+          echo ${{ vars.REES_MAVEN_URL }}
+          echo ${{ vars.REES_REPO_URL }}
+
   version:
     # if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
