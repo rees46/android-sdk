@@ -1,15 +1,15 @@
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-
-            credentials {
-                username ossrhUsername
-                password ossrhPassword
-            }
-
-            url = uri(publishUrl)
-            println "Configured GitHub Packages repository with URL: ${publishUrl}"
-        }
-	}
-}
+// publishing {
+//     repositories {
+//         maven {
+//             name = "GitHubPackages"
+//
+//             credentials {
+//                 username ossrhUsername
+//                 password ossrhPassword
+//             }
+//
+//             url = uri(publishUrl)
+//             println "Configured GitHub Packages repository with URL: ${publishUrl}"
+//         }
+// 	}
+// }
