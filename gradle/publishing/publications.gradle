@@ -1,6 +1,9 @@
 publishing {
     publications {
         android.libraryVariants.all { variant ->
+			// TODO remove it
+			if (variant.name != "rees46Release") return
+
             println "Processing variant: ${variant.name}"
 
             if (!isPublishingInMavenLocal) {
