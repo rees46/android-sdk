@@ -1,0 +1,44 @@
+
+publishing {
+    repositories {
+        if (isPublishingInMavenLocal) {
+            mavenLocal()
+            println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
+        } else {
+            println "Publishing to local maven repository"
+        }
+
+        maven {
+            name = "sonatype"
+
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+
+            credentials {
+                username sonataUsername
+                password sonataPassword
+            }
+
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            println "Configured Sonatype repository with URL: ${url}"
+        }
+	}
+}
+
+afterEvaluate {
+    nexusPublishing {
+        repositories {
+            android.libraryVariants.all { variant ->
+                if (variant.buildType.name == "debug") return
+
+                "${variant.flavorName}Sonatype" {
+                    stagingProfileId = sonatypeIds[variant.flavorName]
+                    username = sonataUsername
+                    password = sonataPassword
+                    nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+                    snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+                }
+            }
+        }
+    }
+}

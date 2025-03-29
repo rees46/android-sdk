@@ -1,0 +1,5 @@
+signing {
+    if (!isPublishingInMavenLocal) {
+        sign publishing.publications
+    }
+}
