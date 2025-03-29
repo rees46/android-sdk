@@ -13,16 +13,15 @@ on:
   # workflow_dispatch:
 
 jobs:
-  version:
-    # TODO uncomment
-    # if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    # uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
-    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@refactor/reusable-android-version
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-    secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+  # TODO uncomment
+  # version:
+  #   if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+  #   uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+  #   permissions: write-all
+  #   with:
+  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
+  #   secrets:
+  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
 
   # publish:
   #   needs: version
