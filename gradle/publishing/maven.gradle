@@ -31,8 +31,7 @@ afterEvaluate {
             android.libraryVariants.all { variant ->
                 if (variant.buildType.name == "debug") return
 
-                // "${variant.flavorName}Sonatype" {
-                sonatype {
+                "${variant.flavorName}Sonatype" {
                     stagingProfileId = sonatypeIds[variant.flavorName]
                     username = sonataUsername
                     password = sonataPassword
