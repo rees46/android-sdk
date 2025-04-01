@@ -91,9 +91,11 @@ publishing {
                     packaging 'aar'
                     withXml {
                         def root = asNode()
+
                         root.appendNode("name", modifiedArtifactId)
                         root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
                         root.appendNode("url", url)
+
                         root.children().last() + pomConfig
 
                         def depsNode = root.appendNode('dependencies')

@@ -13,7 +13,7 @@ ext {
 }
 
 ext {
-  def pomConfig = {
+  pomConfig = {
     licenses {
       license {
         name "The Apache Software License, Version 2.0"
