@@ -1,0 +1,131 @@
+publishing {
+    publications {
+        android.libraryVariants.all { variant ->
+			// TODO remove it
+			if (variant.name != "rees46Release") return
+			if (variant.buildType.name == "debug") return
+
+            println "Processing variant: ${variant.name}"
+
+            if (!isPublishingInMavenLocal) {
+                if (variant.buildType.name == "debug") {
+                    println "Skipping debug variant: ${variant.name}"
+                    return // Prevents publishing debug library
+                }
+
+                if (variant.flavorName != variantName) {
+                    println "Skipping variant due to flavor mismatch: ${variant.flavorName} != ${variantName}"
+                    return
+                }
+            }
+
+            def flavored = !variant.flavorName.isEmpty()
+            println "Is flavored variant: ${flavored}"
+
+            def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
+            println "Variant Artifact ID before applying flag: ${variantArtifactId}"
+
+            def modifiedGroupId = isPublishingInMavenLocal ? "com.local-${variant.flavorName}" : "com.${variant.flavorName}"
+            def modifiedArtifactId = isPublishingInMavenLocal ? "local-${variantArtifactId}" : variantArtifactId
+
+            println "Final Group ID: ${modifiedGroupId}"
+            println "Final Artifact ID: ${modifiedArtifactId}"
+
+            def javaDocDestDir = file("${layout.buildDirectory.get().asFile}/docs/javadoc ${flavored ? modifiedArtifactId : ""}")
+            println "Javadoc Destination Directory: ${javaDocDestDir}"
+
+            def sourceDirs = variant.sourceSets.collect {
+                it.javaDirectories
+            }
+            println "Source Directories: ${sourceDirs}"
+
+            def javadoc
+            def javadocJar
+
+            if (!isPublishingInMavenLocal || variant.buildType.name == "release") {
+                javadoc = task("${variant.name}Javadoc", type: Javadoc) {
+                    description "Generates Javadoc for ${variant.name}."
+                    source = variant.javaCompileProvider.get().source
+                    destinationDir = javaDocDestDir
+                    classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
+                    configurations.implementation.setCanBeResolved(true)
+                    classpath += files(configurations.implementation)
+                    options.links("http://docs.oracle.com/javase/7/docs/api/");
+                    options.links("http://d.android.com/reference/");
+                    exclude '**/BuildConfig.java'
+                    exclude '**/R.java'
+                    failOnError false
+                }
+                println "Created Javadoc task for variant: ${variant.name}"
+
+                javadocJar = task("${variant.name}JavadocJar", type: Jar, dependsOn: javadoc) {
+                    description "Puts Javadoc for ${variant.name} in a jar."
+                    archiveClassifier.set('javadoc-' + variant.name)
+                    from javadoc.destinationDir
+                }
+                println "Created JavadocJar task for variant: ${variant.name}"
+            }
+
+            def sourcesJar = task("${variant.name}SourcesJar", type: Jar) {
+                description "Puts sources for ${variant.name} in a jar."
+                archiveClassifier.set('sources-' + variant.name)
+                from sourceDirs
+            }
+            println "Created SourcesJar task for variant: ${variant.name}"
+
+            def publicationName = "${variant.name.capitalize()}Library"
+            publicationNames.add(publicationName)
+            println "Adding publication: ${publicationName}"
+
+            "$publicationName"(MavenPublication) {
+                artifactId modifiedArtifactId
+                groupId modifiedGroupId
+                version version
+
+                artifact variant.packageLibraryProvider.get()
+                artifact sourcesJar
+                if (javadocJar != null) {
+                    artifact javadocJar
+                }
+
+                pom {
+                    packaging 'aar'
+                    withXml {
+                        def root = asNode()
+
+                        root.appendNode("name", modifiedArtifactId)
+                        root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
+                        root.appendNode("url", url)
+
+                        root.children().last() + pomConfig
+
+                        def depsNode = root.appendNode('dependencies')
+
+                        configurations.implementation.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'compile')
+
+                                println "  - compile dependency: ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+
+                        configurations.kapt.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'provided')
+                                println "  - provided dependency (kapt): ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

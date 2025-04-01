@@ -75,6 +75,9 @@ android {
 }
 
 dependencies {
+    implementation("javax.xml.bind:jaxb-api:2.3.1")
+    implementation("com.sun.xml.bind:jaxb-impl:2.3.8")
+
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.multidex:multidex:2.0.1'
@@ -168,4 +171,12 @@ afterEvaluate {
     tasks.javadoc.classpath += files(android.libraryVariants.collect { variant ->
         variant.javaCompileProvider.get().classpath
     })
+}
+
+tasks.register("printVariants") {
+    doLast {
+        android.libraryVariants.forEach { variant ->
+            println("Variant: ${variant.flavorName}Sonatype")
+        }
+    }
 }

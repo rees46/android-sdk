@@ -2,6 +2,7 @@ name: Patch version, publish to Sona and create new GitHub release
 
 on:
   pull_request:
+  # TODO uncomment
   # pull_request:
   #   types:
   #     - closed
@@ -12,17 +13,21 @@ on:
   # workflow_dispatch:
 
 jobs:
-  debug:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Debug vars
-        run: |
-          echo ${{ vars.REES_MAVEN_URL }}
-          echo ${{ vars.REES_REPO_URL }}
-
   version:
+    # TODO uncomment
     # if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+    permissions: write-all
+    with:
+      appId: ${{ vars.PUBLIVERSIONER_ID }}
+    secrets:
+      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+
+  publish:
+    needs: version
+    # TODO uncomment
+    # uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@refactor/reusable-android-publish
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
@@ -33,59 +38,26 @@ jobs:
       VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
       URL: ${{ vars.REES_REPO_URL }}
       MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
+      GRADLE_VERSION: 8.8
     secrets:
+      # TODO move to vars?
+      # SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
+      SONATA_STAGING_PROFILE_ID: 1a52351fba7390
+      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
       SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
-      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
-  publish:
-    needs: version
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+  release:
+    needs: [publish, version]
+    # TODO uncomment
+    # uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@refactor/reusable-android-publish
     permissions: write-all
     with:
-      PROPERTIES_FILE: gradle.properties
-      SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
-      OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
-      VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
-      URL: ${{ vars.REES_REPO_URL }}
-      MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
+      appId: ${{ vars.PUBLIVERSIONER_ID }}
     secrets:
-      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
-      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
-      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
-      SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
-      SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
-
-  # release:
-  #   needs: [publish, version]
-  #   uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
-  #   permissions: write-all
-  #   with:
-  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
-  #     PROPERTIES_FILE: gradle.properties
-  #     SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-  #     SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
-  #     OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
-  #     VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
-  #     URL: ${{ vars.REES_REPO_URL }}
-  #     MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
-  #   secrets:
-  #     SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
-  #     SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
-  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
-  #     OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-  #     SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-  #     SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-  #     SONATYPE_REES46: ${{ secrets.SONATYPE_REES46 }}
-  #     SONATYPE_PERSONACLICK: ${{ secrets.SONATYPE_PERSONACLICK }}
-  #     SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}

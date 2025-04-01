@@ -1,0 +1,38 @@
+// TODO for what?
+ext {
+	isPublishingInMavenLocal = false
+}
+
+ext {
+  // TODO оставить только один. и чтобы он передавался либо через переменные окружения, либо откудато изнутри, либо зашить в костанту
+  // sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
+  	sonatypeIds = [rees46: sonatype_rees46]
+  	// TODO remove it
+	publicationNames = []
+}
+
+ext {
+  pomConfig = {
+    licenses {
+      license {
+        name "The Apache Software License, Version 2.0"
+          url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+          distribution "repo"
+      }
+    }
+
+    developers {
+        developer {
+            id ""
+            name ""
+            email ""
+        }
+    }
+
+    scm {
+        connection "scm:git:github.com:rees46/android-sdk.git"
+        developerConnection "scm:git:ssh://github.com:rees46/android-sdk.git"
+        url "https://github.com:rees46/android-sdk/tree/master"
+    }
+  }
+}
