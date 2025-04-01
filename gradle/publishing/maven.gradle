@@ -1,15 +1,61 @@
-plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+publishing {
+    repositories {
+        if (isPublishingInMavenLocal) {
+            mavenLocal()
+            println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
+        } else {
+            println "Publishing to local maven repository"
+        }
+
+        maven {
+            name = "sonatype"
+
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+
+            println "Configured Sonatype repository with URL: ${url}"
+
+            credentials {
+                username sonataUsername
+                password sonataPassword
+            }
+
+        }
+	}
 }
 
-nexusPublishing {
-    repositories {
-        sonatype {
-            stagingProfileId = sonatype_rees46
-            username = sonataUsername
-            password = sonataPassword
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+afterEvaluate {
+    nexusPublishing {
+        repositories {
+            android.libraryVariants.all { variant ->
+                if (variant.buildType.name == "debug") return
+                "${variant.flavorName}Sonatype" {
+                    stagingProfileId = sonatypeIds[variant.flavorName]
+                    stagingProfileId = sonatype_rees46
+                    username = sonataUsername
+                    password = sonataPassword
+                    nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+                    nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"))
+                    snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+                }
+            }
         }
     }
 }
+
+// plugins {
+//     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+// }
+//
+// nexusPublishing {
+//     repositories {
+//         sonatype {
+//             stagingProfileId = sonatype_rees46
+//             username = sonataUsername
+//             password = sonataPassword
+//             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+//             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+//         }
+//     }
+// }
