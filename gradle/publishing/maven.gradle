@@ -28,18 +28,14 @@ publishing {
 afterEvaluate {
     nexusPublishing {
         repositories {
-            android.libraryVariants.all { variant ->
-                if (variant.buildType.name == "debug") return
-
-                "${variant.flavorName}Sonatype" {
-                    stagingProfileId = sonatype_rees46
+                sonatype {
+                    stagingProfileId = sonataStagingProfileId
                     username = sonataUsername
                     password = sonataPassword
                     nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
                     snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
                 }
             }
-        }
     }
 }
 

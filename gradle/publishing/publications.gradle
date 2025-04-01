@@ -3,6 +3,7 @@ publishing {
         android.libraryVariants.all { variant ->
 			// TODO remove it
 			if (variant.name != "rees46Release") return
+			if (variant.buildType.name == "debug") return
 
             println "Processing variant: ${variant.name}"
 
