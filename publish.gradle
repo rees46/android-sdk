@@ -1,17 +1,66 @@
-// def urls = [rees46: "https://github.com/rees46/android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
-// def publicationNames = []
+plugins {
+    `java-library`
+    `maven-publish`
+    signing
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+}
 
-apply from: "${rootDir}/gradle/publishing/config.gradle"
-apply from: "${rootDir}/gradle/publishing/publications.gradle"
-apply from: "${rootDir}/gradle/publishing/maven.gradle"
-apply from: "${rootDir}/gradle/publishing/github.gradle"
-apply from: "${rootDir}/gradle/publishing/credentials.gradle"
-apply from: "${rootDir}/gradle/publishing/signing.gradle"
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
 
-afterEvaluate {
-    android.libraryVariants.all { variant ->
-        if (variant == 'release') {
-            tasks.javadoc.classpath += files(variant.javaCompileProvider.get().classpath)
+                pom {
+                    packaging 'aar'
+                    withXml {
+                        def root = asNode()
+                        root.appendNode("name", modifiedArtifactId)
+                        root.appendNode("description", "${variant.flavorName.toUpperCase()} Android SDK")
+                        root.appendNode("url", url)
+                        root.children().last() + pomConfig
+
+                        def depsNode = root.appendNode('dependencies')
+
+                        configurations.implementation.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'compile')
+
+                                println "  - compile dependency: ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+
+                        configurations.kapt.allDependencies.each { dep ->
+                            if (dep.group != null) {
+                                def dependencyNode = depsNode.appendNode('dependency')
+                                dependencyNode.appendNode('groupId', dep.group)
+                                dependencyNode.appendNode('artifactId', dep.name)
+                                dependencyNode.appendNode('version', dep.version)
+                                dependencyNode.appendNode('scope', 'provided')
+                                println "  - provided dependency (kapt): ${dep.group}:${dep.name}:${dep.version}"
+                            }
+                        }
+                    }
+                }
         }
     }
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            stagingProfileId = sonatype_rees46
+            username = sonataUsername
+            password = sonataPassword
+            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+        }
+    }
+}
+
+signing {
+    sign(publishing.publications["mavenJava"])
 }
