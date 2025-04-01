@@ -1,11 +1,11 @@
 plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"  // Добавьте в начале файла
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
 }
 
 nexusPublishing {
     repositories {
         sonatype {
-            stagingProfileId = sonataStagingProfileId
+            stagingProfileId = sonatype_rees46
             username = sonataUsername
             password = sonataPassword
             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
