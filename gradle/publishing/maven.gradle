@@ -1,31 +1,30 @@
-publishing {
-    repositories {
-        if (isPublishingInMavenLocal) {
-            mavenLocal()
-            println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
-        } else {
-            println "Publishing to local maven repository"
-        }
+// publishing {
+//     repositories {
+//         if (isPublishingInMavenLocal) {
+//             mavenLocal()
+//             println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
+//         } else {
+//             println "Publishing to local maven repository"
+//         }
+//
+//         maven {
+//             name = "sonatype"
+//
+//             def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+//             def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+//             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+//
+//             println "Configured Sonatype repository with URL: ${url}"
+//
+//             credentials {
+//                 username sonataUsername
+//                 password sonataPassword
+//             }
+//
+//         }
+// 	}
+// }
 
-        maven {
-            name = "sonatype"
-
-            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-
-            println "Configured Sonatype repository with URL: ${url}"
-
-            credentials {
-                username sonataUsername
-                password sonataPassword
-            }
-
-        }
-	}
-}
-
-afterEvaluate {
     nexusPublishing {
         repositories {
                 sonatype {
@@ -37,7 +36,6 @@ afterEvaluate {
                 }
             }
     }
-}
 
 // plugins {
 //     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
