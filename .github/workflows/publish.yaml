@@ -41,7 +41,7 @@ jobs:
       GRADLE_VERSION: 8.8
     secrets:
       # TODO move to vars?
-      SONATA_STAGING_PROFILE_ID: ${{ vars.SONATA_STAGING_PROFILE_ID }}
+      SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
       appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
       SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
