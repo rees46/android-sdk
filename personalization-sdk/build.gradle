@@ -75,6 +75,9 @@ android {
 }
 
 dependencies {
+	implementation "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
+    implementation "com.sun.xml.bind:jaxb-impl:4.0.5"
+
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'androidx.multidex:multidex:2.0.1'

@@ -1,11 +1,11 @@
 // def urls = [rees46: "https://github.com/rees46/android-sdk", personaclick: "https://github.com/PersonaClick/android-sdk"]
 // def publicationNames = []
 
-apply from: "${rootDir}/gradle/publishing/credentials.gradle"
 apply from: "${rootDir}/gradle/publishing/config.gradle"
 apply from: "${rootDir}/gradle/publishing/publications.gradle"
 apply from: "${rootDir}/gradle/publishing/maven.gradle"
 apply from: "${rootDir}/gradle/publishing/github.gradle"
+apply from: "${rootDir}/gradle/publishing/credentials.gradle"
 apply from: "${rootDir}/gradle/publishing/signing.gradle"
 
 afterEvaluate {
