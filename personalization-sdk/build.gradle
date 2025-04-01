@@ -172,3 +172,11 @@ afterEvaluate {
         variant.javaCompileProvider.get().classpath
     })
 }
+
+tasks.register("printVariants") {
+    doLast {
+        android.libraryVariants.forEach { variant ->
+            println("Variant: ${variant.flavorName}Sonatype")
+        }
+    }
+}
