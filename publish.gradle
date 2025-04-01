@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    id("com.android.library")
     `maven-publish`
     signing
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
@@ -8,7 +8,7 @@ plugins {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            from(components["java"])
+            from(components["release"])
 
                 pom {
                     packaging 'aar'
