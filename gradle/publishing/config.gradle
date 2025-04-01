@@ -7,6 +7,9 @@ ext {
   // TODO оставить только один. и чтобы он передавался либо через переменные окружения, либо откудато изнутри, либо зашить в костанту
   // sonatypeIds = [rees46: sonatype_rees46, personaclick: sonatype_personaclick]
   sonatypeIds = [rees46: sonatype_rees46]
+    sonatypeIds = [rees46: sonatype_rees46]
+  	// TODO remove it
+	publicationNames = []
 }
 
 ext {
