@@ -3,7 +3,7 @@ name: Sync repositories
 on:
   workflow_run:
     workflows:
-      - "Repo sync"
+      - "Patch version, publish to Sona and create new GitHub release"
     types:
       - completed
   workflow_dispatch:
