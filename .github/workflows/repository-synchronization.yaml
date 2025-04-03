@@ -1,4 +1,4 @@
-name: Sync PersonaClick repository
+name: Repository synchronization
 
 on:
   pull_request:
