@@ -3,16 +3,17 @@ name: Sync repositories
 on:
   pull_request:
   # TODO uncomment
-  # workflow_run:
-  #   workflows:
-  #     - "Patch version, publish to Sona and create new GitHub release"
+  # pull_request:
   #   types:
-  #     - completed
+  #     - closed
+  #   branches:
+  #     - master
   # workflow_dispatch:
 
 jobs:
   run:
     # TODO uncomment
+    # if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     # uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@master
     uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@refactor/reusable-android-synchronization
     permissions: write-all
@@ -21,7 +22,7 @@ jobs:
       targetRepository: personaclick/android-sdk
       sourceDirname: rees46
       targetDirname: personaClick
-      syncIgnore: ".git,.idea,version.properties"
+      syncIgnore: ".git,.idea,version.properties,LICENSE"
       replacementExtentions: "*.kts,*.kt,*.md,*.xml,*.toml"
       replacementContents: "https://api.rees46.com/|https://api.personaclick.com/,com.rees46:rees46-sdk|com.personaclick:personaclick-sdk,api.rees46.com|api.personaclick.com,rees46.com|personaclick.com,rees46|personaClick,REES46|PersonaClick,Rees46|PersonaClick"
     secrets:
