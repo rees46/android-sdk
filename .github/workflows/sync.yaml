@@ -12,7 +12,9 @@ on:
 
 jobs:
   run:
-    uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@master
+    # TODO uncomment
+    # uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-synchronization.yaml@refactor/reusable-android-synchronization
     permissions: write-all
     with:
       appId: ${{ vars.PERSONACLICK_COURIER_ID }}
