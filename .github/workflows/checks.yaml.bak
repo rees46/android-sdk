@@ -3,7 +3,7 @@ name: Android SDK PR checks
 on:
   pull_request:
     paths-ignore:
-      - '.github/**'
+      - ".github/**"
 
 jobs:
   Check:
