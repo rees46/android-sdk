@@ -15,6 +15,7 @@ jobs:
     permissions: write-all
     with:
       appId: ${{ vars.PERSONACLICK_COURIER_ID }}
+      repositoryOwner: PersonaClick
       targetRepository: personaclick/android-sdk
       sourceDirname: rees46
       targetDirname: personaClick
