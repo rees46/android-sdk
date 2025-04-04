@@ -18,7 +18,7 @@ jobs:
       targetRepository: personaclick/android-sdk
       sourceDirname: rees46
       targetDirname: personaClick
-      syncIgnore: ".git,.idea,version.properties,LICENSE,.github/workflows/sync.yaml"
+      syncIgnore: ".git,.idea,version.properties,LICENSE,.github/workflows/repository-synchronization.yaml"
       replacementExtentions: "*.kts,*.kt,*.md,*.xml,*.toml"
       replacementContents: "https://github.com/user-attachments/assets/83efd12d-9420-430a-ae6a-b7deae56d29c|https://github.com/user-attachments/assets/0fd12240-65f4-4dbe-ac10-30bda16496b6,https://img.shields.io/maven-central/v/com.rees46/rees46-sdk?style=for-the-badge|https://img.shields.io/maven-central/v/com.personaclick/personaclick-sdk?style=for-the-badge,https://api.rees46.com/|https://api.personaclick.com/,com.rees46:rees46-sdk|com.personaclick:personaclick-sdk,api.rees46.com|api.personaclick.com,rees46.com|personaclick.com,rees46|personaClick,REES46|PersonaClick,Rees46|PersonaClick,r46_android_sdk_cover|personaclick_android_sdk_cover"
     secrets:
