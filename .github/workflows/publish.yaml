@@ -21,7 +21,6 @@ jobs:
   #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
 
   publish:
-    needs: version
     uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@chore/values
     permissions: write-all
     with:
