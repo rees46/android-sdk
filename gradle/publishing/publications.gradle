@@ -1,8 +1,6 @@
 publishing {
     publications {
         android.libraryVariants.all { variant ->
-			// TODO remove it
-			if (variant.name != "rees46Release") return
 			if (variant.buildType.name == "debug") return
 
             println "Processing variant: ${variant.name}"
@@ -10,7 +8,7 @@ publishing {
             if (!isPublishingInMavenLocal) {
                 if (variant.buildType.name == "debug") {
                     println "Skipping debug variant: ${variant.name}"
-                    return // Prevents publishing debug library
+                    return
                 }
 
                 if (variant.flavorName != variantName) {
