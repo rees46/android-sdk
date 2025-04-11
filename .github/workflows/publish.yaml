@@ -11,20 +11,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  # version:
-  #   if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-  #   # uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
-  #   uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@refactor/sonatype-creds
-  #   permissions: write-all
-  #   with:
-  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
-  #   secrets:
-  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+  version:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    # uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@refactor/sonatype-creds
+    permissions: write-all
+    with:
+      appId: ${{ vars.PUBLIVERSIONER_ID }}
+    secrets:
+      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
 
   publish:
-    # needs: version
-    # uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@refactor/sonatype-creds
+    needs: version
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
@@ -47,10 +46,8 @@ jobs:
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   release:
-    # needs: [publish, version]
-    needs: [publish]
-    # uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
-    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@refactor/sonatype-creds
+    needs: [publish, version]
+    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
