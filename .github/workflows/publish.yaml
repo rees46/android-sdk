@@ -2,18 +2,20 @@ name: Patch version, publish to Sona and create new GitHub release
 
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
-    paths-ignore:
-      - ".github/**"
-  workflow_dispatch:
+  # pull_request:
+  #   types:
+  #     - closed
+  #   branches:
+  #     - master
+  #   paths-ignore:
+  #     - ".github/**"
+  # workflow_dispatch:
 
 jobs:
   version:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+    # uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@refactor/sonatype-creds
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
@@ -22,7 +24,8 @@ jobs:
 
   publish:
     needs: version
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    # uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@refactor/sonatype-creds
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
@@ -46,7 +49,8 @@ jobs:
 
   release:
     needs: [publish, version]
-    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
+    # uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@refactor/sonatype-creds
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
