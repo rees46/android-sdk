@@ -47,7 +47,8 @@ jobs:
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   release:
-    needs: [publish, version]
+    # needs: [publish, version]
+    needs: [publish]
     # uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
     uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@refactor/sonatype-creds
     permissions: write-all
