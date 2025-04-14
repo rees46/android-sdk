@@ -46,11 +46,11 @@ jobs:
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
-  release:
-    needs: [publish, version]
-    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-    secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+  # release:
+  #   needs: [publish, version]
+  #   uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
+  #   permissions: write-all
+  #   with:
+  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
+  #   secrets:
+  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
