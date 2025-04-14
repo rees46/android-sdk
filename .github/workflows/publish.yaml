@@ -22,9 +22,7 @@ jobs:
 
   publish:
     needs: version
-    # TODO uncomment
-    # uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@fix/deps
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
