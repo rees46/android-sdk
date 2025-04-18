@@ -2,50 +2,50 @@ name: Patch version, publish to Sona and create new GitHub release
 
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
-    paths-ignore:
-      - ".github/**"
-  workflow_dispatch:
+  #   types:
+  #     - closed
+  #   branches:
+  #     - master
+  #   paths-ignore:
+  #     - ".github/**"
+  # workflow_dispatch:
 
 jobs:
-  version:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-    secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
-
-  publish:
-    needs: version
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-      PROPERTIES_FILE: gradle.properties
-      SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
-      OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
-      VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
-      URL: ${{ vars.REES_REPO_URL }}
-      MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
-      GRADLE_VERSION: 8.8
-    secrets:
-      SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
-      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
-      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
-      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+  # version:
+  #   if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+  #   uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
+  #   permissions: write-all
+  #   with:
+  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
+  #   secrets:
+  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+  #
+  # publish:
+  #   needs: version
+  #   uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+  #   permissions: write-all
+  #   with:
+  #     appId: ${{ vars.PUBLIVERSIONER_ID }}
+  #     PROPERTIES_FILE: gradle.properties
+  #     SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
+  #     SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
+  #     OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
+  #     VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
+  #     URL: ${{ vars.REES_REPO_URL }}
+  #     MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
+  #     GRADLE_VERSION: 8.8
+  #   secrets:
+  #     SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
+  #     appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+  #     SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+  #     SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
+  #     OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+  #     SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+  #     SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+  #     SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   release:
-    needs: [publish, version]
+    # needs: [publish, version]
     uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
     permissions: write-all
     with:
