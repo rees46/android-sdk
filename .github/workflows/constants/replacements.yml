@@ -1,7 +1,6 @@
 deletions:
   - .github/workflows/repo-sync.yaml
   - .github/workflows/constants/replacements.yml
-  - personalization-sdk/src
 ignore:
   - version.properties
   - app/src/main/res/drawable/ic_app.xml
