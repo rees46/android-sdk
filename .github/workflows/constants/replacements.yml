@@ -1,10 +1,12 @@
 deletions:
   - .github/workflows/repo-sync.yaml
   - .github/workflows/constants/replacements.yml
+  - personalization-sdk/src
 ignore:
   - version.properties
   - app/src/main/res/drawable/ic_app.xml
   - app/src/main/res/drawable/ic_logo.xml
+  - personalization-sdk/src
 replacements:
   - from: REES_MAVEN_URL
     to: MAVEN_URL
