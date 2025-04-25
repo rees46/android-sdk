@@ -2,15 +2,15 @@ name: Repository synchronization
 
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
-  workflow_dispatch:
+  #   types:
+  #     - closed
+  #   branches:
+  #     - master
+  # workflow_dispatch:
 
 jobs:
   prepare:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
+    # if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
     runs-on: ubuntu-latest
     outputs:
       replacements: ${{ steps.getReplacementsStep.outputs.replacements }}
@@ -20,7 +20,8 @@ jobs:
 
   repoSync:
     needs: prepare
-    uses: rees46/workflow/.github/workflows/reusable-repo-sync.yml@master
+    # uses: rees46/workflow/.github/workflows/reusable-repo-sync.yml@master
+    uses: rees46/workflow/.github/workflows/reusable-repo-sync.yml@fix/action
     secrets:
       appSecret: ${{ secrets.PERSONACLICK_COURIER_SECRET }}
     with:
