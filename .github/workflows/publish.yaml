@@ -2,16 +2,17 @@ name: Publish to sonatype and GH-packages
 
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
-  workflow_dispatch:
+  #   types:
+  #     - closed
+  #   branches:
+  #     - master
+  # workflow_dispatch:
 
 jobs:
   publish:
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@1cfee7e2e762eed3a3d7d67c413aa0bae7f5ffae
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
+    # uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@1cfee7e2e762eed3a3d7d67c413aa0bae7f5ffae
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@fix/publish-android
+    # if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
