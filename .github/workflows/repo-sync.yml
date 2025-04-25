@@ -2,15 +2,15 @@ name: Repository synchronization
 
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - master
-  workflow_dispatch:
+  #   types:
+  #     - closed
+  #   branches:
+  #     - master
+  # workflow_dispatch:
 
 jobs:
   prepare:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    # if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       replacements: ${{ steps.getReplacementsStep.outputs.replacements }}
