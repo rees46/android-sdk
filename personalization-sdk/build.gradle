@@ -6,8 +6,6 @@ plugins {
     id 'kotlin-kapt'
 }
 
-version='2.0.69'
-
 android {
     compileSdkVersion 34
     flavorDimensions += 'default'

@@ -18,7 +18,11 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '2.0.0' apply false
 }
 
+def versionFile = file("version.properties")
+def projectVersion = versionFile.text.split("version=")[1].trim()
+
 allprojects {
+	version=projectVersion
     repositories {
         google()
         mavenCentral()
