@@ -1,0 +1,19 @@
+{
+  branches: ["master"],
+  plugins:
+    [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/git",
+        {
+          "assets": ["version.properties"],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
+        },
+      ],
+      [
+        "@semantic-release/exec",
+        { "prepareCmd": "./scripts/update_version.sh ${nextRelease.version}" },
+      ],
+    ],
+}
