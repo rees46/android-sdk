@@ -21,8 +21,11 @@ plugins {
 def versionFile = file("version.properties")
 def projectVersion = versionFile.text.split("VERSION_NAME=")[1].trim()
 
-allprojects {
+project(':personalizationSdk') {
 	version=projectVersion
+}
+
+allprojects {
     repositories {
         google()
         mavenCentral()
