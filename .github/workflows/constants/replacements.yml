@@ -1,0 +1,59 @@
+deletions:
+  - .github/workflows/repo-sync.yaml
+  - .github/workflows/constants/replacements.yml
+ignore:
+  - version.properties
+  - app/src/main/res/drawable/ic_app.xml
+  - app/src/main/res/drawable/ic_logo.xml
+  - personalization-sdk/src
+replacements:
+  - from: REES_MAVEN_URL
+    to: MAVEN_URL
+  - from: REES_REPO_URL
+    to: REPO_URL
+  - from: REES_VARIANT_NAME
+    to: VARIANT_NAME
+  - from: desk@rees46.com
+    to: success@personaclick.com
+  - from: desk@rees46.com
+    to: success@personaclick.com
+  - from: https://github.com/user-attachments/assets/83efd12d-9420-430a-ae6a-b7deae56d29c
+    to: https://github.com/user-attachments/assets/0fd12240-65f4-4dbe-ac10-30bda16496b6
+  - from: https://img.shields.io/maven-central/v/com.rees46/rees46-sdk?style=for-the-badge
+    to: https://img.shields.io/maven-central/v/com.personaclick/personaclick-sdk?style=for-the-badge
+  - from: https://img.shields.io/maven-central/v/com.rees46/rees46-sdk?style=for-the-badge
+    to: https://img.shields.io/maven-central/v/com.personaclick/personaclick-sdk?style=for-the-badge
+  - from: r46_android_sdk_cover
+    to: personaclick_android_sdk_cover
+  - from: "PUBLIVERSIONER_SECRET"
+    to: "PERSONACLICK_COURIER_SECRET"
+  - from: "PUBLIVERSIONER_ID"
+    to: "PERSONACLICK_COURIER_ID"
+  - from: "https://reference.api.rees46.com/#introduction"
+    to: "https://personaclick.atlassian.net/wiki/spaces/english/overview?mode=global"
+  - from: "desk@rees46.com"
+    to: "success@personaclick.com"
+  - from: 357382bf66ac0ce2f1722677c59511
+    to: 42a4cd11ebab3b0454778d18d4f3d5
+  - from: a043dbc2f852ffe18861a2cdfc364ef2
+    to: 5a57812604806d58d3d98f8e9480cb97
+  - from: 2dbebc39bee259b118bcc0ac3fa74a42
+    to: e4fd6e3a19610f7aea5534e96eec69d6
+  - from: a043dbc2f852ffe18861a2cdfc364ef2
+    to: aabc899d3db3d71c4032832e4291c16a
+  - from: fcaa8d3168ab7d7346e4b4f1a1c92214
+    to: 09d291f54de95e9e5bde43b343b0b0d7
+  - from: https://api.rees46.com/
+    to: https://api.personaclick.com/
+  - from: com.rees46:rees46-sdk
+    to: com.personaclick:personaclick-sdk
+  - from: api.rees46.com
+    to: api.personaclick.com
+  - from: rees46.com
+    to: personaclick.com
+  - from: rees46
+    to: personaclick
+  - from: REES46
+    to: PersonaClick
+  - from: Rees46
+    to: PersonaClick

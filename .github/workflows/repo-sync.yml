@@ -1,0 +1,31 @@
+name: Repository synchronization
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  prepare:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
+    runs-on: ubuntu-latest
+    outputs:
+      replacements: ${{ steps.getReplacementsStep.outputs.replacements }}
+    steps:
+      - uses: rees46/workflow/.github/actions/sync/read-replacements@master
+        id: getReplacementsStep
+
+  repoSync:
+    needs: prepare
+    uses: rees46/workflow/.github/workflows/reusable-repo-sync.yml@master
+    secrets:
+      appSecret: ${{ secrets.PERSONACLICK_COURIER_SECRET }}
+    with:
+      appId: ${{ vars.PERSONACLICK_COURIER_ID }}
+      replacements: ${{ needs.prepare.outputs.replacements }}
+      repositoryOwner: personaclick
+      targetRepository: personaclick/android-sdk
+      reviewerUsername: iwwwanow
