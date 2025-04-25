@@ -19,7 +19,7 @@ plugins {
 }
 
 def versionFile = file("version.properties")
-def projectVersion = versionFile.text.split("version=")[1].trim()
+def projectVersion = versionFile.text.split("VERSION_NAME=")[1].trim()
 
 allprojects {
 	version=projectVersion
