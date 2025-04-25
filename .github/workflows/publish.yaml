@@ -1,4 +1,4 @@
-name: Patch version, publish to Sona and create new GitHub release
+name: Publish to sonatype and GH-packages
 
 on:
   pull_request:
@@ -6,23 +6,12 @@ on:
       - closed
     branches:
       - master
-    paths-ignore:
-      - ".github/**"
   workflow_dispatch:
 
 jobs:
-  version:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
-    uses: rees46/workflow/.github/workflows/reusable-android-version.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-    secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
-
   publish:
-    needs: version
     uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
@@ -43,12 +32,3 @@ jobs:
       SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
       SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
-
-  release:
-    needs: [publish, version]
-    uses: rees46/workflow/.github/workflows/reusable-android-release.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
-    secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
