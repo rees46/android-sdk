@@ -3,26 +3,42 @@ package com.personalization.inAppNotification.view.component.dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.isVisible
-import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
-import com.personalization.ui.animation.button.addPressEffectDeclarative
-import com.personalization.ui.click.NotificationClickListener
-import com.personalization.utils.BundleUtils.getOptionalInt
+import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 
-class AlertDialog : DialogFragment() {
-
-    private var listener: NotificationClickListener? = null
-
-    fun setListener(listener: NotificationClickListener) {
-        this.listener = listener
-    }
+class AlertDialog : BaseInAppDialog() {
 
     private var _binding: AlertDialogBinding? = null
     private val binding get() = _binding!!
+
+    class AlertDialogViewContainer(binding: AlertDialogBinding) : InAppViewContainer {
+        override val backgroundImageView = binding.backgroundImageView
+        override val imageContainer = binding.imageContainer
+        override val titleTextView = binding.textContainer.title
+        override val messageTextView = binding.textContainer.message
+        override val buttonAcceptContainer = binding.buttonContainer.buttonAcceptContainer
+        override val buttonAccept = binding.buttonContainer.buttonAccept
+        override val buttonDeclineContainer = binding.buttonContainer.buttonDeclineContainer
+        override val buttonDecline = binding.buttonContainer.buttonDecline
+        override val closeButton = binding.closeButton
+    }
+
+    override val container: InAppViewContainer by lazy {
+        AlertDialogViewContainer(binding)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.apply {
+            setGravity(Gravity.CENTER)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(0.5f)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,86 +53,6 @@ class AlertDialog : DialogFragment() {
         _binding = null
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        initImage()
-        initTextBlock()
-        initAcceptButton()
-        initDeclineButton()
-        handleClosingButton()
-    }
-
-    private fun initTextBlock() {
-        with(binding) {
-            textContainer.apply {
-                title.text = arguments?.getString(TITLE_KEY).orEmpty()
-                message.text = arguments?.getString(MESSAGE_KEY).orEmpty()
-            }
-        }
-    }
-
-    private fun initImage() {
-        val imageUrl = arguments?.getString(IMAGE_URL_KEY).orEmpty()
-        if (imageUrl.isNotBlank()) {
-            binding.backgroundImageView.loadImage(imageUrl)
-        } else {
-            binding.imageContainer.isVisible = false
-        }
-    }
-
-    private fun initDeclineButton() {
-        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
-        val negativeButtonColor = arguments?.getOptionalInt(BUTTON_NEGATIVE_COLOR_KEY)
-        with(binding) {
-            buttonContainer.apply {
-                if (buttonText.isEmpty()) {
-                    buttonDeclineContainer.isVisible = false
-                    return
-                }
-                buttonDeclineContainer.addPressEffectDeclarative()
-                buttonDecline.text = buttonText
-                negativeButtonColor?.let { buttonDecline.setBackgroundColor(it) }
-                buttonDeclineContainer.setOnClickListener {
-                    onButtonClick(isPositiveClick = false)
-                }
-            }
-        }
-    }
-
-    private fun initAcceptButton() {
-        val buttonText = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
-        val positiveButtonColor = arguments?.getOptionalInt(BUTTON_POSITIVE_COLOR_KEY)
-        with(binding) {
-            buttonContainer.apply {
-                if (buttonText.isEmpty()) {
-                    buttonAcceptContainer.isVisible = false
-                    return
-                }
-                buttonAcceptContainer.addPressEffectDeclarative()
-                buttonAccept.text = buttonText
-                positiveButtonColor?.let { buttonAccept.setBackgroundColor(it) }
-                buttonAcceptContainer.setOnClickListener {
-                    onButtonClick(isPositiveClick = true)
-                }
-            }
-        }
-    }
-
-    private fun handleClosingButton() {
-        with(binding) {
-            closeButton.addPressEffectDeclarative()
-            closeButton.setOnClickListener { dismiss() }
-        }
-    }
-
-    private fun onButtonClick(isPositiveClick: Boolean) {
-        when (isPositiveClick) {
-            true -> listener?.onPositiveClick()
-            else -> listener?.onNegativeClick()
-        }
-        dismiss()
-    }
 
     companion object {
         const val TAG = "AlertDialog"
