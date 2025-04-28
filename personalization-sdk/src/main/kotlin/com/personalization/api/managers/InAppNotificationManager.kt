@@ -24,12 +24,12 @@ interface InAppNotificationManager {
     fun showFullScreenDialog(
         title: String,
         message: String,
-        imageUrl: String?,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        onPositiveClick: () -> Unit
+        imageUrl: String? = null,
+        buttonPositiveText: String? = null,
+        buttonNegativeText: String? = null,
+        buttonPositiveColor: Int? = null,
+        buttonNegativeColor: Int? = null,
+        onPositiveClick: (() -> Unit)? = null
     )
 
     fun showBottomSheetDialog(

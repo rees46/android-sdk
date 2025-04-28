@@ -164,11 +164,11 @@ class InAppNotificationManagerImpl @Inject constructor(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        onPositiveClick: () -> Unit
+        buttonPositiveText: String?,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int?,
+        buttonNegativeColor: Int?,
+        onPositiveClick: (() -> Unit)?
     ) {
         val dialog = FullScreenDialog.newInstance(
             title = title,
@@ -182,7 +182,9 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() = onPositiveClick()
+                override fun onPositiveClick() {
+                    onPositiveClick?.invoke()
+                }
                 override fun onNegativeClick() {
                     dialog.dismiss()
                 }
