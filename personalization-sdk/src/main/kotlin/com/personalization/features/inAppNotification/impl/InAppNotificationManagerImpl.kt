@@ -17,11 +17,11 @@ import com.personalization.errors.EmptyFieldError
 import com.personalization.inAppNotification.view.component.dialog.fullScreen.FULL_SCREEN_DIALOG_TAG
 import com.personalization.inAppNotification.view.component.dialog.alert.ALERT_DIALOG_TAG
 import com.personalization.inAppNotification.view.component.dialog.alert.AlertDialog
-import com.personalization.inAppNotification.view.component.dialog.bottomSheet.BOTTOM_SHEET_TAG
-import com.personalization.inAppNotification.view.component.dialog.bottomSheet.BottomSheetDialog
+import com.personalization.inAppNotification.view.component.dialog.bottom.BOTTOM_DIALOG_TAG
+import com.personalization.inAppNotification.view.component.dialog.bottom.BottomDialog
 import com.personalization.inAppNotification.view.component.dialog.fullScreen.FullScreenDialog
-import com.personalization.inAppNotification.view.component.dialog.topSheet.TOP_SHEET_DIALOG
-import com.personalization.inAppNotification.view.component.dialog.topSheet.TopSheetDialog
+import com.personalization.inAppNotification.view.component.dialog.top.TOP_DIALOG_TAG
+import com.personalization.inAppNotification.view.component.dialog.top.TopDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
@@ -208,7 +208,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
     ) {
-        val dialog = BottomSheetDialog.newInstance(
+        val dialog = BottomDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
@@ -231,7 +231,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ BOTTOM_SHEET_TAG
+            /* tag = */ BOTTOM_DIALOG_TAG
         )
     }
 
@@ -245,7 +245,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
     ) {
-        val dialog = TopSheetDialog.newInstance(
+        val dialog = TopDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
@@ -268,7 +268,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ TOP_SHEET_DIALOG
+            /* tag = */ TOP_DIALOG_TAG
         )
     }
 

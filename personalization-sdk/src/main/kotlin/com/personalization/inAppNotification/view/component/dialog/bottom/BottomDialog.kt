@@ -1,6 +1,6 @@
 @file:Suppress("NewApi")
 
-package com.personalization.inAppNotification.view.component.dialog.bottomSheet
+package com.personalization.inAppNotification.view.component.dialog.bottom
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -9,10 +9,10 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.personalization.databinding.BottomSheetDialogBinding
+import com.personalization.databinding.BottomDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
-import com.personalization.inAppNotification.view.component.dialog.bottomSheet.container.BottomSheetDialogViewContainer
+import com.personalization.inAppNotification.view.component.dialog.bottom.container.BottomDialogViewContainer
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_COLOR_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_COLOR_KEY
@@ -21,22 +21,22 @@ import com.personalization.inAppNotification.view.component.utils.InAppConsts.IM
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
 
-const val BOTTOM_SHEET_TAG = "BottomSheetDialog"
+const val BOTTOM_DIALOG_TAG = "BottomDialog"
 
-class BottomSheetDialog : BaseInAppDialog() {
+class BottomDialog : BaseInAppDialog() {
 
-    private var _binding: BottomSheetDialogBinding? = null
+    private var _binding: BottomDialogBinding? = null
     private val binding get() = _binding!!
 
     override val container: InAppViewContainer by lazy {
-        BottomSheetDialogViewContainer(binding)
+        BottomDialogViewContainer(binding)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = BottomSheetDialogBinding.inflate(inflater, container, false)
+        _binding = BottomDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -64,8 +64,8 @@ class BottomSheetDialog : BaseInAppDialog() {
             buttonDeclineText: String?,
             buttonConfirmColor: Int?,
             buttonDeclineColor: Int?,
-        ): BottomSheetDialog {
-            val dialog = BottomSheetDialog()
+        ): BottomDialog {
+            val dialog = BottomDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)

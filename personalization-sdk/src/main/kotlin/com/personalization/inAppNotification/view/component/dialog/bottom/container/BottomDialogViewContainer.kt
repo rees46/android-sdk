@@ -1,9 +1,9 @@
-package com.personalization.inAppNotification.view.component.dialog.topSheet.container
+package com.personalization.inAppNotification.view.component.dialog.bottom.container
 
-import com.personalization.databinding.TopSheetDialogBinding
+import com.personalization.databinding.BottomDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 
-class TopSheetDialogViewContainer(binding: TopSheetDialogBinding) : InAppViewContainer {
+class BottomDialogViewContainer(binding: BottomDialogBinding) : InAppViewContainer {
     override val backgroundImageView = binding.backgroundImageView
     override val imageContainer = binding.imageContainer
     override val titleTextView = binding.textContainer.title

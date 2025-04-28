@@ -1,6 +1,6 @@
 @file:Suppress("NewApi")
 
-package com.personalization.inAppNotification.view.component.dialog.topSheet
+package com.personalization.inAppNotification.view.component.dialog.top
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -9,10 +9,10 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.personalization.databinding.TopSheetDialogBinding
+import com.personalization.databinding.TopDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
-import com.personalization.inAppNotification.view.component.dialog.topSheet.container.TopSheetDialogViewContainer
+import com.personalization.inAppNotification.view.component.dialog.top.container.TopDialogViewContainer
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_COLOR_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_COLOR_KEY
@@ -21,22 +21,22 @@ import com.personalization.inAppNotification.view.component.utils.InAppConsts.IM
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
 
-const val TOP_SHEET_DIALOG = "TopSheetDialog"
+const val TOP_DIALOG_TAG = "TopDialog"
 
-class TopSheetDialog : BaseInAppDialog() {
+class TopDialog : BaseInAppDialog() {
 
-    private var _binding: TopSheetDialogBinding? = null
+    private var _binding: TopDialogBinding? = null
     private val binding get() = _binding!!
 
     override val container: InAppViewContainer by lazy {
-        TopSheetDialogViewContainer(binding)
+        TopDialogViewContainer(binding)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = TopSheetDialogBinding.inflate(inflater, container, false)
+        _binding = TopDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -64,8 +64,8 @@ class TopSheetDialog : BaseInAppDialog() {
             buttonDeclineText: String?,
             buttonConfirmColor: Int?,
             buttonDeclineColor: Int?,
-        ): TopSheetDialog {
-            val dialog = TopSheetDialog()
+        ): TopDialog {
+            val dialog = TopDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
