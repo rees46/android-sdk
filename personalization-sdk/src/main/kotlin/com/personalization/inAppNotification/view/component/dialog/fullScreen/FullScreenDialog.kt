@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import com.personalization.databinding.FullScreenDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
+import com.personalization.inAppNotification.view.component.dialog.fullScreen.container.FullScreenDialogViewContainer
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
@@ -21,18 +22,6 @@ class FullScreenDialog : BaseInAppDialog() {
 
     private var _binding: FullScreenDialogBinding? = null
     private val binding get() = _binding!!
-
-    class FullScreenDialogViewContainer(binding: FullScreenDialogBinding) : InAppViewContainer {
-        override val backgroundImageView = binding.backgroundImageView
-        override val imageContainer = binding.imageContainer
-        override val titleTextView = binding.textContainer.title
-        override val messageTextView = binding.textContainer.message
-        override val buttonAcceptContainer = binding.buttonContainer.buttonAcceptContainer
-        override val buttonAccept = binding.buttonContainer.buttonAccept
-        override val buttonDeclineContainer = binding.buttonContainer.buttonDeclineContainer
-        override val buttonDecline = binding.buttonContainer.buttonDecline
-        override val closeButton = binding.closeButton
-    }
 
     override val container: InAppViewContainer by lazy {
         FullScreenDialogViewContainer(binding)
