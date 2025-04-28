@@ -13,12 +13,12 @@ interface InAppNotificationManager {
     fun showAlertDialog(
         title: String,
         message: String,
-        imageUrl: String,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit
+        imageUrl: String? = null,
+        buttonPositiveText: String? = null,
+        buttonNegativeText: String? = null,
+        buttonPositiveColor: Int? = null,
+        buttonNegativeColor: Int? = null,
+        onPositiveClick: (() -> Unit)? = null
     )
 
     fun showFullScreenDialog(

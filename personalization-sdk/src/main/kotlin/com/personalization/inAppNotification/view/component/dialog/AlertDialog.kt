@@ -11,6 +11,7 @@ import androidx.fragment.app.DialogFragment
 import com.personalization.databinding.AlertDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
 import com.personalization.ui.click.NotificationClickListener
+import com.personalization.utils.BundleUtils.getOptionalInt
 
 class AlertDialog : DialogFragment() {
 
@@ -66,18 +67,16 @@ class AlertDialog : DialogFragment() {
 
     private fun initDeclineButton() {
         val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
-        val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
+        val negativeButtonColor = arguments?.getOptionalInt(BUTTON_NEGATIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                if(buttonText.isEmpty()) {
+                if (buttonText.isEmpty()) {
                     buttonDeclineContainer.isVisible = false
                     return
                 }
                 buttonDeclineContainer.addPressEffectDeclarative()
                 buttonDecline.text = buttonText
-                if (negativeButtonColor != null) {
-                    buttonDecline.setBackgroundColor(negativeButtonColor)
-                }
+                negativeButtonColor?.let { buttonDecline.setBackgroundColor(it) }
                 buttonDeclineContainer.setOnClickListener {
                     onButtonClick(isPositiveClick = false)
                 }
@@ -87,18 +86,16 @@ class AlertDialog : DialogFragment() {
 
     private fun initAcceptButton() {
         val buttonText = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
-        val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
+        val positiveButtonColor = arguments?.getOptionalInt(BUTTON_POSITIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                if(buttonText.isEmpty()){
+                if (buttonText.isEmpty()) {
                     buttonAcceptContainer.isVisible = false
                     return
                 }
                 buttonAcceptContainer.addPressEffectDeclarative()
                 buttonAccept.text = buttonText
-                if (positiveButtonColor != null) {
-                    buttonAccept.setBackgroundColor(positiveButtonColor)
-                }
+                positiveButtonColor?.let { buttonAccept.setBackgroundColor(it) }
                 buttonAcceptContainer.setOnClickListener {
                     onButtonClick(isPositiveClick = true)
                 }
@@ -134,21 +131,21 @@ class AlertDialog : DialogFragment() {
         fun newInstance(
             title: String,
             message: String,
-            imageUrl: String,
-            buttonPositiveText: String,
-            buttonNegativeText: String,
-            buttonPositiveColor: Int,
-            buttonNegativeColor: Int,
+            imageUrl: String?,
+            buttonPositiveText: String?,
+            buttonNegativeText: String?,
+            buttonPositiveColor: Int?,
+            buttonNegativeColor: Int?,
         ): AlertDialog {
             val dialog = AlertDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
                 putString(IMAGE_URL_KEY, imageUrl)
-                putInt(BUTTON_POSITIVE_COLOR_KEY, buttonPositiveColor)
-                putInt(BUTTON_NEGATIVE_COLOR_KEY, buttonNegativeColor)
                 putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
                 putString(BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
+                buttonPositiveColor?.let { putInt(BUTTON_POSITIVE_COLOR_KEY, it) }
+                buttonNegativeColor?.let { putInt(BUTTON_NEGATIVE_COLOR_KEY, it) }
             }
             dialog.arguments = args
             return dialog

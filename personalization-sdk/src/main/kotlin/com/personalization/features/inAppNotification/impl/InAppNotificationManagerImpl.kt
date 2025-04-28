@@ -123,12 +123,12 @@ class InAppNotificationManagerImpl @Inject constructor(
     override fun showAlertDialog(
         title: String,
         message: String,
-        imageUrl: String,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit
+        imageUrl: String?,
+        buttonPositiveText: String?,
+        buttonNegativeText: String?,
+        buttonPositiveColor: Int?,
+        buttonNegativeColor: Int?,
+        onPositiveClick: (() -> Unit)?
     ) {
         val dialog = AlertDialog.newInstance(
             title = title,
@@ -137,12 +137,14 @@ class InAppNotificationManagerImpl @Inject constructor(
             buttonPositiveColor = buttonPositiveColor,
             buttonNegativeColor = buttonNegativeColor,
             buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
+            buttonNegativeText = buttonNegativeText
         )
 
         dialog.setListener(
             object : NotificationClickListener {
-                override fun onPositiveClick() = onPositiveClick()
+                override fun onPositiveClick() {
+                    onPositiveClick?.invoke()
+                }
                 override fun onNegativeClick() {
                     dialog.dismiss()
                 }
