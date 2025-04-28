@@ -1,6 +1,9 @@
 package com.personalization.inAppNotification.view.component.dialog.fullScreen
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,6 +36,16 @@ class FullScreenDialog : BaseInAppDialog() {
     ): View {
         _binding = FullScreenDialogBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setGravity(Gravity.CENTER)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(0.5f)
+        }
     }
 
     override fun onDestroyView() {
