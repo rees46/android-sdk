@@ -11,10 +11,10 @@ class Snackbar(private val rootView: View) {
 
     fun show(
         message: String,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        buttonConfirmText: String,
+        buttonDeclineText: String,
+        onConfirmClick: () -> Unit,
+        onDeclineClick: () -> Unit
     ) {
         val snackbar = Snackbar.make(
             /* view = */ rootView,
@@ -26,16 +26,16 @@ class Snackbar(private val rootView: View) {
 
         with(binding) {
             title.text = message
-            positiveButton.text = buttonPositiveText
-            negativeButton.text = buttonNegativeText
+            confirmButton.text = buttonConfirmText
+            declineButton.text = buttonDeclineText
 
-            positiveButton.setOnClickListener {
-                onPositiveClick()
+            confirmButton.setOnClickListener {
+                onConfirmClick()
                 snackbar.dismiss()
             }
 
-            negativeButton.setOnClickListener {
-                onNegativeClick()
+            declineButton.setOnClickListener {
+                onDeclineClick()
                 snackbar.dismiss()
             }
         }
