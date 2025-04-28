@@ -14,6 +14,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.personalization.databinding.BottomSheetDialogBinding
 import com.personalization.ui.animation.button.addPressEffectDeclarative
 import com.personalization.ui.click.NotificationClickListener
+import com.personalization.utils.BundleUtils.getOptionalInt
 
 class BottomSheetDialog : BottomSheetDialogFragment() {
 
@@ -73,43 +74,39 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
         }
     }
 
-    private fun initAcceptButton() {
-        val buttonText = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY)?:""
-        val positiveButtonColor = arguments?.getInt(BUTTON_POSITIVE_COLOR_KEY)
-        with(binding) {
-            buttonContainer.apply {
-                if(buttonText.isEmpty()) {
-                    buttonAcceptContainer.isVisible = false
-                    return
-                }
-                buttonAcceptContainer.addPressEffectDeclarative()
-                buttonAccept.text = buttonText
-                if (positiveButtonColor != null) {
-                    buttonAccept.setBackgroundColor(positiveButtonColor)
-                }
-                buttonAcceptContainer.setOnClickListener {
-                    onButtonClick(isPositiveClick = true)
-                }
-            }
-        }
-    }
-
     private fun initDeclineButton() {
-        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY)?:""
-        val negativeButtonColor = arguments?.getInt(BUTTON_NEGATIVE_COLOR_KEY)
+        val buttonText = arguments?.getString(AlertDialog.Companion.BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
+        val negativeButtonColor = arguments?.getOptionalInt(AlertDialog.Companion.BUTTON_NEGATIVE_COLOR_KEY)
         with(binding) {
             buttonContainer.apply {
-                if(buttonText.isEmpty()) {
+                if (buttonText.isEmpty()) {
                     buttonDeclineContainer.isVisible = false
                     return
                 }
                 buttonDeclineContainer.addPressEffectDeclarative()
                 buttonDecline.text = buttonText
-                if (negativeButtonColor != null) {
-                    buttonDecline.setBackgroundColor(negativeButtonColor)
-                }
+                negativeButtonColor?.let { buttonDecline.setBackgroundColor(it) }
                 buttonDeclineContainer.setOnClickListener {
                     onButtonClick(isPositiveClick = false)
+                }
+            }
+        }
+    }
+
+    private fun initAcceptButton() {
+        val buttonText = arguments?.getString(AlertDialog.Companion.BUTTON_POSITIVE_TEXT_KEY).orEmpty()
+        val positiveButtonColor = arguments?.getOptionalInt(AlertDialog.Companion.BUTTON_POSITIVE_COLOR_KEY)
+        with(binding) {
+            buttonContainer.apply {
+                if (buttonText.isEmpty()) {
+                    buttonAcceptContainer.isVisible = false
+                    return
+                }
+                buttonAcceptContainer.addPressEffectDeclarative()
+                buttonAccept.text = buttonText
+                positiveButtonColor?.let { buttonAccept.setBackgroundColor(it) }
+                buttonAcceptContainer.setOnClickListener {
+                    onButtonClick(isPositiveClick = true)
                 }
             }
         }
@@ -144,20 +141,20 @@ class BottomSheetDialog : BottomSheetDialogFragment() {
             title: String,
             message: String,
             imageUrl: String?,
-            buttonPositiveText: String,
+            buttonPositiveText: String?,
             buttonNegativeText: String?,
-            buttonPositiveColor: Int,
-            buttonNegativeColor: Int,
+            buttonPositiveColor: Int?,
+            buttonNegativeColor: Int?,
         ): BottomSheetDialog {
             val dialog = BottomSheetDialog()
             val args = Bundle().apply {
-                putString(TITLE_KEY, title)
-                putString(MESSAGE_KEY, message)
-                putString(IMAGE_URL_KEY, imageUrl)
-                putInt(BUTTON_POSITIVE_COLOR_KEY, buttonPositiveColor)
-                putInt(BUTTON_NEGATIVE_COLOR_KEY, buttonNegativeColor)
-                putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
-                putString(BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
+                putString(AlertDialog.Companion.TITLE_KEY, title)
+                putString(AlertDialog.Companion.MESSAGE_KEY, message)
+                putString(AlertDialog.Companion.IMAGE_URL_KEY, imageUrl)
+                putString(AlertDialog.Companion.BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
+                putString(AlertDialog.Companion.BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
+                buttonPositiveColor?.let { putInt(AlertDialog.Companion.BUTTON_POSITIVE_COLOR_KEY, it) }
+                buttonNegativeColor?.let { putInt(AlertDialog.Companion.BUTTON_NEGATIVE_COLOR_KEY, it) }
             }
             dialog.arguments = args
             return dialog
