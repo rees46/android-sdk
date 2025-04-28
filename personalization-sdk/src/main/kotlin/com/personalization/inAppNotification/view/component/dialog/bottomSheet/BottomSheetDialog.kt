@@ -1,6 +1,6 @@
 @file:Suppress("NewApi")
 
-package com.personalization.inAppNotification.view.component.dialog
+package com.personalization.inAppNotification.view.component.dialog.bottomSheet
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.personalization.databinding.BottomSheetDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
+import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY

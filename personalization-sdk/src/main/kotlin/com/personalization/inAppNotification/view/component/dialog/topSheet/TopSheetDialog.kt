@@ -1,11 +1,17 @@
-package com.personalization.inAppNotification.view.component.dialog
+@file:Suppress("NewApi")
 
+package com.personalization.inAppNotification.view.component.dialog.topSheet
+
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.personalization.databinding.FullScreenDialogBinding
+import com.personalization.databinding.TopSheetDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
+import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
@@ -14,12 +20,14 @@ import com.personalization.inAppNotification.view.component.utils.InAppConsts.IM
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
 
-class FullScreenDialog : BaseInAppDialog() {
+const val TOP_SHEET_DIALOG = "TopSheetDialog"
 
-    private var _binding: FullScreenDialogBinding? = null
+class TopSheetDialog : BaseInAppDialog() {
+
+    private var _binding: TopSheetDialogBinding? = null
     private val binding get() = _binding!!
 
-    class FullScreenDialogViewContainer(binding: FullScreenDialogBinding) : InAppViewContainer {
+    class TopSheetViewContainer(binding: TopSheetDialogBinding) : InAppViewContainer {
         override val backgroundImageView = binding.backgroundImageView
         override val imageContainer = binding.imageContainer
         override val titleTextView = binding.textContainer.title
@@ -31,21 +39,32 @@ class FullScreenDialog : BaseInAppDialog() {
         override val closeButton = binding.closeButton
     }
 
+
     override val container: InAppViewContainer by lazy {
-        FullScreenDialogViewContainer(binding)
+        TopSheetViewContainer(binding)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FullScreenDialogBinding.inflate(inflater, container, false)
+        _binding = TopSheetDialogBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setGravity(Gravity.TOP)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(0.5f)
+        }
     }
 
     companion object {
@@ -56,9 +75,9 @@ class FullScreenDialog : BaseInAppDialog() {
             buttonPositiveText: String?,
             buttonNegativeText: String?,
             buttonPositiveColor: Int?,
-            buttonNegativeColor: Int?
-        ): FullScreenDialog {
-            val dialog = FullScreenDialog()
+            buttonNegativeColor: Int?,
+        ): TopSheetDialog {
+            val dialog = TopSheetDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
