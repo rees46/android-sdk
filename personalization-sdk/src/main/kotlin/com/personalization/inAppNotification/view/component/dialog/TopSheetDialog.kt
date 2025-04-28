@@ -11,6 +11,15 @@ import android.view.View
 import android.view.ViewGroup
 import com.personalization.databinding.TopSheetDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.IMAGE_URL_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
+
+const val TOP_SHEET_DIALOG = "TopSheetDialog"
 
 class TopSheetDialog : BaseInAppDialog() {
 
@@ -58,8 +67,6 @@ class TopSheetDialog : BaseInAppDialog() {
     }
 
     companion object {
-        const val TAG = "TopSheetDialog"
-
         fun newInstance(
             title: String,
             message: String,

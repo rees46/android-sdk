@@ -14,9 +14,12 @@ import androidx.fragment.app.FragmentManager
 import com.personalization.R
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.errors.EmptyFieldError
+import com.personalization.inAppNotification.view.component.dialog.ALERT_DIALOG_TAG
 import com.personalization.inAppNotification.view.component.dialog.AlertDialog
+import com.personalization.inAppNotification.view.component.dialog.BOTTOM_SHEET_TAG
 import com.personalization.inAppNotification.view.component.dialog.BottomSheetDialog
 import com.personalization.inAppNotification.view.component.dialog.FullScreenDialog
+import com.personalization.inAppNotification.view.component.dialog.TOP_SHEET_DIALOG
 import com.personalization.inAppNotification.view.component.dialog.TopSheetDialog
 import com.personalization.inAppNotification.view.component.snackbar.Snackbar
 import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
@@ -140,7 +143,7 @@ class InAppNotificationManagerImpl @Inject constructor(
             buttonNegativeText = buttonNegativeText
         )
 
-        dialog.setListener(
+        dialog.listener = (
             object : NotificationClickListener {
                 override fun onPositiveClick() {
                     onPositiveClick?.invoke()
@@ -153,7 +156,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ AlertDialog.TAG
+            /* tag = */ ALERT_DIALOG_TAG
         )
     }
 
@@ -212,7 +215,7 @@ class InAppNotificationManagerImpl @Inject constructor(
             buttonNegativeText = buttonNegativeText,
         )
 
-        dialog.setListener(
+        dialog.listener = (
             object : NotificationClickListener {
                 override fun onPositiveClick() {
                     onPositiveClick?.invoke()
@@ -225,7 +228,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ BottomSheetDialog.TAG
+            /* tag = */ BOTTOM_SHEET_TAG
         )
     }
 
@@ -262,7 +265,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ TopSheetDialog.TAG
+            /* tag = */ TOP_SHEET_DIALOG
         )
     }
 

@@ -9,6 +9,15 @@ import android.view.View
 import android.view.ViewGroup
 import com.personalization.databinding.AlertDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.IMAGE_URL_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
+
+const val ALERT_DIALOG_TAG = "AlertDialog"
 
 class AlertDialog : BaseInAppDialog() {
 
@@ -55,15 +64,6 @@ class AlertDialog : BaseInAppDialog() {
 
 
     companion object {
-        const val TAG = "AlertDialog"
-        const val TITLE_KEY = "TITLE_KEY"
-        const val MESSAGE_KEY = "MESSAGE_KEY"
-        const val IMAGE_URL_KEY = "IMAGE_URL_KEY"
-        const val BUTTON_POSITIVE_COLOR_KEY = "BUTTON_POSITIVE_COLOR_KEY"
-        const val BUTTON_NEGATIVE_COLOR_KEY = "BUTTON_NEGATIVE_COLOR_KEY"
-        const val BUTTON_POSITIVE_TEXT_KEY = "BUTTON_POSITIVE_TEXT_KEY"
-        const val BUTTON_NEGATIVE_TEXT_KEY = "BUTTON_NEGATIVE_TEXT_KEY"
-
         fun newInstance(
             title: String,
             message: String,
