@@ -21,7 +21,7 @@ plugins {
 def versionFile = file("version.properties")
 def projectVersion = versionFile.text.split("VERSION_NAME=")[1].trim()
 
-project(':personalizationSdk') {
+project(':personalization-sdk') {
 	version=projectVersion
 }
 
