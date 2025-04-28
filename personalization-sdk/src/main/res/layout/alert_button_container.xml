@@ -27,7 +27,7 @@
     </androidx.cardview.widget.CardView>
 
     <androidx.cardview.widget.CardView
-        android:id="@+id/buttonAcceptContainer"
+        android:id="@+id/buttonConfirmContainer"
         android:layout_width="0dp"
         android:layout_height="@dimen/button_height"
         android:layout_marginStart="@dimen/margin_small"
@@ -35,10 +35,10 @@
         app:cardCornerRadius="@dimen/small_corner_radius">
 
         <com.personalization.inAppNotification.view.component.button.Button
-            android:id="@+id/buttonAccept"
+            android:id="@+id/buttonConfirm"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:buttonColor="@color/buttonAcceptColor"
+            app:buttonColor="@color/buttonConfirmColor"
             app:buttonText="@string/alert_dialog_button_accept_title"
             app:textColor="@color/white"
             app:textSize="18sp" />

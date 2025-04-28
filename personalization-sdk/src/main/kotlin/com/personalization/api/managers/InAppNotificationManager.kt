@@ -14,53 +14,53 @@ interface InAppNotificationManager {
         title: String,
         message: String,
         imageUrl: String? = null,
-        buttonPositiveText: String? = null,
-        buttonNegativeText: String? = null,
-        buttonPositiveColor: Int? = null,
-        buttonNegativeColor: Int? = null,
-        onPositiveClick: (() -> Unit)? = null
+        buttonConfirmText: String? = null,
+        buttonDeclineText: String? = null,
+        buttonConfirmColor: Int? = null,
+        buttonDeclineColor: Int? = null,
+        onConfirmClick: (() -> Unit)? = null
     )
 
     fun showFullScreenDialog(
         title: String,
         message: String,
         imageUrl: String? = null,
-        buttonPositiveText: String? = null,
-        buttonNegativeText: String? = null,
-        buttonPositiveColor: Int? = null,
-        buttonNegativeColor: Int? = null,
-        onPositiveClick: (() -> Unit)? = null
+        buttonConfirmText: String? = null,
+        buttonDeclineText: String? = null,
+        buttonConfirmColor: Int? = null,
+        buttonDeclineColor: Int? = null,
+        onConfirmClick: (() -> Unit)? = null
     )
 
-    fun showBottomSheetDialog(
+    fun showBottomDialog(
         title: String,
         message: String,
         imageUrl: String? = null,
-        buttonPositiveText: String? = null,
-        buttonNegativeText: String? = null,
-        buttonPositiveColor: Int? = null,
-        buttonNegativeColor: Int? = null,
-        onPositiveClick: (() -> Unit)? = null
+        buttonConfirmText: String? = null,
+        buttonDeclineText: String? = null,
+        buttonConfirmColor: Int? = null,
+        buttonDeclineColor: Int? = null,
+        onConfirmClick: (() -> Unit)? = null
     )
 
-    fun showTopSheetDialog(
+    fun showTopDialog(
         title: String,
         message: String,
         imageUrl: String? = null,
-        buttonPositiveText: String? = null,
-        buttonNegativeText: String? = null,
-        buttonPositiveColor: Int? = null,
-        buttonNegativeColor: Int? = null,
-        onPositiveClick: (() -> Unit)? = null
+        buttonConfirmText: String? = null,
+        buttonDeclineText: String? = null,
+        buttonConfirmColor: Int? = null,
+        buttonDeclineColor: Int? = null,
+        onConfirmClick: (() -> Unit)? = null
     )
 
     fun showSnackBar(
         view: View,
         message: String,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        buttonConfirmText: String,
+        buttonDeclineText: String,
+        onConfirmClick: () -> Unit,
+        onDeclineClick: () -> Unit
     )
 
 }

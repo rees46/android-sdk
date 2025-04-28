@@ -10,8 +10,8 @@ interface InAppViewContainer {
     val imageContainer: ViewGroup
     val titleTextView: TextView
     val messageTextView: TextView
-    val buttonAcceptContainer: ViewGroup
-    val buttonAccept: TextView
+    val buttonConfirmContainer: ViewGroup
+    val buttonConfirm: TextView
     val buttonDeclineContainer: ViewGroup
     val buttonDecline: TextView
     val closeButton: View

@@ -5,10 +5,10 @@ import android.view.View
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.IMAGE_URL_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
@@ -36,7 +36,7 @@ abstract class BaseInAppDialog : DialogFragment() {
     private fun setupDialog() {
         initImage()
         initTextBlock()
-        initAcceptButton()
+        initConfirmButton()
         initDeclineButton()
         handleCloseButton()
     }
@@ -55,26 +55,26 @@ abstract class BaseInAppDialog : DialogFragment() {
         container.messageTextView.text = arguments?.getString(MESSAGE_KEY).orEmpty()
     }
 
-    private fun initAcceptButton() {
-        val buttonText = arguments?.getString(BUTTON_POSITIVE_TEXT_KEY).orEmpty()
-        val positiveColor = arguments?.getOptionalInt(BUTTON_POSITIVE_COLOR_KEY)
+    private fun initConfirmButton() {
+        val buttonText = arguments?.getString(BUTTON_CONFIRM_TEXT_KEY).orEmpty()
+        val confirmColor = arguments?.getOptionalInt(BUTTON_CONFIRM_COLOR_KEY)
 
         if (buttonText.isEmpty()) {
-            container.buttonAcceptContainer.isVisible = false
+            container.buttonConfirmContainer.isVisible = false
             return
         }
 
-        container.buttonAcceptContainer.addPressEffectDeclarative()
-        container.buttonAccept.text = buttonText
-        positiveColor?.let { container.buttonAccept.setBackgroundColor(it) }
-        container.buttonAcceptContainer.setOnClickListener {
+        container.buttonConfirmContainer.addPressEffectDeclarative()
+        container.buttonConfirm.text = buttonText
+        confirmColor?.let { container.buttonConfirm.setBackgroundColor(it) }
+        container.buttonConfirmContainer.setOnClickListener {
             onButtonClick(true)
         }
     }
 
     private fun initDeclineButton() {
-        val buttonText = arguments?.getString(BUTTON_NEGATIVE_TEXT_KEY).orEmpty()
-        val negativeColor = arguments?.getOptionalInt(BUTTON_NEGATIVE_COLOR_KEY)
+        val buttonText = arguments?.getString(BUTTON_DECLINE_TEXT_KEY).orEmpty()
+        val declineColor = arguments?.getOptionalInt(BUTTON_DECLINE_COLOR_KEY)
 
         if (buttonText.isEmpty()) {
             container.buttonDeclineContainer.isVisible = false
@@ -83,7 +83,7 @@ abstract class BaseInAppDialog : DialogFragment() {
 
         container.buttonDeclineContainer.addPressEffectDeclarative()
         container.buttonDecline.text = buttonText
-        negativeColor?.let { container.buttonDecline.setBackgroundColor(it) }
+        declineColor?.let { container.buttonDecline.setBackgroundColor(it) }
         container.buttonDeclineContainer.setOnClickListener {
             onButtonClick(false)
         }
@@ -94,10 +94,10 @@ abstract class BaseInAppDialog : DialogFragment() {
         container.closeButton.setOnClickListener { dismiss() }
     }
 
-    private fun onButtonClick(isPositiveClick: Boolean) {
-        when (isPositiveClick) {
-            true -> listener?.onPositiveClick()
-            false -> listener?.onNegativeClick()
+    private fun onButtonClick(isConfirmClick: Boolean) {
+        when (isConfirmClick) {
+            true -> listener?.onConfirmClick()
+            false -> listener?.onDeclineClick()
         }
         dismiss()
     }

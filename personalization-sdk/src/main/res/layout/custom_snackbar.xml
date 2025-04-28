@@ -17,7 +17,7 @@
         tools:text="Some snackbar text" />
 
     <Button
-        android:id="@+id/negativeButton"
+        android:id="@+id/declineButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
@@ -25,7 +25,7 @@
         android:text="Decline" />
 
     <Button
-        android:id="@+id/positiveButton"
+        android:id="@+id/confirmButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"

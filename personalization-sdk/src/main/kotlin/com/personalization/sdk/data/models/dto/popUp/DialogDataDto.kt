@@ -4,10 +4,10 @@ data class DialogDataDto(
     val title: String,
     val message: String,
     val imageUrl: String,
-    val buttonPositiveColor: Int,
-    val buttonNegativeColor: Int,
-    val buttonPositiveText: String,
-    val buttonNegativeText: String,
-    val onPositiveClick: () -> Unit,
+    val buttonConfirmColor: Int,
+    val buttonDeclineColor: Int,
+    val buttonConfirmText: String,
+    val buttonDeclineText: String,
+    val onConfirmClick: () -> Unit,
     val position: Position
 )

@@ -47,17 +47,17 @@ class InAppNotificationManagerImpl @Inject constructor(
     private fun extractDialogData(popupDto: PopupDto): DialogDataDto {
         val deepLink =
             popupDto.popupActions?.link?.linkAndroid ?: popupDto.popupActions?.link?.linkWeb
-        val buttonPositiveColor = ContextCompat.getColor(context, R.color.buttonAcceptColor)
-        val buttonNegativeColor = ContextCompat.getColor(context, R.color.colorGray)
+        val buttonConfirmColor = ContextCompat.getColor(context, R.color.buttonConfirmColor)
+        val buttonDeclineColor = ContextCompat.getColor(context, R.color.colorGray)
         val buttonSubscription = popupDto.popupActions?.pushSubscribe?.buttonText
-        val buttonNegativeText = popupDto.popupActions?.close?.buttonText
-        val buttonPositiveText = buttonSubscription ?: popupDto.popupActions?.link?.buttonText
+        val buttonDeclineText = popupDto.popupActions?.close?.buttonText
+        val buttonConfirmText = buttonSubscription ?: popupDto.popupActions?.link?.buttonText
         val imageUrl: String? = popupDto.components?.image
         val title: String? = popupDto.components?.header
         val message: String? = popupDto.components?.text
         val position: Position = popupDto.position
 
-        val onPositiveClick = if (buttonSubscription != null) {
+        val onConfirmClick = if (buttonSubscription != null) {
             { requestPushNotifications() }
         } else {
             { openUrlInBrowser(url = deepLink) }
@@ -67,11 +67,11 @@ class InAppNotificationManagerImpl @Inject constructor(
             title = title.orEmpty(),
             message = message.orEmpty(),
             imageUrl = imageUrl.orEmpty(),
-            buttonPositiveColor = buttonPositiveColor,
-            buttonNegativeColor = buttonNegativeColor,
-            buttonPositiveText = buttonPositiveText.orEmpty(),
-            buttonNegativeText = buttonNegativeText.orEmpty(),
-            onPositiveClick = onPositiveClick,
+            buttonConfirmColor = buttonConfirmColor,
+            buttonDeclineColor = buttonDeclineColor,
+            buttonConfirmText = buttonConfirmText.orEmpty(),
+            buttonDeclineText = buttonDeclineText.orEmpty(),
+            onConfirmClick = onConfirmClick,
             position = position
         )
     }
@@ -82,44 +82,44 @@ class InAppNotificationManagerImpl @Inject constructor(
                 title = dialogData.title,
                 message = dialogData.message,
                 imageUrl = dialogData.imageUrl,
-                buttonPositiveColor = dialogData.buttonPositiveColor,
-                buttonNegativeColor = dialogData.buttonNegativeColor,
-                buttonPositiveText = dialogData.buttonPositiveText,
-                buttonNegativeText = dialogData.buttonNegativeText,
-                onPositiveClick = dialogData.onPositiveClick
+                buttonConfirmColor = dialogData.buttonConfirmColor,
+                buttonDeclineColor = dialogData.buttonDeclineColor,
+                buttonConfirmText = dialogData.buttonConfirmText,
+                buttonDeclineText = dialogData.buttonDeclineText,
+                onConfirmClick = dialogData.onConfirmClick
             )
 
-            Position.BOTTOM -> showBottomSheetDialog(
+            Position.BOTTOM -> showBottomDialog(
                 title = dialogData.title,
                 message = dialogData.message,
                 imageUrl = dialogData.imageUrl,
-                buttonPositiveColor = dialogData.buttonPositiveColor,
-                buttonNegativeColor = dialogData.buttonNegativeColor,
-                buttonPositiveText = dialogData.buttonPositiveText,
-                buttonNegativeText = dialogData.buttonNegativeText,
-                onPositiveClick = dialogData.onPositiveClick
+                buttonConfirmColor = dialogData.buttonConfirmColor,
+                buttonDeclineColor = dialogData.buttonDeclineColor,
+                buttonConfirmText = dialogData.buttonConfirmText,
+                buttonDeclineText = dialogData.buttonDeclineText,
+                onConfirmClick = dialogData.onConfirmClick
             )
 
-            Position.TOP -> showTopSheetDialog(
+            Position.TOP -> showTopDialog(
                 title = dialogData.title,
                 message = dialogData.message,
                 imageUrl = dialogData.imageUrl,
-                buttonPositiveColor = dialogData.buttonPositiveColor,
-                buttonNegativeColor = dialogData.buttonNegativeColor,
-                buttonPositiveText = dialogData.buttonPositiveText,
-                buttonNegativeText = dialogData.buttonNegativeText,
-                onPositiveClick = dialogData.onPositiveClick
+                buttonConfirmColor = dialogData.buttonConfirmColor,
+                buttonDeclineColor = dialogData.buttonDeclineColor,
+                buttonConfirmText = dialogData.buttonConfirmText,
+                buttonDeclineText = dialogData.buttonDeclineText,
+                onConfirmClick = dialogData.onConfirmClick
             )
 
             else -> showFullScreenDialog(
                 title = dialogData.title,
                 message = dialogData.message,
                 imageUrl = dialogData.imageUrl,
-                buttonPositiveColor = dialogData.buttonPositiveColor,
-                buttonNegativeColor = dialogData.buttonNegativeColor,
-                buttonPositiveText = dialogData.buttonPositiveText,
-                buttonNegativeText = dialogData.buttonNegativeText,
-                onPositiveClick = dialogData.onPositiveClick
+                buttonConfirmColor = dialogData.buttonConfirmColor,
+                buttonDeclineColor = dialogData.buttonDeclineColor,
+                buttonConfirmText = dialogData.buttonConfirmText,
+                buttonDeclineText = dialogData.buttonDeclineText,
+                onConfirmClick = dialogData.onConfirmClick
             )
         }
     }
@@ -128,28 +128,28 @@ class InAppNotificationManagerImpl @Inject constructor(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText: String?,
-        buttonNegativeText: String?,
-        buttonPositiveColor: Int?,
-        buttonNegativeColor: Int?,
-        onPositiveClick: (() -> Unit)?
+        buttonConfirmText: String?,
+        buttonDeclineText: String?,
+        buttonConfirmColor: Int?,
+        buttonDeclineColor: Int?,
+        onConfirmClick: (() -> Unit)?
     ) {
         val dialog = AlertDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
-            buttonPositiveColor = buttonPositiveColor,
-            buttonNegativeColor = buttonNegativeColor,
-            buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText
+            buttonConfirmColor = buttonConfirmColor,
+            buttonDeclineColor = buttonDeclineColor,
+            buttonConfirmText = buttonConfirmText,
+            buttonDeclineText = buttonDeclineText
         )
 
         dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() {
-                    onPositiveClick?.invoke()
+                override fun onConfirmClick() {
+                    onConfirmClick?.invoke()
                 }
-                override fun onNegativeClick() {
+                override fun onDeclineClick() {
                     dialog.dismiss()
                 }
             }
@@ -165,28 +165,28 @@ class InAppNotificationManagerImpl @Inject constructor(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText: String?,
-        buttonNegativeText: String?,
-        buttonPositiveColor: Int?,
-        buttonNegativeColor: Int?,
-        onPositiveClick: (() -> Unit)?
+        buttonConfirmText: String?,
+        buttonDeclineText: String?,
+        buttonConfirmColor: Int?,
+        buttonDeclineColor: Int?,
+        onConfirmClick: (() -> Unit)?
     ) {
         val dialog = FullScreenDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
-            buttonPositiveColor = buttonPositiveColor,
-            buttonNegativeColor = buttonNegativeColor,
-            buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
+            buttonConfirmColor = buttonConfirmColor,
+            buttonDeclineColor = buttonDeclineColor,
+            buttonConfirmText = buttonConfirmText,
+            buttonDeclineText = buttonDeclineText,
         )
 
         dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() {
-                    onPositiveClick?.invoke()
+                override fun onConfirmClick() {
+                    onConfirmClick?.invoke()
                 }
-                override fun onNegativeClick() {
+                override fun onDeclineClick() {
                     dialog.dismiss()
                 }
             }
@@ -198,32 +198,32 @@ class InAppNotificationManagerImpl @Inject constructor(
         )
     }
 
-    override fun showBottomSheetDialog(
+    override fun showBottomDialog(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText: String?,
-        buttonNegativeText: String?,
-        buttonPositiveColor: Int?,
-        buttonNegativeColor: Int?,
-        onPositiveClick: (() -> Unit)?
+        buttonConfirmText: String?,
+        buttonDeclineText: String?,
+        buttonConfirmColor: Int?,
+        buttonDeclineColor: Int?,
+        onConfirmClick: (() -> Unit)?
     ) {
         val dialog = BottomSheetDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
-            buttonPositiveColor = buttonPositiveColor,
-            buttonNegativeColor = buttonNegativeColor,
-            buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
+            buttonConfirmColor = buttonConfirmColor,
+            buttonDeclineColor = buttonDeclineColor,
+            buttonConfirmText = buttonConfirmText,
+            buttonDeclineText = buttonDeclineText,
         )
 
         dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() {
-                    onPositiveClick?.invoke()
+                override fun onConfirmClick() {
+                    onConfirmClick?.invoke()
                 }
-                override fun onNegativeClick() {
+                override fun onDeclineClick() {
                     dialog.dismiss()
                 }
             }
@@ -235,32 +235,32 @@ class InAppNotificationManagerImpl @Inject constructor(
         )
     }
 
-    override fun showTopSheetDialog(
+    override fun showTopDialog(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText: String?,
-        buttonNegativeText: String?,
-        buttonPositiveColor: Int?,
-        buttonNegativeColor: Int?,
-        onPositiveClick: (() -> Unit)?
+        buttonConfirmText: String?,
+        buttonDeclineText: String?,
+        buttonConfirmColor: Int?,
+        buttonDeclineColor: Int?,
+        onConfirmClick: (() -> Unit)?
     ) {
         val dialog = TopSheetDialog.newInstance(
             title = title,
             message = message,
             imageUrl = imageUrl,
-            buttonPositiveColor = buttonPositiveColor,
-            buttonNegativeColor = buttonNegativeColor,
-            buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
+            buttonConfirmColor = buttonConfirmColor,
+            buttonDeclineColor = buttonDeclineColor,
+            buttonConfirmText = buttonConfirmText,
+            buttonDeclineText = buttonDeclineText,
         )
 
         dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() {
-                    onPositiveClick?.invoke()
+                override fun onConfirmClick() {
+                    onConfirmClick?.invoke()
                 }
-                override fun onNegativeClick() {
+                override fun onDeclineClick() {
                     dialog.dismiss()
                 }
             }
@@ -275,17 +275,17 @@ class InAppNotificationManagerImpl @Inject constructor(
     override fun showSnackBar(
         view: View,
         message: String,
-        buttonPositiveText: String,
-        buttonNegativeText: String,
-        onPositiveClick: () -> Unit,
-        onNegativeClick: () -> Unit
+        buttonConfirmText: String,
+        buttonDeclineText: String,
+        onConfirmClick: () -> Unit,
+        onDeclineClick: () -> Unit
     ) {
         Snackbar(view).show(
             message = message,
-            buttonPositiveText = buttonPositiveText,
-            buttonNegativeText = buttonNegativeText,
-            onPositiveClick = onPositiveClick,
-            onNegativeClick = onNegativeClick
+            buttonConfirmText = buttonConfirmText,
+            buttonDeclineText = buttonDeclineText,
+            onConfirmClick = onConfirmClick,
+            onDeclineClick = onDeclineClick
         )
     }
 

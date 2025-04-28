@@ -11,10 +11,10 @@ import com.personalization.databinding.AlertDialogBinding
 import com.personalization.inAppNotification.view.component.container.InAppViewContainer
 import com.personalization.inAppNotification.view.component.dialog.BaseInAppDialog
 import com.personalization.inAppNotification.view.component.dialog.alert.container.AlertDialogViewContainer
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_COLOR_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_NEGATIVE_TEXT_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_COLOR_KEY
-import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_POSITIVE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_DECLINE_TEXT_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_COLOR_KEY
+import com.personalization.inAppNotification.view.component.utils.InAppConsts.BUTTON_CONFIRM_TEXT_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.IMAGE_URL_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.MESSAGE_KEY
 import com.personalization.inAppNotification.view.component.utils.InAppConsts.TITLE_KEY
@@ -58,20 +58,20 @@ class AlertDialog : BaseInAppDialog() {
             title: String,
             message: String,
             imageUrl: String?,
-            buttonPositiveText: String?,
-            buttonNegativeText: String?,
-            buttonPositiveColor: Int?,
-            buttonNegativeColor: Int?,
+            buttonConfirmText: String?,
+            buttonDeclineText: String?,
+            buttonConfirmColor: Int?,
+            buttonDeclineColor: Int?,
         ): AlertDialog {
             val dialog = AlertDialog()
             val args = Bundle().apply {
                 putString(TITLE_KEY, title)
                 putString(MESSAGE_KEY, message)
                 putString(IMAGE_URL_KEY, imageUrl)
-                putString(BUTTON_POSITIVE_TEXT_KEY, buttonPositiveText)
-                putString(BUTTON_NEGATIVE_TEXT_KEY, buttonNegativeText)
-                buttonPositiveColor?.let { putInt(BUTTON_POSITIVE_COLOR_KEY, it) }
-                buttonNegativeColor?.let { putInt(BUTTON_NEGATIVE_COLOR_KEY, it) }
+                putString(BUTTON_CONFIRM_TEXT_KEY, buttonConfirmText)
+                putString(BUTTON_DECLINE_TEXT_KEY, buttonDeclineText)
+                buttonConfirmColor?.let { putInt(BUTTON_CONFIRM_COLOR_KEY, it) }
+                buttonDeclineColor?.let { putInt(BUTTON_DECLINE_COLOR_KEY, it) }
             }
             dialog.arguments = args
             return dialog
