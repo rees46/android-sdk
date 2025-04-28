@@ -180,7 +180,7 @@ class InAppNotificationManagerImpl @Inject constructor(
             buttonNegativeText = buttonNegativeText,
         )
 
-        dialog.setListener(
+        dialog.listener = (
             object : NotificationClickListener {
                 override fun onPositiveClick() = onPositiveClick()
                 override fun onNegativeClick() {
@@ -191,7 +191,7 @@ class InAppNotificationManagerImpl @Inject constructor(
 
         dialog.show(
             /* manager = */ fragmentManager,
-            /* tag = */ FullScreenDialog.TAG
+            /* tag = */ FULL_SCREEN_DIALOG_TAG
         )
     }
 
