@@ -231,11 +231,11 @@ class InAppNotificationManagerImpl @Inject constructor(
         title: String,
         message: String,
         imageUrl: String?,
-        buttonPositiveText: String,
+        buttonPositiveText: String?,
         buttonNegativeText: String?,
-        buttonPositiveColor: Int,
-        buttonNegativeColor: Int,
-        onPositiveClick: () -> Unit
+        buttonPositiveColor: Int?,
+        buttonNegativeColor: Int?,
+        onPositiveClick: (() -> Unit)?
     ) {
         val dialog = TopSheetDialog.newInstance(
             title = title,
@@ -247,9 +247,11 @@ class InAppNotificationManagerImpl @Inject constructor(
             buttonNegativeText = buttonNegativeText,
         )
 
-        dialog.setListener(
+        dialog.listener = (
             object : NotificationClickListener {
-                override fun onPositiveClick() = onPositiveClick()
+                override fun onPositiveClick() {
+                    onPositiveClick?.invoke()
+                }
                 override fun onNegativeClick() {
                     dialog.dismiss()
                 }
