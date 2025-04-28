@@ -8,5 +8,6 @@ data class PopupDto(
     val html: String,
     val components: Components?,
     val webPushSystem: Boolean,
+    val targetScreen: String?,
     val popupActions: PopupActions?
 )
