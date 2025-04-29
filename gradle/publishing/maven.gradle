@@ -10,17 +10,15 @@ publishing {
         maven {
             name = "sonatype"
 
-            // def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            // def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            // url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            val repositoryId =
+            System.getenv("SONATYPE_REPOSITORY_ID") ?: error("Missing env variable: SONATYPE_REPOSITORY_ID")
+
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
+            // def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/repository/${repositoryId}/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 
             println "Configured Sonatype repository with URL: ${url}"
-
-            setUrl {
-                val repositoryId =
-                System.getenv("SONATYPE_REPOSITORY_ID") ?: error("Missing env variable: SONATYPE_REPOSITORY_ID")
-              "https://oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
-            }
 
             credentials {
                 username sonataUsername
