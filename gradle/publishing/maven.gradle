@@ -15,7 +15,6 @@ publishing {
 
             def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
             def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
-            // def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/repository/${repositoryId}/"
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 
             println "Configured Sonatype repository with URL: ${url}"
