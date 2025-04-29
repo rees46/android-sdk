@@ -1,5 +1,5 @@
 deletions:
-  - .github/workflows/repo-sync.yaml
+  - .github/workflows/repo-sync.yml
   - .github/workflows/constants/replacements.yml
 ignore:
   - version.properties
