@@ -6,6 +6,7 @@ on:
       # TODO
       # - master
       - debug
+      - refactor/replacements
     paths-ignore:
       - ".github/**"
       - "version.properties"
