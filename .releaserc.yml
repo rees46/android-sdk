@@ -4,6 +4,7 @@
     [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
+      ["@semantic-release/github", { "assets": "source.tgz" }],
       [
         "@semantic-release/git",
         {
@@ -13,7 +14,9 @@
       ],
       [
         "@semantic-release/exec",
-        { "prepareCmd": "./scripts/update_version.sh ${nextRelease.version}" },
+        {
+          "prepareCmd": "chmod +x ./scripts/update_version.sh && ./scripts/update_version.sh ${nextRelease.version} && tar -czvf source.tgz *",
+        },
       ],
     ],
 }

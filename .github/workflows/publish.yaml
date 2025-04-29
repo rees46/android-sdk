@@ -10,8 +10,8 @@ on:
 
 jobs:
   publish:
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@1cfee7e2e762eed3a3d7d67c413aa0bae7f5ffae
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@74f6b8f28adea60814ac891122f02edd0643ffc7
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}

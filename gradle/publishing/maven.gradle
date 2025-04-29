@@ -1,3 +1,4 @@
+if (project.hasProperty('sonatype')) {
 publishing {
     repositories {
         if (isPublishingInMavenLocal) {
@@ -10,8 +11,10 @@ publishing {
         maven {
             name = "sonatype"
 
+            def repositoryId = System.getenv("SONATYPE_REPOSITORY_ID") ?: error("Missing env variable: SONATYPE_REPOSITORY_ID")
+
             def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 
             println "Configured Sonatype repository with URL: ${url}"
@@ -23,6 +26,7 @@ publishing {
 
         }
 	}
+}
 }
 
 nexusPublishing {
