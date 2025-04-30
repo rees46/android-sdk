@@ -3,10 +3,7 @@ name: Bump version
 on:
   push:
     branches:
-      # TODO
-      # - master
-      - debug
-      - refactor/replacements
+      - master
     paths-ignore:
       - ".github/**"
       - "version.properties"
@@ -15,15 +12,10 @@ on:
 jobs:
   bump-version:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.pull_request.head.ref, 'release/'))
-    runs-on: ubuntu-latest
-    steps:
-      - name: debug
-        run: |
-          echo 'triggered'
-    # uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
-    # permissions: write-all
-    # secrets:
-    #   appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
-    # with:
-    #   appId: ${{ vars.PUBLIVERSIONER_ID }}
-    #   reviewerUsername: iwwwanow
+    uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
+    permissions: write-all
+    secrets:
+      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+    with:
+      appId: ${{ vars.PUBLIVERSIONER_ID }}
+      reviewerUsername: iwwwanow
