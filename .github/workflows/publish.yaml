@@ -11,7 +11,7 @@ on:
 jobs:
   publish:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@74f6b8f28adea60814ac891122f02edd0643ffc7
+    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
     permissions: write-all
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
