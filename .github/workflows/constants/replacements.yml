@@ -1,14 +1,16 @@
 deletions:
   - .github/workflows/repo-sync.yml
   - .github/workflows/constants/replacements.yml
+  - personalization-sdk/src/rees46/
 ignore:
   - version.properties
   - app/src/main/res/drawable/ic_app.xml
   - app/src/main/res/drawable/ic_logo.xml
-  - personalization-sdk/src
 replacements:
   - from: REES_MAVEN_URL
     to: MAVEN_URL
+  - from: SONATYPE_REES46
+    to: SONATYPE
   - from: REES_REPO_URL
     to: REPO_URL
   - from: REES_VARIANT_NAME
