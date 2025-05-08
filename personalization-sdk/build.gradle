@@ -96,6 +96,9 @@ dependencies {
     implementation("androidx.test:rules:1.6.1")
     implementation("androidx.test.ext:junit:1.2.1")
 
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.5")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.5")
+
     implementation("com.google.android.gms:play-services-ads-identifier:17.0.0")
 
     kapt 'com.google.dagger:dagger-compiler:2.48'
