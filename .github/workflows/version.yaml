@@ -16,6 +16,7 @@ jobs:
     permissions: write-all
     secrets:
       appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+      githubToken: ${{ secrets.GITHUB_TOKEN }}
     with:
       appId: ${{ vars.PUBLIVERSIONER_ID }}
       reviewerUsername: iwwwanow
