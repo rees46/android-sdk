@@ -6,3 +6,4 @@ pluginManagement {
 }
 
 include ':personalization-sdk'
+
