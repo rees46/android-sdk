@@ -115,7 +115,7 @@ open class SDK {
     fun initialize(
         context: Context,
         shopId: String,
-        apiDomain: String? = null,
+        apiDomain: String = "api.rees46.ru",
         tag: String = TAG,
         preferencesKey: String = DEFAULT_STORAGE_KEY,
         stream: String = ANDROID,
