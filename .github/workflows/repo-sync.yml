@@ -15,9 +15,7 @@ jobs:
     outputs:
       replacements: ${{ steps.getReplacementsStep.outputs.replacements }}
     steps:
-      # TODO uncomment
-      # - uses: rees46/workflow/.github/actions/sync/read-replacements@master
-      - uses: rees46/workflow/.github/actions/sync/read-replacements@refactor/replacements
+      - uses: rees46/workflow/.github/actions/sync/read-replacements@master
         id: getReplacementsStep
         with:
           appId: ${{ vars.PUBLIVERSIONER_ID }}
