@@ -15,8 +15,8 @@ jobs:
     uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
     permissions: write-all
     secrets:
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+      appSecret: ${{ secrets.VERSIONER_SECRET }}
       githubToken: ${{ secrets.GITHUB_TOKEN }}
     with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
+      appId: ${{ vars.VERSIONER_ID }}
       reviewerUsername: iwwwanow
