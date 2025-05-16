@@ -14,7 +14,7 @@ jobs:
     uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
     permissions: write-all
     with:
-      appId: ${{ vars.PUBLIVERSIONER_ID }}
+      appId: ${{ vars.PUBLISHER_ID }}
       PROPERTIES_FILE: gradle.properties
       SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
       SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
@@ -24,8 +24,8 @@ jobs:
       MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
       GRADLE_VERSION: 8.8
     secrets:
+      appSecret: ${{ secrets.PUBLISHER_SECRET }}
       SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
-      appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
       SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
       SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
       OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
