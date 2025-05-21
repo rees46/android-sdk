@@ -6,12 +6,15 @@ on:
       - master
     paths-ignore:
       - ".github/**"
-      - "version.properties"
   workflow_dispatch:
 
 jobs:
+  validate-merge-commit:
+    uses: rees46/workflow/.github/workflows/reusable-validate-commit.yaml@master
+
   bump-version:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.pull_request.head.ref, 'release/'))
+    needs: validate-merge-commit
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.validate-merge-commit.outputs.is_valid == 'true')
     uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
     permissions: write-all
     secrets:
