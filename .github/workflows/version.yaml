@@ -10,7 +10,7 @@ on:
 
 jobs:
   validate-merge-commit:
-    uses: rees46/workflow/.github/workflows/reusable-validate-commit.yaml@master
+    uses: rees46/workflow/.github/workflows/reusable-check-commit-message.yaml@master
 
   bump-version:
     needs: validate-merge-commit
