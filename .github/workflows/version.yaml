@@ -9,12 +9,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-merge-commit:
-    uses: rees46/workflow/.github/workflows/reusable-check-commit-message.yaml@master
+  find-release-commit:
+    uses: rees46/workflow/.github/workflows/reusable-release-commit-finder.yaml@master
+    secrets:
+      githubToken: ${{ secrets.GITHUB_TOKEN }}
 
   bump-version:
-    needs: validate-merge-commit
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.validate-merge-commit.outputs.is_valid == 'true')
+    needs: find-release-commit
+    if: |
+      github.event_name == 'workflow_dispatch' || (
+        github.event_name == 'push' &&
+        needs.find-release-commit.outputs.hasCommit == 'false')
     uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
     permissions: write-all
     secrets:
