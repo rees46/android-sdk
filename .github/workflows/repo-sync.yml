@@ -17,6 +17,10 @@ jobs:
     steps:
       - uses: rees46/workflow/.github/actions/sync/read-replacements@master
         id: getReplacementsStep
+        with:
+          appId: ${{ vars.PUBLIVERSIONER_ID }}
+          appSecret: ${{ secrets.PUBLIVERSIONER_SECRET }}
+          replacementsPath: github/repo-sync-replacements/android-sdk.yml
 
   repoSync:
     needs: prepare
