@@ -4,7 +4,14 @@
     [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
-      ["@semantic-release/github", { "assets": "source.tgz" }],
+      [
+        "@semantic-release/github",
+        {
+          "assets": "source.tgz",
+          "successComment": false,
+          "releasedLabels": false,
+        },
+      ],
       [
         "@semantic-release/git",
         {
