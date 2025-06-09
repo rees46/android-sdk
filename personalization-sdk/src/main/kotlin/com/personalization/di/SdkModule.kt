@@ -80,11 +80,13 @@ class SdkModule {
     fun provideTrackEventManager(
         getRecommendedByUseCase: GetRecommendedByUseCase,
         setRecommendedByUseCase: SetRecommendedByUseCase,
-        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+        inAppNotificationManager: InAppNotificationManager
     ): TrackEventManager = TrackEventManagerImpl(
         getRecommendedByUseCase = getRecommendedByUseCase,
         setRecommendedByUseCase = setRecommendedByUseCase,
-        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase,
+        inAppNotificationManager = inAppNotificationManager,
     )
 
     @Singleton
