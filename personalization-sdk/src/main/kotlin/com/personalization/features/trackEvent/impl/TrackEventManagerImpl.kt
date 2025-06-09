@@ -69,7 +69,20 @@ internal class TrackEventManagerImpl @Inject constructor(
             params.put(VALUE_PARAMETER, value)
         }
 
-        sendNetworkMethodUseCase.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
+        val internalListener = object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    handlePopup(response)
+                }
+                listener?.onSuccess(response)
+            }
+        }
+
+        sendNetworkMethodUseCase.postAsync(
+            CUSTOM_PUSH_REQUEST,
+            params.build(),
+            internalListener
+        )
     }
 
     private fun handlePopup(response: JSONObject) {
