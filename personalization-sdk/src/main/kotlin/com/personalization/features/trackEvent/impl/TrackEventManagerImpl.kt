@@ -3,17 +3,22 @@ package com.personalization.features.trackEvent.impl
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.params.ProductItemParams
+import com.personalization.sdk.data.mappers.popup.PopupDtoMapper
+import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUP
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
+import org.json.JSONObject
 import javax.inject.Inject
 
 internal class TrackEventManagerImpl @Inject constructor(
     val getRecommendedByUseCase: GetRecommendedByUseCase,
     val setRecommendedByUseCase: SetRecommendedByUseCase,
-    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+    private val inAppNotificationManager: InAppNotificationManager
 ) : TrackEventManager {
 
     override fun track(event: TrackEvent, productId: String) {
@@ -31,8 +36,23 @@ internal class TrackEventManagerImpl @Inject constructor(
             params.put(lastRecommendedBy)
             setRecommendedByUseCase(null)
         }
-        sendNetworkMethodUseCase.postAsync(PUSH_REQUEST, params.build(), listener)
+
+        val internalListener = object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    handlePopup(response)
+                }
+                listener?.onSuccess(response)
+            }
+        }
+
+        sendNetworkMethodUseCase.postAsync(
+            PUSH_REQUEST,
+            params.build(),
+            internalListener
+        )
     }
+
 
     override fun customTrack(
         event: String,
