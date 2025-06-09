@@ -72,6 +72,13 @@ internal class TrackEventManagerImpl @Inject constructor(
         sendNetworkMethodUseCase.postAsync(CUSTOM_PUSH_REQUEST, params.build(), listener)
     }
 
+    private fun handlePopup(response: JSONObject) {
+        val popUpData = response.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) }
+        if (popUpData != null) {
+            inAppNotificationManager.shopPopUp(popupDto = popUpData)
+        }
+    }
+
     companion object {
         private const val CUSTOM_PUSH_REQUEST = "push/custom"
         private const val PUSH_REQUEST = "push"
