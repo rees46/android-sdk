@@ -28,6 +28,7 @@ object PopupDtoMapper {
             components = json.optString(PARAM_COMPONENTS)?.let {
                 ComponentsMapper.map(JSONObject(it))
             },
+            targetScreen = "CategoryFragment",
             webPushSystem = json.optBoolean(PARAM_WEB_PUSH_SYSTEM),
             popupActions = json.optString(PARAM_POPUP_ACTIONS)?.let {
                 PopupActionsMapper.map(JSONObject(it))
