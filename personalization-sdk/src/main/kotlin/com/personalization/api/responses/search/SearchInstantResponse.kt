@@ -6,19 +6,14 @@ import com.personalization.api.responses.product.Product
 data class SearchInstantResponse(
     @SerializedName("book_author")
     val bookAuthor: List<Any>,
-    @SerializedName("categories")
     val categories: List<Category>,
-    @SerializedName("clarification")
     val clarification: Boolean,
-    @SerializedName("collections")
     val collections: List<Any>,
-    @SerializedName("html")
     val html: String,
-    @SerializedName("products")
     val products: List<Product>,
+    val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
-    @SerializedName("queries")
     val queries: List<Any>,
     @SerializedName("requests_count")
     val requestsCount: Int,

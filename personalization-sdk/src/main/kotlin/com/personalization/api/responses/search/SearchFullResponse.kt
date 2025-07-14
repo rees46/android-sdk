@@ -4,15 +4,10 @@ import com.google.gson.annotations.SerializedName
 import com.personalization.api.responses.product.Product
 
 data class SearchFullResponse(
-    @SerializedName("brands")
     val brands: List<Brand>,
-    @SerializedName("categories")
     val categories: List<Category>,
-    @SerializedName("clarification")
     val clarification: Boolean,
-    @SerializedName("collections")
     val collections: List<Any>,
-    @SerializedName("html")
     val html: String,
     @SerializedName("price_median")
     val priceMedian: Double,
@@ -20,8 +15,8 @@ data class SearchFullResponse(
     val priceRange: PriceRange,
     @SerializedName("price_ranges")
     val priceRanges: List<PriceRanges>,
-    @SerializedName("products")
     val products: List<Product>,
+    val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
     @SerializedName("requests_count")
