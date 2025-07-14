@@ -22,6 +22,7 @@ data class SearchFullResponse(
     val priceRanges: List<PriceRanges>,
     @SerializedName("products")
     val products: List<Product>,
+    val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
     @SerializedName("requests_count")

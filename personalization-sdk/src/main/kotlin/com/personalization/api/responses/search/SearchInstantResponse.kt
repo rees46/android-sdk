@@ -16,6 +16,7 @@ data class SearchInstantResponse(
     val html: String,
     @SerializedName("products")
     val products: List<Product>,
+    val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
     @SerializedName("queries")
