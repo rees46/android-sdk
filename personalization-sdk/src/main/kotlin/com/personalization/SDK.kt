@@ -42,6 +42,8 @@ import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
 
+private const val GAID_KEY = "google_advertising_id"
+
 open class SDK {
 
     internal lateinit var context: Context
@@ -162,12 +164,10 @@ open class SDK {
         CoroutineScope(Dispatchers.IO).launch {
             val advertisingId = initializeAdvertisingIdUseCase.invoke()
 
-            debug("GAID initialized: $advertisingId")
-
             profile(
                 data = ProfileParams
                     .Builder()
-                    .put("google_advertising_id", advertisingId)
+                    .put(GAID_KEY, advertisingId)
                     .build(),
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
