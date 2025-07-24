@@ -160,8 +160,27 @@ open class SDK {
         )
 
         CoroutineScope(Dispatchers.IO).launch {
-            initializeAdvertisingIdUseCase.invoke()
+            val advertisingId = initializeAdvertisingIdUseCase.invoke()
+
+            debug("GAID initialized: $advertisingId")
+
+            profile(
+                data = ProfileParams
+                    .Builder()
+                    .put("google_advertising_id", advertisingId)
+                    .build(),
+                listener = object : OnApiCallbackListener() {
+                    override fun onSuccess(response: JSONObject?) {
+                        debug("Profile GAID sent successfully: $advertisingId")
+                    }
+
+                    override fun onError(code: Int, msg: String?) {
+                        warn("Profile GAID send failed: $code | $msg")
+                    }
+                }
+            )
         }
+
     }
 
     private fun initNetworkUseCase(url: String?) {
