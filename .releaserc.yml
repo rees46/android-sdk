@@ -1,28 +1,28 @@
 {
-  branches: ["master"],
+  branches: ['master'],
   plugins:
     [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
+      '@semantic-release/commit-analyzer',
+      '@semantic-release/release-notes-generator',
       [
-        "@semantic-release/github",
+        '@semantic-release/github',
         {
-          "assets": "source.tgz",
-          "successComment": false,
-          "releasedLabels": false,
+          'assets': 'source.tgz',
+          'successComment': false,
+          'releasedLabels': false,
         },
       ],
       [
-        "@semantic-release/git",
+        '@semantic-release/git',
         {
-          "assets": ["version.properties"],
-          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
+          'assets': ['version.properties'],
+          'message': "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}",
         },
       ],
       [
-        "@semantic-release/exec",
+        '@semantic-release/exec',
         {
-          "prepareCmd": "chmod +x ./scripts/update_version.sh && ./scripts/update_version.sh ${nextRelease.version} && tar -czvf source.tgz *",
+          'prepareCmd': 'chmod +x ./scripts/update_version.sh && ./scripts/update_version.sh ${nextRelease.version} && tar --exclude=source.tgz -czvf source.tgz *',
         },
       ],
     ],

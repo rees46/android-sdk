@@ -11,3 +11,5 @@ sample/google-services.json
 .externalNativeBuild
 test.key
 *.iml
+node_modules
+*.tgz
