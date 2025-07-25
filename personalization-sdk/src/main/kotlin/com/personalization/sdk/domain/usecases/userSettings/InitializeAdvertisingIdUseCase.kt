@@ -8,8 +8,9 @@ internal class InitializeAdvertisingIdUseCase @Inject constructor(
     private val advertisingRepository: AdvertisingRepository,
     private val userSettingsRepository: UserSettingsRepository
 ) {
-    suspend fun invoke() {
+    suspend fun invoke(): String {
         val advertisingId = advertisingRepository.fetchAdvertisingId()
         userSettingsRepository.updateAdvertisingId(advertisingId)
+        return advertisingId
     }
 }
