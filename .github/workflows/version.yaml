@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths-ignore:
-      - '.github/**'
+      - .github/**
   workflow_dispatch:
 
 jobs:
@@ -27,4 +27,4 @@ jobs:
       githubToken: ${{ secrets.GITHUB_TOKEN }}
     with:
       appId: ${{ vars.VERSIONER_ID }}
-      reviewerUsername: torinasakura
+      reviewerUsername: ${{ vars.REVIEWER_USERNAME }}
