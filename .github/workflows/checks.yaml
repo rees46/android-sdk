@@ -2,11 +2,23 @@ name: Android SDK PR checks
 
 on:
   pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
     paths-ignore:
-      - ".github/**"
+      - .github
+      - .husky
+      - .run
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   Check:
+    if: ${{ !startsWith(github.ref_name, 'release') }}
     uses: rees46/workflow/.github/workflows/reusable-android-checks.yaml@master
     permissions: write-all
     with:
