@@ -38,4 +38,4 @@ jobs:
       replacements: ${{ needs.prepare.outputs.replacements }}
       repositoryOwner: personaclick
       targetRepository: personaclick/android-sdk
-      reviewerUsername: iwwwanow
+      reviewerUsername: ${{ vars.REVIEWER_USERNAME }}
