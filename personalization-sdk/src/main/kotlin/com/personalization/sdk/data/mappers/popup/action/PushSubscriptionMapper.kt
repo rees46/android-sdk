@@ -5,7 +5,9 @@ import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_
 import org.json.JSONObject
 
 object PushSubscriptionMapper {
-    fun map(json: JSONObject): PushSubscribe = PushSubscribe(
-        buttonText = json.optString(PARAM_BUTTON_TEXT)
-    )
+    fun map(json: JSONObject): PushSubscribe? {
+        val text = json.optString(PARAM_BUTTON_TEXT)
+        if (text.isEmpty()) return PushSubscribe(buttonText = null)
+        else return PushSubscribe(buttonText = text)
+    }
 }
