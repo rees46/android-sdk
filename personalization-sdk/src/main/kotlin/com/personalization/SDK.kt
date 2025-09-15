@@ -21,6 +21,7 @@ import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
+import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -110,6 +111,9 @@ open class SDK {
 
     @Inject
     lateinit var notificationHelper: NotificationHelper
+
+    @Inject
+    lateinit var NPSRepository: NPSRepository
 
     /**
      * @param shopId Shop key
@@ -403,6 +407,22 @@ open class SDK {
             warn("Search not initialized")
         }
     }
+
+    suspend fun review(
+        rate: Int,
+        channel: String,
+        category: String,
+        orderId: String? = null,
+        comment: String? = null,
+        listener: OnApiCallbackListener? = null
+    ) = NPSRepository.review(
+        rate = rate,
+        channel = channel,
+        category = category,
+        orderId = orderId,
+        comment = comment,
+        listener = listener
+    )
 
     /**
      * Request a dynamic block of recommendations
