@@ -408,7 +408,7 @@ open class SDK {
         }
     }
 
-    suspend fun review(
+    fun review(
         rate: Int,
         channel: String,
         category: String,

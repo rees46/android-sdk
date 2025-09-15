@@ -3,7 +3,7 @@ package com.personalization.sdk.domain.repositories
 import com.personalization.api.OnApiCallbackListener
 
 interface NPSRepository {
-    suspend fun review(
+    fun review(
         rate: Int,
         channel: String,
         category: String,

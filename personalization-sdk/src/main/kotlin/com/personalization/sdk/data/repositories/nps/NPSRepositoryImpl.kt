@@ -17,7 +17,7 @@ class NPSRepositoryImpl @Inject constructor(
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) : NPSRepository {
 
-    override suspend fun review(
+    override fun review(
         rate: Int,
         channel: String,
         category: String,
