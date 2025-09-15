@@ -3,10 +3,12 @@ package com.personalization.sdk.data.di
 import com.personalization.sdk.data.repositories.advertising.AdvertisingRepositoryImpl
 import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.data.repositories.notification.NotificationRepositoryImpl
+import com.personalization.sdk.data.repositories.nps.NPSRepositoryImpl
 import com.personalization.sdk.data.repositories.preferences.PreferencesRepositoryImpl
 import com.personalization.sdk.data.repositories.recommendation.RecommendationRepositoryImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
 import com.personalization.sdk.domain.repositories.AdvertisingRepository
+import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.PreferencesRepository
@@ -38,5 +40,8 @@ abstract class RepositoriesModule {
 
     @Binds
     abstract fun bindAdvertisingRepository(impl: AdvertisingRepositoryImpl): AdvertisingRepository
+
+    @Binds
+    abstract fun bindNPSRepository(impl: NPSRepositoryImpl): NPSRepository
 
 }
