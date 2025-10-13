@@ -1,3 +1,4 @@
+if (project.hasProperty('github')) {
 publishing {
     repositories {
         maven {
@@ -12,4 +13,5 @@ publishing {
             println "Configured GitHub Packages repository with URL: ${publishUrl}"
         }
 	}
+}
 }
