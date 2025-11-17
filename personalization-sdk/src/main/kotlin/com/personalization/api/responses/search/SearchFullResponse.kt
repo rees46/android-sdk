@@ -19,6 +19,8 @@ data class SearchFullResponse(
     val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
+    @SerializedName("query_fixed")
+    val queryFixed: String? = null,
     @SerializedName("requests_count")
     val requestsCount: Int,
     @SerializedName("search_query")
