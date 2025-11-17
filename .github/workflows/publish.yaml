@@ -38,13 +38,14 @@ jobs:
       SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
   publish-maven-central:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.merged == true &&
-        startsWith(github.event.pull_request.head.ref, 'release/')
-      )
+    if: false  # Temporarily disabled
+    # if: |
+    #   github.event_name == 'workflow_dispatch' ||
+    #   (
+    #     github.event_name == 'pull_request' &&
+    #     github.event.pull_request.merged == true &&
+    #     startsWith(github.event.pull_request.head.ref, 'release/')
+    #   )
     uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
     permissions: write-all
     with:
