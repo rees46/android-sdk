@@ -4,7 +4,6 @@ on:
   pull_request:
     types:
       - opened
-      - edited
       - reopened
       - synchronize
     paths-ignore:
@@ -18,7 +17,7 @@ concurrency:
 
 jobs:
   Check:
-    if: ${{ !startsWith(github.ref_name, 'release') }}
+    if: github.event.pull_request.draft == false
     uses: rees46/workflow/.github/workflows/reusable-android-checks.yaml@master
     permissions: write-all
     with:
