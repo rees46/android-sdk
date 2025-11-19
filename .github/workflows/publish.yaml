@@ -54,8 +54,9 @@ jobs:
       - name: Configure gradle.properties for GitHub Packages
         run: |
           echo "github=true" >> gradle.properties
-          echo "ossrhUsername=${{ github.repository_owner }}" >> gradle.properties
-          echo "ossrhPassword=${{ steps.app-token.outputs.token }}" >> gradle.properties
+          # Use the same OSSRH credentials that were used before (GitHub credentials)
+          echo "ossrhUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties
+          echo "ossrhPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties
           echo "signing_keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
           echo "signing_password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties
           echo "signing_secretKeyRingFile=com.rees46.key.gpg" >> gradle.properties
