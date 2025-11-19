@@ -5,7 +5,7 @@ publishing {
             mavenLocal()
             println "Publishing to local maven repository (mavenLocal) due to flag isPublishingInMavenLocal=true"
         } else {
-            println "Publishing to local maven repository"
+            println "Publishing to Maven Central via OSSRH Staging API Service"
         }
 
         maven {
@@ -13,8 +13,9 @@ publishing {
 
             def repositoryId = System.getenv("SONATYPE_REPOSITORY_ID") ?: error("Missing env variable: SONATYPE_REPOSITORY_ID")
 
-            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
+            // Updated URLs for OSSRH Staging API Service (compatibility layer)
+            def snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+            def releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deployByRepositoryId/${repositoryId}/"
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
 
             println "Configured Sonatype repository with URL: ${url}"
@@ -35,8 +36,9 @@ nexusPublishing {
       stagingProfileId = project.findProperty("stagingProfileId") ?: ""
       username = sonataUsername
       password = sonataPassword
-      nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-      snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+      // Updated URLs for OSSRH Staging API Service (compatibility layer)
+      nexusUrl.set(uri("https://oss.sonatype.org/service/local/"))
+      snapshotRepositoryUrl.set(uri("https://oss.sonatype.org/content/repositories/snapshots/"))
     }
   }
 }

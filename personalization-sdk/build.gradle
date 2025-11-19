@@ -175,3 +175,24 @@ tasks.register("printVariants") {
         }
     }
 }
+
+// Custom publishing tasks for independent repository publishing
+tasks.register('publishToGitHubPackages') {
+    group = 'publishing'
+    description = 'Publish to GitHub Packages only'
+    dependsOn 'publish'
+    doFirst {
+        project.ext.set('github', true)
+        println "Publishing to GitHub Packages only"
+    }
+}
+
+tasks.register('publishToMavenCentral') {
+    group = 'publishing'
+    description = 'Publish to Maven Central only'
+    dependsOn 'publish'
+    doFirst {
+        project.ext.set('sonatype', true)
+        println "Publishing to Maven Central only"
+    }
+}
