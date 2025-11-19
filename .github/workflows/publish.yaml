@@ -17,54 +17,45 @@ jobs:
         github.event.pull_request.merged == true &&
         startsWith(github.event.pull_request.head.ref, 'release/')
       )
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
+    runs-on: ubuntu-latest
     permissions: write-all
-    with:
-      appId: ${{ vars.PUBLISHER_ID }}
-      PROPERTIES_FILE: gradle.properties
-      SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
-      OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
-      VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
-      URL: ${{ vars.REES_REPO_URL }}
-      MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
-      GRADLE_VERSION: 8.8
-      GRADLE_TASK: publishToGitHubPackages
-    secrets:
-      appSecret: ${{ secrets.PUBLISHER_SECRET }}
-      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.PUBLISHER_ID }}
+          private-key: ${{ secrets.PUBLISHER_SECRET }}
 
-  publish-maven-central:
-    if: false  # Temporarily disabled
-    # if: |
-    #   github.event_name == 'workflow_dispatch' ||
-    #   (
-    #     github.event_name == 'pull_request' &&
-    #     github.event.pull_request.merged == true &&
-    #     startsWith(github.event.pull_request.head.ref, 'release/')
-    #   )
-    uses: rees46/workflow/.github/workflows/reusable-android-publish.yaml@master
-    permissions: write-all
-    with:
-      appId: ${{ vars.PUBLISHER_ID }}
-      PROPERTIES_FILE: gradle.properties
-      SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
-      SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
-      OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
-      VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
-      URL: ${{ vars.REES_REPO_URL }}
-      MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
-      GRADLE_VERSION: 8.8
-      GRADLE_TASK: publishToMavenCentral
-    secrets:
-      appSecret: ${{ secrets.PUBLISHER_SECRET }}
-      SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
-      SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
-      SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
-      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
-      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-      SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Prepare Gradle environment
+        uses: rees46/workflow/.github/actions/android/prepare@master
+        with:
+          GRADLE_VERSION: 8.8
+          PROPERTIES_FILE: gradle.properties
+          SIGNING_SECRET_KEY_RING_FILE: com.rees46.key.gpg
+          SIGNING_SECRET_KEY_RING_FILE_LOCATION: ./personalization-sdk
+          VARIANT_NAME: ${{ vars.REES_VARIANT_NAME }}
+          URL: ${{ vars.REES_REPO_URL }}
+          MAVEN_REPOSITORY_URL: ${{ vars.REES_MAVEN_URL }}
+          OSSRH_USERNAME: ${{ vars.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SONATA_USERNAME: ${{ secrets.SONATA_USERNAME }}
+          SONATA_PASSWORD: ${{ secrets.SONATA_PASSWORD }}
+          SONATA_STAGING_PROFILE_ID: ${{ secrets.SONATA_STAGING_PROFILE_ID }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_KEY_FILE_AS_BASE64_STRING: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
+
+      - name: Clean
+        run: ./gradlew clean
+
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: ./gradlew publishToGitHubPackages
