@@ -182,7 +182,6 @@ tasks.register('publishToGitHubPackages') {
     description = 'Publish to GitHub Packages only'
     dependsOn 'publish'
     doFirst {
-        project.ext.set('github', true)
         println "Publishing to GitHub Packages only"
     }
 }

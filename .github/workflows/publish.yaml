@@ -53,6 +53,7 @@ jobs:
 
       - name: Configure gradle.properties for GitHub Packages
         run: |
+          echo "github=true" >> gradle.properties
           echo "ossrhUsername=${{ github.repository_owner }}" >> gradle.properties
           echo "ossrhPassword=${{ steps.app-token.outputs.token }}" >> gradle.properties
           echo "signing_keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties
