@@ -28,6 +28,8 @@ import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.sdk.data.models.dto.popUp.Position
 import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
+import androidx.navigation.fragment.NavHostFragment
+
 
 class InAppNotificationManagerImpl @Inject constructor(
     private val context: Context
@@ -35,13 +37,54 @@ class InAppNotificationManagerImpl @Inject constructor(
 
     private lateinit var fragmentManager: FragmentManager
 
+    private lateinit var targetScreen: String
+    private var pendingPopupDto: PopupDto? = null
+
     override fun initFragmentManager(fragmentManager: FragmentManager) {
         this.fragmentManager = fragmentManager
+        this.fragmentManager.registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true)
     }
 
     override fun shopPopUp(popupDto: PopupDto) {
+        targetScreen = popupDto.targetScreen.orEmpty()
         val dialogData = extractDialogData(popupDto)
-        showDialog(dialogData)
+
+        if (targetScreen.isEmpty()) {
+            showDialog(dialogData)
+        } else {
+            pendingPopupDto = popupDto
+        }
+    }
+
+    private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
+        override fun onFragmentResumed(fm: FragmentManager, f: androidx.fragment.app.Fragment) {
+            super.onFragmentResumed(fm, f)
+            logCurrentFragment()
+        }
+    }
+    private fun logCurrentFragment() {
+        if (!::fragmentManager.isInitialized) return
+
+        val navHostFragment = fragmentManager.fragments
+            .filterNot { it is androidx.fragment.app.DialogFragment }
+            .firstOrNull { it is NavHostFragment }
+
+        val currentFragment = (navHostFragment as? NavHostFragment)
+            ?.childFragmentManager
+            ?.fragments
+            ?.lastOrNull { it.isVisible }
+
+        val fragmentName: String = currentFragment?.javaClass?.simpleName ?: "No visible fragment"
+
+        val popupDto = pendingPopupDto
+
+        if (fragmentName == popupDto?.targetScreen) {
+            val dialogData = extractDialogData(popupDto)
+            showDialog(dialogData)
+            pendingPopupDto = null
+        }
+
+        android.util.Log.d("SDKSDK", "Current visible fragment: $fragmentName")
     }
 
     private fun extractDialogData(popupDto: PopupDto): DialogDataDto {
@@ -153,7 +196,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     dialog.dismiss()
                 }
             }
-        )
+            )
 
         dialog.show(
             /* manager = */ fragmentManager,
@@ -190,7 +233,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     dialog.dismiss()
                 }
             }
-        )
+            )
 
         dialog.show(
             /* manager = */ fragmentManager,
@@ -227,7 +270,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     dialog.dismiss()
                 }
             }
-        )
+            )
 
         dialog.show(
             /* manager = */ fragmentManager,
@@ -264,7 +307,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     dialog.dismiss()
                 }
             }
-        )
+            )
 
         dialog.show(
             /* manager = */ fragmentManager,
