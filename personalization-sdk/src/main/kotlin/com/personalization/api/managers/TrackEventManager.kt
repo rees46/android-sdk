@@ -51,4 +51,12 @@ interface TrackEventManager {
         value: Int? = null,
         listener: OnApiCallbackListener? = null
     )
+
+    /**
+     * Track popup shown event
+     *
+     * @param popupId Popup ID
+     * @param listener Callback
+     */
+    fun trackPopupShown(popupId: Int, listener: OnApiCallbackListener? = null)
 }
