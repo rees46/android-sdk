@@ -63,10 +63,10 @@ jobs:
           echo "variantName=${{ vars.REES_VARIANT_NAME }}" >> gradle.properties
           echo "url=${{ vars.REES_REPO_URL }}" >> gradle.properties
           echo "publishUrl=https://maven.pkg.github.com/${{ github.repository }}" >> gradle.properties
-          
+
           ESCAPED_KEY=$(echo "${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}" | awk '{printf "%s\\n", $0}' | tr -d '\n')
           echo "signing_key=$ESCAPED_KEY" >> gradle.properties
-          
+
           echo "Updated gradle.properties for GitHub Packages"
 
       - name: Clean
