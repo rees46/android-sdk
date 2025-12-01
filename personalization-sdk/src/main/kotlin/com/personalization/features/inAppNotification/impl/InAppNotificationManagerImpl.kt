@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.widget.Toast
@@ -13,7 +15,10 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.TrackEventManager
 import com.personalization.errors.EmptyFieldError
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import dagger.Lazy
 import com.personalization.inAppNotification.view.component.dialog.fullScreen.FULL_SCREEN_DIALOG_TAG
 import com.personalization.inAppNotification.view.component.dialog.alert.ALERT_DIALOG_TAG
 import com.personalization.inAppNotification.view.component.dialog.alert.AlertDialog
@@ -30,18 +35,42 @@ import com.personalization.ui.click.NotificationClickListener
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
+    private val trackEventManager: Lazy<TrackEventManager>
 ) : InAppNotificationManager {
 
     private lateinit var fragmentManager: FragmentManager
+    private val popupShownFlags: MutableMap<Int, Long> = mutableMapOf()
+    private val handler: Handler = Handler(Looper.getMainLooper())
 
     override fun initFragmentManager(fragmentManager: FragmentManager) {
         this.fragmentManager = fragmentManager
     }
 
     override fun shopPopUp(popupDto: PopupDto) {
+        // Check if popup was shown in the last 60 seconds
+        val shownTime = popupShownFlags[popupDto.id]
+        if (shownTime != null) {
+            val timeSinceShown = System.currentTimeMillis() - shownTime
+            if (timeSinceShown < 60_000) { // 60 seconds in milliseconds
+                return // Popup was already shown, skip
+            }
+        }
+
         val dialogData = extractDialogData(popupDto)
         showDialog(dialogData)
+
+        // Store popup shown flag in memory for 60 seconds
+        popupShownFlags[popupDto.id] = System.currentTimeMillis()
+
+        // Remove flag after 60 seconds
+        handler.postDelayed({
+            popupShownFlags.remove(popupDto.id)
+        }, 60_000)
+
+        // Send popup shown event to server
+        trackEventManager.get().trackPopupShown(popupId = popupDto.id, listener = null)
     }
 
     private fun extractDialogData(popupDto: PopupDto): DialogDataDto {

@@ -11,6 +11,8 @@ import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import com.personalization.sdk.data.models.params.UserBasicParams
 import org.json.JSONObject
 import javax.inject.Inject
 
@@ -18,7 +20,8 @@ internal class TrackEventManagerImpl @Inject constructor(
     val getRecommendedByUseCase: GetRecommendedByUseCase,
     val setRecommendedByUseCase: SetRecommendedByUseCase,
     private val sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-    private val inAppNotificationManager: InAppNotificationManager
+    private val inAppNotificationManager: InAppNotificationManager,
+    private val getUserSettingsValueUseCase: GetUserSettingsValueUseCase
 ) : TrackEventManager {
 
     override fun track(event: TrackEvent, productId: String) {
@@ -105,6 +108,20 @@ internal class TrackEventManagerImpl @Inject constructor(
         )
     }
 
+    override fun trackPopupShown(popupId: Int, listener: OnApiCallbackListener?) {
+        val params = Params()
+        params.put(UserBasicParams.SHOP_ID, getUserSettingsValueUseCase.getShopId())
+        params.put(UserBasicParams.DID, getUserSettingsValueUseCase.getDid())
+        params.put(UserBasicParams.SID, getUserSettingsValueUseCase.getSid())
+        params.put("popup", popupId.toString())
+
+        sendNetworkMethodUseCase.postAsync(
+            POPUP_SHOWN_PATH,
+            params.build(),
+            listener
+        )
+    }
+
     private fun handlePopup(response: JSONObject) {
         val popUpData = response.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) }
         if (popUpData != null) {
@@ -115,6 +132,7 @@ internal class TrackEventManagerImpl @Inject constructor(
     companion object {
         private const val CUSTOM_PUSH_REQUEST = "push/custom"
         private const val PUSH_REQUEST = "push"
+        private const val POPUP_SHOWN_PATH = "popup/showed"
 
         private const val EVENT_PARAMETER = "event"
         private const val EMAIL_PARAMETER = "email"

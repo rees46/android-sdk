@@ -15,6 +15,8 @@ class GetUserSettingsValueUseCase @Inject constructor(
 
     fun getSidLastActTime(): Long = userSettingsRepository.getSidLastActTime()
 
+    fun getShopId(): String = userSettingsRepository.getShopId()
+
     fun getSegmentForABTesting(): String = userSettingsRepository.getSegmentForABTesting()
 
     fun getAdvertisingId(): String = userSettingsRepository.getAdvertisingId()

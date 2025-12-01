@@ -218,12 +218,35 @@ class NetworkRepositoryImpl @Inject constructor(
                     SDK.debug(connection.responseCode.toString() + ": " + networkMethod.type + " " + buildUri.toString())
                 }
 
-                if (listener != null && connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    val json = JSONTokener(readStream(connection.inputStream)).nextValue()
-                    if (json is JSONObject) {
-                        listener.onSuccess(json)
-                    } else if (json is JSONArray) {
-                        listener.onSuccess(json)
+                if (listener != null) {
+                    when (connection.responseCode) {
+                        HttpURLConnection.HTTP_OK -> {
+                            try {
+                                val inputStream = connection.inputStream
+                                val responseText = readStream(inputStream)
+                                if (responseText.isNotEmpty()) {
+                                    val json = JSONTokener(responseText).nextValue()
+                                    if (json is JSONObject) {
+                                        listener.onSuccess(json)
+                                    } else if (json is JSONArray) {
+                                        listener.onSuccess(json)
+                                    } else {
+                                        // Empty or invalid JSON, treat as success with empty object
+                                        listener.onSuccess(JSONObject())
+                                    }
+                                } else {
+                                    // Empty response, treat as success
+                                    listener.onSuccess(JSONObject())
+                                }
+                            } catch (e: Exception) {
+                                // Failed to parse JSON, but response code is 200, treat as success
+                                listener.onSuccess(JSONObject())
+                            }
+                        }
+                        HttpURLConnection.HTTP_NO_CONTENT -> {
+                            // 204 No Content - successful response with no body
+                            listener.onSuccess(JSONObject())
+                        }
                     }
                 }
 

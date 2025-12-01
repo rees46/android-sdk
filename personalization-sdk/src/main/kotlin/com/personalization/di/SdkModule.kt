@@ -81,12 +81,14 @@ class SdkModule {
         getRecommendedByUseCase: GetRecommendedByUseCase,
         setRecommendedByUseCase: SetRecommendedByUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
-        inAppNotificationManager: InAppNotificationManager
+        inAppNotificationManager: InAppNotificationManager,
+        getUserSettingsValueUseCase: GetUserSettingsValueUseCase
     ): TrackEventManager = TrackEventManagerImpl(
         getRecommendedByUseCase = getRecommendedByUseCase,
         setRecommendedByUseCase = setRecommendedByUseCase,
         sendNetworkMethodUseCase = sendNetworkMethodUseCase,
         inAppNotificationManager = inAppNotificationManager,
+        getUserSettingsValueUseCase = getUserSettingsValueUseCase
     )
 
     @Singleton
@@ -110,9 +112,15 @@ class SdkModule {
     @Singleton
     @Provides
     fun provideInAppNotificationManager(
-        context: Context
+        context: Context,
+        getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
+        trackEventManagerProvider: javax.inject.Provider<TrackEventManager>
     ): InAppNotificationManager {
-        return InAppNotificationManagerImpl(context)
+        return InAppNotificationManagerImpl(
+            context = context,
+            getUserSettingsValueUseCase = getUserSettingsValueUseCase,
+            trackEventManager = dagger.Lazy { trackEventManagerProvider.get() }
+        )
     }
 
     @Singleton

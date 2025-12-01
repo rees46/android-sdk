@@ -14,3 +14,8 @@ test.key
 node_modules
 *.tgz
 
+# Demo app build artifacts
+demo-app/build/
+demo-app/.gradle/
+demo-app/local.properties
+
