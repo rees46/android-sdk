@@ -11,7 +11,9 @@ publishing {
                     return
                 }
 
-                if (variant.flavorName != variantName) {
+                // When variantName is empty (e.g. JitPack builds), publish all release variants.
+                // When variantName is set (CI/CD), publish only the matching flavor.
+                if (variantName && variant.flavorName != variantName) {
                     println "Skipping variant due to flavor mismatch: ${variant.flavorName} != ${variantName}"
                     return
                 }
