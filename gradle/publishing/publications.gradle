@@ -5,16 +5,23 @@ publishing {
 
             println "Processing variant: ${variant.name}"
 
+            // JitPack build is detected by empty variantName (variantName is set only in CI/CD via gradle.properties).
+            // JitPack passes -Pgroup=com.github.<org> which lets us identify the target flavor.
+            def isJitPackBuild = !variantName
+            def effectiveVariantName = variantName
+            if (isJitPackBuild) {
+                def jitpackGroup = rootProject.findProperty('group')?.toString() ?: ''
+                effectiveVariantName = jitpackGroup.contains('personaclick') ? 'personaclick' : 'rees46'
+            }
+
             if (!isPublishingInMavenLocal) {
                 if (variant.buildType.name == "debug") {
                     println "Skipping debug variant: ${variant.name}"
                     return
                 }
 
-                // When variantName is empty (e.g. JitPack builds), publish all release variants.
-                // When variantName is set (CI/CD), publish only the matching flavor.
-                if (variantName && variant.flavorName != variantName) {
-                    println "Skipping variant due to flavor mismatch: ${variant.flavorName} != ${variantName}"
+                if (variant.flavorName != effectiveVariantName) {
+                    println "Skipping variant due to flavor mismatch: ${variant.flavorName} != ${effectiveVariantName}"
                     return
                 }
             }
@@ -25,8 +32,13 @@ publishing {
             def variantArtifactId = flavored ? variant.flavorName.replace('_', '-') + "-sdk" : project.name
             println "Variant Artifact ID before applying flag: ${variantArtifactId}"
 
-            def modifiedGroupId = isPublishingInMavenLocal ? "com.local-${variant.flavorName}" : "com.${variant.flavorName}"
-            def modifiedArtifactId = isPublishingInMavenLocal ? "local-${variantArtifactId}" : variantArtifactId
+            // For JitPack: use project default coordinates (com.personalization:personalization-sdk)
+            // so JitPack can discover artifacts at the expected ~/.m2 path.
+            // For CI/CD: use flavor-specific coordinates (com.rees46:rees46-sdk etc.).
+            def modifiedGroupId = isPublishingInMavenLocal ? "com.local-${variant.flavorName}"
+                : (isJitPackBuild ? project.group : "com.${variant.flavorName}")
+            def modifiedArtifactId = isPublishingInMavenLocal ? "local-${variantArtifactId}"
+                : (isJitPackBuild ? project.name : variantArtifactId)
 
             println "Final Group ID: ${modifiedGroupId}"
             println "Final Artifact ID: ${modifiedArtifactId}"
