@@ -19,10 +19,15 @@ plugins {
 }
 
 def versionFile = file("version.properties")
-def projectVersion = versionFile.text.split("VERSION_NAME=")[1].trim()
+def fileVersion = versionFile.text.split("VERSION_NAME=")[1].trim()
+// Use version passed by JitPack (-Pversion=vX.Y.Z), stripping the 'v' prefix if present.
+// Falls back to version.properties for local builds.
+def jitpackVersion = (project.hasProperty('version') && project.version != 'unspecified')
+    ? project.version.toString().replaceAll('^v', '')
+    : fileVersion
 
 project(':personalization-sdk') {
-	version=projectVersion
+    version = jitpackVersion
 }
 
 allprojects {

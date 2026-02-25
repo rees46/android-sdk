@@ -124,7 +124,8 @@ tasks.register('sourcesJar', Jar) {
 }
 
 tasks.register('javadoc', Javadoc) {
-    source = fileTree(dir: 'src/main/kotlin', include: '**/*.kt')
+    // Javadoc tool cannot process .kt files — only include generated .java stubs
+    source = fileTree(dir: 'src/main/kotlin', include: '**/*.java')
     classpath += files("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar")
     failOnError false
     options.encoding = 'UTF-8'
