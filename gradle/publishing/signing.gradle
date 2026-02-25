@@ -1,5 +1,8 @@
 signing {
-    if (!isPublishingInMavenLocal) {
+    // Skip signing for JitPack builds — no GPG key is available on JitPack servers.
+    // JitPack builds are identified by empty variantName (only set in CI/CD).
+    def isJitPackBuild = !variantName
+    if (!isPublishingInMavenLocal && !isJitPackBuild) {
         sign publishing.publications
     }
 }
