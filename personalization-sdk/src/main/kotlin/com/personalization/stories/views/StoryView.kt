@@ -97,10 +97,9 @@ internal class StoryView(
         mViewPager.registerOnPageChangeCallback(
             object : OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
-                    val player = com.personalization.stories.Player.player
-                    player?.let {
-                        if (player.isPlaying || player.isLoading) {
-                            player.pause()
+                    storiesView.player.player?.let { exoPlayer ->
+                        if (exoPlayer.isPlaying || exoPlayer.isLoading) {
+                            exoPlayer.pause()
                         }
                     }
 
@@ -125,17 +124,15 @@ internal class StoryView(
             }
         )
 
-        com.personalization.stories.Player?.let { player ->
-            player.player?.let { innerPlayer ->
-                innerPlayer.volume = if (storiesView.isMute) 0f else 1f
-                storiesView.muteListener = Runnable {
-                    innerPlayer.volume = 1f
-                }
+        storiesView.player.player?.let { innerPlayer ->
+            innerPlayer.volume = if (storiesView.isMute) 0f else 1f
+            storiesView.muteListener = Runnable {
+                innerPlayer.volume = 1f
+            }
 
-                mute.setOnClickListener {
-                    storiesView.muteVideo(mute.isChecked)
-                    innerPlayer.volume = if (mute.isChecked) 0f else 1f
-                }
+            mute.setOnClickListener {
+                storiesView.muteVideo(mute.isChecked)
+                innerPlayer.volume = if (mute.isChecked) 0f else 1f
             }
         }
 
@@ -174,11 +171,11 @@ internal class StoryView(
                 if (slide?.type == "video") {
                     slide.isPrepared = false
 
-                    val player = com.personalization.stories.Player.player
-                    player?.addListener(this)
+                    val exoPlayer = storiesView.player.player
+                    exoPlayer?.addListener(this)
                     holder.storyItem.video.visibility = GONE
                     holder.storyItem.image.alpha = 1f
-                    holder.storyItem.video.player = player
+                    holder.storyItem.video.player = exoPlayer
                     storiesView.preparePlayer(slide.background)
                     storiesProgressView.pause()
                     mute.isChecked = storiesView.isMute
@@ -190,7 +187,7 @@ internal class StoryView(
     override fun onPlaybackStateChanged(playbackState: @Player.State Int) {
         when (playbackState) {
             Player.STATE_BUFFERING -> storiesProgressView.pause()
-            Player.STATE_READY -> com.personalization.stories.Player.player?.play()
+            Player.STATE_READY -> storiesView.player.player?.play()
         }
     }
 
@@ -207,10 +204,10 @@ internal class StoryView(
     }
 
     override fun onTracksChanged(tracks: Tracks) {
-        val player = com.personalization.stories.Player.player
+        val exoPlayer = storiesView.player.player
         var contentDuration = 0L
-        if (player != null) {
-            contentDuration = player.contentDuration
+        if (exoPlayer != null) {
+            contentDuration = exoPlayer.contentDuration
         }
 
         if (contentDuration > 0) {
@@ -371,7 +368,7 @@ internal class StoryView(
 
     fun pause() {
         storiesProgressView.pause()
-        com.personalization.stories.Player.player?.pause()
+        storiesView.player.player?.pause()
     }
 
     fun resume() {
@@ -380,10 +377,9 @@ internal class StoryView(
         slide?.let {
             if (!locked && slide.isPrepared) {
                 storiesProgressView.resume()
-                val player = com.personalization.stories.Player.player
-                player?.let {
-                    if (slide.type == "video" && !player.isLoading && !player.isPlaying) {
-                        player.play()
+                storiesView.player.player?.let { exoPlayer ->
+                    if (slide.type == "video" && !exoPlayer.isLoading && !exoPlayer.isPlaying) {
+                        exoPlayer.play()
                     }
                 }
             }
@@ -470,7 +466,7 @@ internal class StoryView(
     fun stopStories() {
         storiesStarted = false
 
-        com.personalization.stories.Player.player?.removeListener(this)
+        storiesView.player.player?.removeListener(this)
         pause()
         storiesProgressView.destroy()
         val holder = currentHolder
@@ -491,8 +487,8 @@ internal class StoryView(
     }
 
     fun release() {
-        com.personalization.stories.Player.player?.removeListener(this)
-        com.personalization.stories.Player.player?.stop()
+        storiesView.player.player?.removeListener(this)
+        storiesView.player.player?.stop()
         val slidesCount = story?.slidesCount ?: 0
         for (i in 0 until slidesCount) {
             val holder = getHolder(i)

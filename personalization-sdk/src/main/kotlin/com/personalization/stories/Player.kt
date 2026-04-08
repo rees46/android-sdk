@@ -13,19 +13,30 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.personalization.SDK
 import java.io.File
 
-@SuppressLint("UnsafeOptInUsageError")
-class Player(context: Context) {
-    init {
-        if (player == null) {
-            player = ExoPlayer.Builder(context).build()
-            player?.setHandleAudioBecomingNoisy(true)
-        }
+private const val STORIES_CACHE_DIR_PREFIX = "stories_"
+private const val STORIES_CACHE_DIR_DEFAULT = "stories"
+private const val CACHE_SIZE_BYTES = 50L * 1024 * 1024
 
-        if (cache == null) {
-            val file = File(context.cacheDir, "stories")
-            val limit = LeastRecentlyUsedCacheEvictor((50 * 1024 * 1024).toLong())
-            cache = SimpleCache(file, limit, StandaloneDatabaseProvider(context))
+@SuppressLint("UnsafeOptInUsageError")
+class Player(context: Context, shopId: String = "") {
+
+    var player: ExoPlayer? = null
+        private set
+
+    private var cache: SimpleCache? = null
+
+    init {
+        player = ExoPlayer.Builder(context).build()
+        player?.setHandleAudioBecomingNoisy(true)
+
+        val cacheDirName = if (shopId.isNotEmpty()) {
+            STORIES_CACHE_DIR_PREFIX + shopId
+        } else {
+            STORIES_CACHE_DIR_DEFAULT
         }
+        val file = File(context.cacheDir, cacheDirName)
+        val limit = LeastRecentlyUsedCacheEvictor(CACHE_SIZE_BYTES)
+        cache = SimpleCache(file, limit, StandaloneDatabaseProvider(context))
     }
 
     fun prepare(url: String) {
@@ -40,7 +51,6 @@ class Player(context: Context) {
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             ).createMediaSource(MediaItem.fromUri(url))
             player.setMediaSource(mediaSource)
-            //		player.setMediaItem(MediaItem.fromUri(url));
             player.prepare()
             player.playWhenReady = true
         }
@@ -51,10 +61,5 @@ class Player(context: Context) {
         cache = null
         player?.release()
         player = null
-    }
-
-    companion object {
-        var player: ExoPlayer? = null
-        private var cache: SimpleCache? = null
     }
 }

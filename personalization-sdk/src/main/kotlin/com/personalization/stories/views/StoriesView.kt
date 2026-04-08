@@ -22,7 +22,7 @@ import com.personalization.stories.viewAdapters.StoriesAdapter.ClickListener
 class StoriesView : ConstraintLayout, ClickListener {
     private lateinit var storiesRecyclerView: RecyclerView
     private lateinit var adapter: StoriesAdapter
-    private lateinit var player: Player
+    internal lateinit var player: Player
 
     lateinit var code: String
     private var needOpeningWebView: Boolean = true

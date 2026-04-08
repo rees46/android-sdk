@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.widget.Toast
+import com.personalization.SDK
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
@@ -44,6 +45,8 @@ class NotificationService : Service() {
         flags: Int,
         startId: Int
     ): Int {
+        resolveNotificationHelper(intent)
+
         val currentIndex = intent?.getIntExtra(CURRENT_IMAGE_INDEX, -1) ?: -1
         val data: NotificationData? = intent?.toNotificationData()
 
@@ -128,11 +131,21 @@ class NotificationService : Service() {
         }
     }
 
+    private fun resolveNotificationHelper(intent: Intent?) {
+        val shopId = intent?.getStringExtra(EXTRA_SHOP_ID) ?: return
+        val sdkInstance = SDK.getInstance(shopId) ?: return
+        notificationHelper = sdkInstance.notificationHelper
+    }
+
     private fun showToast(message: String) {
         Toast.makeText(
             /* context = */ applicationContext,
             /* text = */ message,
             /* duration = */ Toast.LENGTH_SHORT
         ).show()
+    }
+
+    companion object {
+        const val EXTRA_SHOP_ID = "sdk_shop_id"
     }
 }

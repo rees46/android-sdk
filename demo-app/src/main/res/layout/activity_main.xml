@@ -13,6 +13,30 @@
         android:text="@string/show_test_popup"
         android:layout_marginTop="32dp" />
 
+    <Button
+        android:id="@+id/btnTestApiCalls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/test_api_calls"
+        android:layout_marginTop="16dp" />
+
 </LinearLayout>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

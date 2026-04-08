@@ -38,7 +38,9 @@ import com.personalization.utils.DomainFormattingUtils.formatApiDomain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Collections
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
@@ -48,6 +50,8 @@ private const val GAID_KEY = "google_advertising_id"
 open class SDK {
 
     internal lateinit var context: Context
+    internal var shopId: String = ""
+    internal var instanceTag: String = TAG
 
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
@@ -117,13 +121,15 @@ open class SDK {
 
     /**
      * @param shopId Shop key
+     * @param preferencesKey SharedPreferences file key. If empty (default), auto-derived as "sdk_prefs_$shopId".
+     *                       Legacy data from "DEFAULT_STORAGE_KEY" is automatically migrated to the first initialized instance.
      */
     fun initialize(
         context: Context,
         shopId: String,
         apiDomain: String = "api.rees46.ru",
         tag: String = TAG,
-        preferencesKey: String = DEFAULT_STORAGE_KEY,
+        preferencesKey: String = "",
         stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false,
@@ -143,11 +149,26 @@ open class SDK {
 
         sdkComponent.inject(sdk = this)
         this.context = context
+        this.shopId = shopId
+        this.instanceTag = "$tag[$shopId]"
         TAG = tag
+
+        val effectivePreferencesKey = if (preferencesKey.isEmpty()) {
+            PREFS_PREFIX + shopId
+        } else {
+            preferencesKey
+        }
+
+        migrateIfNeeded(
+            context = context,
+            effectiveKey = effectivePreferencesKey
+        )
+
+        instances[shopId] = this
 
         initPreferencesUseCase.invoke(
             context = context,
-            preferencesKey = preferencesKey
+            preferencesKey = effectivePreferencesKey
         )
 
         notificationHandler.initialize(context = context)
@@ -185,6 +206,30 @@ open class SDK {
             )
         }
 
+    }
+
+    private fun migrateIfNeeded(context: Context, effectiveKey: String) {
+        val newPrefs = context.getSharedPreferences(effectiveKey, Context.MODE_PRIVATE)
+        if (newPrefs.contains(DID_KEY)) return
+
+        if (instances.isNotEmpty()) return
+
+        val legacyPrefs = context.getSharedPreferences(LEGACY_STORAGE_KEY, Context.MODE_PRIVATE)
+        if (!legacyPrefs.contains(DID_KEY)) return
+
+        newPrefs.edit().apply {
+            legacyPrefs.all.forEach { (key, value) ->
+                when (value) {
+                    is String -> putString(key, value)
+                    is Long -> putLong(key, value)
+                    is Int -> putInt(key, value)
+                    is Boolean -> putBoolean(key, value)
+                    is Float -> putFloat(key, value)
+                }
+            }
+        }.apply()
+
+        debug("Migrated legacy preferences from $LEGACY_STORAGE_KEY to $effectiveKey")
     }
 
     private fun initNetworkUseCase(url: String?) {
@@ -797,7 +842,7 @@ open class SDK {
         }
     }
 
-    private fun receiveMessage(remoteMessage: RemoteMessage) {
+    internal fun receiveMessage(remoteMessage: RemoteMessage) {
         notificationReceived(data = remoteMessage.data)
 
         onMessageListener?.onMessage(
@@ -816,7 +861,10 @@ open class SDK {
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
-        private const val DEFAULT_STORAGE_KEY = "DEFAULT_STORAGE_KEY"
+        private const val LEGACY_STORAGE_KEY = "DEFAULT_STORAGE_KEY"
+        private const val PREFS_PREFIX = "sdk_prefs_"
+        private const val DID_KEY = "did"
+        private const val SHOP_ID_PUSH_KEY = "shop_id"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
         private const val ANDROID: String = "android"
         private const val BLANK_SEARCH_FIELD = "search/blank"
@@ -835,8 +883,28 @@ open class SDK {
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
 
+        private val instances = ConcurrentHashMap<String, SDK>()
+
         val instance: SDK by lazy {
             SDK()
+        }
+
+        /**
+         * Returns the SDK instance registered for the given shopId, or null if not found.
+         */
+        fun getInstance(shopId: String): SDK? = instances[shopId]
+
+        /**
+         * Returns an unmodifiable view of all registered SDK instances keyed by shopId.
+         */
+        fun getAllInstances(): Map<String, SDK> =
+            Collections.unmodifiableMap(instances)
+
+        /**
+         * Removes the SDK instance for the given shopId from the registry.
+         */
+        fun destroyInstance(shopId: String) {
+            instances.remove(shopId)
         }
 
         fun userAgent(): String {
@@ -872,10 +940,19 @@ open class SDK {
         }
 
         /**
-         * @param remoteMessage
+         * Routes incoming push message to the appropriate SDK instance.
+         * If the payload contains shop_id, routes to the matching instance.
+         * Otherwise falls back to the legacy singleton instance.
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance.receiveMessage(remoteMessage)
+            val targetShopId = remoteMessage.data[SHOP_ID_PUSH_KEY]
+            val targetInstance = targetShopId?.let { instances[it] }
+
+            if (targetInstance != null) {
+                targetInstance.receiveMessage(remoteMessage)
+            } else {
+                instance.receiveMessage(remoteMessage)
+            }
         }
     }
 }

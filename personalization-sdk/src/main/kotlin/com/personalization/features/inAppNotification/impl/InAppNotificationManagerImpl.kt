@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
@@ -49,6 +50,12 @@ class InAppNotificationManagerImpl @Inject constructor(
     }
 
     override fun shopPopUp(popupDto: PopupDto) {
+        // Check if fragmentManager is initialized
+        if (!::fragmentManager.isInitialized) {
+            Log.w(TAG, "FragmentManager is not initialized. Popup will not be shown.")
+            return
+        }
+
         // Check if popup was shown in the last 60 seconds
         val shownTime = popupShownFlags[popupDto.id]
         if (shownTime != null) {

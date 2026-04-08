@@ -15,6 +15,11 @@ class Personaclick private constructor() : SDK() {
         fun getInstance(): SDK = instance
 
         /**
+         * Returns the SDK instance registered for the given shopId, or null if not found.
+         */
+        fun getInstance(shopId: String): SDK? = SDK.getInstance(shopId)
+
+        /**
          * Initialize api
          * @param context application context
          * @param shopId Shop key
@@ -32,6 +37,32 @@ class Personaclick private constructor() : SDK() {
                 shopId = shopId,
                 apiHost = apiHost
             )
+        }
+
+        /**
+         * Creates and initializes a new SDK instance for the given shopId.
+         * Use this for multi-instance scenarios where each shop needs its own SDK.
+         *
+         * @param context application context
+         * @param shopId Shop key
+         * @param apiHost optional API host override
+         * @return initialized SDK instance
+         */
+        fun initializeInstance(
+            context: Context,
+            shopId: String,
+            apiHost: String? = null
+        ): SDK {
+            val sdk = SDK()
+
+            initSdk(
+                sdk = sdk,
+                context = context,
+                shopId = shopId,
+                apiHost = apiHost
+            )
+
+            return sdk
         }
 
         private fun initSdk(
