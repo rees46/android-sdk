@@ -2,6 +2,12 @@
 <resources>
     <string name="app_name">Personalization SDK Demo</string>
     <string name="show_test_popup">Show Test Popup</string>
+    <string name="track_event_custom_fields">Track event (custom fields)</string>
+    <string name="track_event_reserved_collision">Track event (reserved key collision)</string>
+    <string name="track_event_ok">trackEvent: request sent</string>
+    <string name="track_event_collision_ok">trackEvent: validation error (expected)</string>
+    <string name="track_event_fail">trackEvent failed</string>
+    <string name="track_event_unexpected_success">Unexpected: expected client validation failure</string>
 </resources>
 
 

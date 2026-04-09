@@ -13,6 +13,20 @@
         android:text="@string/show_test_popup"
         android:layout_marginTop="32dp" />
 
+    <Button
+        android:id="@+id/btnTrackEventCustomFields"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_event_custom_fields"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnTrackEventCollision"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_event_reserved_collision"
+        android:layout_marginTop="16dp" />
+
 </LinearLayout>
 
 
