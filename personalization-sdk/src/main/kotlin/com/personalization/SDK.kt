@@ -495,6 +495,37 @@ open class SDK {
     }
 
     /**
+     * Custom event tracking (aligned with the iOS SDK).
+     *
+     * @param event Event key
+     * @param time Optional UNIX time in seconds
+     * @param category Event category
+     * @param label Event label
+     * @param value Event value (sent as string in JSON)
+     * @param customFields Optional map merged at top level and under `payload`
+     * @param listener Callback
+     */
+    fun trackEvent(
+        event: String,
+        time: Int? = null,
+        category: String? = null,
+        label: String? = null,
+        value: Int? = null,
+        customFields: Map<String, Any?>? = null,
+        listener: OnApiCallbackListener? = null
+    ) {
+        trackEventManager.trackEvent(
+            event = event,
+            time = time,
+            category = category,
+            label = label,
+            value = value,
+            customFields = customFields,
+            listener = listener
+        )
+    }
+
+    /**
      * Tracking custom events
      *
      * @param event Event key
@@ -504,9 +535,12 @@ open class SDK {
      * @param listener Callback
      */
     @Deprecated(
-        "This method will be removed in future versions.",
+        "This method will be removed in future versions. Use trackEvent.",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("trackEventManager.customTrack(event, category, label, value = value, listener = listener)")
+        replaceWith = ReplaceWith(
+            "trackEvent(event = event, category = category, label = label, value = value, listener = listener)",
+            imports = []
+        )
     )
     fun track(
         event: String,
@@ -515,7 +549,15 @@ open class SDK {
         value: Int? = null,
         listener: OnApiCallbackListener? = null
     ) {
-        trackEventManager.customTrack(event, category, label, value = value, listener = listener)
+        trackEventManager.trackEvent(
+            event = event,
+            time = null,
+            category = category,
+            label = label,
+            value = value,
+            customFields = null,
+            listener = listener
+        )
     }
 
     /**
