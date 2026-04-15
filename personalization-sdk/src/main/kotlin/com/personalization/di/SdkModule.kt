@@ -6,11 +6,13 @@ import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
+import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.features.cart.CartManagerImpl
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
+import com.personalization.features.predict.impl.PredictManagerImpl
 import com.personalization.features.products.impl.ProductsManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
@@ -106,6 +108,14 @@ class SdkModule {
     fun provideSearchManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): SearchManager = SearchManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun providePredictManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): PredictManager = PredictManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
     )
 

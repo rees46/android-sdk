@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb logcat:*)",
+      "Bash(./gradlew assembleRelease assembleAndroidTest -DtestBuildType=release)",
+      "Bash(npx detox:*)"
+    ]
+  }
+}

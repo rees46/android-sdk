@@ -4,10 +4,20 @@
     <string name="show_test_popup">Show Test Popup</string>
     <string name="track_event_custom_fields">Track event (custom fields)</string>
     <string name="track_event_reserved_collision">Track event (reserved key collision)</string>
+    <string name="track_view_no_params">Track view (product id only)</string>
+    <string name="track_view_with_params">Track view (with item params)</string>
+    <string name="track_view_no_params_queued">track(view): id only, request queued</string>
+    <string name="track_view_ok">track(view): sent</string>
+    <string name="track_view_fail">track(view) failed</string>
     <string name="track_event_ok">trackEvent: request sent</string>
     <string name="track_event_collision_ok">trackEvent: validation error (expected)</string>
     <string name="track_event_fail">trackEvent failed</string>
     <string name="track_event_unexpected_success">Unexpected: expected client validation failure</string>
+    <string name="predict_did_only">Predict purchase (did only)</string>
+    <string name="predict_with_email">Predict purchase (did + email)</string>
+    <string name="predict_demo_email">predict-demo@example.com</string>
+    <string name="predict_ok">probability=%1$.4f client_id=%2$s</string>
+    <string name="predict_fail">predict failed: %1$d %2$s</string>
 </resources>
 
 

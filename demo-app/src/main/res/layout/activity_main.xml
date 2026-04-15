@@ -27,6 +27,34 @@
         android:text="@string/track_event_reserved_collision"
         android:layout_marginTop="16dp" />
 
+    <Button
+        android:id="@+id/btnTrackViewNoParams"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_view_no_params"
+        android:layout_marginTop="24dp" />
+
+    <Button
+        android:id="@+id/btnTrackViewWithParams"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_view_with_params"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnPredictDidOnly"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/predict_did_only"
+        android:layout_marginTop="24dp" />
+
+    <Button
+        android:id="@+id/btnPredictWithEmail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/predict_with_email"
+        android:layout_marginTop="16dp" />
+
 </LinearLayout>
 
 

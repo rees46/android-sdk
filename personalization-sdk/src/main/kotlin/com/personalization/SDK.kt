@@ -12,6 +12,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
@@ -78,6 +79,9 @@ open class SDK {
 
     @Inject
     lateinit var searchManager: SearchManager
+
+    @Inject
+    lateinit var predictManager: PredictManager
 
     @Inject
     lateinit var inAppNotificationManager: InAppNotificationManager
@@ -495,7 +499,7 @@ open class SDK {
     }
 
     /**
-     * Custom event tracking (aligned with the iOS SDK).
+     * Custom event tracking.
      *
      * @param event Event key
      * @param time Optional UNIX time in seconds
