@@ -5,8 +5,12 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.FirebaseApp
+import com.personalization.Params
+import com.personalization.Params.TrackEvent
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.params.ProductItemParams
+import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
 import com.personalization.sdk.data.models.dto.popUp.Components
 import org.json.JSONObject
@@ -30,6 +34,12 @@ class MainActivity : AppCompatActivity() {
         const val SAFE_CUSTOM_VALUE = "android_demo_app"
         const val COLLISION_RESERVED_KEY = "shop_id"
         const val COLLISION_PLACEHOLDER_VALUE = "collision_demo"
+    }
+
+    private object DemoProductViewConstants {
+        const val PRODUCT_ID = "demo-product-view-001"
+        const val DEMO_PRICE = 2499.99
+        const val DEMO_AMOUNT = 1
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +83,85 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnTrackEventCollision).setOnClickListener {
             trackEventWithReservedKeyCollision()
         }
+
+        findViewById<Button>(R.id.btnTrackViewNoParams).setOnClickListener {
+            trackProductViewIdOnly()
+        }
+
+        findViewById<Button>(R.id.btnTrackViewWithParams).setOnClickListener {
+            trackProductViewWithItemParams()
+        }
+
+        findViewById<Button>(R.id.btnPredictDidOnly).setOnClickListener {
+            predictPurchase(PurchasePredictParams())
+        }
+
+        findViewById<Button>(R.id.btnPredictWithEmail).setOnClickListener {
+            predictPurchase(
+                PurchasePredictParams(email = getString(R.string.predict_demo_email))
+            )
+        }
+    }
+
+    private fun predictPurchase(params: PurchasePredictParams) {
+        sdk.predictManager.getProbabilityToPurchase(
+            params = params,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.predict_ok, response.probability, response.clientId),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.predict_fail, code, msg ?: ""),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        )
+    }
+
+    private fun trackProductViewIdOnly() {
+        sdk.trackEventManager.track(TrackEvent.VIEW, DemoProductViewConstants.PRODUCT_ID)
+        Toast.makeText(this, getString(R.string.track_view_no_params_queued), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun trackProductViewWithItemParams() {
+        val item = ProductItemParams(DemoProductViewConstants.PRODUCT_ID)
+            .set(ProductItemParams.PARAMETER.PRICE, DemoProductViewConstants.DEMO_PRICE)
+            .set(ProductItemParams.PARAMETER.AMOUNT, DemoProductViewConstants.DEMO_AMOUNT)
+
+        sdk.trackEventManager.track(
+            TrackEvent.VIEW,
+            Params().put(item),
+            object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.track_view_ok),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "${getString(R.string.track_view_fail)}: $msg",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        )
     }
 
     private fun trackEventWithCustomFieldsSuccess() {
