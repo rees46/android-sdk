@@ -190,13 +190,41 @@ class NetworkRepositoryImpl @Inject constructor(
                 UserBasicParams.DID to userSettingsRepository.getDid(),
                 UserBasicParams.SID to userSettingsRepository.getSid(),
                 UserBasicParams.SEANCE to userSettingsRepository.getSid(),
-                UserBasicParams.SEGMENT to userSettingsRepository.getSegmentForABTesting(),
-                UserBasicParams.STREAM to userSettingsRepository.getStream(),
+                UserBasicParams.SEGMENT to resolveClientOrRepoString(
+                    params = params,
+                    key = UserBasicParams.SEGMENT,
+                    repoValue = userSettingsRepository.getSegmentForABTesting(),
+                ),
+                UserBasicParams.STREAM to resolveClientOrRepoString(
+                    params = params,
+                    key = UserBasicParams.STREAM,
+                    repoValue = userSettingsRepository.getStream(),
+                ),
                 UserBasicParams.SOURCE_FROM to notificationSource?.type,
                 UserBasicParams.SOURCE_CODE to notificationSource?.id
             )
         )
         return params
+    }
+
+    /**
+     * If the request body already contains a non-blank [key] (e.g. strict `trackPurchase` override), keep it;
+     * otherwise use [repoValue].
+     */
+    private fun resolveClientOrRepoString(
+        params: JSONObject,
+        key: String,
+        repoValue: String,
+    ): String {
+        if (!params.has(key) || params.isNull(key)) {
+            return repoValue
+        }
+        val raw = params.get(key)
+        val asString = when (raw) {
+            is String -> raw
+            else -> raw.toString()
+        }
+        return asString.ifBlank { repoValue }
     }
 
     private fun executeMethod(

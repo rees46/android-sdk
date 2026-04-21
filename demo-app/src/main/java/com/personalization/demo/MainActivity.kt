@@ -9,6 +9,8 @@ import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.models.purchase.PurchaseItemRequest
+import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
@@ -40,6 +42,16 @@ class MainActivity : AppCompatActivity() {
         const val PRODUCT_ID = "demo-product-view-001"
         const val DEMO_PRICE = 2499.99
         const val DEMO_AMOUNT = 1
+    }
+
+    private object DemoPurchaseTrackingConstants {
+        const val ORDER_ID_MINIMAL = "android-demo-order-minimal"
+        const val ORDER_ID_FULL = "android-demo-order-full"
+        const val ORDER_PRICE_MINIMAL = 199.0
+        const val ORDER_PRICE_FULL = 999.0
+        const val ITEM_ID = "android-demo-sku-001"
+        const val ITEM_AMOUNT = 1
+        const val ITEM_PRICE = 99.0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,6 +113,108 @@ class MainActivity : AppCompatActivity() {
                 PurchasePredictParams(email = getString(R.string.predict_demo_email))
             )
         }
+
+        findViewById<Button>(R.id.btnTrackPurchaseMinimal).setOnClickListener {
+            trackPurchaseMinimal()
+        }
+
+        findViewById<Button>(R.id.btnTrackPurchaseFull).setOnClickListener {
+            trackPurchaseFull()
+        }
+    }
+
+    private fun trackPurchaseMinimal() {
+        val request = PurchaseTrackingRequest(
+            orderId = DemoPurchaseTrackingConstants.ORDER_ID_MINIMAL,
+            orderPrice = DemoPurchaseTrackingConstants.ORDER_PRICE_MINIMAL,
+            items = listOf(
+                PurchaseItemRequest(
+                    id = DemoPurchaseTrackingConstants.ITEM_ID,
+                    amount = DemoPurchaseTrackingConstants.ITEM_AMOUNT,
+                    price = DemoPurchaseTrackingConstants.ITEM_PRICE,
+                ),
+            ),
+        )
+        sdk.trackPurchase(
+            request,
+            object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.track_purchase_ok),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "${getString(R.string.track_purchase_fail)}: $msg",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            },
+        )
+    }
+
+    private fun trackPurchaseFull() {
+        val request = PurchaseTrackingRequest(
+            orderId = DemoPurchaseTrackingConstants.ORDER_ID_FULL,
+            orderPrice = DemoPurchaseTrackingConstants.ORDER_PRICE_FULL,
+            items = listOf(
+                PurchaseItemRequest(
+                    id = DemoPurchaseTrackingConstants.ITEM_ID,
+                    amount = 2,
+                    price = 49.99,
+                    quantity = 2,
+                    lineId = "demo-line-1",
+                    fashionSize = "L",
+                ),
+            ),
+            deliveryType = "courier",
+            deliveryAddress = "Demo address",
+            paymentType = "card",
+            isTaxFree = true,
+            promocode = "DEMO10",
+            orderCash = 100.0,
+            orderBonuses = 10.0,
+            orderDelivery = 5.0,
+            orderDiscount = 15.0,
+            channel = "mobile",
+            custom = mapOf("demo_custom" to "android_demo"),
+            recommendedBy = Params.RecommendedBy(Params.RecommendedBy.TYPE.RECOMMENDATION, "demo-block"),
+            recommendedSource = JSONObject().put("source_key", "source_value"),
+            stream = "demo-stream",
+            segment = "A",
+        )
+        sdk.trackPurchase(
+            request,
+            object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.track_purchase_ok),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "${getString(R.string.track_purchase_fail)}: $msg",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            },
+        )
     }
 
     private fun predictPurchase(params: PurchasePredictParams) {

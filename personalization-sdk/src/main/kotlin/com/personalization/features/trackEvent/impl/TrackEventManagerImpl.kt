@@ -5,6 +5,7 @@ import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.TrackEventManager
+import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
 import com.personalization.sdk.data.mappers.popup.PopupDtoMapper
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUP
@@ -54,6 +55,40 @@ internal class TrackEventManagerImpl @Inject constructor(
             PUSH_REQUEST,
             params.build(),
             internalListener
+        )
+    }
+
+    override fun trackPurchase(request: PurchaseTrackingRequest, listener: OnApiCallbackListener?) {
+        val jsonResult = PurchaseTrackingJsonBuilder.buildOrError(request)
+        if (jsonResult.isFailure) {
+            listener?.onError(
+                PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE,
+                jsonResult.exceptionOrNull()?.message,
+            )
+            return
+        }
+        val body = jsonResult.getOrNull()!!
+        if (request.recommendedBy == null) {
+            val lastRecommendedBy = getRecommendedByUseCase()
+            if (lastRecommendedBy != null) {
+                PurchaseTrackingJsonBuilder.mergeInto(body, Params().put(lastRecommendedBy).build())
+                setRecommendedByUseCase(null)
+            }
+        }
+
+        val internalListener = object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                response?.let {
+                    handlePopup(response)
+                }
+                listener?.onSuccess(response)
+            }
+        }
+
+        sendNetworkMethodUseCase.postAsync(
+            PUSH_REQUEST,
+            body,
+            internalListener,
         )
     }
 

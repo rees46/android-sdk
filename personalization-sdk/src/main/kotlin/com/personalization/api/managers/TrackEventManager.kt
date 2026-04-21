@@ -3,6 +3,7 @@ package com.personalization.api.managers
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.models.purchase.PurchaseTrackingRequest
 
 interface TrackEventManager {
 
@@ -25,6 +26,14 @@ interface TrackEventManager {
         event: TrackEvent,
         params: Params,
         listener: OnApiCallbackListener? = null
+    )
+
+    /**
+     * Strict purchase tracking (`event` = `purchase`) with typed request (parity with iOS / React Native).
+     */
+    fun trackPurchase(
+        request: PurchaseTrackingRequest,
+        listener: OnApiCallbackListener? = null,
     )
 
     /**

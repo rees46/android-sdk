@@ -55,6 +55,20 @@
         android:text="@string/predict_with_email"
         android:layout_marginTop="16dp" />
 
+    <Button
+        android:id="@+id/btnTrackPurchaseMinimal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_purchase_minimal"
+        android:layout_marginTop="24dp" />
+
+    <Button
+        android:id="@+id/btnTrackPurchaseFull"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/track_purchase_full"
+        android:layout_marginTop="16dp" />
+
 </LinearLayout>
 
 
