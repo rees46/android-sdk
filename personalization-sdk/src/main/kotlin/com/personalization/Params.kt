@@ -135,6 +135,10 @@ class Params : AbstractParams<Params>() {
         CATEGORY("category"),
         CART("cart"),
         REMOVE_FROM_CART("remove_from_cart"),
+        @Deprecated(
+            message = "Use SDK.trackPurchase(PurchaseTrackingRequest, listener) instead of track(TrackEvent.PURCHASE, Params).",
+            level = DeprecationLevel.WARNING,
+        )
         PURCHASE("purchase"),
         SEARCH("search"),
         WISH("wish"),

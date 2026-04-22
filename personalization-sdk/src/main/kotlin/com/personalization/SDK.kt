@@ -9,6 +9,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.ProductsManager
@@ -527,6 +528,18 @@ open class SDK {
             customFields = customFields,
             listener = listener
         )
+    }
+
+    /**
+     * Strict purchase tracking (`push`, event = `purchase`).
+     *
+     * Prefer this over [track] with [TrackEvent.PURCHASE] and manual [Params] assembly.
+     */
+    fun trackPurchase(
+        request: PurchaseTrackingRequest,
+        listener: OnApiCallbackListener? = null,
+    ) {
+        trackEventManager.trackPurchase(request, listener)
     }
 
     /**

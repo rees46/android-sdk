@@ -18,6 +18,10 @@
     <string name="predict_demo_email">predict-demo@example.com</string>
     <string name="predict_ok">probability=%1$.4f client_id=%2$s</string>
     <string name="predict_fail">predict failed: %1$d %2$s</string>
+    <string name="track_purchase_minimal">Track purchase (minimal)</string>
+    <string name="track_purchase_full">Track purchase (full)</string>
+    <string name="track_purchase_ok">trackPurchase: sent</string>
+    <string name="track_purchase_fail">trackPurchase failed</string>
 </resources>
 
 
