@@ -10,6 +10,8 @@ private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
 
 private const val TOKEN_KEY = "token"
 private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
+private const val HMS_TOKEN_KEY = "hms_token"
+private const val HMS_LAST_PUSH_TOKEN_DATE_KEY = "last_hms_push_token_date"
 
 @Singleton
 class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
@@ -41,6 +43,12 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
             value = value
         )
     }
+
+    override fun getHmsToken(): String = getValue(HMS_TOKEN_KEY, DEFAULT_TOKEN)
+    override fun saveHmsToken(value: String) = saveValue(HMS_TOKEN_KEY, value)
+
+    override fun getLastHmsPushTokenDate(): Long = getValue(HMS_LAST_PUSH_TOKEN_DATE_KEY, DEFAULT_LAST_PUSH_TOKEN_DATE)
+    override fun saveLastHmsPushTokenDate(value: Long) = saveValue(HMS_LAST_PUSH_TOKEN_DATE_KEY, value)
 
     override fun getValue(field: String, defaultValue: String): String {
         return sharedPreferences?.getString(field, defaultValue) ?: defaultValue

@@ -1,6 +1,7 @@
 .idea/
 .vim/
 .local/
+.claude/settings.local.json
 
 .gradle
 /build

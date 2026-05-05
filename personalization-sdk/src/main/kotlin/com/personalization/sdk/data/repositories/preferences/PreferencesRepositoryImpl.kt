@@ -25,4 +25,10 @@ class PreferencesRepositoryImpl @Inject constructor(
     override fun saveLastPushTokenDate(value: Long) {
         preferencesDataSource.saveLastPushTokenDate(value)
     }
+
+    override fun getHmsToken(): String = preferencesDataSource.getHmsToken()
+    override fun saveHmsToken(value: String) { preferencesDataSource.saveHmsToken(value) }
+
+    override fun getLastHmsPushTokenDate(): Long = preferencesDataSource.getLastHmsPushTokenDate()
+    override fun saveLastHmsPushTokenDate(value: Long) { preferencesDataSource.saveLastHmsPushTokenDate(value) }
 }

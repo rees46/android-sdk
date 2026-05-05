@@ -4,10 +4,17 @@ package com.personalization
 
 import android.annotation.SuppressLint
 import android.content.ContentResolver
+import android.content.Context
 import android.provider.Settings
 import android.util.Log
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.tasks.Task
 import com.google.firebase.messaging.FirebaseMessaging
+import com.huawei.agconnect.AGConnectOptionsBuilder
+import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.api.HuaweiApiAvailability
+import com.huawei.hms.push.HmsMessaging
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.errors.BaseInfoError
@@ -41,6 +48,7 @@ class RegisterManager @Inject constructor(
 ) {
     private var autoSendPushToken: Boolean = false
 
+    private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
 
     private val isTestDevice: Boolean
@@ -50,10 +58,12 @@ class RegisterManager @Inject constructor(
         )
 
     fun initialize(
+        context: Context,
         contentResolver: ContentResolver,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean = false
     ) {
+        this.context = context
         this.contentResolver = contentResolver
         this.autoSendPushToken = autoSendPushToken
 
@@ -125,8 +135,9 @@ class RegisterManager @Inject constructor(
     }
 
     private fun sendPushTokenToServer(token: String, currentDate: Long) {
-        setPushTokenNotification(
+        sendTokenWithProvider(
             token = token,
+            pushProvider = PUSH_PROVIDER_FCM,
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
                     savePreferencesValueUseCase.saveLastPushTokenDate(currentDate)
@@ -226,7 +237,59 @@ class RegisterManager @Inject constructor(
         val finalSeance = seance ?: generateOrRetrieveSeance()
         updateUserSettingsValueUseCase.updateSid(value = finalSeance)
         executeQueueTasksUseCase.invoke()
-        initToken()
+        val hasFcm = isGooglePlayServicesAvailable()
+        val hasHms = isHuaweiMobileServicesAvailable()
+        when {
+            hasFcm && hasHms -> { initToken(); initHmsToken() }
+            hasFcm -> initToken()
+            hasHms -> initHmsToken()
+        }
+    }
+
+    private fun isGooglePlayServicesAvailable(): Boolean = try {
+        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun isHuaweiMobileServicesAvailable(): Boolean = try {
+        HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(context) == com.huawei.hms.api.ConnectionResult.SUCCESS
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun initHmsToken() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val appId = AGConnectOptionsBuilder().build(context).getString("client/app_id")
+                val token = HmsInstanceId.getInstance(context)
+                    .getToken(appId, HmsMessaging.DEFAULT_TOKEN_SCOPE)
+                if (!token.isNullOrEmpty()) processHmsToken(token)
+            } catch (e: Exception) {
+                BaseInfoError(tag = TAG, message = "HMS token error: ${e.message}").logError()
+            }
+        }
+    }
+
+    private fun processHmsToken(token: String) {
+        val currentDate = Date().time
+        if (shouldSendToken(getPreferencesValueUseCase.getHmsToken(), token, currentDate,
+                getPreferencesValueUseCase.getLastHmsPushTokenDate())) {
+            sendHmsPushTokenToServer(token, currentDate)
+        }
+    }
+
+    private fun sendHmsPushTokenToServer(token: String, currentDate: Long) {
+        sendTokenWithProvider(token, PUSH_PROVIDER_HMS,
+            object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    savePreferencesValueUseCase.saveLastHmsPushTokenDate(currentDate)
+                    savePreferencesValueUseCase.saveHmsToken(token)
+                }
+                override fun onError(code: Int, msg: String?) {
+                    BaseInfoError(tag = TAG, message = "HMS push token failed: $code, $msg").logError()
+                }
+            })
     }
 
     private fun generateOrRetrieveSeance(): String {
@@ -240,7 +303,15 @@ class RegisterManager @Inject constructor(
     }
 
     fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        val params = mapOf(PLATFORM_FIELD to PARAM_ANDROID, TOKEN_FIELD to token)
+        sendTokenWithProvider(token, PUSH_PROVIDER_FCM, listener)
+    }
+
+    fun onHmsNewToken(token: String) {
+        if (token.isNotEmpty() && ::context.isInitialized) processHmsToken(token)
+    }
+
+    private fun sendTokenWithProvider(token: String, pushProvider: String, listener: OnApiCallbackListener?) {
+        val params = mapOf(PLATFORM_FIELD to PARAM_ANDROID, TOKEN_FIELD to token, PUSH_PROVIDER_FIELD to pushProvider)
         sendNetworkMethodUseCase.post(MOBILE_PUSH_TOKENS, JSONObject(params), listener)
     }
 
@@ -260,6 +331,9 @@ class RegisterManager @Inject constructor(
         private const val SESSION_CODE_EXPIRE = 2 * 3600 * 1000L
         private const val RETRY_DELAY_MILLISECONDS = 1000L
         private const val IS_TEST_DEVICE_FIELD = "true"
+        private const val PUSH_PROVIDER_FIELD = "push_provider"
+        private const val PUSH_PROVIDER_FCM = "fcm"
+        private const val PUSH_PROVIDER_HMS = "hms"
         private const val PLATFORM_FIELD = "platform"
         private const val PARAM_ANDROID = "android"
         private const val GET_INIT_METHOD = "init"

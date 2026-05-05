@@ -14,4 +14,10 @@ interface PreferencesRepository {
 
     fun getLastPushTokenDate(): Long
     fun saveLastPushTokenDate(value: Long)
+
+    fun getHmsToken(): String
+    fun saveHmsToken(value: String)
+
+    fun getLastHmsPushTokenDate(): Long
+    fun saveLastHmsPushTokenDate(value: Long)
 }

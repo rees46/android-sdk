@@ -10,4 +10,8 @@ class GetPreferencesValueUseCase @Inject constructor(
     fun getToken(): String = preferencesRepository.getToken()
 
     fun getLastPushTokenDate(): Long = preferencesRepository.getLastPushTokenDate()
+
+    fun getHmsToken(): String = preferencesRepository.getHmsToken()
+
+    fun getLastHmsPushTokenDate(): Long = preferencesRepository.getLastHmsPushTokenDate()
 }

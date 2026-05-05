@@ -10,4 +10,8 @@ class SavePreferencesValueUseCase @Inject constructor(
     fun saveToken(value: String) = preferencesRepository.saveToken(value)
 
     fun saveLastPushTokenDate(value: Long) = preferencesRepository.saveLastPushTokenDate(value)
+
+    fun saveHmsToken(value: String) = preferencesRepository.saveHmsToken(value)
+
+    fun saveLastHmsPushTokenDate(value: Long) = preferencesRepository.saveLastHmsPushTokenDate(value)
 }

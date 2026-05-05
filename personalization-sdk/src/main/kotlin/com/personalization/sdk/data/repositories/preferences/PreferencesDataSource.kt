@@ -17,6 +17,14 @@ interface PreferencesDataSource {
 
     fun saveLastPushTokenDate(value: Long)
 
+    fun getHmsToken(): String
+
+    fun saveHmsToken(value: String)
+
+    fun getLastHmsPushTokenDate(): Long
+
+    fun saveLastHmsPushTokenDate(value: Long)
+
     fun getValue(field: String, defaultValue: String): String
 
     fun getValue(field: String, defaultValue: Long): Long

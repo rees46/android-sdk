@@ -165,6 +165,7 @@ open class SDK {
         initNetworkUseCase(url = baseUrl)
 
         registerManager.initialize(
+            context = context,
             contentResolver = context.contentResolver,
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
@@ -935,6 +936,12 @@ open class SDK {
          */
         fun onMessage(remoteMessage: RemoteMessage) {
             instance.receiveMessage(remoteMessage)
+        }
+
+        fun onHmsNewToken(token: String) {
+            if (instance::registerManager.isInitialized) {
+                instance.registerManager.onHmsNewToken(token)
+            }
         }
     }
 }
