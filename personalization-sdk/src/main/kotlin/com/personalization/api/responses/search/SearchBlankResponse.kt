@@ -9,5 +9,11 @@ data class SearchBlankResponse(
     @SerializedName("products")
     val products: List<Product>,
     @SerializedName("suggests")
-    val suggests: List<Suggest>
+    val suggests: List<Suggest>,
+    @SerializedName("popular_categories")
+    val popularCategories: List<PopularItem>?,
+    @SerializedName("popular_brands")
+    val popularBrands: List<PopularItem>?,
+    @SerializedName("popular_links")
+    val popularLinks: List<PopularItem>?
 )
