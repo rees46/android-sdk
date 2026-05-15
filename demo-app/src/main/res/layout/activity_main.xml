@@ -6,12 +6,31 @@
     android:padding="16dp"
     android:gravity="center">
 
+    <TextView
+        android:id="@+id/tvPushTokenType"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/push_token_type_placeholder"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/tvPushToken"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/push_token_placeholder"
+        android:textIsSelectable="true"
+        android:gravity="center"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="8dp" />
+
     <Button
         android:id="@+id/btnShowTestPopup"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/show_test_popup"
-        android:layout_marginTop="32dp" />
+        android:layout_marginTop="16dp" />
 
     <Button
         android:id="@+id/btnTrackEventCustomFields"

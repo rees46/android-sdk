@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.huawei.agconnect'
 }
 
 android {
@@ -75,6 +76,10 @@ dependencies {
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging'
+
+    // Huawei
+    implementation 'com.huawei.hms:push:6.11.0.300'
+    implementation 'com.huawei.agconnect:agconnect-core:1.9.1.301'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'

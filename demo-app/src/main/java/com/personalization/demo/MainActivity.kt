@@ -2,9 +2,16 @@ package com.personalization.demo
 
 import android.os.Bundle
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
+import com.huawei.hms.aaid.HmsInstanceId
+import com.huawei.hms.api.HuaweiApiAvailability
+import com.huawei.hms.push.HmsMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.SDK
@@ -15,6 +22,10 @@ import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
 import com.personalization.sdk.data.models.dto.popUp.Components
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
@@ -83,6 +94,8 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
+
+        displayPushTokenInfo()
 
         findViewById<Button>(R.id.btnShowTestPopup).setOnClickListener {
             showTestPopup()
@@ -347,6 +360,73 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    private fun displayPushTokenInfo() {
+        val typeView = findViewById<TextView>(R.id.tvPushTokenType)
+        val tokenView = findViewById<TextView>(R.id.tvPushToken)
+
+        val hasFcm = isGooglePlayServicesAvailable()
+        val hasHms = isHuaweiMobileServicesAvailable()
+
+        when {
+            hasFcm -> {
+                typeView.text = getString(R.string.push_token_type_firebase)
+                fetchFirebaseToken { token ->
+                    tokenView.text = token?.let { getString(R.string.push_token_value, it) }
+                        ?: getString(R.string.push_token_unavailable)
+                }
+            }
+            hasHms -> {
+                typeView.text = getString(R.string.push_token_type_huawei)
+                fetchHuaweiToken { token ->
+                    tokenView.text = token?.let { getString(R.string.push_token_value, it) }
+                        ?: getString(R.string.push_token_unavailable)
+                }
+            }
+            else -> {
+                typeView.text = getString(R.string.push_token_type_none)
+                tokenView.text = getString(R.string.push_token_unavailable)
+            }
+        }
+    }
+
+    private fun isGooglePlayServicesAvailable(): Boolean = try {
+        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this) == ConnectionResult.SUCCESS
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun isHuaweiMobileServicesAvailable(): Boolean = try {
+        HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(this) == com.huawei.hms.api.ConnectionResult.SUCCESS
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun fetchFirebaseToken(onResult: (String?) -> Unit) {
+        try {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                val token = if (task.isSuccessful) task.result else null
+                onResult(token)
+            }
+        } catch (e: Exception) {
+            onResult(null)
+        }
+    }
+
+    private fun fetchHuaweiToken(onResult: (String?) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val token = try {
+                val appId = getString(R.string.hms_app_id).takeIf { it.isNotBlank() }
+                if (appId != null) {
+                    HmsInstanceId.getInstance(this@MainActivity)
+                        .getToken(appId, HmsMessaging.DEFAULT_TOKEN_SCOPE)
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+            withContext(Dispatchers.Main) { onResult(token?.takeIf { it.isNotEmpty() }) }
+        }
     }
 
     private fun showTestPopup() {
