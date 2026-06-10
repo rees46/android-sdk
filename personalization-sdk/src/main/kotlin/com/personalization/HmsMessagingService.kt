@@ -8,7 +8,7 @@ class HmsMessagingService : HmsMessageService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         if (token.isNotEmpty()) {
-            SDK.onHmsNewToken(token)
+            SDK.onPushTokenReceived(token, PushProvider.HMS)
         }
     }
 

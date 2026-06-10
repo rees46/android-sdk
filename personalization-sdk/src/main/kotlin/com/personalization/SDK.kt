@@ -23,6 +23,7 @@ import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
+import com.personalization.push.PushTokenManager
 import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
@@ -41,6 +42,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArraySet
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
@@ -52,6 +54,7 @@ open class SDK {
     internal lateinit var context: Context
 
     private var onMessageListener: OnMessageListener? = null
+    private var onPushTokenListener: OnPushTokenListener? = null
     private var search: Search = Search(JSONObject())
 
     @Inject
@@ -62,6 +65,9 @@ open class SDK {
 
     @Inject
     lateinit var registerManager: RegisterManager
+
+    @Inject
+    lateinit var pushTokenManager: PushTokenManager
 
     @Inject
     lateinit var storiesManager: StoriesManager
@@ -150,6 +156,8 @@ open class SDK {
         this.context = context
         TAG = tag
 
+        onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
+
         initPreferencesUseCase.invoke(
             context = context,
             preferencesKey = preferencesKey
@@ -170,6 +178,10 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        // Register this instance so push tokens delivered to the (process-global) messaging
+        // services are routed back to every initialized SDK instance, not just one.
+        activeInstances.add(this)
 
         CoroutineScope(Dispatchers.IO).launch {
             val advertisingId = initializeAdvertisingIdUseCase.invoke()
@@ -322,20 +334,82 @@ open class SDK {
     }
 
     /**
-     * Send notification token
+     * Registers a callback invoked when a push token is received or refreshed for a provider
+     * (FCM and/or HMS).
      *
-     * @param token Token
-     * @param listener Listener
+     * This is the recommended way for the host app to obtain push tokens: the SDK captures
+     * token issuance and refresh from its own messaging services automatically, including
+     * tokens that a provider delivers only asynchronously (e.g. HMS via `onNewToken`, which
+     * cannot be retrieved synchronously). May be called before or after [initialize].
+     */
+    fun setOnPushTokenListener(listener: OnPushTokenListener) {
+        onPushTokenListener = listener
+        if (::pushTokenManager.isInitialized) {
+            pushTokenManager.setOnPushTokenListener(listener)
+        }
+    }
+
+    /**
+     * Returns the last known push token for [provider] from the local cache, or null if no
+     * token has been received yet. For live updates use [setOnPushTokenListener].
+     */
+    fun getPushToken(provider: PushProvider): String? = pushTokenManager.getToken(provider)
+
+    /**
+     * Registers a push [token] for the given [provider] with the rees46 backend.
+     *
+     * In the default setup you normally do NOT need to call this. The SDK ships its own
+     * messaging services for FCM and HMS, captures token issuance and refresh automatically,
+     * sends the token to the backend, and reports it to the host via [setOnPushTokenListener].
+     *
+     * Call this only if your app owns the messaging service (you declare your own
+     * FirebaseMessagingService / HmsMessageService) and want to forward the token manually.
+     * Always pass the [PushProvider] that issued the token: the backend stores it per provider,
+     * and FCM and HMS tokens are not interchangeable.
+     *
+     * @param token    the push token issued by [provider]
+     * @param provider the provider that issued the token (FCM or HMS)
+     * @param listener optional callback with the backend registration result
+     */
+    fun setPushToken(
+        token: String,
+        provider: PushProvider,
+        listener: OnApiCallbackListener? = null
+    ) {
+        pushTokenManager.sendToken(token = token, provider = provider, listener = listener)
+    }
+
+    /**
+     * Registers an FCM push token with the rees46 backend.
+     *
+     * @deprecated This method predates multi-provider support. It has no [PushProvider]
+     * parameter and therefore always assumes the token is an FCM token. Now that both FCM and
+     * HMS are supported the provider must be explicit, otherwise an HMS token would be
+     * registered as FCM (the backend keeps them separate and they are not interchangeable).
+     * Use [setPushToken] with an explicit [PushProvider] instead. Equivalent to
+     * `setPushToken(token, PushProvider.FCM, listener)`.
+     *
+     * @param token    an FCM push token
+     * @param listener optional callback with the backend registration result
      */
     @Deprecated(
-        "This method will be removed in future versions.",
+        message = "Assumes an FCM token; the provider cannot be specified. Use " +
+            "setPushToken(token, provider, listener) with an explicit PushProvider — " +
+            "FCM and HMS tokens are stored separately and are not interchangeable.",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("registerManager.setPushTokenNotification(token, listener)")
+        replaceWith = ReplaceWith("setPushToken(token, PushProvider.FCM, listener)")
     )
-    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        registerManager.setPushTokenNotification(
-            token = token, listener = listener
-        )
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) =
+        setPushToken(token = token, provider = PushProvider.FCM, listener = listener)
+
+    /**
+     * Releases this SDK instance so it no longer receives push tokens delivered to the
+     * process-global messaging services. Call this for short-lived instances to avoid leaking
+     * them through the active-instances registry. Apps that keep a single long-lived instance
+     * for the whole process usually do not need it.
+     */
+    fun release() {
+        activeInstances.remove(this)
     }
 
     /**
@@ -869,6 +943,15 @@ open class SDK {
 
         var TAG = "SDK"
 
+        /**
+         * Optional debug hook for observing all SDK HTTP traffic (requests and responses).
+         * Process-global; set it from a debug/QA build to mirror the SDK's network calls.
+         * See [NetworkLogger]. Invoked on network threads — keep implementations fast and thread-safe.
+         */
+        @Volatile
+        @JvmStatic
+        var networkLogger: NetworkLogger? = null
+
         private const val SUBSCRIPTION_UNSUBSCRIBE_PRICE =
             "subscriptions/unsubscribe_from_product_price"
         private const val SUBSCRIPTION_UNSUBSCRIBE =
@@ -898,6 +981,14 @@ open class SDK {
         val instance: SDK by lazy {
             SDK()
         }
+
+        /**
+         * All initialized SDK instances. The messaging services are process-global Android
+         * components, so a token delivered to [onPushTokenReceived] is fanned out to every
+         * initialized instance; each one deduplicates and notifies its own listener. Supports
+         * apps that create more than one SDK instance.
+         */
+        private val activeInstances = CopyOnWriteArraySet<SDK>()
 
         fun userAgent(): String {
             return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
@@ -938,9 +1029,16 @@ open class SDK {
             instance.receiveMessage(remoteMessage)
         }
 
-        fun onHmsNewToken(token: String) {
-            if (instance::registerManager.isInitialized) {
-                instance.registerManager.onHmsNewToken(token)
+        /**
+         * Entry point used by the SDK's messaging services to report a token delivered via
+         * their `onNewToken` callback. The public manual entry point for hosts that own their
+         * messaging service is [setPushToken].
+         */
+        internal fun onPushTokenReceived(token: String, provider: PushProvider) {
+            activeInstances.forEach { sdk ->
+                if (sdk::pushTokenManager.isInitialized) {
+                    sdk.pushTokenManager.onTokenReceived(token, provider)
+                }
             }
         }
     }

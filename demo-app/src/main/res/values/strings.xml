@@ -2,14 +2,22 @@
 <resources>
     <string name="app_name">Personalization SDK Demo</string>
     <string name="push_token_type_placeholder">Push provider: …</string>
-    <string name="push_token_placeholder">Token: …</string>
+    <string name="push_token_placeholder">Token: … (tap to copy when ready)</string>
+    <string name="push_token_copied">%1$s token copied to clipboard</string>
+    <string name="push_token_copy_empty">No token to copy yet</string>
+    <string name="http_log_open">HTTP Log</string>
+    <string name="http_log_title">HTTP Log</string>
+    <string name="http_log_copy_all">Copy all</string>
+    <string name="http_log_clear">Clear</string>
+    <string name="http_log_empty">No requests yet</string>
+    <string name="http_log_copied_one">Request copied</string>
+    <string name="http_log_copied_all">All requests copied</string>
     <string name="push_token_type_firebase">Push provider: firebase</string>
     <string name="push_token_type_huawei">Push provider: huawei</string>
     <string name="push_token_type_none">Push provider: none (no FCM/HMS available)</string>
+    <string name="push_token_type_value">Push provider: %1$s</string>
     <string name="push_token_value">Token: %1$s</string>
     <string name="push_token_unavailable">Token: unavailable</string>
-    <!-- Filled from agconnect-services.json (client/app_id) once HMS is configured. -->
-    <string name="hms_app_id" translatable="false"></string>
     <string name="show_test_popup">Show Test Popup</string>
     <string name="track_event_custom_fields">Track event (custom fields)</string>
     <string name="track_event_reserved_collision">Track event (reserved key collision)</string>

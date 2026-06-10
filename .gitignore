@@ -20,3 +20,9 @@ demo-app/build/
 demo-app/.gradle/
 demo-app/local.properties
 
+# HMS config with real credentials — use agconnect-services.json.template as reference
+demo-app/agconnect-services.json
+
+# Firebase config with real credentials — use google-services.json.template as reference
+demo-app/google-services.json
+

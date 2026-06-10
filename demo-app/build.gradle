@@ -4,6 +4,12 @@ plugins {
     id 'com.huawei.agconnect'
 }
 
+// Apply the Firebase plugin only when google-services.json is present, so the demo still builds
+// (with FCM gracefully unavailable) for anyone who hasn't dropped in the real Firebase config.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 android {
     namespace 'com.personalization.demo'
     compileSdkVersion 34

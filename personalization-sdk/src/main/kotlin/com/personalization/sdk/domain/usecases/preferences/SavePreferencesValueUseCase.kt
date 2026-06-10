@@ -1,5 +1,6 @@
 package com.personalization.sdk.domain.usecases.preferences
 
+import com.personalization.PushProvider
 import com.personalization.sdk.domain.repositories.PreferencesRepository
 import javax.inject.Inject
 
@@ -7,11 +8,9 @@ class SavePreferencesValueUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
-    fun saveToken(value: String) = preferencesRepository.saveToken(value)
+    fun savePushToken(provider: PushProvider, value: String) =
+        preferencesRepository.savePushToken(provider.id, value)
 
-    fun saveLastPushTokenDate(value: Long) = preferencesRepository.saveLastPushTokenDate(value)
-
-    fun saveHmsToken(value: String) = preferencesRepository.saveHmsToken(value)
-
-    fun saveLastHmsPushTokenDate(value: Long) = preferencesRepository.saveLastHmsPushTokenDate(value)
+    fun saveLastPushTokenDate(provider: PushProvider, value: Long) =
+        preferencesRepository.saveLastPushTokenDate(provider.id, value)
 }

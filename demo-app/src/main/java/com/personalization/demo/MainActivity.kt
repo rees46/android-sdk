@@ -1,19 +1,17 @@
 package com.personalization.demo
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.FirebaseApp
-import com.google.firebase.messaging.FirebaseMessaging
-import com.huawei.hms.aaid.HmsInstanceId
-import com.huawei.hms.api.HuaweiApiAvailability
-import com.huawei.hms.push.HmsMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
+import com.personalization.PushProvider
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseItemRequest
@@ -22,10 +20,6 @@ import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
 import com.personalization.sdk.data.models.dto.popUp.Components
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
@@ -81,6 +75,8 @@ class MainActivity : AppCompatActivity() {
         // Initialize SDK
         try {
             sdk = SDK()
+            // Subscribe before initialize so proactively fetched tokens are captured too.
+            observePushTokens()
             sdk.initialize(
                 context = this,
                 shopId = BuildConfig.SHOP_ID,
@@ -95,7 +91,9 @@ class MainActivity : AppCompatActivity() {
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
 
-        displayPushTokenInfo()
+        findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
+            startActivity(android.content.Intent(this, HttpLogActivity::class.java))
+        }
 
         findViewById<Button>(R.id.btnShowTestPopup).setOnClickListener {
             showTestPopup()
@@ -362,70 +360,75 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun displayPushTokenInfo() {
+    private val pushTokens = linkedMapOf<PushProvider, String>()
+    private val pushStatus = linkedMapOf<PushProvider, String>()
+
+    /**
+     * Subscribes to push tokens through the unified SDK API. Works the same for FCM and HMS:
+     * the SDK captures each token from its own messaging services and reports it here, including
+     * HMS tokens that the provider only delivers asynchronously via onNewToken.
+     *
+     * On each token the demo also explicitly registers it with the backend via [SDK.setPushToken]
+     * and shows the registration result on screen, so a tester can confirm the full flow.
+     */
+    private fun observePushTokens() {
         val typeView = findViewById<TextView>(R.id.tvPushTokenType)
         val tokenView = findViewById<TextView>(R.id.tvPushToken)
+        typeView.text = getString(R.string.push_token_type_placeholder)
+        tokenView.text = getString(R.string.push_token_placeholder)
 
-        val hasFcm = isGooglePlayServicesAvailable()
-        val hasHms = isHuaweiMobileServicesAvailable()
+        // Tap the token to copy the most recent one to the clipboard.
+        tokenView.setOnClickListener { copyTokenToClipboard() }
 
-        when {
-            hasFcm -> {
-                typeView.text = getString(R.string.push_token_type_firebase)
-                fetchFirebaseToken { token ->
-                    tokenView.text = token?.let { getString(R.string.push_token_value, it) }
-                        ?: getString(R.string.push_token_unavailable)
+        sdk.setOnPushTokenListener { token, provider ->
+            runOnUiThread {
+                pushTokens[provider] = token
+                pushStatus[provider] = "registering…"
+                renderPushTokens(typeView, tokenView)
+            }
+            sdk.setPushToken(token, provider, object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    runOnUiThread {
+                        pushStatus[provider] = "registered ✓"
+                        renderPushTokens(typeView, tokenView)
+                    }
                 }
-            }
-            hasHms -> {
-                typeView.text = getString(R.string.push_token_type_huawei)
-                fetchHuaweiToken { token ->
-                    tokenView.text = token?.let { getString(R.string.push_token_value, it) }
-                        ?: getString(R.string.push_token_unavailable)
+
+                override fun onError(code: Int, msg: String?) {
+                    runOnUiThread {
+                        // Keep the on-screen status short — the full response body (which can be a
+                        // whole HTML error page) is available in the HTTP Log screen.
+                        pushStatus[provider] = "register failed: $code"
+                        renderPushTokens(typeView, tokenView)
+                    }
                 }
-            }
-            else -> {
-                typeView.text = getString(R.string.push_token_type_none)
-                tokenView.text = getString(R.string.push_token_unavailable)
-            }
+            })
         }
     }
 
-    private fun isGooglePlayServicesAvailable(): Boolean = try {
-        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(this) == ConnectionResult.SUCCESS
-    } catch (e: Exception) {
-        false
-    }
-
-    private fun isHuaweiMobileServicesAvailable(): Boolean = try {
-        HuaweiApiAvailability.getInstance().isHuaweiMobileServicesAvailable(this) == com.huawei.hms.api.ConnectionResult.SUCCESS
-    } catch (e: Exception) {
-        false
-    }
-
-    private fun fetchFirebaseToken(onResult: (String?) -> Unit) {
-        try {
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                val token = if (task.isSuccessful) task.result else null
-                onResult(token)
-            }
-        } catch (e: Exception) {
-            onResult(null)
+    /** Copies the most recently received push token to the clipboard so a tester can share it. */
+    private fun copyTokenToClipboard() {
+        val entry = pushTokens.entries.lastOrNull()
+        if (entry == null) {
+            Toast.makeText(this, getString(R.string.push_token_copy_empty), Toast.LENGTH_SHORT).show()
+            return
         }
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("push_token", entry.value))
+        Toast.makeText(
+            this,
+            getString(R.string.push_token_copied, entry.key.id),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
-    private fun fetchHuaweiToken(onResult: (String?) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val token = try {
-                val appId = getString(R.string.hms_app_id).takeIf { it.isNotBlank() }
-                if (appId != null) {
-                    HmsInstanceId.getInstance(this@MainActivity)
-                        .getToken(appId, HmsMessaging.DEFAULT_TOKEN_SCOPE)
-                } else null
-            } catch (e: Exception) {
-                null
-            }
-            withContext(Dispatchers.Main) { onResult(token?.takeIf { it.isNotEmpty() }) }
+    private fun renderPushTokens(typeView: TextView, tokenView: TextView) {
+        typeView.text = getString(
+            R.string.push_token_type_value,
+            pushTokens.keys.joinToString(", ") { it.id }
+        )
+        tokenView.text = pushTokens.entries.joinToString("\n\n") { (provider, token) ->
+            "${provider.id} [${pushStatus[provider] ?: "…"}]: $token"
         }
     }
 
