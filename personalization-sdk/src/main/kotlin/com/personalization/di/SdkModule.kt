@@ -4,6 +4,7 @@ import android.content.Context
 import com.personalization.RegisterManager
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.OrdersManager
 import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.PredictManager
@@ -12,6 +13,7 @@ import com.personalization.api.managers.TrackEventManager
 import com.personalization.features.cart.CartManagerImpl
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
+import com.personalization.features.orders.impl.OrdersManagerImpl
 import com.personalization.features.predict.impl.PredictManagerImpl
 import com.personalization.features.products.impl.ProductsManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
@@ -116,6 +118,14 @@ class SdkModule {
     fun providePredictManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): PredictManager = PredictManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideOrdersManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): OrdersManager = OrdersManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
     )
 

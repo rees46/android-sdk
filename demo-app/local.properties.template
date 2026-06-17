@@ -1,0 +1,8 @@
+# Template for demo-app credentials. Copy the relevant lines into your local.properties
+# (root local.properties is read first, then demo-app/local.properties). Never commit real values.
+
+# Public shop identifier (sent on every request).
+shop.id=YOUR_SHOP_ID
+
+# Server-side shop secret — required only for orders/by_user. Keep it local, never commit.
+shop.secret=YOUR_SHOP_SECRET

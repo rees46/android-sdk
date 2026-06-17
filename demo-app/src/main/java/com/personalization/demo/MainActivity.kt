@@ -38,6 +38,14 @@ class MainActivity : AppCompatActivity() {
         const val COLLISION_PLACEHOLDER_VALUE = "collision_demo"
     }
 
+    private object DemoOrdersConstants {
+        /**
+         * Server-side shop secret for `orders/by_user`. Sourced from `shop.secret` in local.properties
+         * (gitignored) via BuildConfig — never hardcode a real secret here. Falls back to a placeholder.
+         */
+        val SHOP_SECRET = BuildConfig.SHOP_SECRET
+    }
+
     private object DemoProductViewConstants {
         const val PRODUCT_ID = "demo-product-view-001"
         const val DEMO_PRICE = 2499.99
@@ -121,6 +129,61 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnTrackPurchaseFull).setOnClickListener {
             trackPurchaseFull()
         }
+
+        findViewById<Button>(R.id.btnGetLastOrderProducts).setOnClickListener {
+            getLastOrderProducts()
+        }
+
+        findViewById<Button>(R.id.btnGetUserOrders).setOnClickListener {
+            getUserOrders()
+        }
+    }
+
+    private fun getUserOrders() {
+        sdk.ordersManager.getUserOrders(
+            shopSecret = DemoOrdersConstants.SHOP_SECRET,
+            onSuccess = { orders ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_user_orders_ok, orders.size),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_user_orders_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getLastOrderProducts() {
+        sdk.ordersManager.getLastOrderProducts(
+            onGetLastOrderProducts = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_last_order_products_ok, response.products.size),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_last_order_products_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
     }
 
     private fun trackPurchaseMinimal() {
