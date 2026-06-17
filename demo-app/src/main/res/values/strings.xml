@@ -22,6 +22,12 @@
     <string name="track_purchase_full">Track purchase (full)</string>
     <string name="track_purchase_ok">trackPurchase: sent</string>
     <string name="track_purchase_fail">trackPurchase failed</string>
+    <string name="get_last_order_products">Get last order products</string>
+    <string name="get_last_order_products_ok">getLastOrderProducts: %1$d product(s)</string>
+    <string name="get_last_order_products_fail">getLastOrderProducts failed</string>
+    <string name="get_user_orders">Get user orders</string>
+    <string name="get_user_orders_ok">getUserOrders: %1$d order(s)</string>
+    <string name="get_user_orders_fail">getUserOrders failed</string>
 </resources>
 
 

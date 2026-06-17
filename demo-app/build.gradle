@@ -19,6 +19,8 @@ android {
         localProperties.load(new FileInputStream(localPropertiesFile))
     }
     def shopId = localProperties.getProperty('shop.id', '357382bf66ac0ce2f1722677c59511')
+    // Server-side shop secret (orders/by_user). Kept out of source — set shop.secret in local.properties.
+    def shopSecret = localProperties.getProperty('shop.secret', 'demo-shop-secret')
 
     defaultConfig {
         applicationId "com.personalization.demo"
@@ -32,6 +34,7 @@ android {
 
         // Add shop ID to BuildConfig
         buildConfigField "String", "SHOP_ID", "\"${shopId}\""
+        buildConfigField "String", "SHOP_SECRET", "\"${shopSecret}\""
     }
 
     productFlavors {
