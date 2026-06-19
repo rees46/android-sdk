@@ -12,6 +12,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.LoyaltyManager
 import com.personalization.api.managers.OrdersManager
 import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.PredictManager
@@ -87,6 +88,9 @@ open class SDK {
 
     @Inject
     lateinit var ordersManager: OrdersManager
+
+    @Inject
+    lateinit var loyaltyManager: LoyaltyManager
 
     @Inject
     lateinit var inAppNotificationManager: InAppNotificationManager

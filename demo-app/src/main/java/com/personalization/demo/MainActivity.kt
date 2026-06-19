@@ -46,6 +46,13 @@ class MainActivity : AppCompatActivity() {
         val SHOP_SECRET = BuildConfig.SHOP_SECRET
     }
 
+    private object DemoLoyaltyConstants {
+        const val PHONE = "79991234567"
+        const val EMAIL = "demo@rees46.ru"
+        const val FIRST_NAME = "Demo"
+        const val LAST_NAME = "User"
+    }
+
     private object DemoProductViewConstants {
         const val PRODUCT_ID = "demo-product-view-001"
         const val DEMO_PRICE = 2499.99
@@ -137,6 +144,70 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnGetUserOrders).setOnClickListener {
             getUserOrders()
         }
+
+        findViewById<Button>(R.id.btnLoyaltyJoin).setOnClickListener {
+            loyaltyJoin()
+        }
+
+        findViewById<Button>(R.id.btnLoyaltyStatus).setOnClickListener {
+            loyaltyStatus()
+        }
+    }
+
+    private fun loyaltyJoin() {
+        sdk.loyaltyManager.join(
+            phone = DemoLoyaltyConstants.PHONE,
+            email = DemoLoyaltyConstants.EMAIL,
+            firstName = DemoLoyaltyConstants.FIRST_NAME,
+            lastName = DemoLoyaltyConstants.LAST_NAME,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.loyalty_join_ok, response.status ?: "—"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.loyalty_join_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun loyaltyStatus() {
+        sdk.loyaltyManager.getStatus(
+            identifier = DemoLoyaltyConstants.PHONE,
+            onSuccess = { response ->
+                runOnUiThread {
+                    val member = response.payload?.member
+                    val level = response.payload?.level?.name
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.loyalty_status_ok,
+                            "${response.status ?: "—"} (member=$member, level=$level)",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.loyalty_status_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
     }
 
     private fun getUserOrders() {

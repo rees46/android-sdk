@@ -28,6 +28,12 @@
     <string name="get_user_orders">Get user orders</string>
     <string name="get_user_orders_ok">getUserOrders: %1$d order(s)</string>
     <string name="get_user_orders_fail">getUserOrders failed</string>
+    <string name="loyalty_join">Loyalty: join</string>
+    <string name="loyalty_join_ok">loyalty join: %1$s</string>
+    <string name="loyalty_join_fail">loyalty join failed</string>
+    <string name="loyalty_status">Loyalty: status</string>
+    <string name="loyalty_status_ok">loyalty status: %1$s</string>
+    <string name="loyalty_status_fail">loyalty status failed</string>
 </resources>
 
 
