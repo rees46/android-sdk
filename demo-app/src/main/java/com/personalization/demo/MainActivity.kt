@@ -53,6 +53,12 @@ class MainActivity : AppCompatActivity() {
         const val LAST_NAME = "User"
     }
 
+    private object DemoCatalogConstants {
+        const val ITEM_ID = "300275"
+        const val CATEGORY_SLUG = "smartfony-i-gadzhety"
+        const val COLLECTION_ID = "1"
+    }
+
     private object DemoProductViewConstants {
         const val PRODUCT_ID = "demo-product-view-001"
         const val DEMO_PRICE = 2499.99
@@ -152,6 +158,127 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnLoyaltyStatus).setOnClickListener {
             loyaltyStatus()
         }
+
+        findViewById<Button>(R.id.btnGetProfile).setOnClickListener {
+            getProfile()
+        }
+
+        findViewById<Button>(R.id.btnGetProductCounters).setOnClickListener {
+            getProductCounters()
+        }
+
+        findViewById<Button>(R.id.btnGetCategory).setOnClickListener {
+            getCategory()
+        }
+
+        findViewById<Button>(R.id.btnGetCollection).setOnClickListener {
+            getCollection()
+        }
+    }
+
+    private fun getCollection() {
+        sdk.collectionManager.getCollection(
+            collectionId = DemoCatalogConstants.COLLECTION_ID,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_collection_ok, "products=${response.products.size}"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_collection_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getProfile() {
+        sdk.profileManager.getProfile(
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_profile_ok,
+                            "id=${response.id}, hasEmail=${response.hasEmail}, gender=${response.gender ?: "—"}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_profile_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getProductCounters() {
+        sdk.productsManager.getProductCounters(
+            item = DemoCatalogConstants.ITEM_ID,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_product_counters_ok,
+                            "now.view=${response.now?.view}, price_drop=${response.triggers?.priceDrop}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_product_counters_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getCategory() {
+        sdk.categoryManager.getCategory(
+            category = DemoCatalogConstants.CATEGORY_SLUG,
+            limit = 5,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_category_ok,
+                            "total=${response.productsTotal}, products=${response.products.size}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_category_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
     }
 
     private fun loyaltyJoin() {

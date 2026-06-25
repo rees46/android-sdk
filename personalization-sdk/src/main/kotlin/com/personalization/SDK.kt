@@ -11,10 +11,13 @@ import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.CategoryManager
+import com.personalization.api.managers.CollectionManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.LoyaltyManager
 import com.personalization.api.managers.OrdersManager
 import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
@@ -91,6 +94,15 @@ open class SDK {
 
     @Inject
     lateinit var loyaltyManager: LoyaltyManager
+
+    @Inject
+    lateinit var profileManager: ProfileManager
+
+    @Inject
+    lateinit var categoryManager: CategoryManager
+
+    @Inject
+    lateinit var collectionManager: CollectionManager
 
     @Inject
     lateinit var inAppNotificationManager: InAppNotificationManager

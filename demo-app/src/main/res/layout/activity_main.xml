@@ -102,6 +102,34 @@
         android:text="@string/loyalty_status"
         android:layout_marginTop="16dp" />
 
+    <Button
+        android:id="@+id/btnGetProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/get_profile"
+        android:layout_marginTop="24dp" />
+
+    <Button
+        android:id="@+id/btnGetProductCounters"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/get_product_counters"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnGetCategory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/get_category"
+        android:layout_marginTop="16dp" />
+
+    <Button
+        android:id="@+id/btnGetCollection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/get_collection"
+        android:layout_marginTop="16dp" />
+
     </LinearLayout>
 
 </ScrollView>

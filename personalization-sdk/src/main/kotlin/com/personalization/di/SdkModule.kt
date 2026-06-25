@@ -3,21 +3,27 @@ package com.personalization.di
 import android.content.Context
 import com.personalization.RegisterManager
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.CategoryManager
+import com.personalization.api.managers.CollectionManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.LoyaltyManager
 import com.personalization.api.managers.OrdersManager
 import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.features.cart.CartManagerImpl
+import com.personalization.features.category.impl.CategoryManagerImpl
+import com.personalization.features.collection.impl.CollectionManagerImpl
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.loyalty.impl.LoyaltyManagerImpl
 import com.personalization.features.orders.impl.OrdersManagerImpl
 import com.personalization.features.predict.impl.PredictManagerImpl
 import com.personalization.features.products.impl.ProductsManagerImpl
+import com.personalization.features.profile.impl.ProfileManagerImpl
 import com.personalization.features.recommendation.impl.RecommendationManagerImpl
 import com.personalization.features.search.impl.SearchManagerImpl
 import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
@@ -136,6 +142,30 @@ class SdkModule {
     fun provideLoyaltyManager(
         sendNetworkMethodUseCase: SendNetworkMethodUseCase
     ): LoyaltyManager = LoyaltyManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideProfileManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): ProfileManager = ProfileManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideCategoryManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): CategoryManager = CategoryManagerImpl(
+        sendNetworkMethodUseCase = sendNetworkMethodUseCase
+    )
+
+    @Singleton
+    @Provides
+    fun provideCollectionManager(
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase
+    ): CollectionManager = CollectionManagerImpl(
         sendNetworkMethodUseCase = sendNetworkMethodUseCase
     )
 
