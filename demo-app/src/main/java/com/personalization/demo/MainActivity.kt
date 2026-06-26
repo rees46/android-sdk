@@ -1,10 +1,22 @@
 package com.personalization.demo
 
+import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.SDK
@@ -23,6 +35,7 @@ import com.personalization.sdk.data.models.dto.popUp.Position
 class MainActivity : AppCompatActivity() {
 
     private lateinit var sdk: SDK
+    private var pushToken: String? = null
 
     private object DemoTrackEventConstants {
         /** Same value as SDK client-side validation errors for custom field key collisions. */
@@ -88,19 +101,10 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
-        // Initialize SDK
-        try {
-            sdk = SDK()
-            sdk.initialize(
-                context = this,
-                shopId = BuildConfig.SHOP_ID,
-                apiDomain = "api.rees46.ru",
-                autoSendPushToken = false
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Continue even if SDK initialization fails for demo purposes
-        }
+        // The SDK singleton (SDK.instance) is initialized in DemoApplication.onCreate so it is
+        // ready in every process — including the cold process FCM starts to deliver a push.
+        // Reuse that same initialized instance here (do NOT create a new SDK()).
+        sdk = SDK.instance
 
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
@@ -174,6 +178,97 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnGetCollection).setOnClickListener {
             getCollection()
         }
+
+        findViewById<Button>(R.id.btnCopyToken).setOnClickListener {
+            copyPushToken()
+        }
+
+        ensureNotificationPermission()
+        loadPushToken()
+        showLastCrashIfAny()
+        // App may have been opened by tapping a push — report the click to the SDK.
+        handleNotificationClick(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationClick(intent)
+    }
+
+    /**
+     * When the app is opened by tapping an SDK push, the launch intent carries the notification's
+     * type/id. Forward them to the SDK so it can send `track/clicked`. Guarded so normal launches
+     * (no push extras) don't trigger spurious tracking.
+     */
+    private fun handleNotificationClick(intent: Intent?) {
+        val extras = intent?.extras ?: return
+        val hasPushExtras = extras.getString("NOTIFICATION_TYPE") != null ||
+            extras.getString("NOTIFICATION_ID") != null
+        if (!hasPushExtras) return
+        sdk.notificationClicked(extras)
+    }
+
+    /** If the previous run crashed (e.g. while handling a push), show the saved stack with Copy. */
+    private fun showLastCrashIfAny() {
+        val prefs = getSharedPreferences(DemoApplication.CRASH_PREFS, Context.MODE_PRIVATE)
+        val crash = prefs.getString(DemoApplication.KEY_LAST_CRASH, null) ?: return
+        AlertDialog.Builder(this)
+            .setTitle("Last crash")
+            .setMessage(crash)
+            .setPositiveButton("Copy") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("crash", crash))
+                Toast.makeText(this, "Crash copied", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Clear") { _, _ ->
+                prefs.edit().remove(DemoApplication.KEY_LAST_CRASH).apply()
+            }
+            .show()
+    }
+
+    /** Android 13+ requires the POST_NOTIFICATIONS runtime permission for any notification to show. */
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                /* requestCode = */ 1001,
+            )
+        }
+    }
+
+    /**
+     * Loads the FCM push token and shows it in the always-visible header so a tester can
+     * read and copy it. Registration to the shop happens via autoSendPushToken on init.
+     */
+    private fun loadPushToken() {
+        val tokenView = findViewById<TextView>(R.id.tvPushToken)
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            runOnUiThread {
+                if (task.isSuccessful) {
+                    pushToken = task.result
+                    tokenView.text = task.result
+                } else {
+                    tokenView.text =
+                        getString(R.string.push_token_error, task.exception?.message ?: "unknown")
+                }
+            }
+        }
+    }
+
+    private fun copyPushToken() {
+        val token = pushToken
+        if (token.isNullOrEmpty()) {
+            Toast.makeText(this, R.string.push_token_waiting, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("FCM token", token))
+        Toast.makeText(this, R.string.push_token_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun getCollection() {

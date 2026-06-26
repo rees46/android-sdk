@@ -46,6 +46,12 @@
     <string name="get_collection">Collection: get</string>
     <string name="get_collection_ok">collection: %1$s</string>
     <string name="get_collection_fail">getCollection failed</string>
+    <string name="push_token_label">Registered push token:</string>
+    <string name="push_token_waiting">waiting for token…</string>
+    <string name="push_token_copy">Copy token</string>
+    <string name="push_token_copied">Token copied to clipboard</string>
+    <string name="push_token_error">FCM token error: %1$s</string>
+    <string name="push_channel_name">Push notifications</string>
 </resources>
 
 
