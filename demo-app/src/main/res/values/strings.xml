@@ -34,6 +34,24 @@
     <string name="loyalty_status">Loyalty: status</string>
     <string name="loyalty_status_ok">loyalty status: %1$s</string>
     <string name="loyalty_status_fail">loyalty status failed</string>
+    <string name="get_profile">Profile: get</string>
+    <string name="get_profile_ok">profile: %1$s</string>
+    <string name="get_profile_fail">getProfile failed</string>
+    <string name="get_product_counters">Products: counters</string>
+    <string name="get_product_counters_ok">counters: %1$s</string>
+    <string name="get_product_counters_fail">getProductCounters failed</string>
+    <string name="get_category">Category: list</string>
+    <string name="get_category_ok">category: %1$s</string>
+    <string name="get_category_fail">getCategory failed</string>
+    <string name="get_collection">Collection: get</string>
+    <string name="get_collection_ok">collection: %1$s</string>
+    <string name="get_collection_fail">getCollection failed</string>
+    <string name="push_token_label">Registered push token:</string>
+    <string name="push_token_waiting">waiting for token…</string>
+    <string name="push_token_copy">Copy token</string>
+    <string name="push_token_copied">Token copied to clipboard</string>
+    <string name="push_token_error">FCM token error: %1$s</string>
+    <string name="push_channel_name">Push notifications</string>
 </resources>
 
 

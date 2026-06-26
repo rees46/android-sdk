@@ -11,10 +11,13 @@ import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.CategoryManager
+import com.personalization.api.managers.CollectionManager
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.LoyaltyManager
 import com.personalization.api.managers.OrdersManager
 import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.managers.SearchManager
@@ -56,6 +59,15 @@ open class SDK {
     private var onMessageListener: OnMessageListener? = null
     private var search: Search = Search(JSONObject())
 
+    /**
+     * True once initialize() has wired the Dagger graph. A push can reach the SDK in a process
+     * where initialize() never ran (FCM cold start, or the host integrated the SDK incorrectly),
+     * so the push path checks this flag to avoid crashing the host app with
+     * UninitializedPropertyAccessException.
+     */
+    @Volatile
+    private var isSdkInitialized: Boolean = false
+
     @Inject
     internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
 
@@ -91,6 +103,15 @@ open class SDK {
 
     @Inject
     lateinit var loyaltyManager: LoyaltyManager
+
+    @Inject
+    lateinit var profileManager: ProfileManager
+
+    @Inject
+    lateinit var categoryManager: CategoryManager
+
+    @Inject
+    lateinit var collectionManager: CollectionManager
 
     @Inject
     lateinit var inAppNotificationManager: InAppNotificationManager
@@ -177,6 +198,11 @@ open class SDK {
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
+
+        isSdkInitialized = true
+        // Route incoming pushes (SDK.onMessage -> instance) to THIS initialized SDK, so the
+        // documented `SDK().initialize()` usage works without crashing or being ignored.
+        currentInstance = this@SDK
 
         CoroutineScope(Dispatchers.IO).launch {
             val advertisingId = initializeAdvertisingIdUseCase.invoke()
@@ -846,6 +872,13 @@ open class SDK {
      * @param data from data notification
      */
     fun notificationReceived(data: Map<String, String>) {
+        if (!isSdkInitialized) {
+            warn(
+                "notificationReceived() called before SDK.initialize(); ignoring. " +
+                    "Initialize SDK.instance in Application.onCreate so push delivery works in a cold process."
+            )
+            return
+        }
         val params = JSONObject()
         try {
             val type = data[TYPE_FIELD]
@@ -902,9 +935,18 @@ open class SDK {
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
 
-        val instance: SDK by lazy {
-            SDK()
-        }
+        @Volatile
+        private var currentInstance: SDK? = null
+
+        /**
+         * The SDK that receives push callbacks (see [onMessage]). Set to whichever SDK was last
+         * passed to [initialize], so the documented `SDK().initialize()` usage routes incoming
+         * pushes to that initialized instance (otherwise the push hit a different, lazily-created
+         * object that was never initialized). Falls back to a lazily-created instance if a push is
+         * delivered before initialize() ran — that instance is guarded and won't crash the host.
+         */
+        val instance: SDK
+            get() = currentInstance ?: SDK().also { currentInstance = it }
 
         fun userAgent(): String {
             return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME

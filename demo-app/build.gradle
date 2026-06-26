@@ -3,6 +3,13 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Process google-services.json (untracked, local-only) so Firebase/FCM is configured
+// and the push token can be fetched. Applied conditionally to keep the build green
+// in CI or for contributors who don't have the file.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 android {
     namespace 'com.personalization.demo'
     compileSdkVersion 34
