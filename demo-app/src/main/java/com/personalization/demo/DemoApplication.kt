@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.multidex.MultiDexApplication
 import com.google.firebase.FirebaseApp
 import com.personalization.SDK
@@ -69,7 +70,7 @@ class DemoApplication : MultiDexApplication() {
                 getString(R.string.push_channel_name),
                 NotificationManager.IMPORTANCE_HIGH,
             )
-            getSystemService(NotificationManager::class.java)
+            ContextCompat.getSystemService(this, NotificationManager::class.java)
                 ?.createNotificationChannel(channel)
         }
     }
@@ -100,7 +101,7 @@ class DemoApplication : MultiDexApplication() {
             )
         }
 
-        getSystemService(NotificationManager::class.java)
+        ContextCompat.getSystemService(this, NotificationManager::class.java)
             ?.notify((data.title.orEmpty() + data.body.orEmpty()).hashCode(), builder.build())
     }
 
