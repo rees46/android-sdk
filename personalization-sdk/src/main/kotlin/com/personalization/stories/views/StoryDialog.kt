@@ -4,6 +4,7 @@ import android.app.Dialog
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Rect
+import android.os.Build
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -50,6 +51,10 @@ class StoryDialog(
 
         wlp.gravity = Gravity.CENTER
         wlp.flags = wlp.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            wlp.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         window.attributes = wlp
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 

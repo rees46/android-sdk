@@ -1,14 +1,22 @@
 package com.personalization.demo
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.FirebaseApp
+import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.PushProvider
@@ -43,6 +51,27 @@ class MainActivity : AppCompatActivity() {
         const val COLLISION_PLACEHOLDER_VALUE = "collision_demo"
     }
 
+    private object DemoOrdersConstants {
+        /**
+         * Server-side shop secret for `orders/by_user`. Sourced from `shop.secret` in local.properties
+         * (gitignored) via BuildConfig — never hardcode a real secret here. Falls back to a placeholder.
+         */
+        val SHOP_SECRET = BuildConfig.SHOP_SECRET
+    }
+
+    private object DemoLoyaltyConstants {
+        const val PHONE = "79991234567"
+        const val EMAIL = "demo@rees46.ru"
+        const val FIRST_NAME = "Demo"
+        const val LAST_NAME = "User"
+    }
+
+    private object DemoCatalogConstants {
+        const val ITEM_ID = "300275"
+        const val CATEGORY_SLUG = "smartfony-i-gadzhety"
+        const val COLLECTION_ID = "1"
+    }
+
     private object DemoProductViewConstants {
         const val PRODUCT_ID = "demo-product-view-001"
         const val DEMO_PRICE = 2499.99
@@ -72,21 +101,12 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
-        // Initialize SDK
-        try {
-            sdk = SDK()
-            // Subscribe before initialize so proactively fetched tokens are captured too.
-            observePushTokens()
-            sdk.initialize(
-                context = this,
-                shopId = BuildConfig.SHOP_ID,
-                apiDomain = "api.rees46.ru",
-                autoSendPushToken = false
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Continue even if SDK initialization fails for demo purposes
-        }
+        // The SDK is initialized once in DemoApplication.onCreate (Application) so it is ready in
+        // every process — including the cold process FCM/HMS starts to deliver a push. Reuse that
+        // same initialized instance here (do NOT create a new SDK()).
+        sdk = SDK.instance
+        // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
+        observePushTokens()
 
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
@@ -132,6 +152,306 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnTrackPurchaseFull).setOnClickListener {
             trackPurchaseFull()
         }
+
+        findViewById<Button>(R.id.btnGetLastOrderProducts).setOnClickListener {
+            getLastOrderProducts()
+        }
+
+        findViewById<Button>(R.id.btnGetUserOrders).setOnClickListener {
+            getUserOrders()
+        }
+
+        findViewById<Button>(R.id.btnLoyaltyJoin).setOnClickListener {
+            loyaltyJoin()
+        }
+
+        findViewById<Button>(R.id.btnLoyaltyStatus).setOnClickListener {
+            loyaltyStatus()
+        }
+
+        findViewById<Button>(R.id.btnGetProfile).setOnClickListener {
+            getProfile()
+        }
+
+        findViewById<Button>(R.id.btnGetProductCounters).setOnClickListener {
+            getProductCounters()
+        }
+
+        findViewById<Button>(R.id.btnGetCategory).setOnClickListener {
+            getCategory()
+        }
+
+        findViewById<Button>(R.id.btnGetCollection).setOnClickListener {
+            getCollection()
+        }
+
+        findViewById<Button>(R.id.btnCopyToken).setOnClickListener {
+            copyTokenToClipboard()
+        }
+
+        ensureNotificationPermission()
+        showLastCrashIfAny()
+        // App may have been opened by tapping a push — report the click to the SDK.
+        handleNotificationClick(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationClick(intent)
+    }
+
+    /**
+     * When the app is opened by tapping an SDK push, the launch intent carries the notification's
+     * type/id. Forward them to the SDK so it can send `track/clicked`. Guarded so normal launches
+     * (no push extras) don't trigger spurious tracking.
+     */
+    private fun handleNotificationClick(intent: Intent?) {
+        val extras = intent?.extras ?: return
+        val hasPushExtras = extras.getString("NOTIFICATION_TYPE") != null ||
+            extras.getString("NOTIFICATION_ID") != null
+        if (!hasPushExtras) return
+        sdk.notificationClicked(extras)
+    }
+
+    /** If the previous run crashed (e.g. while handling a push), show the saved stack with Copy. */
+    private fun showLastCrashIfAny() {
+        val prefs = getSharedPreferences(DemoApplication.CRASH_PREFS, Context.MODE_PRIVATE)
+        val crash = prefs.getString(DemoApplication.KEY_LAST_CRASH, null) ?: return
+        AlertDialog.Builder(this)
+            .setTitle("Last crash")
+            .setMessage(crash)
+            .setPositiveButton("Copy") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("crash", crash))
+                Toast.makeText(this, "Crash copied", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Clear") { _, _ ->
+                prefs.edit().remove(DemoApplication.KEY_LAST_CRASH).apply()
+            }
+            .show()
+    }
+
+    /** Android 13+ requires the POST_NOTIFICATIONS runtime permission for any notification to show. */
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                /* requestCode = */ 1001,
+            )
+        }
+    }
+
+    private fun getCollection() {
+        sdk.collectionManager.getCollection(
+            collectionId = DemoCatalogConstants.COLLECTION_ID,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_collection_ok, "products=${response.products.size}"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_collection_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getProfile() {
+        sdk.profileManager.getProfile(
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_profile_ok,
+                            "id=${response.id}, hasEmail=${response.hasEmail}, gender=${response.gender ?: "—"}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_profile_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getProductCounters() {
+        sdk.productsManager.getProductCounters(
+            item = DemoCatalogConstants.ITEM_ID,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_product_counters_ok,
+                            "now.view=${response.now?.view}, price_drop=${response.triggers?.priceDrop}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_product_counters_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getCategory() {
+        sdk.categoryManager.getCategory(
+            category = DemoCatalogConstants.CATEGORY_SLUG,
+            limit = 5,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.get_category_ok,
+                            "total=${response.productsTotal}, products=${response.products.size}",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_category_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun loyaltyJoin() {
+        sdk.loyaltyManager.join(
+            phone = DemoLoyaltyConstants.PHONE,
+            email = DemoLoyaltyConstants.EMAIL,
+            firstName = DemoLoyaltyConstants.FIRST_NAME,
+            lastName = DemoLoyaltyConstants.LAST_NAME,
+            onSuccess = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.loyalty_join_ok, response.status ?: "—"),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.loyalty_join_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun loyaltyStatus() {
+        sdk.loyaltyManager.getStatus(
+            identifier = DemoLoyaltyConstants.PHONE,
+            onSuccess = { response ->
+                runOnUiThread {
+                    val member = response.payload?.member
+                    val level = response.payload?.level?.name
+                    Toast.makeText(
+                        this,
+                        getString(
+                            R.string.loyalty_status_ok,
+                            "${response.status ?: "—"} (member=$member, level=$level)",
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.loyalty_status_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getUserOrders() {
+        sdk.ordersManager.getUserOrders(
+            shopSecret = DemoOrdersConstants.SHOP_SECRET,
+            onSuccess = { orders ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_user_orders_ok, orders.size),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_user_orders_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
+    }
+
+    private fun getLastOrderProducts() {
+        sdk.ordersManager.getLastOrderProducts(
+            onGetLastOrderProducts = { response ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.get_last_order_products_ok, response.products.size),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+            onError = { code, msg ->
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        "${getString(R.string.get_last_order_products_fail)}: $code $msg",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            },
+        )
     }
 
     private fun trackPurchaseMinimal() {
@@ -361,15 +681,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val pushTokens = linkedMapOf<PushProvider, String>()
-    private val pushStatus = linkedMapOf<PushProvider, String>()
 
     /**
-     * Subscribes to push tokens through the unified SDK API. Works the same for FCM and HMS:
-     * the SDK captures each token from its own messaging services and reports it here, including
-     * HMS tokens that the provider only delivers asynchronously via onNewToken.
+     * Shows the registered push provider(s) and token(s) in the header. Works the same for FCM and
+     * HMS: the SDK captures and registers each token from its own messaging services (autoSendPushToken
+     * on init) and reports it here. This is display only — registration is handled by the SDK.
      *
-     * On each token the demo also explicitly registers it with the backend via [SDK.setPushToken]
-     * and shows the registration result on screen, so a tester can confirm the full flow.
+     * The SDK is initialized in DemoApplication, so the live listener may have already fired before
+     * this Activity subscribed. To still show a token immediately we seed from the SDK's per-provider
+     * cache and, for FCM, query Firebase directly; HMS (delivered asynchronously) arrives via the
+     * live listener.
      */
     private fun observePushTokens() {
         val typeView = findViewById<TextView>(R.id.tvPushTokenType)
@@ -380,29 +701,28 @@ class MainActivity : AppCompatActivity() {
         // Tap the token to copy the most recent one to the clipboard.
         tokenView.setOnClickListener { copyTokenToClipboard() }
 
+        // Seed from the SDK's per-provider cache (tokens already fetched + registered at init).
+        PushProvider.entries.forEach { provider ->
+            sdk.getPushToken(provider)?.let { pushTokens[provider] = it }
+        }
+        renderPushTokens(typeView, tokenView)
+
+        // Guarantee the FCM token shows even before the SDK's async registration persists it.
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                runOnUiThread {
+                    pushTokens[PushProvider.FCM] = task.result
+                    renderPushTokens(typeView, tokenView)
+                }
+            }
+        }
+
+        // Live updates (HMS arrives asynchronously; FCM refresh). Display only.
         sdk.setOnPushTokenListener { token, provider ->
             runOnUiThread {
                 pushTokens[provider] = token
-                pushStatus[provider] = "registering…"
                 renderPushTokens(typeView, tokenView)
             }
-            sdk.setPushToken(token, provider, object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    runOnUiThread {
-                        pushStatus[provider] = "registered ✓"
-                        renderPushTokens(typeView, tokenView)
-                    }
-                }
-
-                override fun onError(code: Int, msg: String?) {
-                    runOnUiThread {
-                        // Keep the on-screen status short — the full response body (which can be a
-                        // whole HTML error page) is available in the HTTP Log screen.
-                        pushStatus[provider] = "register failed: $code"
-                        renderPushTokens(typeView, tokenView)
-                    }
-                }
-            })
         }
     }
 
@@ -423,12 +743,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderPushTokens(typeView: TextView, tokenView: TextView) {
+        if (pushTokens.isEmpty()) {
+            typeView.text = getString(R.string.push_token_type_placeholder)
+            tokenView.text = getString(R.string.push_token_placeholder)
+            return
+        }
         typeView.text = getString(
             R.string.push_token_type_value,
             pushTokens.keys.joinToString(", ") { it.id }
         )
         tokenView.text = pushTokens.entries.joinToString("\n\n") { (provider, token) ->
-            "${provider.id} [${pushStatus[provider] ?: "…"}]: $token"
+            "${provider.id}: $token"
         }
     }
 

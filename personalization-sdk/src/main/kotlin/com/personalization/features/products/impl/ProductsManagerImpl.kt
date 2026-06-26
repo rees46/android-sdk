@@ -1,8 +1,10 @@
 package com.personalization.features.products.impl
 
+import com.google.gson.Gson
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.ProductsManager
+import com.personalization.api.responses.products.counters.ProductCountersResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
@@ -49,6 +51,30 @@ internal class ProductsManagerImpl @Inject constructor(
         )
     }
 
+    override fun getProductCounters(
+        item: String,
+        onSuccess: (ProductCountersResponse) -> Unit,
+        onError: (Int, String?) -> Unit
+    ) {
+        sendNetworkMethodUseCase.getAsync(
+            method = GET_PRODUCT_COUNTERS_REQUEST,
+            params = Params().apply { put(ITEM_KEY, item) }.build(),
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    val parsed = Gson().fromJson(
+                        response.toString(),
+                        ProductCountersResponse::class.java
+                    )
+                    onSuccess(parsed ?: ProductCountersResponse())
+                }
+
+                override fun onError(code: Int, msg: String?) {
+                    onError(code, msg)
+                }
+            }
+        )
+    }
+
     private fun Params.buildParams(
         itemId: String? = null,
         brands: String? = null,
@@ -76,6 +102,9 @@ internal class ProductsManagerImpl @Inject constructor(
     companion object {
         const val GET_PRODUCT_LIST_REQUEST = "products"
         const val GET_PRODUCT_INFO_REQUEST = "products/get"
+        const val GET_PRODUCT_COUNTERS_REQUEST = "products/counters"
+
+        private const val ITEM_KEY = "item"
 
         private const val LIMIT_KEY = "limit"
         private const val PAGE_KEY = "page"

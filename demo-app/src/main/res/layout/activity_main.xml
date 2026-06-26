@@ -1,107 +1,197 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
+    <!-- Registered push provider + token, always visible at the top + Copy / HTTP Log. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:gravity="center_horizontal">
+        android:background="#EEEEEE"
+        android:padding="12dp">
 
-    <TextView
-        android:id="@+id/tvPushTokenType"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/push_token_type_placeholder"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginTop="8dp" />
+        <TextView
+            android:id="@+id/tvPushTokenLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/push_token_label"
+            android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/tvPushToken"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/push_token_placeholder"
-        android:textIsSelectable="true"
-        android:gravity="center"
-        android:maxLines="8"
-        android:ellipsize="end"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="8dp" />
+        <TextView
+            android:id="@+id/tvPushTokenType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/push_token_type_placeholder"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btnHttpLog"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/http_log_open"
-        android:layout_marginTop="8dp" />
+        <TextView
+            android:id="@+id/tvPushToken"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/push_token_placeholder"
+            android:textIsSelectable="true"
+            android:maxLines="6"
+            android:ellipsize="end" />
 
-    <Button
-        android:id="@+id/btnShowTestPopup"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/show_test_popup"
-        android:layout_marginTop="16dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
 
-    <Button
-        android:id="@+id/btnTrackEventCustomFields"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_event_custom_fields"
-        android:layout_marginTop="16dp" />
+            <Button
+                android:id="@+id/btnCopyToken"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/push_token_copy" />
 
-    <Button
-        android:id="@+id/btnTrackEventCollision"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_event_reserved_collision"
-        android:layout_marginTop="16dp" />
-
-    <Button
-        android:id="@+id/btnTrackViewNoParams"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_view_no_params"
-        android:layout_marginTop="24dp" />
-
-    <Button
-        android:id="@+id/btnTrackViewWithParams"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_view_with_params"
-        android:layout_marginTop="16dp" />
-
-    <Button
-        android:id="@+id/btnPredictDidOnly"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/predict_did_only"
-        android:layout_marginTop="24dp" />
-
-    <Button
-        android:id="@+id/btnPredictWithEmail"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/predict_with_email"
-        android:layout_marginTop="16dp" />
-
-    <Button
-        android:id="@+id/btnTrackPurchaseMinimal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_purchase_minimal"
-        android:layout_marginTop="24dp" />
-
-    <Button
-        android:id="@+id/btnTrackPurchaseFull"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/track_purchase_full"
-        android:layout_marginTop="16dp" />
-
+            <Button
+                android:id="@+id/btnHttpLog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/http_log_open" />
+        </LinearLayout>
     </LinearLayout>
-</ScrollView>
 
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btnShowTestPopup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/show_test_popup"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnTrackEventCustomFields"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_event_custom_fields"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnTrackEventCollision"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_event_reserved_collision"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnTrackViewNoParams"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_view_no_params"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnTrackViewWithParams"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_view_with_params"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnPredictDidOnly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/predict_did_only"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnPredictWithEmail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/predict_with_email"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnTrackPurchaseMinimal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_purchase_minimal"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnTrackPurchaseFull"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/track_purchase_full"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnGetLastOrderProducts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_last_order_products"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnGetUserOrders"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_user_orders"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnLoyaltyJoin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/loyalty_join"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnLoyaltyStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/loyalty_status"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnGetProfile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_profile"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/btnGetProductCounters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_product_counters"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnGetCategory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_category"
+                android:layout_marginTop="16dp" />
+
+            <Button
+                android:id="@+id/btnGetCollection"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/get_collection"
+                android:layout_marginTop="16dp" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>
