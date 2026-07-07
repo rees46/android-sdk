@@ -33,7 +33,23 @@ class PushTokenManager @Inject constructor(
     private var autoSendPushToken: Boolean = false
     private var listener: OnPushTokenListener? = null
 
-    private val sources: List<PushTokenSource> = listOf(FcmTokenSource(), HmsTokenSource())
+    /**
+     * Register only the providers whose SDK is actually on the classpath. HMS is an optional
+     * (compileOnly) dependency, so a FCM-only app has no Huawei classes — referencing
+     * [HmsTokenSource] there would throw NoClassDefFoundError. The guard keeps a provider off
+     * unless the host opted in by adding its artifacts.
+     */
+    private val sources: List<PushTokenSource> = buildList {
+        if (isOnClasspath(FCM_MARKER_CLASS)) add(FcmTokenSource())
+        if (isOnClasspath(HMS_MARKER_CLASS)) add(HmsTokenSource())
+    }
+
+    private fun isOnClasspath(className: String): Boolean = try {
+        Class.forName(className, false, javaClass.classLoader)
+        true
+    } catch (_: Throwable) {
+        false
+    }
 
     fun setOnPushTokenListener(listener: OnPushTokenListener) {
         this.listener = listener
@@ -137,6 +153,9 @@ class PushTokenManager @Inject constructor(
 
     companion object {
         private const val TAG = "PushTokenManager"
+        // Marker classes used to detect whether each provider's SDK is present at runtime.
+        private const val FCM_MARKER_CLASS = "com.google.firebase.messaging.FirebaseMessaging"
+        private const val HMS_MARKER_CLASS = "com.huawei.hms.push.HmsMessaging"
         private const val ONE_WEEK_MILLISECONDS = 7 * 24 * 60 * 60 * 1000L
         private const val MOBILE_PUSH_TOKENS = "mobile_push_tokens"
         private const val PUSH_PROVIDER_FIELD = "push_provider"

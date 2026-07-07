@@ -1,11 +1,13 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.huawei.agconnect'
 }
 
-// Apply the Firebase plugin only when google-services.json is present, so the demo still builds
-// (with FCM gracefully unavailable) for anyone who hasn't dropped in the real Firebase config.
+// Apply each provider's plugin only when its config file is present, so the demo still builds
+// (with that provider gracefully unavailable) for anyone who hasn't dropped in the real config.
+if (file('agconnect-services.json').exists()) {
+    apply plugin: 'com.huawei.agconnect'
+}
 if (file('google-services.json').exists()) {
     apply plugin: 'com.google.gms.google-services'
 }

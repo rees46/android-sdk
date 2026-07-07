@@ -24,6 +24,9 @@ android {
         buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Shipped to the consumer's R8 so a FCM-only app (without the optional HMS artifacts) does
+        // not fail on the absent Huawei classes referenced by HmsMessagingService/HmsTokenSource.
+        consumerProguardFiles 'consumer-rules.pro'
     }
 
     buildTypes {
@@ -93,8 +96,13 @@ dependencies {
 
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging:23.4.1'
-    implementation 'com.huawei.hms:push:6.11.0.300'
-    implementation 'com.huawei.agconnect:agconnect-core:1.9.1.301'
+    // Huawei push is OPTIONAL. compileOnly keeps HMS off every consumer's classpath (and out of
+    // the published POM), so a plain FCM app builds without the Huawei Maven repo. To enable
+    // Huawei push, the host app adds these as `implementation`, applies the `com.huawei.agconnect`
+    // plugin and ships `agconnect-services.json`. Presence is detected at runtime — see
+    // PushTokenManager — and R8 warnings for the absent classes are suppressed via consumer-rules.pro.
+    compileOnly 'com.huawei.hms:push:6.11.0.300'
+    compileOnly 'com.huawei.agconnect:agconnect-core:1.9.1.301'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-ui:1.4.1'
