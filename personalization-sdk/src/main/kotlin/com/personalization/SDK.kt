@@ -971,11 +971,11 @@ open class SDK {
         }
     }
 
-    private fun receiveMessage(remoteMessage: RemoteMessage) {
-        notificationReceived(data = remoteMessage.data)
+    private fun receiveMessage(data: Map<String, String>) {
+        notificationReceived(data = data)
 
         onMessageListener?.onMessage(
-            data = remoteMessage.toNotificationData()
+            data = data.toNotificationData()
         )
     }
 
@@ -1072,10 +1072,27 @@ open class SDK {
         }
 
         /**
-         * @param remoteMessage
+         * Routes a push payload to the SDK so it is tracked as received and forwarded to the host's
+         * [OnMessageListener] for display. Called by the SDK's messaging services.
+         *
+         * Both providers deliver the payload as a `data` map (title/body/icon/…): this FCM overload
+         * unwraps [RemoteMessage.getData], while the map overload is used by [HmsMessagingService]
+         * so Huawei data-messages are shown the same way as FCM ones.
+         *
+         * @param remoteMessage an FCM message
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance.receiveMessage(remoteMessage)
+            instance.receiveMessage(remoteMessage.data)
+        }
+
+        /**
+         * Routes a push `data` payload from any provider (e.g. HMS) to the SDK. See the
+         * [RemoteMessage] overload for the FCM entry point.
+         *
+         * @param data the push data payload (title/body/icon/…)
+         */
+        fun onMessage(data: Map<String, String>) {
+            instance.receiveMessage(data)
         }
 
         /**

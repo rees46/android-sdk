@@ -13,8 +13,18 @@ class HmsMessagingService : HmsMessageService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        if (BuildConfig.DEBUG && message.dataOfMap.isNotEmpty()) {
-            SDK.debug("HMS message data: ${message.dataOfMap}")
+        // Never let a failure handling a push propagate to the HMS thread and crash the host app.
+        try {
+            val data = message.dataOfMap
+            // Data-only messages (attach_notification=false) are not shown by HMS Core, so route
+            // them through the SDK to be tracked and displayed via the OnMessageListener — the same
+            // path FCM data-messages take.
+            if (data.isNotEmpty()) {
+                SDK.debug("HMS message data: $data")
+                SDK.onMessage(data)
+            }
+        } catch (throwable: Throwable) {
+            SDK.error("Failed to handle HMS push message", throwable)
         }
     }
 }
