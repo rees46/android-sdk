@@ -40,7 +40,9 @@ class MainActivity : AppCompatActivity() {
     private object DemoTrackEventConstants {
         /** Same value as SDK client-side validation errors for custom field key collisions. */
         const val CLIENT_VALIDATION_ERROR_CODE = -1
-        const val EVENT_NAME = "custom_event"
+        // Must be an event registered for the shop, otherwise the backend returns
+        // 400 "Event <name> not found". Reuses the same registered event as the Flutter demo.
+        const val EVENT_NAME = "flutter_example"
         const val SAMPLE_UNIX_TIME = 123_456
         const val CATEGORY = "demo_category"
         const val LABEL = "demo_label"
@@ -708,12 +710,22 @@ class MainActivity : AppCompatActivity() {
         renderPushTokens(typeView, tokenView)
 
         // Guarantee the FCM token shows even before the SDK's async registration persists it.
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                runOnUiThread {
-                    pushTokens[PushProvider.FCM] = task.result
-                    renderPushTokens(typeView, tokenView)
+        // Only when Firebase is actually configured: on a Huawei-only build there is no
+        // google-services.json, so no default FirebaseApp, and FirebaseMessaging.getInstance()
+        // would throw IllegalStateException and crash the Activity. The try/catch is defence in
+        // depth. HMS tokens still arrive through the SDK cache/listener below.
+        if (FirebaseApp.getApps(this).isNotEmpty()) {
+            try {
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        runOnUiThread {
+                            pushTokens[PushProvider.FCM] = task.result
+                            renderPushTokens(typeView, tokenView)
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
