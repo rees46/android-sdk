@@ -2,6 +2,7 @@ package com.personalization.features.notification.presentation.helpers
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -45,7 +46,7 @@ class NotificationHelper @Inject constructor(
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-            .setSmallIcon(NotificationResources.NOTIFICATION_ICON)
+            .setSmallIcon(resolveSmallIcon(context))
             .setCustomContentView(view)
             .setCustomBigContentView(view)
             .setAutoCancel(true)
@@ -54,5 +55,30 @@ class NotificationHelper @Inject constructor(
             /* id = */ (data.title + data.body).hashCode(),
             /* notification = */ notificationBuilder.build()
         )
+    }
+
+    /**
+     * The SDK never imposes its own brand icon. Use the host app's dedicated notification icon
+     * if it declared one via the standard `default_notification_icon` meta-data; otherwise fall
+     * back to the host application's own launcher icon.
+     */
+    private fun resolveSmallIcon(context: Context): Int {
+        val hostSpecialIcon = readHostNotificationIcon(context)
+        return if (hostSpecialIcon != 0) hostSpecialIcon else context.applicationInfo.icon
+    }
+
+    private fun readHostNotificationIcon(context: Context): Int = try {
+        context.packageManager
+            .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+            .metaData
+            ?.getInt(META_DATA_NOTIFICATION_ICON, 0) ?: 0
+    } catch (e: PackageManager.NameNotFoundException) {
+        0
+    }
+
+    private companion object {
+        // De-facto standard meta-data hosts use to declare a dedicated push notification icon.
+        const val META_DATA_NOTIFICATION_ICON =
+            "com.google.firebase.messaging.default_notification_icon"
     }
 }

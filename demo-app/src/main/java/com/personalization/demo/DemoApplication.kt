@@ -87,7 +87,8 @@ class DemoApplication : MultiDexApplication() {
         val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }?.let(::loadBitmap)
 
         val builder = NotificationCompat.Builder(this, PUSH_CHANNEL_ID)
-            .setSmallIcon(com.personalization.R.drawable.ic_notification_logo)
+            // Host owns the push icon — the demo uses its own notification glyph, not an SDK asset.
+            .setSmallIcon(R.drawable.ic_demo_notification)
             .setContentTitle(data.title)
             .setContentText(data.body)
             .setAutoCancel(true)
