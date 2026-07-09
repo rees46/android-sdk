@@ -17,7 +17,11 @@ object NotificationChannelHelper {
                 /* channel = */ NotificationChannel(
                     /* id = */ channelId,
                     /* name = */ channelName,
-                    /* importance = */ NotificationManager.IMPORTANCE_LOW
+                    // HIGH so notification-mode pushes (attach_notification=true) that FCM/HMS
+                    // auto-display in the background produce a heads-up pop-up with sound, instead
+                    // of landing silently in the shade. Mirrors the React Native SDK reference
+                    // (AndroidImportance.HIGH). Same channel id as before.
+                    /* importance = */ NotificationManager.IMPORTANCE_HIGH
                 )
             )
         }
