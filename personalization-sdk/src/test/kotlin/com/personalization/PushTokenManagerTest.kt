@@ -151,6 +151,71 @@ class PushTokenManagerTest {
         assertEquals("hms-token-789" to PushProvider.HMS, notified)
     }
 
+    // On a fresh install the same token reaches onTokenReceived twice: from the proactive fetch in
+    // initialize() and from the messaging service's onNewToken. The stored token is only written in
+    // the response callback, so without an in-flight claim both deliveries see an empty cache.
+    @Test
+    fun `onTokenReceived sends once when the same token arrives twice before the response`() {
+        pushTokenManager.initialize(context, autoSendPushToken = true)
+        // post() never invokes its callback: the first request is still on the wire.
+        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+
+        pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
+        pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
+
+        verify(exactly = 1) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+    }
+
+    @Test
+    fun `onTokenReceived still notifies the host for a delivery it deduplicates`() {
+        val notified = mutableListOf<String>()
+        pushTokenManager.setOnPushTokenListener { token, _ -> notified.add(token) }
+        pushTokenManager.initialize(context, autoSendPushToken = true)
+        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+
+        pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
+        pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
+
+        assertEquals(listOf("fcm-token-race", "fcm-token-race"), notified)
+    }
+
+    @Test
+    fun `the claim is per provider so the same token value is sent for FCM and HMS`() {
+        pushTokenManager.initialize(context, autoSendPushToken = true)
+        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+
+        pushTokenManager.onTokenReceived("shared-token", PushProvider.FCM)
+        pushTokenManager.onTokenReceived("shared-token", PushProvider.HMS)
+
+        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+    }
+
+    @Test
+    fun `a failed send releases the claim so the next delivery retries`() {
+        pushTokenManager.initialize(context, autoSendPushToken = true)
+        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+            thirdArg<OnApiCallbackListener>().onError(500, "server error")
+        }
+
+        pushTokenManager.onTokenReceived("fcm-token-retry", PushProvider.FCM)
+        pushTokenManager.onTokenReceived("fcm-token-retry", PushProvider.FCM)
+
+        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+    }
+
+    @Test
+    fun `a new token is sent after the previous one completed`() {
+        pushTokenManager.initialize(context, autoSendPushToken = true)
+        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+            thirdArg<OnApiCallbackListener>().onSuccess(null as JSONObject?)
+        }
+
+        pushTokenManager.onTokenReceived("fcm-token-first", PushProvider.FCM)
+        pushTokenManager.onTokenReceived("fcm-token-second", PushProvider.FCM)
+
+        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+    }
+
     @Test
     fun `fcm and hms tokens carry different push_provider values`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)

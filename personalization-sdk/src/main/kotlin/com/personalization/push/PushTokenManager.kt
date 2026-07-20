@@ -10,7 +10,9 @@ import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import org.json.JSONObject
+import java.util.Collections
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +34,19 @@ class PushTokenManager @Inject constructor(
     private lateinit var context: Context
     private var autoSendPushToken: Boolean = false
     private var listener: OnPushTokenListener? = null
+
+    /**
+     * Tokens whose request is already on the wire, as `provider:token`.
+     *
+     * [shouldSendToken] compares the incoming token against the persisted one, but persistence
+     * only happens in the response callback. On a fresh install the same token reaches
+     * [onTokenReceived] twice almost simultaneously — once from the proactive fetch in
+     * [initialize], once from the messaging service's `onNewToken` — and both see an empty cache,
+     * so both send. Claiming the pair before the request leaves closes that window; the backing
+     * map is concurrent, so exactly one caller wins the claim.
+     */
+    private val tokensInFlight: MutableSet<String> =
+        Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
 
     /**
      * Register only the providers whose SDK is actually on the classpath. HMS is an optional
@@ -90,7 +105,7 @@ class PushTokenManager @Inject constructor(
         if (token.isEmpty() || !::context.isInitialized) return
 
         val currentDate = Date().time
-        if (shouldSendToken(provider, token, currentDate)) {
+        if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {
             sendTokenToServer(token, provider, currentDate, external = null)
         }
         listener?.onPushToken(token, provider)
@@ -118,6 +133,13 @@ class PushTokenManager @Inject constructor(
                 currentDate - lastUpdate >= ONE_WEEK_MILLISECONDS)
     }
 
+    /** True for the first caller to claim this token; false while its request is still running. */
+    private fun claimInFlight(provider: PushProvider, token: String): Boolean =
+        tokensInFlight.add(inFlightKey(provider, token))
+
+    private fun inFlightKey(provider: PushProvider, token: String): String =
+        "${provider.id}:$token"
+
     private fun sendTokenToServer(
         token: String,
         provider: PushProvider,
@@ -136,11 +158,16 @@ class PushTokenManager @Inject constructor(
                 override fun onSuccess(response: JSONObject?) {
                     savePreferencesValueUseCase.saveLastPushTokenDate(provider, currentDate)
                     savePreferencesValueUseCase.savePushToken(provider, token)
+                    // Released only after the token is persisted, so a delivery arriving in
+                    // between is still deduplicated — by the cache rather than by the claim.
+                    tokensInFlight.remove(inFlightKey(provider, token))
                     Log.d(TAG, "${provider.id} push token successfully sent and saved")
                     external?.onSuccess(response)
                 }
 
                 override fun onError(code: Int, msg: String?) {
+                    // Nothing was persisted, so free the claim and let a later delivery retry.
+                    tokensInFlight.remove(inFlightKey(provider, token))
                     BaseInfoError(
                         tag = TAG,
                         message = "${provider.id} push token failed. Code: $code, Message: $msg"
