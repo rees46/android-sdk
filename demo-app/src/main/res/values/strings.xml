@@ -69,7 +69,7 @@
     <string name="push_token_error">FCM token error: %1$s</string>
     <string name="push_channel_name">Push notifications</string>
     <!-- Stories block code for the demo shop. Replace with a code configured for your shop. -->
-    <string name="stories_code">a161a0cfefc55dfe08a6980e9c4bfdfd</string>
+    <string name="stories_code">115bd0b67cf5989a1b60c841790b2af6</string>
     <!-- Bottom navigation -->
     <string name="tab_api">API</string>
     <string name="tab_ui_kit">UI Kit</string>
