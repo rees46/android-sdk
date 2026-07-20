@@ -7,3 +7,7 @@
 # Huawei device where the host provided those artifacts, so suppressing the warnings is safe.
 -dontwarn com.huawei.**
 -dontwarn com.huawei.agconnect.**
+
+# Jetpack Compose is likewise OPTIONAL and compileOnly — it only backs StoriesWidget. A View-based
+# consumer never loads that class, so the absent androidx.compose.** references are safe to ignore.
+-dontwarn androidx.compose.**
