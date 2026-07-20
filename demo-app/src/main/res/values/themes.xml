@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      The demo is intentionally light in every mode. DayNight (which resolves to Light in day) plus a
+      -night theme override (values-night/themes.xml) that stays Light means the app looks the same
+      whether the system is light or dark. Declaring night resources at all is what stops OEM
+      force-dark: skins like MIUI/EMUI only invert apps that don't handle night themselves, so once
+      the app advertises dark-mode support they hand control back and leave its light look alone.
+      forceDarkAllowed=false additionally opts out of the platform's own force-dark (API 29+, a no-op
+      below, harmless at minSdk 19).
+    -->
+    <style name="Theme.PersonalizationDemo" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+    </style>
+
+</resources>

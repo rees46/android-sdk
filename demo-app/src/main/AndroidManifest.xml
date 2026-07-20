@@ -13,7 +13,7 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:theme="@style/Theme.PersonalizationDemo"
         tools:targetApi="31">
 
         <!-- Host-provided push icon. FCM uses this to render the small icon when it auto-displays a

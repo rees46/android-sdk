@@ -8,12 +8,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.compose.ui.platform.ComposeView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.core.content.ContextCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
@@ -21,6 +24,9 @@ import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.PushProvider
 import com.personalization.SDK
+import com.personalization.OnClickListener
+import com.personalization.Product
+import com.personalization.stories.views.StoriesView
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseItemRequest
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
@@ -36,6 +42,13 @@ import com.personalization.sdk.data.models.dto.popUp.Position
 class MainActivity : AppCompatActivity() {
 
     private lateinit var sdk: SDK
+
+    /** Most recent OnClickListener callbacks from the "Legacy UI" tab, newest first. */
+    private val legacyStoriesEvents = mutableListOf<String>()
+
+    private companion object {
+        const val MAX_LOGGED_STORIES_EVENTS = 20
+    }
 
     private object DemoTrackEventConstants {
         /** Same value as SDK client-side validation errors for custom field key collisions. */
@@ -112,6 +125,8 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
+
+        setupStoriesTabs()
 
         findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
             startActivity(android.content.Intent(this, HttpLogActivity::class.java))
@@ -797,6 +812,59 @@ class MainActivity : AppCompatActivity() {
         )
 
         sdk.inAppNotificationManager.shopPopUp(testPopup)
+    }
+
+    /**
+     * Wires the bottom navigation and both stories tabs.
+     *
+     * "UI Kit" renders the block with the SDK's Compose wrapper, "Legacy UI" with the XML view, so
+     * the two integration styles can be compared side by side. The API pane keeps the SDK method
+     * demos and no longer carries a stories block of its own.
+     */
+    private fun setupStoriesTabs() {
+        val apiContent = findViewById<View>(R.id.apiContent)
+        val uiKitContent = findViewById<ComposeView>(R.id.uiKitContent)
+        val legacyContent = findViewById<View>(R.id.legacyContent)
+        val storiesCode = getString(R.string.stories_code)
+
+        // Legacy pane: the code comes from app:code in the layout; initializeStoriesView hands the
+        // view to the SDK and loads the block. The request is queued until the SDK session is
+        // ready, so there is nothing to wait for here.
+        val legacyLog = findViewById<TextView>(R.id.tvLegacyStoriesLog)
+        val storiesView = findViewById<StoriesView>(R.id.storiesView)
+        storiesView.itemClickListener = object : OnClickListener {
+            override fun onClick(url: String): Boolean {
+                appendLegacyStoriesLog(legacyLog, "onClick(url): $url")
+                return true
+            }
+
+            override fun onClick(product: Product): Boolean {
+                appendLegacyStoriesLog(legacyLog, "onClick(product): ${product.name}")
+                return true
+            }
+        }
+        sdk.initializeStoriesView(storiesView)
+
+        uiKitContent.setContent { ComposeStoriesPane(sdk = sdk, code = storiesCode) }
+
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        bottomNav.setOnItemSelectedListener { item ->
+            apiContent.visibility = if (item.itemId == R.id.tabApi) View.VISIBLE else View.GONE
+            uiKitContent.visibility = if (item.itemId == R.id.tabUiKit) View.VISIBLE else View.GONE
+            legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
+            true
+        }
+        // Drive the initial pane through the same listener, so the checked item and the visible
+        // pane cannot drift apart (including after the activity is recreated).
+        bottomNav.selectedItemId = R.id.tabApi
+    }
+
+    private fun appendLegacyStoriesLog(target: TextView, message: String) {
+        legacyStoriesEvents.add(0, message)
+        if (legacyStoriesEvents.size > MAX_LOGGED_STORIES_EVENTS) {
+            legacyStoriesEvents.removeAt(legacyStoriesEvents.lastIndex)
+        }
+        runOnUiThread { target.text = legacyStoriesEvents.joinToString("\n") }
     }
 }
 

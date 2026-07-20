@@ -1,67 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
-    <!-- Registered push provider + token, always visible at the top + Copy / HTTP Log. -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#EEEEEE"
-        android:padding="12dp">
-
-        <TextView
-            android:id="@+id/tvPushTokenLabel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/push_token_label"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvPushTokenType"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/push_token_type_placeholder"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvPushToken"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/push_token_placeholder"
-            android:textIsSelectable="true"
-            android:maxLines="6"
-            android:ellipsize="end" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp">
-
-            <Button
-                android:id="@+id/btnCopyToken"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/push_token_copy" />
-
-            <Button
-                android:id="@+id/btnHttpLog"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:text="@string/http_log_open" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <ScrollView
+    <!-- Three panes swapped by the bottom navigation: the SDK method demos, the same stories
+         block through the Compose wrapper, and through the classic XML view. -->
+    <FrameLayout
+        android:id="@+id/contentContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_weight="1">
+
+    <ScrollView
+        android:id="@+id/apiContent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:fillViewport="true">
 
         <LinearLayout
@@ -70,6 +26,61 @@
             android:orientation="vertical"
             android:padding="16dp"
             android:gravity="center">
+
+        <!-- Registered push provider + token, with Copy / HTTP Log. Lives in the API pane: it is
+             part of the SDK method demos, not a header shared by the stories tabs. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/token_panel_background"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tvPushTokenLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/push_token_label"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvPushTokenType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/push_token_type_placeholder"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvPushToken"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/push_token_placeholder"
+                android:textIsSelectable="true"
+                android:maxLines="6"
+                android:ellipsize="end" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/btnCopyToken"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/push_token_copy" />
+
+                <Button
+                    android:id="@+id/btnHttpLog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/http_log_open" />
+            </LinearLayout>
+        </LinearLayout>
 
             <Button
                 android:id="@+id/btnShowTestPopup"
@@ -194,4 +205,62 @@
 
     </ScrollView>
 
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/uiKitContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <ScrollView
+            android:id="@+id/legacyContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/legacy_stories_title"
+                    android:textStyle="bold" />
+
+                <!-- The classic integration: the block is declared in XML with app:code and handed
+                     to the SDK from MainActivity via sdk.initializeStoriesView(). -->
+                <com.personalization.stories.views.StoriesView
+                    android:id="@+id/storiesView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:code="@string/stories_code" />
+
+                <TextView
+                    android:id="@+id/tvLegacyStoriesLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/legacy_stories_log_placeholder"
+                    android:textIsSelectable="true"
+                    android:typeface="monospace" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <!-- Bridge theme so the Material component resolves its attributes while the app itself
+         stays on the AppCompat theme. -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/Theme.MaterialComponents.DayNight.Bridge"
+        android:background="@color/token_panel_background"
+        app:labelVisibilityMode="labeled"
+        app:itemIconTint="@color/bottom_nav_item"
+        app:itemTextColor="@color/bottom_nav_item"
+        app:menu="@menu/bottom_nav_menu" />
 </LinearLayout>

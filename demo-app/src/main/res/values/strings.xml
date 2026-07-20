@@ -68,6 +68,17 @@
     <string name="push_token_copy">Copy token</string>
     <string name="push_token_error">FCM token error: %1$s</string>
     <string name="push_channel_name">Push notifications</string>
+    <!-- Stories block code for the demo shop. Replace with a code configured for your shop. -->
+    <string name="stories_code">a161a0cfefc55dfe08a6980e9c4bfdfd</string>
+    <!-- Bottom navigation -->
+    <string name="tab_api">API</string>
+    <string name="tab_ui_kit">UI Kit</string>
+    <string name="tab_legacy_ui">Legacy UI</string>
+
+    <!-- Stories tabs -->
+    <string name="compose_stories_title">StoriesWidget (Compose)</string>
+    <string name="compose_stories_log_placeholder">Tap a story to see callbacks here</string>
+    <string name="compose_stories_routing">Route demo:// links in the app</string>
+    <string name="legacy_stories_title">StoriesView (XML)</string>
+    <string name="legacy_stories_log_placeholder">Tap a story to see OnClickListener callbacks here</string>
 </resources>
-
-

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The demo is intentionally light in every mode. These -night values exist (rather than being
+      omitted) purely so the app declares dark-mode support: OEM skins like MIUI only force-dark
+      apps that DON'T handle night themselves, so having -night resources makes them leave the app
+      alone. We deliberately keep the same LIGHT colors as the day variant so the UI looks identical
+      whether the system is in light or dark mode.
+    -->
+    <color name="token_panel_background">#EEEEEE</color>
+    <color name="hairline">#22000000</color>
+</resources>
