@@ -845,6 +845,14 @@ class MainActivity : AppCompatActivity() {
         }
         sdk.initializeStoriesView(storiesView)
 
+        // Both panes hold a StoriesView, but StoriesManager remembers only the last one handed to
+        // it, so only that pane ever receives loaded stories. Re-registering pulls the block back
+        // into this view. Temporary, until the SDK supports more than one block at a time.
+        findViewById<Button>(R.id.btnReloadLegacyStories).setOnClickListener {
+            sdk.initializeStoriesView(storiesView)
+            appendLegacyStoriesLog(legacyLog, "reload: re-registered the XML view")
+        }
+
         uiKitContent.setContent { ComposeStoriesPane(sdk = sdk, code = storiesCode) }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)

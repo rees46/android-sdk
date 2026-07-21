@@ -230,6 +230,17 @@
                     android:text="@string/legacy_stories_title"
                     android:textStyle="bold" />
 
+                <!-- StoriesManager keeps a single view reference, so whichever pane registers last
+                     is the only one that receives loaded stories — here the Compose pane, which
+                     leaves this one empty. Re-registering this view reloads the block into it.
+                     Temporary: remove once the SDK can drive more than one block at a time. -->
+                <Button
+                    android:id="@+id/btnReloadLegacyStories"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/stories_reload" />
+
                 <!-- The classic integration: the block is declared in XML with app:code and handed
                      to the SDK from MainActivity via sdk.initializeStoriesView(). -->
                 <com.personalization.stories.views.StoriesView

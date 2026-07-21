@@ -81,4 +81,7 @@
     <string name="compose_stories_routing">Route demo:// links in the app</string>
     <string name="legacy_stories_title">StoriesView (XML)</string>
     <string name="legacy_stories_log_placeholder">Tap a story to see OnClickListener callbacks here</string>
+    <!-- Workaround while the SDK can only drive one stories block: reloads the block into
+         whichever pane the button belongs to. -->
+    <string name="stories_reload">Reload stories</string>
 </resources>

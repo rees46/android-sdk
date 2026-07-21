@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Button
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +40,11 @@ import com.personalization.stories.compose.StoriesWidget
 fun ComposeStoriesPane(sdk: SDK, code: String) {
     var routeOwnScheme by remember { mutableStateOf(false) }
     val events = remember { mutableStateListOf<String>() }
+    // StoriesManager remembers a single StoriesView, so the pane that registered last is the only
+    // one receiving stories — reloading the Legacy pane detaches this one. Bumping the token
+    // rebuilds the widget, which registers a fresh view and pulls the block back here.
+    // Temporary, until the SDK supports more than one block at a time.
+    var reloadToken by remember { mutableStateOf(0) }
 
     fun log(message: String) {
         events.add(0, message)
@@ -58,23 +65,32 @@ fun ComposeStoriesPane(sdk: SDK, code: String) {
             fontWeight = FontWeight.Bold
         )
 
-        StoriesWidget(
-            sdk = sdk,
-            code = code,
-            modifier = Modifier.fillMaxWidth(),
-            onClickListener = object : OnClickListener {
-                override fun onClick(url: String): Boolean {
-                    val openedBySdk = !(routeOwnScheme && url.startsWith(OWN_SCHEME))
-                    log("onClick(url): $url — ${if (openedBySdk) "opened by SDK" else "routed by the app"}")
-                    return openedBySdk
-                }
+        Button(onClick = {
+            reloadToken++
+            log("reload: rebuilt the Compose widget")
+        }) {
+            Text(text = stringResource(R.string.stories_reload))
+        }
 
-                override fun onClick(product: Product): Boolean {
-                    log("onClick(product): ${product.name}")
-                    return true
+        key(reloadToken) {
+            StoriesWidget(
+                sdk = sdk,
+                code = code,
+                modifier = Modifier.fillMaxWidth(),
+                onClickListener = object : OnClickListener {
+                    override fun onClick(url: String): Boolean {
+                        val openedBySdk = !(routeOwnScheme && url.startsWith(OWN_SCHEME))
+                        log("onClick(url): $url — ${if (openedBySdk) "opened by SDK" else "routed by the app"}")
+                        return openedBySdk
+                    }
+
+                    override fun onClick(product: Product): Boolean {
+                        log("onClick(product): ${product.name}")
+                        return true
+                    }
                 }
-            }
-        )
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
