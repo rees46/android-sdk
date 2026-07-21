@@ -10,10 +10,13 @@ class ProductsElement(json: JSONObject) : Element {
     private val products: MutableList<Product> = ArrayList()
 
     init {
+        // The backend nests both captions inside a "labels" object, so they have to be read from
+        // it rather than from the element itself — reading the parent silently yields empty text
+        // and the carousel button renders blank.
         val labelsJson = json.optJSONObject("labels")
         if (labelsJson != null) {
-            labelHide = json.optString("hide_carousel", "")
-            labelShow = json.optString("show_carousel", "")
+            labelHide = labelsJson.optString("hide_carousel", "")
+            labelShow = labelsJson.optString("show_carousel", "")
         }
         val productsJsonArray = json.optJSONArray("products")
         if (productsJsonArray != null) {
