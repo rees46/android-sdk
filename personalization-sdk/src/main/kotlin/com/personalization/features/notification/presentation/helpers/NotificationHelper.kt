@@ -50,6 +50,13 @@ class NotificationHelper @Inject constructor(
             .setCustomContentView(view)
             .setCustomBigContentView(view)
             .setAutoCancel(true)
+            // From Android 8 the channel decides, and NOTIFICATION_CHANNEL is IMPORTANCE_HIGH. Below
+            // that there is no channel, and a heads-up pop-up requires BOTH a high priority and a
+            // sound or vibration — priority alone leaves the push silent in the shade. minSdk is 19,
+            // so these still matter. Mirrors the Flutter SDK's notifier and the React Native one,
+            // which sets AndroidImportance.HIGH per notification.
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
 
         notificationManager.notify(
             /* id = */ (data.title + data.body).hashCode(),
