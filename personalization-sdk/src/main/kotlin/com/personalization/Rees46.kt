@@ -1,6 +1,7 @@
 package com.personalization
 
 import android.content.Context
+import android.os.Bundle
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -148,6 +149,27 @@ object Rees46 {
             InstanceResolver.Resolution.NotInitialized -> SdkRegistry.onNextRegister(shopId, onReady)
         }
     }
+
+    /**
+     * Routes a push to the instance it belongs to and dispatches [event]. The target is the payload's
+     * `shop_id`; with no `shop_id` a single-instance app still resolves, but an unknown shop — or an
+     * absent `shop_id` while several shops are live — drops the push instead of delivering it to the
+     * wrong one. Call this from a host that owns its messaging service.
+     */
+    fun handlePush(payload: Map<String, String>, event: PushEventType) {
+        val shopId = PushTargetResolver.resolve(
+            payloadShopId = payload[PreferencesPartition.SHOP_ID_FIELD],
+            liveShopIds = SdkRegistry.shopIds()
+        ) ?: return
+        val sdk = SdkRegistry.byShopId(shopId) ?: return
+        when (event) {
+            PushEventType.RECEIVED -> sdk.onPushReceived(payload)
+            PushEventType.CLICKED -> sdk.notificationClicked(payload.toBundle())
+        }
+    }
+
+    private fun Map<String, String>.toBundle(): Bundle =
+        Bundle().also { bundle -> forEach { (key, value) -> bundle.putString(key, value) } }
 
     /** Initializes a pending registration for [shopId], tolerating a lost race with another caller. */
     private fun materialize(shopId: String): SDK {

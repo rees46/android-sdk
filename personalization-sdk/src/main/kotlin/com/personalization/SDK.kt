@@ -1001,6 +1001,9 @@ open class SDK {
         )
     }
 
+    /** Entry point for [Rees46.handlePush] once it has resolved this as the target instance. */
+    internal fun onPushReceived(data: Map<String, String>) = receiveMessage(data)
+
     companion object {
 
         var TAG = "SDK"
@@ -1093,7 +1096,7 @@ open class SDK {
          * @param remoteMessage an FCM message
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            SdkRegistry.currentOrLazy().receiveMessage(remoteMessage.data)
+            onMessage(remoteMessage.data)
         }
 
         /**
@@ -1103,7 +1106,12 @@ open class SDK {
          * @param data the push data payload (title/body/icon/…)
          */
         fun onMessage(data: Map<String, String>) {
-            SdkRegistry.currentOrLazy().receiveMessage(data)
+            // Route to the shop named in the payload when present; otherwise fall back to the current
+            // instance so single-instance apps (and pushes with no shop_id) keep working, including
+            // before initialize() ran (a guarded lazy instance).
+            val target = data[PreferencesPartition.SHOP_ID_FIELD]?.let { SdkRegistry.byShopId(it) }
+                ?: SdkRegistry.currentOrLazy()
+            target.receiveMessage(data)
         }
 
         /**
