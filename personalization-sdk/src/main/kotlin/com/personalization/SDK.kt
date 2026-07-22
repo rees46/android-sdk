@@ -47,7 +47,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
-import java.util.concurrent.CopyOnWriteArraySet
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
@@ -208,13 +207,12 @@ open class SDK {
             needReInitialization = needReInitialization
         )
 
-        // Register this instance so pushes delivered to the (process-global) messaging
-        // services are routed back to every initialized SDK instance, not just one.
-        activeInstances.add(this)
+        // Register this instance so pushes delivered to the (process-global) messaging services are
+        // routed back to every initialized SDK instance, not just one, and so the documented
+        // `SDK().initialize()` usage and hosts reading SDK.instance get a working instance. register
+        // both adds this to the fan-out set and makes it the current default.
+        SdkRegistry.register(shopId = shopId, sdk = this)
         isSdkInitialized = true
-        // Also expose THIS initialized SDK via the companion `instance`, so the documented
-        // `SDK().initialize()` usage and hosts reading SDK.instance get a working instance.
-        currentInstance = this@SDK
 
         CoroutineScope(Dispatchers.IO).launch {
             val advertisingId = initializeAdvertisingIdUseCase.invoke()
@@ -442,7 +440,7 @@ open class SDK {
      * for the whole process usually do not need it.
      */
     fun release() {
-        activeInstances.remove(this)
+        SdkRegistry.unregister(this)
     }
 
     /**
@@ -1018,26 +1016,16 @@ open class SDK {
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
 
-        @Volatile
-        private var currentInstance: SDK? = null
-
         /**
-         * The SDK that receives push callbacks (see [onMessage]). Set to whichever SDK was last
-         * passed to [initialize], so the documented `SDK().initialize()` usage routes incoming
-         * pushes to that initialized instance (otherwise the push hit a different, lazily-created
-         * object that was never initialized). Falls back to a lazily-created instance if a push is
-         * delivered before initialize() ran — that instance is guarded and won't crash the host.
+         * The SDK that receives push callbacks (see [onMessage]): whichever SDK was last passed to
+         * [initialize], so the documented `SDK().initialize()` usage routes incoming pushes to that
+         * initialized instance (otherwise the push hit a different, lazily-created object that was
+         * never initialized). Falls back to a lazily-created instance if a push is delivered before
+         * initialize() ran — that instance is guarded and won't crash the host. Backed by
+         * [SdkRegistry], which owns the routing state for the coming multi-instance support.
          */
         val instance: SDK
-            get() = currentInstance ?: SDK().also { currentInstance = it }
-
-        /**
-         * All initialized SDK instances. The messaging services are process-global Android
-         * components, so a token delivered to [onPushTokenReceived] is fanned out to every
-         * initialized instance; each one deduplicates and notifies its own listener. Supports
-         * apps that create more than one SDK instance.
-         */
-        private val activeInstances = CopyOnWriteArraySet<SDK>()
+            get() = SdkRegistry.currentOrLazy()
 
         fun userAgent(): String {
             return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
@@ -1082,7 +1070,7 @@ open class SDK {
          * @param remoteMessage an FCM message
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance.receiveMessage(remoteMessage.data)
+            SdkRegistry.currentOrLazy().receiveMessage(remoteMessage.data)
         }
 
         /**
@@ -1092,7 +1080,7 @@ open class SDK {
          * @param data the push data payload (title/body/icon/…)
          */
         fun onMessage(data: Map<String, String>) {
-            instance.receiveMessage(data)
+            SdkRegistry.currentOrLazy().receiveMessage(data)
         }
 
         /**
@@ -1101,7 +1089,7 @@ open class SDK {
          * messaging service is [setPushToken].
          */
         internal fun onPushTokenReceived(token: String, provider: PushProvider) {
-            activeInstances.forEach { sdk ->
+            SdkRegistry.all().forEach { sdk ->
                 if (sdk::pushTokenManager.isInitialized) {
                     sdk.pushTokenManager.onTokenReceived(token, provider)
                 }
