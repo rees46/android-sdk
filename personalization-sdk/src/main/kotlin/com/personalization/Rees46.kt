@@ -85,16 +85,7 @@ object Rees46 {
                 SdkRegistry.byShopId(resolution.shopId)
                     ?: throw SdkNotInitializedException(missingMessage(resolution.shopId))
 
-            is InstanceResolver.Resolution.Pending -> {
-                val pendingInit = pending.remove(resolution.shopId)
-                // Lost the race — another thread already materialized it.
-                if (pendingInit != null) {
-                    initialize(pendingInit.context, pendingInit.config)
-                } else {
-                    SdkRegistry.byShopId(resolution.shopId)
-                        ?: throw SdkNotInitializedException(missingMessage(resolution.shopId))
-                }
-            }
+            is InstanceResolver.Resolution.Pending -> materialize(resolution.shopId)
 
             InstanceResolver.Resolution.NotInitialized -> throw SdkNotInitializedException(
                 if (shopId != null) {
@@ -108,6 +99,64 @@ object Rees46 {
                 "More than one shop is registered — call Rees46.getInstance(shopId) with an explicit id. " +
                     "Registered: ${registeredShopIds()}."
             )
+        }
+    }
+
+    /**
+     * True when an instance is available for [shopId] — or, with no [shopId], when exactly one shop
+     * is initialized so the default is unambiguous. A pending (registered-but-not-initialized) shop
+     * is not counted as initialized.
+     */
+    fun isInitialized(shopId: String? = null): Boolean =
+        if (shopId != null) SdkRegistry.byShopId(shopId) != null else SdkRegistry.shopIds().size == 1
+
+    /**
+     * Delivers the instance for [shopId] to [onReady] as soon as it is available — immediately if it
+     * is already initialized, otherwise once it is. A pending registration is initialized on the spot.
+     * With no [shopId] the single default instance is used, waiting for the first one when nothing is
+     * registered yet.
+     *
+     * Returns a [Cancellable]; call it when the waiter goes away (e.g. a view detaches) so [onReady]
+     * is not held. Lets a UI element resolve its SDK reactively instead of the host wiring it in.
+     *
+     * @throws AmbiguousSdkInstanceException when [shopId] is null and more than one shop is already
+     *   registered — the default is ambiguous, so pass an explicit shopId.
+     */
+    fun awaitInstance(shopId: String? = null, onReady: (SDK) -> Unit): Cancellable {
+        val resolution = InstanceResolver.resolve(
+            requestedShopId = shopId,
+            liveShopIds = SdkRegistry.shopIds(),
+            pendingShopIds = pending.keys.toSet()
+        )
+        return when (resolution) {
+            is InstanceResolver.Resolution.Existing -> {
+                SdkRegistry.byShopId(resolution.shopId)?.let(onReady)
+                Cancellable.NOOP
+            }
+
+            is InstanceResolver.Resolution.Pending -> {
+                onReady(materialize(resolution.shopId))
+                Cancellable.NOOP
+            }
+
+            InstanceResolver.Resolution.Ambiguous -> throw AmbiguousSdkInstanceException(
+                "More than one shop is registered — call Rees46.awaitInstance(shopId) with an " +
+                    "explicit id. Registered: ${registeredShopIds()}."
+            )
+
+            // Nothing registered at all: wake up on the first matching registration.
+            InstanceResolver.Resolution.NotInitialized -> SdkRegistry.onNextRegister(shopId, onReady)
+        }
+    }
+
+    /** Initializes a pending registration for [shopId], tolerating a lost race with another caller. */
+    private fun materialize(shopId: String): SDK {
+        val pendingInit = pending.remove(shopId)
+        return if (pendingInit != null) {
+            initialize(pendingInit.context, pendingInit.config)
+        } else {
+            SdkRegistry.byShopId(shopId)
+                ?: throw SdkNotInitializedException(missingMessage(shopId))
         }
     }
 

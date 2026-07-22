@@ -23,9 +23,12 @@ internal object SdkRegistry {
 
     private val instances = CopyOnWriteArrayList<SDK>()
     private val byShop = ConcurrentHashMap<String, SDK>()
+    private val awaiting = CopyOnWriteArrayList<Awaiter>()
 
     @Volatile
     private var current: SDK? = null
+
+    private class Awaiter(val shopId: String?, val onReady: (SDK) -> Unit)
 
     /**
      * Records an initialized [sdk] for [shopId]: it joins the push fan-out set and becomes the
@@ -37,6 +40,26 @@ internal object SdkRegistry {
         instances.add(sdk)
         byShop[shopId] = sdk
         current = sdk
+        notifyAwaiters(shopId, sdk)
+    }
+
+    private fun notifyAwaiters(shopId: String, sdk: SDK) {
+        if (awaiting.isEmpty()) return
+        val matched = awaiting.filter { it.shopId == null || it.shopId == shopId }
+        awaiting.removeAll(matched)
+        matched.forEach { it.onReady(sdk) }
+    }
+
+    /**
+     * Subscribes to the next [register] matching [shopId] (null matches the first registration of any
+     * shop). Does not inspect current state — the caller resolves what is already live or pending and
+     * only falls back here to wait. Returns a handle that removes the subscription; call it when the
+     * waiter goes away (e.g. a view detaches) so the callback is not leaked.
+     */
+    fun onNextRegister(shopId: String?, onReady: (SDK) -> Unit): Cancellable {
+        val awaiter = Awaiter(shopId, onReady)
+        awaiting.add(awaiter)
+        return Cancellable { awaiting.remove(awaiter) }
     }
 
     /**
@@ -75,6 +98,7 @@ internal object SdkRegistry {
     internal fun reset() {
         instances.clear()
         byShop.clear()
+        awaiting.clear()
         current = null
     }
 }
