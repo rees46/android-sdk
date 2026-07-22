@@ -10,10 +10,14 @@ class PreferencesRepositoryImpl @Inject constructor(
 
     override fun initialize(
         context: Context,
-        preferencesKey: String
+        preferencesKey: String,
+        legacyPreferencesKey: String?,
+        shopId: String?
     ) = preferencesDataSource.initialize(
         context = context,
-        preferencesKey = preferencesKey
+        preferencesKey = preferencesKey,
+        legacyPreferencesKey = legacyPreferencesKey,
+        shopId = shopId
     )
 
     override fun getPushToken(provider: String): String = preferencesDataSource.getPushToken(provider)

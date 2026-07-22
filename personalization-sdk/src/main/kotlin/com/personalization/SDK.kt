@@ -162,7 +162,7 @@ open class SDK {
         shopId: String,
         apiDomain: String = "api.rees46.ru",
         tag: String = TAG,
-        preferencesKey: String = DEFAULT_STORAGE_KEY,
+        preferencesKey: String = PreferencesPartition.LEGACY_KEY,
         stream: String = ANDROID,
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false,
@@ -186,9 +186,19 @@ open class SDK {
 
         onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
 
+        // A host that leaves preferencesKey at its default gets a per-shop partition instead of the
+        // single shared file, plus a one-time migration out of the legacy file so an existing
+        // install keeps its did/sid. A host that passes its own key keeps using it verbatim, with no
+        // derivation and no migration.
+        val usingDefaultPartition = preferencesKey == PreferencesPartition.LEGACY_KEY
+        val effectivePreferencesKey =
+            if (usingDefaultPartition) PreferencesPartition.keyFor(shopId) else preferencesKey
+
         initPreferencesUseCase.invoke(
             context = context,
-            preferencesKey = preferencesKey
+            preferencesKey = effectivePreferencesKey,
+            legacyPreferencesKey = if (usingDefaultPartition) PreferencesPartition.LEGACY_KEY else null,
+            shopId = shopId
         )
 
         notificationHandler.initialize(context = context)
@@ -997,7 +1007,6 @@ open class SDK {
         private const val SUBSCRIPTION_SUBSCRIBE_PRICE = "subscriptions/subscribe_for_product_price"
         private const val SUBSCRIPTION_SUBSCRIBE = "subscriptions/subscribe_for_product_available"
         private const val SUBSCRIPTION_MANAGE = "subscriptions/manage"
-        private const val DEFAULT_STORAGE_KEY = "DEFAULT_STORAGE_KEY"
         private const val PERSONALIZATION_SDK = "Personalizatio SDK "
         private const val ANDROID: String = "android"
         private const val BLANK_SEARCH_FIELD = "search/blank"

@@ -2,6 +2,7 @@ package com.personalization.sdk.data.repositories.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.personalization.PreferencesPartition
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,10 +25,63 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
 
     override fun initialize(
         context: Context,
-        preferencesKey: String
+        preferencesKey: String,
+        legacyPreferencesKey: String?,
+        shopId: String?
     ) {
-        this.sharedPreferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
+        if (legacyPreferencesKey != null && shopId != null) {
+            migrateLegacyIfNeeded(
+                context = context,
+                legacyPreferencesKey = legacyPreferencesKey,
+                target = preferences,
+                shopId = shopId
+            )
+        }
+        this.sharedPreferences = preferences
         this.preferencesKey = preferencesKey
+    }
+
+    /**
+     * One-time copy of the pre-partitioning shared preferences into this shop's partition, so an
+     * existing single-instance install keeps its `did`/`sid`/segment/tokens after upgrading to
+     * per-shop storage.
+     *
+     * Guards keep it safe and idempotent:
+     *  - runs only while the partition is still empty, so it never overwrites data the SDK already
+     *    wrote (and re-running after a completed migration is a no-op);
+     *  - copies the legacy file only when it belongs to this shop — its stored `shop_id` matches, or
+     *    is absent (a very old install). A legacy file left by a different shop is not pulled in, so
+     *    that shop's partition stays clean under multi-instance.
+     */
+    private fun migrateLegacyIfNeeded(
+        context: Context,
+        legacyPreferencesKey: String,
+        target: SharedPreferences,
+        shopId: String
+    ) {
+        if (target.all.isNotEmpty()) return
+
+        val legacy = context.getSharedPreferences(legacyPreferencesKey, Context.MODE_PRIVATE)
+        val legacyEntries = legacy.all
+        if (legacyEntries.isEmpty()) return
+
+        val legacyShopId = legacy.getString(PreferencesPartition.SHOP_ID_FIELD, "").orEmpty()
+        if (legacyShopId.isNotEmpty() && legacyShopId != shopId) return
+
+        with(target.edit()) {
+            for ((key, value) in legacyEntries) {
+                when (value) {
+                    is String -> putString(key, value)
+                    is Long -> putLong(key, value)
+                    is Int -> putInt(key, value)
+                    is Float -> putFloat(key, value)
+                    is Boolean -> putBoolean(key, value)
+                    is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
+                }
+            }
+            apply()
+        }
     }
 
     override fun getPushToken(provider: String): String {
