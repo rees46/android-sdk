@@ -11,7 +11,9 @@ import android.os.Looper
 import android.util.AttributeSet
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
+import com.personalization.Cancellable
 import com.personalization.R
+import com.personalization.Rees46
 import com.personalization.SDK
 import com.personalization.stories.Player
 import com.personalization.stories.Settings
@@ -28,8 +30,14 @@ class StoriesView : ConstraintLayout, ClickListener {
     private var needOpeningWebView: Boolean = true
     private var productBannerTapDefaultMessage = "Copied"
 
+    /** Optional shop this block belongs to; drives which SDK instance the view self-loads from. */
+    var shopId: String? = null
+
     private val stories: MutableList<Story> = ArrayList()
     private var observer: ContentObserver? = null
+
+    /** Subscription to the SDK becoming available, cancelled on detach. */
+    private var instanceHandle: Cancellable? = null
 
     internal lateinit var sdk: SDK
 
@@ -99,6 +107,7 @@ class StoriesView : ConstraintLayout, ClickListener {
             typedArray.getBoolean(R.styleable.StoriesView_need_opening_web_view, true)
         val productBannerTapMessage =
             typedArray.getString(R.styleable.StoriesView_product_banner_tap_default_message) ?: "Copied"
+        this.shopId = typedArray.getString(R.styleable.StoriesView_shop_id)
         if (code == null) {
             SDK.error("Code is set incorrectly")
             return
@@ -106,6 +115,34 @@ class StoriesView : ConstraintLayout, ClickListener {
         this.code = code
         this.needOpeningWebView = openingWebView
         this.productBannerTapDefaultMessage = productBannerTapMessage
+    }
+
+    /**
+     * Wires an explicit [sdk] to this view and loads the block. Called by the deprecated
+     * `SDK.initializeStoriesView` and by the Compose wrapper. Reloadable — each call reloads — and it
+     * supersedes any pending self-load subscription, so wiring and self-load never both fire.
+     */
+    internal fun attach(sdk: SDK) {
+        instanceHandle?.cancel()
+        instanceHandle = null
+        this.sdk = sdk
+        sdk.storiesManager.rememberAttachedView(this)
+        load()
+    }
+
+    private fun load() {
+        if (!::sdk.isInitialized || !::code.isInitialized) return
+        sdk.storiesManager.loadStories(code) { loaded -> updateStories(loaded) }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Self-load: unless an SDK was wired explicitly (initializeStoriesView / the Compose wrapper),
+        // resolve the instance for this view's shop as soon as it is available and load. The
+        // subscription fires immediately when the instance already exists, or later otherwise.
+        if (!::sdk.isInitialized && ::code.isInitialized) {
+            instanceHandle = Rees46.awaitInstance(shopId) { resolved -> attach(resolved) }
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -132,6 +169,8 @@ class StoriesView : ConstraintLayout, ClickListener {
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        instanceHandle?.cancel()
+        instanceHandle = null
         unregisterObserver()
     }
 

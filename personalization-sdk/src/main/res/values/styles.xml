@@ -26,6 +26,7 @@
         <attr name="code" format="string" />
         <attr name="need_opening_web_view" format="boolean" />
         <attr name="product_banner_tap_default_message" format="string" />
+        <attr name="shop_id" format="string" />
     </declare-styleable>
 
     <dimen name="story_avatar_size">76dp</dimen>

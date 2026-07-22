@@ -263,8 +263,13 @@ open class SDK {
         }
     }
 
+    @Deprecated(
+        message = "The view loads itself: declare app:shop_id (or none for the default instance) on " +
+            "the XML StoriesView, or use the Compose StoriesWidget. Kept working for existing hosts.",
+        replaceWith = ReplaceWith("")
+    )
     fun initializeStoriesView(storiesView: StoriesView) {
-        storiesManager.initialize(storiesView, this)
+        storiesView.attach(this)
     }
 
     fun initializeFragmentManager(fragmentManager: FragmentManager) {

@@ -10,25 +10,54 @@ import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.stories.models.Story
 import com.personalization.stories.views.StoriesView
+import java.lang.ref.WeakReference
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
 
+/**
+ * Stateless stories service: it fetches and parses blocks and tracks events, but does not own any
+ * view. Each [StoriesView] loads its own block through [loadStories] and renders itself, so several
+ * blocks on one screen no longer contend for a single held reference.
+ *
+ * The only reference kept is a weak pointer to the most recently attached view, used solely as the
+ * presentation surface for the view-less [SDK.showStories] entry point — never for loading data.
+ */
 class StoriesManager @Inject constructor(
     val setRecommendedByUseCase: SetRecommendedByUseCase,
     val sendNetworkMethodUseCase: SendNetworkMethodUseCase
 ) {
 
-    private lateinit var storiesView: StoriesView
+    private var lastAttachedView: WeakReference<StoriesView>? = null
 
-    internal fun initialize(storiesView: StoriesView, sdk: SDK) {
-        Log.d("StoriesManager", "initialize called")
-        this.storiesView = storiesView
-        storiesView.sdk = sdk
-        updateStories()
+    /** Records the surface [SDK.showStories] presents from. Not used for loading. */
+    internal fun rememberAttachedView(storiesView: StoriesView) {
+        lastAttachedView = WeakReference(storiesView)
+    }
+
+    /** Fetches and parses the block for [code], delivering the stories to [onLoaded]. Stateless. */
+    internal fun loadStories(code: String, onLoaded: (List<Story>) -> Unit) {
+        requestStories(
+            code = code,
+            listener = object : OnApiCallbackListener() {
+                override fun onSuccess(response: JSONObject?) {
+                    response ?: return
+                    try {
+                        onLoaded(getStories(response))
+                    } catch (e: JSONException) {
+                        Log.e(SDK.TAG, e.message, e)
+                    }
+                }
+            }
+        )
     }
 
     internal fun showStories(looper: Looper, code: String) {
+        val view = lastAttachedView?.get()
+        if (view == null) {
+            Log.w(SDK.TAG, "showStories($code): no StoriesView is attached to present from")
+            return
+        }
         requestStories(
             code = code,
             listener = object : OnApiCallbackListener() {
@@ -42,7 +71,7 @@ class StoriesManager @Inject constructor(
 
                             resetStoriesStartPositions(stories)
 
-                            showStories(looper, stories)
+                            showStories(looper, view, stories)
                         } catch (e: JSONException) {
                             Log.e(SDK.TAG, e.message, e)
                         }
@@ -85,25 +114,6 @@ class StoriesManager @Inject constructor(
         }
     }
 
-    private fun updateStories() {
-        requestStories(
-            code = storiesView.code,
-            listener = object : OnApiCallbackListener() {
-                override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        Log.d("stories", response.toString())
-                        try {
-                            val stories = getStories(response)
-                            storiesView.updateStories(stories)
-                        } catch (e: JSONException) {
-                            Log.e(SDK.TAG, e.message, e)
-                        }
-                    }
-                }
-            }
-        )
-    }
-
     private fun getStories(json: JSONObject): List<Story> {
         val stories = ArrayList<Story>()
 
@@ -122,7 +132,12 @@ class StoriesManager @Inject constructor(
         }
     }
 
-    private fun showStories(looper: Looper, stories: List<Story>, startPosition: Int = 0) {
+    private fun showStories(
+        looper: Looper,
+        storiesView: StoriesView,
+        stories: List<Story>,
+        startPosition: Int = 0
+    ) {
         val handler = Handler(looper)
         handler.post {
             storiesView.showStories(

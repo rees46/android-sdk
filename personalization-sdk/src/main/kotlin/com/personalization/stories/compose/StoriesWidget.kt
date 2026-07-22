@@ -124,7 +124,7 @@ private fun StoriesWidgetContent(
                     productBannerTapDefaultMessage
                 ).apply {
                     itemClickListener = currentClickListener.value
-                    sdk.initializeStoriesView(this)
+                    attach(sdk)
                 }
             },
             update = { view ->
