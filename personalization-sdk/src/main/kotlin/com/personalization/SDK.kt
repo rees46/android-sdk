@@ -28,6 +28,7 @@ import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
+import com.personalization.push.PushTokenManager
 import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
@@ -57,6 +58,7 @@ open class SDK {
     internal lateinit var context: Context
 
     private var onMessageListener: OnMessageListener? = null
+    private var onPushTokenListener: OnPushTokenListener? = null
     private var search: Search = Search(JSONObject())
 
     /**
@@ -76,6 +78,9 @@ open class SDK {
 
     @Inject
     lateinit var registerManager: RegisterManager
+
+    @Inject
+    lateinit var pushTokenManager: PushTokenManager
 
     @Inject
     lateinit var storiesManager: StoriesManager
@@ -179,6 +184,8 @@ open class SDK {
         this.context = context
         TAG = tag
 
+        onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
+
         initPreferencesUseCase.invoke(
             context = context,
             preferencesKey = preferencesKey
@@ -194,15 +201,18 @@ open class SDK {
         initNetworkUseCase(url = baseUrl)
 
         registerManager.initialize(
+            context = context,
             contentResolver = context.contentResolver,
             autoSendPushToken = autoSendPushToken,
             needReInitialization = needReInitialization
         )
 
+        // Register this instance so pushes delivered to the (process-global) messaging services are
+        // routed back to every initialized SDK instance, not just one, and so the documented
+        // `SDK().initialize()` usage and hosts reading SDK.instance get a working instance. register
+        // both adds this to the fan-out set and makes it the current default.
+        SdkRegistry.register(shopId = shopId, sdk = this)
         isSdkInitialized = true
-        // Route incoming pushes (SDK.onMessage -> instance) to THIS initialized SDK, so the
-        // documented `SDK().initialize()` usage works without crashing or being ignored.
-        currentInstance = this@SDK
 
         CoroutineScope(Dispatchers.IO).launch {
             val advertisingId = initializeAdvertisingIdUseCase.invoke()
@@ -355,20 +365,82 @@ open class SDK {
     }
 
     /**
-     * Send notification token
+     * Registers a callback invoked when a push token is received or refreshed for a provider
+     * (FCM and/or HMS).
      *
-     * @param token Token
-     * @param listener Listener
+     * This is the recommended way for the host app to obtain push tokens: the SDK captures
+     * token issuance and refresh from its own messaging services automatically, including
+     * tokens that a provider delivers only asynchronously (e.g. HMS via `onNewToken`, which
+     * cannot be retrieved synchronously). May be called before or after [initialize].
+     */
+    fun setOnPushTokenListener(listener: OnPushTokenListener) {
+        onPushTokenListener = listener
+        if (::pushTokenManager.isInitialized) {
+            pushTokenManager.setOnPushTokenListener(listener)
+        }
+    }
+
+    /**
+     * Returns the last known push token for [provider] from the local cache, or null if no
+     * token has been received yet. For live updates use [setOnPushTokenListener].
+     */
+    fun getPushToken(provider: PushProvider): String? = pushTokenManager.getToken(provider)
+
+    /**
+     * Registers a push [token] for the given [provider] with the rees46 backend.
+     *
+     * In the default setup you normally do NOT need to call this. The SDK ships its own
+     * messaging services for FCM and HMS, captures token issuance and refresh automatically,
+     * sends the token to the backend, and reports it to the host via [setOnPushTokenListener].
+     *
+     * Call this only if your app owns the messaging service (you declare your own
+     * FirebaseMessagingService / HmsMessageService) and want to forward the token manually.
+     * Always pass the [PushProvider] that issued the token: the backend stores it per provider,
+     * and FCM and HMS tokens are not interchangeable.
+     *
+     * @param token    the push token issued by [provider]
+     * @param provider the provider that issued the token (FCM or HMS)
+     * @param listener optional callback with the backend registration result
+     */
+    fun setPushToken(
+        token: String,
+        provider: PushProvider,
+        listener: OnApiCallbackListener? = null
+    ) {
+        pushTokenManager.sendToken(token = token, provider = provider, listener = listener)
+    }
+
+    /**
+     * Registers an FCM push token with the rees46 backend.
+     *
+     * @deprecated This method predates multi-provider support. It has no [PushProvider]
+     * parameter and therefore always assumes the token is an FCM token. Now that both FCM and
+     * HMS are supported the provider must be explicit, otherwise an HMS token would be
+     * registered as FCM (the backend keeps them separate and they are not interchangeable).
+     * Use [setPushToken] with an explicit [PushProvider] instead. Equivalent to
+     * `setPushToken(token, PushProvider.FCM, listener)`.
+     *
+     * @param token    an FCM push token
+     * @param listener optional callback with the backend registration result
      */
     @Deprecated(
-        "This method will be removed in future versions.",
+        message = "Assumes an FCM token; the provider cannot be specified. Use " +
+            "setPushToken(token, provider, listener) with an explicit PushProvider — " +
+            "FCM and HMS tokens are stored separately and are not interchangeable.",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("registerManager.setPushTokenNotification(token, listener)")
+        replaceWith = ReplaceWith("setPushToken(token, PushProvider.FCM, listener)")
     )
-    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) {
-        registerManager.setPushTokenNotification(
-            token = token, listener = listener
-        )
+    fun setPushTokenNotification(token: String, listener: OnApiCallbackListener?) =
+        setPushToken(token = token, provider = PushProvider.FCM, listener = listener)
+
+    /**
+     * Releases this SDK instance so it no longer receives push tokens delivered to the
+     * process-global messaging services. Call this for short-lived instances to avoid leaking
+     * them through the active-instances registry. Apps that keep a single long-lived instance
+     * for the whole process usually do not need it.
+     */
+    fun release() {
+        SdkRegistry.unregister(this)
     }
 
     /**
@@ -897,17 +969,26 @@ open class SDK {
         }
     }
 
-    private fun receiveMessage(remoteMessage: RemoteMessage) {
-        notificationReceived(data = remoteMessage.data)
+    private fun receiveMessage(data: Map<String, String>) {
+        notificationReceived(data = data)
 
         onMessageListener?.onMessage(
-            data = remoteMessage.toNotificationData()
+            data = data.toNotificationData()
         )
     }
 
     companion object {
 
         var TAG = "SDK"
+
+        /**
+         * Optional debug hook for observing all SDK HTTP traffic (requests and responses).
+         * Process-global; set it from a debug/QA build to mirror the SDK's network calls.
+         * See [NetworkLogger]. Invoked on network threads — keep implementations fast and thread-safe.
+         */
+        @Volatile
+        @JvmStatic
+        var networkLogger: NetworkLogger? = null
 
         private const val SUBSCRIPTION_UNSUBSCRIBE_PRICE =
             "subscriptions/unsubscribe_from_product_price"
@@ -935,18 +1016,16 @@ open class SDK {
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
 
-        @Volatile
-        private var currentInstance: SDK? = null
-
         /**
-         * The SDK that receives push callbacks (see [onMessage]). Set to whichever SDK was last
-         * passed to [initialize], so the documented `SDK().initialize()` usage routes incoming
-         * pushes to that initialized instance (otherwise the push hit a different, lazily-created
-         * object that was never initialized). Falls back to a lazily-created instance if a push is
-         * delivered before initialize() ran — that instance is guarded and won't crash the host.
+         * The SDK that receives push callbacks (see [onMessage]): whichever SDK was last passed to
+         * [initialize], so the documented `SDK().initialize()` usage routes incoming pushes to that
+         * initialized instance (otherwise the push hit a different, lazily-created object that was
+         * never initialized). Falls back to a lazily-created instance if a push is delivered before
+         * initialize() ran — that instance is guarded and won't crash the host. Backed by
+         * [SdkRegistry], which owns the routing state for the coming multi-instance support.
          */
         val instance: SDK
-            get() = currentInstance ?: SDK().also { currentInstance = it }
+            get() = SdkRegistry.currentOrLazy()
 
         fun userAgent(): String {
             return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
@@ -981,10 +1060,40 @@ open class SDK {
         }
 
         /**
-         * @param remoteMessage
+         * Routes a push payload to the SDK so it is tracked as received and forwarded to the host's
+         * [OnMessageListener] for display. Called by the SDK's messaging services.
+         *
+         * Both providers deliver the payload as a `data` map (title/body/icon/…): this FCM overload
+         * unwraps [RemoteMessage.getData], while the map overload is used by [HmsMessagingService]
+         * so Huawei data-messages are shown the same way as FCM ones.
+         *
+         * @param remoteMessage an FCM message
          */
         fun onMessage(remoteMessage: RemoteMessage) {
-            instance.receiveMessage(remoteMessage)
+            SdkRegistry.currentOrLazy().receiveMessage(remoteMessage.data)
+        }
+
+        /**
+         * Routes a push `data` payload from any provider (e.g. HMS) to the SDK. See the
+         * [RemoteMessage] overload for the FCM entry point.
+         *
+         * @param data the push data payload (title/body/icon/…)
+         */
+        fun onMessage(data: Map<String, String>) {
+            SdkRegistry.currentOrLazy().receiveMessage(data)
+        }
+
+        /**
+         * Entry point used by the SDK's messaging services to report a token delivered via
+         * their `onNewToken` callback. The public manual entry point for hosts that own their
+         * messaging service is [setPushToken].
+         */
+        internal fun onPushTokenReceived(token: String, provider: PushProvider) {
+            SdkRegistry.all().forEach { sdk ->
+                if (sdk::pushTokenManager.isInitialized) {
+                    sdk.pushTokenManager.onTokenReceived(token, provider)
+                }
+            }
         }
     }
 }

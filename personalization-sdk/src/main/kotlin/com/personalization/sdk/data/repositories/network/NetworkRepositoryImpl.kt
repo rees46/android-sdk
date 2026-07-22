@@ -233,64 +233,88 @@ class NetworkRepositoryImpl @Inject constructor(
         listener: OnApiCallbackListener?
     ) {
         val thread = Thread {
+            val startTime = System.currentTimeMillis()
+            val requestBodyForLog = if (networkMethod is NetworkMethod.POST) params.toString() else null
+            var logUrl = baseUrl + networkMethod.method
+            var responseCode = -1
+            var responseBodyForLog: String? = null
+            var errorForLog: String? = null
             try {
                 val buildUri = build(networkMethod, params)
                 val url = getUrl(networkMethod, buildUri)
+                logUrl = url.toString()
                 val connection = getConnection(networkMethod, url, params)
 
                 connection.connect()
+                responseCode = connection.responseCode
 
                 if (networkMethod is NetworkMethod.POST) {
-                    SDK.debug(connection.responseCode.toString() + ": " + networkMethod.type + " " + url + " with body: " + params)
+                    SDK.debug("$responseCode: ${networkMethod.type} $url with body: $params")
                 } else {
-                    SDK.debug(connection.responseCode.toString() + ": " + networkMethod.type + " " + buildUri.toString())
+                    SDK.debug("$responseCode: ${networkMethod.type} $buildUri")
                 }
 
-                if (listener != null) {
-                    when (connection.responseCode) {
-                        HttpURLConnection.HTTP_OK -> {
-                            try {
-                                val inputStream = connection.inputStream
-                                val responseText = readStream(inputStream)
-                                if (responseText.isNotEmpty()) {
-                                    val json = JSONTokener(responseText).nextValue()
-                                    if (json is JSONObject) {
-                                        listener.onSuccess(json)
-                                    } else if (json is JSONArray) {
-                                        listener.onSuccess(json)
+                if (responseCode >= 400) {
+                    val error = readStream(connection.errorStream)
+                    responseBodyForLog = error
+                    SDK.error(error)
+                    listener?.onError(responseCode, error)
+                } else {
+                    val responseText = try {
+                        readStream(connection.inputStream)
+                    } catch (e: Exception) {
+                        ""
+                    }
+                    responseBodyForLog = responseText
+
+                    if (listener != null) {
+                        when (responseCode) {
+                            HttpURLConnection.HTTP_OK -> {
+                                try {
+                                    if (responseText.isNotEmpty()) {
+                                        when (val json = JSONTokener(responseText).nextValue()) {
+                                            is JSONObject -> listener.onSuccess(json)
+                                            is JSONArray -> listener.onSuccess(json)
+                                            // Empty or invalid JSON, treat as success with empty object
+                                            else -> listener.onSuccess(JSONObject())
+                                        }
                                     } else {
-                                        // Empty or invalid JSON, treat as success with empty object
+                                        // Empty response, treat as success
                                         listener.onSuccess(JSONObject())
                                     }
-                                } else {
-                                    // Empty response, treat as success
+                                } catch (e: Exception) {
+                                    // Failed to parse JSON, but response code is 200, treat as success
                                     listener.onSuccess(JSONObject())
                                 }
-                            } catch (e: Exception) {
-                                // Failed to parse JSON, but response code is 200, treat as success
+                            }
+                            HttpURLConnection.HTTP_NO_CONTENT -> {
+                                // 204 No Content - successful response with no body
                                 listener.onSuccess(JSONObject())
                             }
                         }
-                        HttpURLConnection.HTTP_NO_CONTENT -> {
-                            // 204 No Content - successful response with no body
-                            listener.onSuccess(JSONObject())
-                        }
                     }
-                }
-
-                if (connection.responseCode >= 400) {
-                    val error = readStream(connection.errorStream)
-                    SDK.error(error)
-                    listener?.onError(connection.responseCode, error)
                 }
 
                 connection.disconnect()
             } catch (e: ConnectException) {
                 SDK.error(e.message)
+                errorForLog = e.message
+                responseCode = 504
                 listener?.onError(504, e.message)
             } catch (e: Exception) {
                 SDK.error(e.message, e)
+                errorForLog = e.message
                 listener?.onError(-1, e.message)
+            } finally {
+                SDK.networkLogger?.onHttpCall(
+                    method = networkMethod.type,
+                    url = logUrl,
+                    requestBody = requestBodyForLog,
+                    responseCode = responseCode,
+                    responseBody = responseBodyForLog,
+                    durationMs = System.currentTimeMillis() - startTime,
+                    error = errorForLog
+                )
             }
         }
 

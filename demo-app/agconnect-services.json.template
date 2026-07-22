@@ -1,0 +1,54 @@
+{
+  "agcgw": {
+    "backurl": "connect-drcn.dbankcloud.cn",
+    "url": "connect-drcn.hispace.hicloud.com",
+    "websocketbackurl": "connect-ws-drcn.hispace.dbankcloud.cn",
+    "websocketurl": "connect-ws-drcn.hispace.dbankcloud.com"
+  },
+  "agcgw_all": {
+    "CN": "connect-drcn.dbankcloud.cn",
+    "CN_back": "connect-drcn.hispace.hicloud.com",
+    "DE": "connect-dre.dbankcloud.cn",
+    "DE_back": "connect-dre.hispace.hicloud.com",
+    "RU": "connect-drru.dbankcloud.ru",
+    "RU_back": "connect-drru.hispace.hicloud.ru",
+    "SG": "connect-dra.dbankcloud.cn",
+    "SG_back": "connect-dra.hispace.hicloud.com"
+  },
+  "client": {
+    "cp_id": "0000000000000000000",
+    "product_id": "000000000000000000",
+    "client_id": "000000000000000000",
+    "client_secret": "0000000000000000000000000000000000000000000000000000000000000000",
+    "project_id": "000000000000000000",
+    "app_id": "000000000",
+    "api_key": "DUMMY_API_KEY_REPLACE_ME",
+    "package_name": "com.personalization.demo"
+  },
+  "oauth_client": {
+    "client_id": "000000000",
+    "client_type": 1
+  },
+  "app_info": {
+    "app_id": "000000000",
+    "package_name": "com.personalization.demo"
+  },
+  "service": {
+    "analytics": {
+      "collector_url": "datacollector-drcn.dt.hicloud.com,datacollector-drcn.dt.dbankcloud.cn",
+      "resource_id": "p1",
+      "channel_id": ""
+    },
+    "search": {
+      "url": "https://search-drcn.cloud.huawei.com"
+    },
+    "cloudstorage": {
+      "storage_url": "https://ops-drcn.cloud.huawei.com"
+    },
+    "ml": {
+      "mlservice_url": "ml-api-drcn.ai.dbankcloud.com,ml-api-drcn.ai.dbankcloud.cn"
+    }
+  },
+  "region": "CN",
+  "configuration_version": "3.0"
+}

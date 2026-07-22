@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/tabApi"
+        android:icon="@drawable/ic_tab_api"
+        android:title="@string/tab_api" />
+
+    <item
+        android:id="@+id/tabUiKit"
+        android:icon="@drawable/ic_tab_ui_kit"
+        android:title="@string/tab_ui_kit" />
+
+    <item
+        android:id="@+id/tabLegacyUi"
+        android:icon="@drawable/ic_tab_legacy"
+        android:title="@string/tab_legacy_ui" />
+</menu>

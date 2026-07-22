@@ -1,0 +1,21 @@
+<!--
+  Launcher icon for the demo app: a white "bell" on a solid rounded tile. Replaces the previous
+  @android:drawable/ic_dialog_info placeholder (whose white silhouette read as an "i in a circle"
+  when HMS/FCM used the app icon for the background status-bar notification).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M10,0 L38,0 A10,10 0 0 1 48,10 L48,38 A10,10 0 0 1 38,48 L10,48 A10,10 0 0 1 0,38 L0,10 A10,10 0 0 1 10,0 Z" />
+    <group
+        android:translateX="12"
+        android:translateY="12">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M12,22c1.1,0 2,-0.9 2,-2h-4c0,1.1 0.89,2 2,2zM18,16v-5c0,-3.07 -1.64,-5.64 -4.5,-6.32L13.5,4c0,-0.83 -0.67,-1.5 -1.5,-1.5s-1.5,0.67 -1.5,1.5v0.68C7.63,5.36 6,7.92 6,11v5l-2,2v1h16v-1l-2,-2z" />
+    </group>
+</vector>

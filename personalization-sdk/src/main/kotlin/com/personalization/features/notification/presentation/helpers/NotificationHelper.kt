@@ -2,6 +2,7 @@ package com.personalization.features.notification.presentation.helpers
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -45,14 +46,46 @@ class NotificationHelper @Inject constructor(
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
-            .setSmallIcon(NotificationResources.NOTIFICATION_ICON)
+            .setSmallIcon(resolveSmallIcon(context))
             .setCustomContentView(view)
             .setCustomBigContentView(view)
             .setAutoCancel(true)
+            // From Android 8 the channel decides, and NOTIFICATION_CHANNEL is IMPORTANCE_HIGH. Below
+            // that there is no channel, and a heads-up pop-up requires BOTH a high priority and a
+            // sound or vibration — priority alone leaves the push silent in the shade. minSdk is 19,
+            // so these still matter. Mirrors the Flutter SDK's notifier and the React Native one,
+            // which sets AndroidImportance.HIGH per notification.
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
 
         notificationManager.notify(
             /* id = */ (data.title + data.body).hashCode(),
             /* notification = */ notificationBuilder.build()
         )
+    }
+
+    /**
+     * The SDK never imposes its own brand icon. Use the host app's dedicated notification icon
+     * if it declared one via the standard `default_notification_icon` meta-data; otherwise fall
+     * back to the host application's own launcher icon.
+     */
+    private fun resolveSmallIcon(context: Context): Int {
+        val hostSpecialIcon = readHostNotificationIcon(context)
+        return if (hostSpecialIcon != 0) hostSpecialIcon else context.applicationInfo.icon
+    }
+
+    private fun readHostNotificationIcon(context: Context): Int = try {
+        context.packageManager
+            .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
+            .metaData
+            ?.getInt(META_DATA_NOTIFICATION_ICON, 0) ?: 0
+    } catch (e: PackageManager.NameNotFoundException) {
+        0
+    }
+
+    private companion object {
+        // De-facto standard meta-data hosts use to declare a dedicated push notification icon.
+        const val META_DATA_NOTIFICATION_ICON =
+            "com.google.firebase.messaging.default_notification_icon"
     }
 }

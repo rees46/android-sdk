@@ -1,11 +1,14 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
 }
 
-// Process google-services.json (untracked, local-only) so Firebase/FCM is configured
-// and the push token can be fetched. Applied conditionally to keep the build green
-// in CI or for contributors who don't have the file.
+// Apply each provider's plugin only when its config file is present, so the demo still builds
+// (with that provider gracefully unavailable) for anyone who hasn't dropped in the real config.
+if (file('agconnect-services.json').exists()) {
+    apply plugin: 'com.huawei.agconnect'
+}
 if (file('google-services.json').exists()) {
     apply plugin: 'com.google.gms.google-services'
 }
@@ -31,7 +34,8 @@ android {
 
     defaultConfig {
         applicationId "com.personalization.demo"
-        minSdkVersion 19
+        // Compose requires 21. The SDK keeps minSdk 19 — it takes Compose as compileOnly.
+        minSdkVersion 21
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"
@@ -67,6 +71,7 @@ android {
     }
 
     buildFeatures {
+        compose = true
         viewBinding true
         buildConfig true
     }
@@ -81,10 +86,25 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
+
+    // Compose, for the "UI Kit" tab. The SDK exposes StoriesWidget against these APIs but ships
+    // none of them, so the demo declares them itself.
+    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material:material'
+    implementation 'androidx.activity:activity-compose:1.9.0'
     
     // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging'
+
+    // Huawei — optional, mirrors the SDK. Pulled in only when agconnect-services.json is present
+    // (the same gate that applies the agconnect plugin), so the FCM-only build ships no HMS.
+    if (file('agconnect-services.json').exists()) {
+        implementation 'com.huawei.hms:push:6.11.0.300'
+        implementation 'com.huawei.agconnect:agconnect-core:1.9.1.301'
+    }
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'

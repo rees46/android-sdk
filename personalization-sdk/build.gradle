@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
     id 'maven-publish'
     id 'signing'
     id 'kotlin-kapt'
@@ -17,6 +18,7 @@ android {
     }
     buildFeatures {
         buildConfig = true
+        compose = true
     }
     defaultConfig {
         minSdkVersion 19
@@ -24,6 +26,9 @@ android {
         buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Shipped to the consumer's R8 so a FCM-only app (without the optional HMS artifacts) does
+        // not fail on the absent Huawei classes referenced by HmsMessagingService/HmsTokenSource.
+        consumerProguardFiles 'consumer-rules.pro'
     }
 
     buildTypes {
@@ -93,6 +98,24 @@ dependencies {
 
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
     implementation 'com.google.firebase:firebase-messaging:23.4.1'
+    // Huawei push is OPTIONAL. compileOnly keeps HMS off every consumer's classpath (and out of
+    // the published POM), so a plain FCM app builds without the Huawei Maven repo. To enable
+    // Huawei push, the host app adds these as `implementation`, applies the `com.huawei.agconnect`
+    // plugin and ships `agconnect-services.json`. Presence is detected at runtime — see
+    // PushTokenManager — and R8 warnings for the absent classes are suppressed via consumer-rules.pro.
+    compileOnly 'com.huawei.hms:push:6.11.0.300'
+    compileOnly 'com.huawei.agconnect:agconnect-core:1.9.1.301'
+
+    // Jetpack Compose is OPTIONAL and only backs StoriesWidget, the wrapper around StoriesView.
+    // compileOnly mirrors the Huawei setup above: Compose stays off every consumer's classpath and
+    // out of the published POM, so a View-based app pulls none of it. A host that wants the wrapper
+    // already has Compose and declares it as `implementation` itself. compileOnly artifacts take no
+    // part in manifest merging either, which keeps the SDK's minSdk 19 intact even though Compose
+    // itself requires 21.
+    compileOnly platform('androidx.compose:compose-bom:2024.06.00')
+    compileOnly 'androidx.compose.ui:ui'
+    compileOnly 'androidx.compose.foundation:foundation'
+    compileOnly 'androidx.compose.runtime:runtime'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-ui:1.4.1'
@@ -109,6 +132,11 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'io.mockk:mockk:1.13.11'
     testImplementation 'org.robolectric:robolectric:4.12.1'
+    // compileOnly dependencies are absent from the unit test classpath, and the Compose compiler
+    // plugin refuses to compile the test variant without the runtime it can see. These mirror the
+    // compileOnly declarations above and stay confined to tests, so the published POM is unaffected.
+    testImplementation platform('androidx.compose:compose-bom:2024.06.00')
+    testImplementation 'androidx.compose.runtime:runtime'
 }
 
 configurations {

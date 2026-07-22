@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Night override: keep the LIGHT theme even in dark mode so the demo always looks light. Its mere
+      existence as a -night resource tells the system (and OEM skins like MIUI) that the app supports
+      dark mode, so MIUI stops force-inverting it — while the app still renders its light appearance.
+    -->
+    <style name="Theme.PersonalizationDemo" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+    </style>
+
+</resources>

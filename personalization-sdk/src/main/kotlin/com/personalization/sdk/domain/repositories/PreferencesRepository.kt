@@ -9,9 +9,9 @@ interface PreferencesRepository {
         preferencesKey: String
     )
 
-    fun getToken(): String
-    fun saveToken(value: String)
+    fun getPushToken(provider: String): String
+    fun savePushToken(provider: String, value: String)
 
-    fun getLastPushTokenDate(): Long
-    fun saveLastPushTokenDate(value: Long)
+    fun getLastPushTokenDate(provider: String): Long
+    fun saveLastPushTokenDate(provider: String, value: Long)
 }

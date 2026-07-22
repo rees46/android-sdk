@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.multidex.MultiDexApplication
 import com.google.firebase.FirebaseApp
 import com.personalization.SDK
+import com.personalization.demo.httplogger.HttpLogStore
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -27,6 +28,8 @@ class DemoApplication : MultiDexApplication() {
         // handled — it runs in this process) so MainActivity can show it for the tester.
         installCrashHandler()
         super.onCreate()
+        // Capture all SDK HTTP traffic for the in-app HTTP log screen (debug aid).
+        SDK.networkLogger = HttpLogStore
         // Initialize Firebase if not already initialized
         if (FirebaseApp.getApps(this).isEmpty()) {
             FirebaseApp.initializeApp(this)
@@ -84,7 +87,8 @@ class DemoApplication : MultiDexApplication() {
         val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }?.let(::loadBitmap)
 
         val builder = NotificationCompat.Builder(this, PUSH_CHANNEL_ID)
-            .setSmallIcon(com.personalization.R.drawable.ic_notification_logo)
+            // Host owns the push icon — the demo uses its own notification glyph, not an SDK asset.
+            .setSmallIcon(R.drawable.ic_demo_notification)
             .setContentTitle(data.title)
             .setContentText(data.body)
             .setAutoCancel(true)

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Neutral brand color for the demo launcher tile and the FCM notification tint. -->
+    <color name="ic_launcher_background">#2962FF</color>
+    <color name="demo_notification_color">#2962FF</color>
+
+    <!-- UI surfaces. Defined here (light) and overridden in values-night so the demo renders
+         correctly in dark mode instead of leaving a hardcoded light panel under white text. -->
+    <color name="token_panel_background">#EEEEEE</color>
+    <color name="hairline">#22000000</color>
+
+    <color name="bottom_nav_item_selected">#1A1A1A</color>
+    <color name="bottom_nav_item_unselected">#757575</color>
+</resources>

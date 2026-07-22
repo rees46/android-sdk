@@ -8,8 +8,13 @@ import javax.inject.Singleton
 private const val DEFAULT_TOKEN = ""
 private const val DEFAULT_LAST_PUSH_TOKEN_DATE = 0L
 
-private const val TOKEN_KEY = "token"
-private const val LAST_PUSH_TOKEN_DATE_KEY = "last_push_token_date"
+private const val PUSH_TOKEN_KEY_PREFIX = "push_token_"
+private const val PUSH_TOKEN_DATE_KEY_PREFIX = "push_token_date_"
+
+// Legacy keys kept for read-only fallback so existing installs are not re-registered.
+private val LEGACY_TOKEN_KEYS = mapOf("fcm" to "token", "hms" to "hms_token")
+private val LEGACY_TOKEN_DATE_KEYS =
+    mapOf("fcm" to "last_push_token_date", "hms" to "last_hms_push_token_date")
 
 @Singleton
 class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
@@ -25,22 +30,25 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
         this.preferencesKey = preferencesKey
     }
 
-    override fun getToken(): String = getValue(TOKEN_KEY, DEFAULT_TOKEN)
-    override fun saveToken(value: String) = saveValue(TOKEN_KEY, value)
-
-    override fun getLastPushTokenDate(): Long {
-        return getValue(
-            field = LAST_PUSH_TOKEN_DATE_KEY,
-            defaultValue = DEFAULT_LAST_PUSH_TOKEN_DATE
-        )
+    override fun getPushToken(provider: String): String {
+        val value = getValue(PUSH_TOKEN_KEY_PREFIX + provider, DEFAULT_TOKEN)
+        if (value.isNotEmpty()) return value
+        val legacyKey = LEGACY_TOKEN_KEYS[provider] ?: return value
+        return getValue(legacyKey, DEFAULT_TOKEN)
     }
 
-    override fun saveLastPushTokenDate(value: Long) {
-        saveValue(
-            field = LAST_PUSH_TOKEN_DATE_KEY,
-            value = value
-        )
+    override fun savePushToken(provider: String, value: String) =
+        saveValue(PUSH_TOKEN_KEY_PREFIX + provider, value)
+
+    override fun getLastPushTokenDate(provider: String): Long {
+        val value = getValue(PUSH_TOKEN_DATE_KEY_PREFIX + provider, DEFAULT_LAST_PUSH_TOKEN_DATE)
+        if (value != DEFAULT_LAST_PUSH_TOKEN_DATE) return value
+        val legacyKey = LEGACY_TOKEN_DATE_KEYS[provider] ?: return value
+        return getValue(legacyKey, DEFAULT_LAST_PUSH_TOKEN_DATE)
     }
+
+    override fun saveLastPushTokenDate(provider: String, value: Long) =
+        saveValue(PUSH_TOKEN_DATE_KEY_PREFIX + provider, value)
 
     override fun getValue(field: String, defaultValue: String): String {
         return sharedPreferences?.getString(field, defaultValue) ?: defaultValue

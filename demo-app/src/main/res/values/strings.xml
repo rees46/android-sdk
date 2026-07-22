@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Personalization SDK Demo</string>
+    <string name="push_token_type_placeholder">Push provider: …</string>
+    <string name="push_token_placeholder">Token: … (tap to copy when ready)</string>
+    <string name="push_token_copied">%1$s token copied to clipboard</string>
+    <string name="push_token_copy_empty">No token to copy yet</string>
+    <string name="http_log_open">HTTP Log</string>
+    <string name="http_log_title">HTTP Log</string>
+    <string name="http_log_copy_all">Copy all</string>
+    <string name="http_log_clear">Clear</string>
+    <string name="http_log_empty">No requests yet</string>
+    <string name="http_log_copied_one">Request copied</string>
+    <string name="http_log_copied_all">All requests copied</string>
+    <string name="push_token_type_firebase">Push provider: firebase</string>
+    <string name="push_token_type_huawei">Push provider: huawei</string>
+    <string name="push_token_type_none">Push provider: none (no FCM/HMS available)</string>
+    <string name="push_token_type_value">Push provider: %1$s</string>
+    <string name="push_token_value">Token: %1$s</string>
+    <string name="push_token_unavailable">Token: unavailable</string>
     <string name="show_test_popup">Show Test Popup</string>
     <string name="track_event_custom_fields">Track event (custom fields)</string>
     <string name="track_event_reserved_collision">Track event (reserved key collision)</string>
@@ -49,9 +66,22 @@
     <string name="push_token_label">Registered push token:</string>
     <string name="push_token_waiting">waiting for token…</string>
     <string name="push_token_copy">Copy token</string>
-    <string name="push_token_copied">Token copied to clipboard</string>
     <string name="push_token_error">FCM token error: %1$s</string>
     <string name="push_channel_name">Push notifications</string>
+    <!-- Stories block code for the demo shop. Replace with a code configured for your shop. -->
+    <string name="stories_code">115bd0b67cf5989a1b60c841790b2af6</string>
+    <!-- Bottom navigation -->
+    <string name="tab_api">API</string>
+    <string name="tab_ui_kit">UI Kit</string>
+    <string name="tab_legacy_ui">Legacy UI</string>
+
+    <!-- Stories tabs -->
+    <string name="compose_stories_title">StoriesWidget (Compose)</string>
+    <string name="compose_stories_log_placeholder">Tap a story to see callbacks here</string>
+    <string name="compose_stories_routing">Route demo:// links in the app</string>
+    <string name="legacy_stories_title">StoriesView (XML)</string>
+    <string name="legacy_stories_log_placeholder">Tap a story to see OnClickListener callbacks here</string>
+    <!-- Workaround while the SDK can only drive one stories block: reloads the block into
+         whichever pane the button belongs to. -->
+    <string name="stories_reload">Reload stories</string>
 </resources>
-
-

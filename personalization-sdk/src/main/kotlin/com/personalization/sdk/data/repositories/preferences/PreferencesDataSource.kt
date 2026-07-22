@@ -9,13 +9,13 @@ interface PreferencesDataSource {
         preferencesKey: String
     )
 
-    fun getToken(): String
+    fun getPushToken(provider: String): String
 
-    fun saveToken(value: String)
+    fun savePushToken(provider: String, value: String)
 
-    fun getLastPushTokenDate(): Long
+    fun getLastPushTokenDate(provider: String): Long
 
-    fun saveLastPushTokenDate(value: Long)
+    fun saveLastPushTokenDate(provider: String, value: Long)
 
     fun getValue(field: String, defaultValue: String): String
 

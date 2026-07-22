@@ -2,6 +2,7 @@ package com.personalization.di
 
 import android.content.Context
 import com.personalization.RegisterManager
+import com.personalization.push.PushTokenManager
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -29,8 +30,6 @@ import com.personalization.features.search.impl.SearchManagerImpl
 import com.personalization.features.trackEvent.impl.TrackEventManagerImpl
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
-import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
-import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
@@ -46,21 +45,19 @@ class SdkModule {
     @Singleton
     @Provides
     fun provideRegisterManager(
-        getPreferencesValueUseCase: GetPreferencesValueUseCase,
-        savePreferencesValueUseCase: SavePreferencesValueUseCase,
         updateUserSettingsValueUseCase: UpdateUserSettingsValueUseCase,
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
         executeQueueTasksUseCase: ExecuteQueueTasksUseCase,
-        inAppNotificationManager: InAppNotificationManager
+        inAppNotificationManager: InAppNotificationManager,
+        pushTokenManager: PushTokenManager
     ): RegisterManager = RegisterManager(
-        getPreferencesValueUseCase = getPreferencesValueUseCase,
-        savePreferencesValueUseCase = savePreferencesValueUseCase,
         updateUserSettingsValueUseCase = updateUserSettingsValueUseCase,
         getUserSettingsValueUseCase = getUserSettingsValueUseCase,
         sendNetworkMethodUseCase = sendNetworkMethodUseCase,
         executeQueueTasksUseCase = executeQueueTasksUseCase,
-        inAppNotificationManager = inAppNotificationManager
+        inAppNotificationManager = inAppNotificationManager,
+        pushTokenManager = pushTokenManager
     )
 
     @Singleton

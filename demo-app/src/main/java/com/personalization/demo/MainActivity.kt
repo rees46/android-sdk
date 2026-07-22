@@ -8,18 +8,25 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.compose.ui.platform.ComposeView
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.core.content.ContextCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
+import com.personalization.PushProvider
 import com.personalization.SDK
+import com.personalization.OnClickListener
+import com.personalization.Product
+import com.personalization.stories.views.StoriesView
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseItemRequest
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
@@ -35,12 +42,20 @@ import com.personalization.sdk.data.models.dto.popUp.Position
 class MainActivity : AppCompatActivity() {
 
     private lateinit var sdk: SDK
-    private var pushToken: String? = null
+
+    /** Most recent OnClickListener callbacks from the "Legacy UI" tab, newest first. */
+    private val legacyStoriesEvents = mutableListOf<String>()
+
+    private companion object {
+        const val MAX_LOGGED_STORIES_EVENTS = 20
+    }
 
     private object DemoTrackEventConstants {
         /** Same value as SDK client-side validation errors for custom field key collisions. */
         const val CLIENT_VALIDATION_ERROR_CODE = -1
-        const val EVENT_NAME = "custom_event"
+        // Must be an event registered for the shop, otherwise the backend returns
+        // 400 "Event <name> not found". Reuses the same registered event as the Flutter demo.
+        const val EVENT_NAME = "flutter_example"
         const val SAMPLE_UNIX_TIME = 123_456
         const val CATEGORY = "demo_category"
         const val LABEL = "demo_label"
@@ -101,13 +116,21 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
-        // The SDK singleton (SDK.instance) is initialized in DemoApplication.onCreate so it is
-        // ready in every process — including the cold process FCM starts to deliver a push.
-        // Reuse that same initialized instance here (do NOT create a new SDK()).
+        // The SDK is initialized once in DemoApplication.onCreate (Application) so it is ready in
+        // every process — including the cold process FCM/HMS starts to deliver a push. Reuse that
+        // same initialized instance here (do NOT create a new SDK()).
         sdk = SDK.instance
+        // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
+        observePushTokens()
 
         // Initialize fragment manager for popups
         sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
+
+        setupStoriesTabs()
+
+        findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
+            startActivity(android.content.Intent(this, HttpLogActivity::class.java))
+        }
 
         findViewById<Button>(R.id.btnShowTestPopup).setOnClickListener {
             showTestPopup()
@@ -180,11 +203,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnCopyToken).setOnClickListener {
-            copyPushToken()
+            copyTokenToClipboard()
         }
 
         ensureNotificationPermission()
-        loadPushToken()
         showLastCrashIfAny()
         // App may have been opened by tapping a push — report the click to the SDK.
         handleNotificationClick(intent)
@@ -239,36 +261,6 @@ class MainActivity : AppCompatActivity() {
                 /* requestCode = */ 1001,
             )
         }
-    }
-
-    /**
-     * Loads the FCM push token and shows it in the always-visible header so a tester can
-     * read and copy it. Registration to the shop happens via autoSendPushToken on init.
-     */
-    private fun loadPushToken() {
-        val tokenView = findViewById<TextView>(R.id.tvPushToken)
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            runOnUiThread {
-                if (task.isSuccessful) {
-                    pushToken = task.result
-                    tokenView.text = task.result
-                } else {
-                    tokenView.text =
-                        getString(R.string.push_token_error, task.exception?.message ?: "unknown")
-                }
-            }
-        }
-    }
-
-    private fun copyPushToken() {
-        val token = pushToken
-        if (token.isNullOrEmpty()) {
-            Toast.makeText(this, R.string.push_token_waiting, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("FCM token", token))
-        Toast.makeText(this, R.string.push_token_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun getCollection() {
@@ -705,6 +697,93 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val pushTokens = linkedMapOf<PushProvider, String>()
+
+    /**
+     * Shows the registered push provider(s) and token(s) in the header. Works the same for FCM and
+     * HMS: the SDK captures and registers each token from its own messaging services (autoSendPushToken
+     * on init) and reports it here. This is display only — registration is handled by the SDK.
+     *
+     * The SDK is initialized in DemoApplication, so the live listener may have already fired before
+     * this Activity subscribed. To still show a token immediately we seed from the SDK's per-provider
+     * cache and, for FCM, query Firebase directly; HMS (delivered asynchronously) arrives via the
+     * live listener.
+     */
+    private fun observePushTokens() {
+        val typeView = findViewById<TextView>(R.id.tvPushTokenType)
+        val tokenView = findViewById<TextView>(R.id.tvPushToken)
+        typeView.text = getString(R.string.push_token_type_placeholder)
+        tokenView.text = getString(R.string.push_token_placeholder)
+
+        // Tap the token to copy the most recent one to the clipboard.
+        tokenView.setOnClickListener { copyTokenToClipboard() }
+
+        // Seed from the SDK's per-provider cache (tokens already fetched + registered at init).
+        PushProvider.entries.forEach { provider ->
+            sdk.getPushToken(provider)?.let { pushTokens[provider] = it }
+        }
+        renderPushTokens(typeView, tokenView)
+
+        // Guarantee the FCM token shows even before the SDK's async registration persists it.
+        // Only when Firebase is actually configured: on a Huawei-only build there is no
+        // google-services.json, so no default FirebaseApp, and FirebaseMessaging.getInstance()
+        // would throw IllegalStateException and crash the Activity. The try/catch is defence in
+        // depth. HMS tokens still arrive through the SDK cache/listener below.
+        if (FirebaseApp.getApps(this).isNotEmpty()) {
+            try {
+                FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        runOnUiThread {
+                            pushTokens[PushProvider.FCM] = task.result
+                            renderPushTokens(typeView, tokenView)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // Live updates (HMS arrives asynchronously; FCM refresh). Display only.
+        sdk.setOnPushTokenListener { token, provider ->
+            runOnUiThread {
+                pushTokens[provider] = token
+                renderPushTokens(typeView, tokenView)
+            }
+        }
+    }
+
+    /** Copies the most recently received push token to the clipboard so a tester can share it. */
+    private fun copyTokenToClipboard() {
+        val entry = pushTokens.entries.lastOrNull()
+        if (entry == null) {
+            Toast.makeText(this, getString(R.string.push_token_copy_empty), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("push_token", entry.value))
+        Toast.makeText(
+            this,
+            getString(R.string.push_token_copied, entry.key.id),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun renderPushTokens(typeView: TextView, tokenView: TextView) {
+        if (pushTokens.isEmpty()) {
+            typeView.text = getString(R.string.push_token_type_placeholder)
+            tokenView.text = getString(R.string.push_token_placeholder)
+            return
+        }
+        typeView.text = getString(
+            R.string.push_token_type_value,
+            pushTokens.keys.joinToString(", ") { it.id }
+        )
+        tokenView.text = pushTokens.entries.joinToString("\n\n") { (provider, token) ->
+            "${provider.id}: $token"
+        }
+    }
+
     private fun showTestPopup() {
         val testPopup = PopupDto(
             id = 999,
@@ -733,6 +812,67 @@ class MainActivity : AppCompatActivity() {
         )
 
         sdk.inAppNotificationManager.shopPopUp(testPopup)
+    }
+
+    /**
+     * Wires the bottom navigation and both stories tabs.
+     *
+     * "UI Kit" renders the block with the SDK's Compose wrapper, "Legacy UI" with the XML view, so
+     * the two integration styles can be compared side by side. The API pane keeps the SDK method
+     * demos and no longer carries a stories block of its own.
+     */
+    private fun setupStoriesTabs() {
+        val apiContent = findViewById<View>(R.id.apiContent)
+        val uiKitContent = findViewById<ComposeView>(R.id.uiKitContent)
+        val legacyContent = findViewById<View>(R.id.legacyContent)
+        val storiesCode = getString(R.string.stories_code)
+
+        // Legacy pane: the code comes from app:code in the layout; initializeStoriesView hands the
+        // view to the SDK and loads the block. The request is queued until the SDK session is
+        // ready, so there is nothing to wait for here.
+        val legacyLog = findViewById<TextView>(R.id.tvLegacyStoriesLog)
+        val storiesView = findViewById<StoriesView>(R.id.storiesView)
+        storiesView.itemClickListener = object : OnClickListener {
+            override fun onClick(url: String): Boolean {
+                appendLegacyStoriesLog(legacyLog, "onClick(url): $url")
+                return true
+            }
+
+            override fun onClick(product: Product): Boolean {
+                appendLegacyStoriesLog(legacyLog, "onClick(product): ${product.name}")
+                return true
+            }
+        }
+        sdk.initializeStoriesView(storiesView)
+
+        // Both panes hold a StoriesView, but StoriesManager remembers only the last one handed to
+        // it, so only that pane ever receives loaded stories. Re-registering pulls the block back
+        // into this view. Temporary, until the SDK supports more than one block at a time.
+        findViewById<Button>(R.id.btnReloadLegacyStories).setOnClickListener {
+            sdk.initializeStoriesView(storiesView)
+            appendLegacyStoriesLog(legacyLog, "reload: re-registered the XML view")
+        }
+
+        uiKitContent.setContent { ComposeStoriesPane(sdk = sdk, code = storiesCode) }
+
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        bottomNav.setOnItemSelectedListener { item ->
+            apiContent.visibility = if (item.itemId == R.id.tabApi) View.VISIBLE else View.GONE
+            uiKitContent.visibility = if (item.itemId == R.id.tabUiKit) View.VISIBLE else View.GONE
+            legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
+            true
+        }
+        // Drive the initial pane through the same listener, so the checked item and the visible
+        // pane cannot drift apart (including after the activity is recreated).
+        bottomNav.selectedItemId = R.id.tabApi
+    }
+
+    private fun appendLegacyStoriesLog(target: TextView, message: String) {
+        legacyStoriesEvents.add(0, message)
+        if (legacyStoriesEvents.size > MAX_LOGGED_STORIES_EVENTS) {
+            legacyStoriesEvents.removeAt(legacyStoriesEvents.lastIndex)
+        }
+        runOnUiThread { target.text = legacyStoriesEvents.joinToString("\n") }
     }
 }
 
