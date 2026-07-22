@@ -157,6 +157,15 @@ open class SDK {
     /**
      * @param shopId Shop key
      */
+    @Deprecated(
+        message = "Use Rees46.initialize(context, Rees46Config(...)) — the unified, multi-instance " +
+            "entry point. Reach instances with Rees46.getInstance(shopId).",
+        replaceWith = ReplaceWith(
+            "Rees46.initialize(context, Rees46Config(shopId = shopId))",
+            "com.personalization.Rees46",
+            "com.personalization.Rees46Config"
+        )
+    )
     fun initialize(
         context: Context,
         shopId: String,

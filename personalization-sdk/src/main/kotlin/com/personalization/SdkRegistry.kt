@@ -65,6 +65,9 @@ internal object SdkRegistry {
     /** Resolves the instance registered for [shopId], or null if none — the multi-instance hook. */
     fun byShopId(shopId: String): SDK? = byShop[shopId]
 
+    /** Shop ids with a live, initialized instance. */
+    fun shopIds(): Set<String> = byShop.keys.toSet()
+
     /** Number of initialized instances currently registered. */
     fun count(): Int = instances.size
 
