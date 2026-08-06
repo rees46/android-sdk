@@ -87,6 +87,10 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
 
+    // Push images are loaded with Glide rather than decoded by hand — see DemoApplication.loadBitmap.
+    // The SDK depends on Glide too, but as `implementation`, so it is not on the host's classpath.
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+
     // Compose, for the "UI Kit" tab. The SDK exposes StoriesWidget against these APIs but ships
     // none of them, so the demo declares them itself.
     implementation platform('androidx.compose:compose-bom:2024.06.00')

@@ -6,18 +6,19 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.multidex.MultiDexApplication
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.google.firebase.FirebaseApp
 import com.personalization.SDK
 import com.personalization.demo.httplogger.HttpLogStore
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.net.URL
+import java.util.concurrent.TimeUnit
 
 class DemoApplication : MultiDexApplication() {
 
@@ -83,8 +84,11 @@ class DemoApplication : MultiDexApplication() {
      * equivalent of the React Native demo's notifee BIGPICTURE notification.
      */
     private fun showPushNotification(data: NotificationData) {
-        val bigPicture = data.image?.split(",")?.firstOrNull()?.trim()?.let(::loadBitmap)
-        val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }?.let(::loadBitmap)
+        val bigPicture = data.image?.split(",")?.firstOrNull()?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { url -> loadBitmap(url, BIG_PICTURE_MAX_WIDTH_PX, BIG_PICTURE_MAX_HEIGHT_PX) }
+        val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let { url -> loadBitmap(url, LARGE_ICON_SIZE_PX, LARGE_ICON_SIZE_PX) }
 
         val builder = NotificationCompat.Builder(this, PUSH_CHANNEL_ID)
             // Host owns the push icon — the demo uses its own notification glyph, not an SDK asset.
@@ -126,11 +130,36 @@ class DemoApplication : MultiDexApplication() {
         )
     }
 
-    private fun loadBitmap(url: String): Bitmap? = try {
-        URL(url).openStream().use { BitmapFactory.decodeStream(it) }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+    /**
+     * Push images go through Glide, not through `URL.openStream()` + `BitmapFactory`. Google Play
+     * flags a manual download-and-decode ("Improve your app's performance with bitmap image
+     * optimisation"): the bitmap is allocated at the source resolution, so a large product photo
+     * can cost tens of megabytes for a notification that is a few hundred pixels tall. Glide
+     * downsamples into the target box, caches the download and pools the bitmaps.
+     *
+     * Runs on the background thread that [showPushNotification] is called on — `get()` blocks.
+     */
+    private fun loadBitmap(url: String, width: Int, height: Int): Bitmap? {
+        val target = Glide.with(this)
+            .asBitmap()
+            // Fit inside the box, keeping the aspect ratio — the notification shows the whole image.
+            .downsample(DownsampleStrategy.AT_MOST)
+            .centerInside()
+            // RemoteViews cannot take a Config.HARDWARE bitmap, and it cannot be copied out of.
+            .disallowHardwareConfig()
+            .load(url)
+            .submit(width, height)
+        return try {
+            target.get(LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                // clear() below may hand the pooled bitmap to the next decode while the posted
+                // notification still draws it, so keep an independent copy.
+                ?.let { bitmap -> bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            Glide.with(this).clear(target)
+        }
     }
 
     private fun installCrashHandler() {
@@ -156,5 +185,12 @@ class DemoApplication : MultiDexApplication() {
         const val CRASH_PREFS = "demo_crash"
         const val KEY_LAST_CRASH = "last_crash"
         const val PUSH_CHANNEL_ID = "demo_push"
+
+        // The platform itself scales a big picture down to about this box before showing it in the
+        // shade, so decoding anything larger is wasted memory. The large icon is 64dp on xxhdpi.
+        private const val BIG_PICTURE_MAX_WIDTH_PX = 1024
+        private const val BIG_PICTURE_MAX_HEIGHT_PX = 512
+        private const val LARGE_ICON_SIZE_PX = 192
+        private const val LOAD_TIMEOUT_SECONDS = 15L
     }
 }
