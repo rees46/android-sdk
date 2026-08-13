@@ -13,8 +13,6 @@ class InitUserSettingsUseCase @Inject constructor(
     ) {
         userSettingsRepository.updateShopId(value = shopId)
 
-        userSettingsRepository.updateSegmentForABTesting()
-
         userSettingsRepository.updateStream(value = stream)
     }
 }

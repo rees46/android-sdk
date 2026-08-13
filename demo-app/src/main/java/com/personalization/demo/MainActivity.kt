@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -23,6 +25,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.PushProvider
+import com.personalization.Rees46
 import com.personalization.SDK
 import com.personalization.OnClickListener
 import com.personalization.Product
@@ -116,10 +119,10 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
         }
 
-        // The SDK is initialized once in DemoApplication.onCreate (Application) so it is ready in
-        // every process — including the cold process FCM/HMS starts to deliver a push. Reuse that
-        // same initialized instance here (do NOT create a new SDK()).
-        sdk = SDK.instance
+        // The shop is initialized once in DemoApplication.onCreate (Application) so it is ready in
+        // every process — including the cold process FCM/HMS starts to deliver a push. Reach that same
+        // registered instance by its shopId (do NOT create a new SDK()).
+        sdk = Rees46.getInstance(BuildConfig.SHOP_ID)
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 
@@ -217,6 +220,23 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         handleNotificationClick(intent)
     }
+
+    /**
+     * Safety net for a known Jetpack Compose bug: on some OEM devices (notably Huawei/EMUI) a stray
+     * hover event makes AndroidComposeView throw `IllegalStateException: The ACTION_HOVER_EXIT event
+     * was not cleared`. The exception unwinds through `Activity.dispatchGenericMotionEvent`, so
+     * catching it here stops it from crashing the app. Hover events are non-essential for touch, so
+     * dropping the offending one is harmless. Root fix is the Compose BOM bump to 1.7.x (see
+     * demo-app/build.gradle) — this catch stays as belt-and-suspenders for older/other OEM quirks.
+     * Ref: Google issue 329330869.
+     */
+    override fun dispatchGenericMotionEvent(ev: MotionEvent): Boolean =
+        try {
+            super.dispatchGenericMotionEvent(ev)
+        } catch (e: IllegalStateException) {
+            Log.w("MainActivity", "Swallowed a Compose hover-dispatch crash", e)
+            false
+        }
 
     /**
      * When the app is opened by tapping an SDK push, the launch intent carries the notification's
@@ -825,13 +845,18 @@ class MainActivity : AppCompatActivity() {
         val apiContent = findViewById<View>(R.id.apiContent)
         val uiKitContent = findViewById<ComposeView>(R.id.uiKitContent)
         val legacyContent = findViewById<View>(R.id.legacyContent)
+        val multiInstanceContent = findViewById<ComposeView>(R.id.multiInstanceContent)
         val storiesCode = getString(R.string.stories_code)
 
-        // Legacy pane: the code comes from app:code in the layout; initializeStoriesView hands the
-        // view to the SDK and loads the block. The request is queued until the SDK session is
-        // ready, so there is nothing to wait for here.
+        // Legacy pane: the code comes from app:code in the layout and the view loads itself on
+        // attach — it resolves its SDK instance through Rees46 and fetches the block, queuing the
+        // request until the session is ready. Because the app is multi-shop (shop B lives in the
+        // Multi tab), the view must name its shop, or the default resolution would be ambiguous —
+        // so set shopId to shop A explicitly. The host only wires the click listener; there is no
+        // initializeStoriesView call any more.
         val legacyLog = findViewById<TextView>(R.id.tvLegacyStoriesLog)
         val storiesView = findViewById<StoriesView>(R.id.storiesView)
+        storiesView.shopId = BuildConfig.SHOP_ID
         storiesView.itemClickListener = object : OnClickListener {
             override fun onClick(url: String): Boolean {
                 appendLegacyStoriesLog(legacyLog, "onClick(url): $url")
@@ -843,23 +868,32 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
         }
-        sdk.initializeStoriesView(storiesView)
 
-        // Both panes hold a StoriesView, but StoriesManager remembers only the last one handed to
-        // it, so only that pane ever receives loaded stories. Re-registering pulls the block back
-        // into this view. Temporary, until the SDK supports more than one block at a time.
-        findViewById<Button>(R.id.btnReloadLegacyStories).setOnClickListener {
-            sdk.initializeStoriesView(storiesView)
-            appendLegacyStoriesLog(legacyLog, "reload: re-registered the XML view")
+        // UI Kit pane: the Compose widget resolves the instance itself from the shopId — shop A here,
+        // named explicitly since the app is multi-shop. DemoTheme makes it follow light/dark.
+        uiKitContent.setContent {
+            DemoTheme { ComposeStoriesPane(code = storiesCode, shopId = BuildConfig.SHOP_ID) }
         }
 
-        uiKitContent.setContent { ComposeStoriesPane(sdk = sdk, code = storiesCode) }
+        // Multi-instance pane: shop A (default) and shop B living side by side.
+        multiInstanceContent.setContent {
+            DemoTheme {
+                MultiInstancePane(
+                    shopIdA = BuildConfig.SHOP_ID,
+                    shopIdB = BuildConfig.SHOP_ID_2,
+                    storiesCodeA = storiesCode,
+                    storiesCodeB = getString(R.string.stories2_code),
+                )
+            }
+        }
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener { item ->
             apiContent.visibility = if (item.itemId == R.id.tabApi) View.VISIBLE else View.GONE
             uiKitContent.visibility = if (item.itemId == R.id.tabUiKit) View.VISIBLE else View.GONE
             legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
+            multiInstanceContent.visibility =
+                if (item.itemId == R.id.tabMultiInstance) View.VISIBLE else View.GONE
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible

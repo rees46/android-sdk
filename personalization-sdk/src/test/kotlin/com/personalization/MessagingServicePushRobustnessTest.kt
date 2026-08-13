@@ -3,6 +3,8 @@ package com.personalization
 import com.google.firebase.messaging.RemoteMessage
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -19,6 +21,20 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class MessagingServicePushRobustnessTest {
+
+    // The registry is process-global; keep this "no shop registered" contract isolated from other tests
+    // so onMessageReceived resolves to nothing (and drops) rather than routing into leftover state.
+    @Before
+    fun setUp() {
+        SdkRegistry.reset()
+        Rees46.reset()
+    }
+
+    @After
+    fun tearDown() {
+        SdkRegistry.reset()
+        Rees46.reset()
+    }
 
     @Test
     fun notificationReceived_onUninitializedSdk_doesNotThrow() {

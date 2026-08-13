@@ -64,7 +64,10 @@ class REES46 private constructor() : SDK() {
             sdk.setOnMessageListener { data ->
                 coroutineScope.launch {
                     val (images, hasError) = withContext(Dispatchers.IO) {
-                        NotificationImageHelper.loadBitmaps(urls = data.image)
+                        NotificationImageHelper.loadBitmaps(
+                            context = context,
+                            urls = data.image
+                        )
                     }
                     sdk.notificationHelper.createNotification(
                         context = context,

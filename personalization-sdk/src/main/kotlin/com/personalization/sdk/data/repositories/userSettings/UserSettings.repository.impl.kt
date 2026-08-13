@@ -10,6 +10,7 @@ private const val DEFAULT_SID = ""
 private const val DEFAULT_SID_LAST_ACT_TIME = 0L
 private const val DEFAULT_SHOP_ID = ""
 private const val DEFAULT_STREAM = "android"
+private const val DEFAULT_SEGMENT = ""
 
 private const val DID_KEY = "did"
 private const val SID_KEY = "sid"
@@ -76,16 +77,20 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override fun getSegmentForABTesting(): String = preferencesDataSource.getValue(
-        field = SEGMENT_AB_TESTING_KEY,
-        defaultValue = generateRandomSegmentValue()
-    )
-
-    override fun updateSegmentForABTesting() {
-        preferencesDataSource.saveValue(
+    // The A/B segment is a sticky per-device bucket: assigned once, then reused for the device's
+    // lifetime (and kept as-is when migrated from a previous install). It is assigned-and-persisted
+    // lazily on first read rather than overwritten on every init — re-rolling it each launch would
+    // flip the device between A and B and discard a migrated segment.
+    override fun getSegmentForABTesting(): String {
+        val stored = preferencesDataSource.getValue(
             field = SEGMENT_AB_TESTING_KEY,
-            value = generateRandomSegmentValue()
+            defaultValue = DEFAULT_SEGMENT
         )
+        if (stored.isNotEmpty()) return stored
+
+        val assigned = generateRandomSegmentValue()
+        preferencesDataSource.saveValue(field = SEGMENT_AB_TESTING_KEY, value = assigned)
+        return assigned
     }
 
     override fun getStream(): String = preferencesDataSource.getValue(

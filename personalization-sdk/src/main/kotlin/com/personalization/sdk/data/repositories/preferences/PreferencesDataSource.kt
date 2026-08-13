@@ -4,9 +4,16 @@ import android.content.Context
 
 interface PreferencesDataSource {
 
+    /**
+     * Opens the preferences partition named [preferencesKey]. When [legacyPreferencesKey] and
+     * [shopId] are provided, a one-time migration copies the legacy shared file into the partition
+     * if it is still empty and the legacy file belongs to [shopId].
+     */
     fun initialize(
         context: Context,
-        preferencesKey: String
+        preferencesKey: String,
+        legacyPreferencesKey: String? = null,
+        shopId: String? = null
     )
 
     fun getPushToken(provider: String): String

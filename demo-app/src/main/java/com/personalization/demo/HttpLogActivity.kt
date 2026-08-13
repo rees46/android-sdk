@@ -3,7 +3,6 @@ package com.personalization.demo
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,6 +11,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.demo.httplogger.HttpLogEntry
@@ -107,11 +107,14 @@ class HttpLogActivity : AppCompatActivity() {
             }
         }
 
-        private fun statusColor(entry: HttpLogEntry): Int = when {
-            entry.isError -> Color.parseColor("#D32F2F")
-            entry.isSuccess -> Color.parseColor("#2E7D32")
-            else -> Color.parseColor("#616161")
-        }
+        private fun statusColor(entry: HttpLogEntry): Int = ContextCompat.getColor(
+            this@HttpLogActivity,
+            when {
+                entry.isError -> R.color.log_status_error
+                entry.isSuccess -> R.color.log_status_success
+                else -> R.color.log_status_neutral
+            }
+        )
 
         private inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val header: TextView = view.findViewById(R.id.tvLogHeader)

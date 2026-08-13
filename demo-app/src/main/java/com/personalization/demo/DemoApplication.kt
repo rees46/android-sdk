@@ -6,18 +6,21 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.multidex.MultiDexApplication
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.google.firebase.FirebaseApp
+import com.personalization.Rees46
+import com.personalization.Rees46Config
 import com.personalization.SDK
 import com.personalization.demo.httplogger.HttpLogStore
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.net.URL
+import java.util.concurrent.TimeUnit
 
 class DemoApplication : MultiDexApplication() {
 
@@ -38,14 +41,22 @@ class DemoApplication : MultiDexApplication() {
     }
 
     private fun initSdk() {
-        // Official initialization (per docs): create the SDK once in Application.onCreate so it is
-        // ready in every process start — including the cold process FCM starts just to deliver a
-        // push.
+        // Official initialization (per docs): initialize the shop once in Application.onCreate through
+        // the Rees46 entry point so it is registered and ready in every process start — including the
+        // cold process FCM starts just to deliver a push. Reach it anywhere with
+        // Rees46.getInstance(shopId).
         try {
-            sdk = SDK()
-            sdk.initialize(
+            sdk = Rees46.initialize(
                 context = applicationContext,
-                shopId = BuildConfig.SHOP_ID,
+                config = Rees46Config(shopId = BuildConfig.SHOP_ID),
+            )
+            // Second shop for the Multi-instance tab: registered but not initialized here. It comes
+            // to life lazily the first time that tab resolves it (getInstance / a StoriesWidget with
+            // its shopId) — demonstrating per-shop lazy materialization alongside the eager default.
+            Rees46.registerShops(
+                context = applicationContext,
+                configs = listOf(Rees46Config(shopId = BuildConfig.SHOP_ID_2)),
+                eagerInit = false,
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -55,12 +66,17 @@ class DemoApplication : MultiDexApplication() {
         createPushChannel()
 
         // Displaying a push is the host app's responsibility: the SDK delivers the parsed
-        // NotificationData via setOnMessageListener, and the host posts the notification. We build a
+        // NotificationData via the message listener, and the host posts the notification. We build a
         // standard BigPicture notification — the same approach the React Native demo uses (notifee
         // AndroidStyle.BIGPICTURE): title and body are visible without expanding, the image is shown
         // as the big picture, and tapping opens the app. Set in Application so it also works when FCM
         // delivers a push to a cold process. Image download runs off the main thread.
-        sdk.setOnMessageListener { data ->
+        //
+        // Registered once at the Rees46 facade, so it fires for EVERY shop — the eager default and the
+        // lazily-registered second shop alike — with the routed shopId. (The old per-instance
+        // SDK.setOnMessageListener had to be set on each shop, so a push for a shop it was never set on
+        // silently showed nothing.) The demo displays both shops identically, so shopId is ignored.
+        Rees46.setOnMessageListener { _, data ->
             Thread { showPushNotification(data) }.start()
         }
     }
@@ -83,8 +99,11 @@ class DemoApplication : MultiDexApplication() {
      * equivalent of the React Native demo's notifee BIGPICTURE notification.
      */
     private fun showPushNotification(data: NotificationData) {
-        val bigPicture = data.image?.split(",")?.firstOrNull()?.trim()?.let(::loadBitmap)
-        val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }?.let(::loadBitmap)
+        val bigPicture = data.image?.split(",")?.firstOrNull()?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { url -> loadBitmap(url, BIG_PICTURE_MAX_WIDTH_PX, BIG_PICTURE_MAX_HEIGHT_PX) }
+        val largeIcon = data.icon?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let { url -> loadBitmap(url, LARGE_ICON_SIZE_PX, LARGE_ICON_SIZE_PX) }
 
         val builder = NotificationCompat.Builder(this, PUSH_CHANNEL_ID)
             // Host owns the push icon — the demo uses its own notification glyph, not an SDK asset.
@@ -126,11 +145,36 @@ class DemoApplication : MultiDexApplication() {
         )
     }
 
-    private fun loadBitmap(url: String): Bitmap? = try {
-        URL(url).openStream().use { BitmapFactory.decodeStream(it) }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+    /**
+     * Push images go through Glide, not through `URL.openStream()` + `BitmapFactory`. Google Play
+     * flags a manual download-and-decode ("Improve your app's performance with bitmap image
+     * optimisation"): the bitmap is allocated at the source resolution, so a large product photo
+     * can cost tens of megabytes for a notification that is a few hundred pixels tall. Glide
+     * downsamples into the target box, caches the download and pools the bitmaps.
+     *
+     * Runs on the background thread that [showPushNotification] is called on — `get()` blocks.
+     */
+    private fun loadBitmap(url: String, width: Int, height: Int): Bitmap? {
+        val target = Glide.with(this)
+            .asBitmap()
+            // Fit inside the box, keeping the aspect ratio — the notification shows the whole image.
+            .downsample(DownsampleStrategy.AT_MOST)
+            .centerInside()
+            // RemoteViews cannot take a Config.HARDWARE bitmap, and it cannot be copied out of.
+            .disallowHardwareConfig()
+            .load(url)
+            .submit(width, height)
+        return try {
+            target.get(LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                // clear() below may hand the pooled bitmap to the next decode while the posted
+                // notification still draws it, so keep an independent copy.
+                ?.let { bitmap -> bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            Glide.with(this).clear(target)
+        }
     }
 
     private fun installCrashHandler() {
@@ -156,5 +200,12 @@ class DemoApplication : MultiDexApplication() {
         const val CRASH_PREFS = "demo_crash"
         const val KEY_LAST_CRASH = "last_crash"
         const val PUSH_CHANNEL_ID = "demo_push"
+
+        // The platform itself scales a big picture down to about this box before showing it in the
+        // shade, so decoding anything larger is wasted memory. The large icon is 64dp on xxhdpi.
+        private const val BIG_PICTURE_MAX_WIDTH_PX = 1024
+        private const val BIG_PICTURE_MAX_HEIGHT_PX = 512
+        private const val LARGE_ICON_SIZE_PX = 192
+        private const val LOAD_TIMEOUT_SECONDS = 15L
     }
 }

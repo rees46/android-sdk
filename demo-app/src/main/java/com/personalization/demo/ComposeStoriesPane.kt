@@ -8,18 +8,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Button
+import androidx.compose.material.Surface
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.personalization.OnClickListener
 import com.personalization.Product
-import com.personalization.SDK
 import com.personalization.stories.compose.StoriesWidget
 
 /**
@@ -37,14 +36,9 @@ import com.personalization.stories.compose.StoriesWidget
  * XML [com.personalization.stories.views.StoriesView].
  */
 @Composable
-fun ComposeStoriesPane(sdk: SDK, code: String) {
+fun ComposeStoriesPane(code: String, shopId: String) {
     var routeOwnScheme by remember { mutableStateOf(false) }
     val events = remember { mutableStateListOf<String>() }
-    // StoriesManager remembers a single StoriesView, so the pane that registered last is the only
-    // one receiving stories — reloading the Legacy pane detaches this one. Bumping the token
-    // rebuilds the widget, which registers a fresh view and pulls the block back here.
-    // Temporary, until the SDK supports more than one block at a time.
-    var reloadToken by remember { mutableStateOf(0) }
 
     fun log(message: String) {
         events.add(0, message)
@@ -65,18 +59,13 @@ fun ComposeStoriesPane(sdk: SDK, code: String) {
             fontWeight = FontWeight.Bold
         )
 
-        Button(onClick = {
-            reloadToken++
-            log("reload: rebuilt the Compose widget")
-        }) {
-            Text(text = stringResource(R.string.stories_reload))
-        }
-
-        key(reloadToken) {
+        // The stories block colors its labels from merchant settings (assuming a light backdrop), so
+        // keep it on a light surface even when the demo is in dark mode.
+        Surface(color = Color.White, modifier = Modifier.fillMaxWidth()) {
             StoriesWidget(
-                sdk = sdk,
                 code = code,
                 modifier = Modifier.fillMaxWidth(),
+                shopId = shopId,
                 onClickListener = object : OnClickListener {
                     override fun onClick(url: String): Boolean {
                         val openedBySdk = !(routeOwnScheme && url.startsWith(OWN_SCHEME))

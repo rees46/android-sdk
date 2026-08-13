@@ -97,7 +97,10 @@ class NotificationService : Service() {
     ) {
         serviceScope.launch {
             try {
-                val (loadedImages, hasError) = NotificationImageHelper.loadBitmaps(urls = data.image)
+                val (loadedImages, hasError) = NotificationImageHelper.loadBitmaps(
+                    context = applicationContext,
+                    urls = data.image
+                )
                 notificationHelper.createNotification(
                     context = this@NotificationService,
                     data = NotificationData(

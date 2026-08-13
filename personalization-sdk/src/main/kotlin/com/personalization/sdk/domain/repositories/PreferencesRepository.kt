@@ -6,7 +6,9 @@ interface PreferencesRepository {
 
     fun initialize(
         context: Context,
-        preferencesKey: String
+        preferencesKey: String,
+        legacyPreferencesKey: String? = null,
+        shopId: String? = null
     )
 
     fun getPushToken(provider: String): String
