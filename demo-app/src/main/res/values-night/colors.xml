@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      The demo is intentionally light in every mode. These -night values exist (rather than being
-      omitted) purely so the app declares dark-mode support: OEM skins like MIUI only force-dark
-      apps that DON'T handle night themselves, so having -night resources makes them leave the app
-      alone. We deliberately keep the same LIGHT colors as the day variant so the UI looks identical
-      whether the system is in light or dark mode.
+      Dark-mode surfaces. The demo now follows the system theme (see values/themes.xml), so in night
+      mode these give dark panels, a light hairline and light nav items; body text comes from the
+      AppCompat dark theme (textColorPrimary = light). Rendering a genuine dark UI is what stops
+      MIUI/EMUI force-dark from inverting the app into unreadable white-on-white.
     -->
-    <color name="token_panel_background">#EEEEEE</color>
-    <color name="hairline">#22000000</color>
+    <color name="token_panel_background">#2A2A2A</color>
+    <color name="hairline">#33FFFFFF</color>
+
+    <color name="bottom_nav_item_selected">#FFFFFF</color>
+    <color name="bottom_nav_item_unselected">#9E9E9E</color>
+
+    <!-- HTTP-log status colors, lightened so they read on the dark log background. -->
+    <color name="log_status_success">#81C784</color>
+    <color name="log_status_error">#EF5350</color>
+    <color name="log_status_neutral">#BDBDBD</color>
+
+    <!-- Body text (dark-mode values) — light text for the dark panels. Selected by the same night
+         qualifier as the backgrounds, so text and background always flip together. -->
+    <color name="body_text_primary">#F5F5F5</color>
+    <color name="body_text_secondary">#BDBDBD</color>
 </resources>

@@ -13,6 +13,8 @@ import androidx.multidex.MultiDexApplication
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.google.firebase.FirebaseApp
+import com.personalization.Rees46
+import com.personalization.Rees46Config
 import com.personalization.SDK
 import com.personalization.demo.httplogger.HttpLogStore
 import com.personalization.sdk.data.models.dto.notification.NotificationData
@@ -39,14 +41,22 @@ class DemoApplication : MultiDexApplication() {
     }
 
     private fun initSdk() {
-        // Official initialization (per docs): create the SDK once in Application.onCreate so it is
-        // ready in every process start — including the cold process FCM starts just to deliver a
-        // push.
+        // Official initialization (per docs): initialize the shop once in Application.onCreate through
+        // the Rees46 entry point so it is registered and ready in every process start — including the
+        // cold process FCM starts just to deliver a push. Reach it anywhere with
+        // Rees46.getInstance(shopId).
         try {
-            sdk = SDK()
-            sdk.initialize(
+            sdk = Rees46.initialize(
                 context = applicationContext,
-                shopId = BuildConfig.SHOP_ID,
+                config = Rees46Config(shopId = BuildConfig.SHOP_ID),
+            )
+            // Second shop for the Multi-instance tab: registered but not initialized here. It comes
+            // to life lazily the first time that tab resolves it (getInstance / a StoriesWidget with
+            // its shopId) — demonstrating per-shop lazy materialization alongside the eager default.
+            Rees46.registerShops(
+                context = applicationContext,
+                configs = listOf(Rees46Config(shopId = BuildConfig.SHOP_ID_2)),
+                eagerInit = false,
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -56,12 +66,17 @@ class DemoApplication : MultiDexApplication() {
         createPushChannel()
 
         // Displaying a push is the host app's responsibility: the SDK delivers the parsed
-        // NotificationData via setOnMessageListener, and the host posts the notification. We build a
+        // NotificationData via the message listener, and the host posts the notification. We build a
         // standard BigPicture notification — the same approach the React Native demo uses (notifee
         // AndroidStyle.BIGPICTURE): title and body are visible without expanding, the image is shown
         // as the big picture, and tapping opens the app. Set in Application so it also works when FCM
         // delivers a push to a cold process. Image download runs off the main thread.
-        sdk.setOnMessageListener { data ->
+        //
+        // Registered once at the Rees46 facade, so it fires for EVERY shop — the eager default and the
+        // lazily-registered second shop alike — with the routed shopId. (The old per-instance
+        // SDK.setOnMessageListener had to be set on each shop, so a push for a shop it was never set on
+        // silently showed nothing.) The demo displays both shops identically, so shopId is ignored.
+        Rees46.setOnMessageListener { _, data ->
             Thread { showPushNotification(data) }.start()
         }
     }

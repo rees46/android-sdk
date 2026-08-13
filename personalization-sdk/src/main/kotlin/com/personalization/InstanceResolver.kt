@@ -15,10 +15,10 @@ internal object InstanceResolver {
         /** A registration exists but is not initialized yet — materialize it now. */
         data class Pending(val shopId: String) : Resolution
 
-        /** Nothing initialized or registered matches — raise [SdkNotInitializedException]. */
-        object NotInitialized : Resolution
+        /** No live instance and no registration matches — raise [UnknownShopIdException]. */
+        object NotRegistered : Resolution
 
-        /** No shopId given and more than one shop registered — raise [AmbiguousSdkInstanceException]. */
+        /** No shopId given and more than one shop registered — raise [AmbiguousShopException]. */
         object Ambiguous : Resolution
     }
 
@@ -31,13 +31,13 @@ internal object InstanceResolver {
             return when (requestedShopId) {
                 in liveShopIds -> Resolution.Existing(requestedShopId)
                 in pendingShopIds -> Resolution.Pending(requestedShopId)
-                else -> Resolution.NotInitialized
+                else -> Resolution.NotRegistered
             }
         }
 
         val allShopIds = liveShopIds + pendingShopIds
         return when (allShopIds.size) {
-            0 -> Resolution.NotInitialized
+            0 -> Resolution.NotRegistered
             1 -> allShopIds.first().let { only ->
                 if (only in liveShopIds) Resolution.Existing(only) else Resolution.Pending(only)
             }

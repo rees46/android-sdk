@@ -16,7 +16,6 @@ interface UserSettingsRepository {
     fun updateShopId(value: String)
 
     fun getSegmentForABTesting(): String
-    fun updateSegmentForABTesting()
 
     fun getStream(): String
     fun updateStream(value: String)

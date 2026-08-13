@@ -18,7 +18,10 @@ class MessagingService : FirebaseMessagingService() {
             // Check if message contains a data payload.
             if (remoteMessage.data.isNotEmpty()) {
                 SDK.debug("Message data payload: ${remoteMessage.data}")
-                SDK.onMessage(remoteMessage)
+                // Route through the facade so a lazily-registered shop the push targets is materialized
+                // on demand — the cold process FCM starts to deliver a data-only message only has the
+                // eagerly-initialized shops live, so a lazy shop would otherwise be dropped at routing.
+                Rees46.handlePush(remoteMessage.data, PushEventType.RECEIVED)
             }
 
             // Check if message contains a notification payload.

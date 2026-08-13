@@ -2,16 +2,26 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-      The demo is intentionally light in every mode. DayNight (which resolves to Light in day) plus a
-      -night theme override (values-night/themes.xml) that stays Light means the app looks the same
-      whether the system is light or dark. Declaring night resources at all is what stops OEM
-      force-dark: skins like MIUI/EMUI only invert apps that don't handle night themselves, so once
-      the app advertises dark-mode support they hand control back and leave its light look alone.
-      forceDarkAllowed=false additionally opts out of the platform's own force-dark (API 29+, a no-op
-      below, harmless at minSdk 19).
+      The demo natively supports dark mode. This DayNight base resolves to Light in day and Dark in
+      night (there is no -night override forcing Light any more), backed by dark surface colors in
+      values-night/colors.xml. Following the system is what actually stops OEM force-dark: MIUI/EMUI
+      only invert apps that DON'T handle night themselves, so once the app renders its own dark UI
+      they leave it alone. The earlier "always light" trick relied on -night resources to signal
+      dark support while still showing light — MIUI ignored that and whited the text out ("milk"),
+      which is why we now go genuinely dark. forceDarkAllowed=false keeps the platform from ALSO
+      inverting on top of our own dark colors (API 29+, harmless below).
     -->
     <style name="Theme.PersonalizationDemo" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+        <!--
+          Drive body text from resource-qualified colors (values + values-night) instead of the
+          DayNight parent. On some OEMs (notably MIUI) the parent resolves text out of sync with the
+          app's own resource selection — white text ends up on a light panel ("milk"). Pinning these to
+          @color/* that are selected by the SAME night qualifier as the panel backgrounds keeps text and
+          background flipping together, so text stays legible whichever mode the device is in.
+        -->
+        <item name="android:textColorPrimary">@color/body_text_primary</item>
+        <item name="android:textColorSecondary">@color/body_text_secondary</item>
     </style>
 
 </resources>

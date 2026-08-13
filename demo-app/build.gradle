@@ -31,6 +31,10 @@ android {
     def shopId = localProperties.getProperty('shop.id', '357382bf66ac0ce2f1722677c59511')
     // Server-side shop secret (orders/by_user). Kept out of source — set shop.secret in local.properties.
     def shopSecret = localProperties.getProperty('shop.secret', 'demo-shop-secret')
+    // Second shop — powers the "Multi-instance" tab where two shops live at once. Override in
+    // local.properties (shop2.id / shop2.secret); the defaults point at a real demo shop.
+    def shop2Id = localProperties.getProperty('shop2.id', '4b464e7c386120d4b621bf7cb79293')
+    def shop2Secret = localProperties.getProperty('shop2.secret', '60de89fc4c6161ffe92822c679e60321')
 
     defaultConfig {
         applicationId "com.personalization.demo"
@@ -46,6 +50,8 @@ android {
         // Add shop ID to BuildConfig
         buildConfigField "String", "SHOP_ID", "\"${shopId}\""
         buildConfigField "String", "SHOP_SECRET", "\"${shopSecret}\""
+        buildConfigField "String", "SHOP_ID_2", "\"${shop2Id}\""
+        buildConfigField "String", "SHOP_SECRET_2", "\"${shop2Secret}\""
     }
 
     productFlavors {
@@ -93,7 +99,10 @@ dependencies {
 
     // Compose, for the "UI Kit" tab. The SDK exposes StoriesWidget against these APIs but ships
     // none of them, so the demo declares them itself.
-    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    // BOM 2024.12.01 = Compose 1.7.6: the 1.7 line reworked hover-event dispatch and fixes the
+    // "The ACTION_HOVER_EXIT event was not cleared" crash in AndroidComposeView that 1.6.8 hit on
+    // some OEM devices (Huawei/EMUI). Stays on compileSdk 34 (Compose 1.8 would need compileSdk 35).
+    implementation platform('androidx.compose:compose-bom:2024.12.01')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.material:material'

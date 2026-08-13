@@ -15,4 +15,9 @@
         android:id="@+id/tabLegacyUi"
         android:icon="@drawable/ic_tab_legacy"
         android:title="@string/tab_legacy_ui" />
+
+    <item
+        android:id="@+id/tabMultiInstance"
+        android:icon="@drawable/ic_tab_api"
+        android:title="@string/tab_multi_instance" />
 </menu>

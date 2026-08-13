@@ -43,14 +43,14 @@ class Rees46Test {
 
     @Test
     fun `getInstance without a shop throws when nothing is registered`() {
-        assertThrows(SdkNotInitializedException::class.java) { Rees46.getInstance() }
+        assertThrows(UnknownShopIdException::class.java) { Rees46.getInstance() }
     }
 
     @Test
-    fun `getInstance for an unknown shop throws NotInitialized`() {
+    fun `getInstance for an unknown shop throws UnknownShopId`() {
         SdkRegistry.register("shop-a", SDK())
 
-        assertThrows(SdkNotInitializedException::class.java) { Rees46.getInstance("shop-x") }
+        assertThrows(UnknownShopIdException::class.java) { Rees46.getInstance("shop-x") }
     }
 
     @Test
@@ -67,7 +67,24 @@ class Rees46Test {
         SdkRegistry.register("shop-a", SDK())
         SdkRegistry.register("shop-b", SDK())
 
-        assertThrows(AmbiguousSdkInstanceException::class.java) { Rees46.getInstance() }
+        assertThrows(AmbiguousShopException::class.java) { Rees46.getInstance() }
+    }
+
+    @Test
+    fun `the default getInstance works for one shop and starts throwing once a second registers`() {
+        // Integrator flow: init one shop, reach it with no shopId — fine. Init a second shop and the
+        // bare getInstance() becomes ambiguous, so it must fail fast rather than silently pick one.
+        // (register stands in for SDK.initialize, which would hit the network — see the class KDoc.)
+        val first = SDK()
+        SdkRegistry.register("shop-a", first)
+
+        assertSame(first, Rees46.getInstance())
+
+        SdkRegistry.register("shop-b", SDK())
+
+        assertThrows(AmbiguousShopException::class.java) { Rees46.getInstance() }
+        // The explicit id keeps working for both after the second registration.
+        assertSame(first, Rees46.getInstance("shop-a"))
     }
 
     @Test
@@ -98,7 +115,7 @@ class Rees46Test {
         SdkRegistry.register("shop-a", SDK())
         SdkRegistry.register("shop-b", SDK())
 
-        val message = assertThrows(AmbiguousSdkInstanceException::class.java) {
+        val message = assertThrows(AmbiguousShopException::class.java) {
             Rees46.getInstance()
         }.message.orEmpty()
 

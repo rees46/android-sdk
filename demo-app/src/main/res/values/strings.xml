@@ -70,10 +70,14 @@
     <string name="push_channel_name">Push notifications</string>
     <!-- Stories block code for the demo shop. Replace with a code configured for your shop. -->
     <string name="stories_code">115bd0b67cf5989a1b60c841790b2af6</string>
+    <!-- Stories block code for the SECOND shop (Multi-instance tab). Fill in a code configured for
+         shop2.id, otherwise shop B's stories pane stays empty (the /stories call still routes to B). -->
+    <string name="stories2_code">3704bd6e8a1a9a6dc65b75a5f01e5c8d</string>
     <!-- Bottom navigation -->
     <string name="tab_api">API</string>
     <string name="tab_ui_kit">UI Kit</string>
     <string name="tab_legacy_ui">Legacy UI</string>
+    <string name="tab_multi_instance">Multi</string>
 
     <!-- Stories tabs -->
     <string name="compose_stories_title">StoriesWidget (Compose)</string>
@@ -81,7 +85,22 @@
     <string name="compose_stories_routing">Route demo:// links in the app</string>
     <string name="legacy_stories_title">StoriesView (XML)</string>
     <string name="legacy_stories_log_placeholder">Tap a story to see OnClickListener callbacks here</string>
-    <!-- Workaround while the SDK can only drive one stories block: reloads the block into
-         whichever pane the button belongs to. -->
-    <string name="stories_reload">Reload stories</string>
+
+    <!-- Multi-instance tab -->
+    <string name="mi_title">Two shops, one app</string>
+    <string name="mi_subtitle">Both shops are initialized at once, each with its own session and storage. Watch the HTTP log to see every request carry its own shop_id/did.</string>
+    <string name="mi_shop_a">Shop A (default)</string>
+    <string name="mi_shop_b">Shop B</string>
+    <string name="mi_session_line">did=%1$s\nsid=%2$s</string>
+    <string name="mi_not_ready">resolving…</string>
+    <string name="mi_stories2_missing">Set stories2_code to render shop B\'s stories. The block request still routes to shop B.</string>
+    <string name="mi_contracts_title">Fail-fast contracts</string>
+    <string name="mi_btn_ambiguous">getInstance() with 2 shops</string>
+    <string name="mi_btn_unknown">getInstance(\"nope\")</string>
+    <string name="mi_push_title">Push routing (SDK.onMessage)</string>
+    <string name="mi_btn_push_a">push shop_id=A</string>
+    <string name="mi_btn_push_b">push shop_id=B</string>
+    <string name="mi_btn_push_unknown">push shop_id=unknown</string>
+    <string name="mi_btn_push_none">push (no shop_id)</string>
+    <string name="mi_log_placeholder">Results of contract and push-routing actions appear here</string>
 </resources>

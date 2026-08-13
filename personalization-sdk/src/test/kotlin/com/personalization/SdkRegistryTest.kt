@@ -83,6 +83,66 @@ class SdkRegistryTest {
     }
 
     @Test
+    fun `re-registering a shop with a new instance evicts the superseded one from the fan-out set`() {
+        val old = SDK()
+        val new = SDK()
+        SdkRegistry.register(shopId = "shop-a", sdk = old)
+        SdkRegistry.register(shopId = "shop-a", sdk = new)
+
+        assertEquals(1, SdkRegistry.count())
+        assertSame(new, SdkRegistry.byShopId("shop-a"))
+        val all = SdkRegistry.all()
+        assertEquals(listOf(new), all)
+    }
+
+    @Test
+    fun `onNextRegister fires immediately when the shop is already registered`() {
+        val sdk = SDK()
+        SdkRegistry.register(shopId = "shop-a", sdk = sdk)
+
+        // Re-check under the lock: an awaiter subscribing after the registration must not be left
+        // waiting for a signal that already fired.
+        var received: SDK? = null
+        SdkRegistry.onNextRegister("shop-a") { received = it }
+
+        assertSame(sdk, received)
+    }
+
+    @Test
+    fun `onNextRegister without a shop fires immediately when an instance is already current`() {
+        val sdk = SDK()
+        SdkRegistry.register(shopId = "shop-a", sdk = sdk)
+
+        var received: SDK? = null
+        SdkRegistry.onNextRegister(null) { received = it }
+
+        assertSame(sdk, received)
+    }
+
+    @Test
+    fun `onNextRegister waits and then fires on the next matching registration`() {
+        var received: SDK? = null
+        SdkRegistry.onNextRegister("shop-a") { received = it }
+        assertNull(received)
+
+        val sdk = SDK()
+        SdkRegistry.register(shopId = "shop-a", sdk = sdk)
+
+        assertSame(sdk, received)
+    }
+
+    @Test
+    fun `a cancelled onNextRegister does not fire on a later registration`() {
+        var received: SDK? = null
+        val handle = SdkRegistry.onNextRegister("shop-a") { received = it }
+        handle.cancel()
+
+        SdkRegistry.register(shopId = "shop-a", sdk = SDK())
+
+        assertNull(received)
+    }
+
+    @Test
     fun `all returns every registered instance for push fan-out`() {
         val a = SDK()
         val b = SDK()

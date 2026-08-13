@@ -38,17 +38,17 @@ class InstanceResolverTest {
     }
 
     @Test
-    fun `a requested shop that is unknown resolves to NotInitialized`() {
+    fun `a requested shop that is unknown resolves to NotRegistered`() {
         assertEquals(
-            Resolution.NotInitialized,
+            Resolution.NotRegistered,
             resolve("shop-x", live = setOf("shop-a"), pending = setOf("shop-b"))
         )
     }
 
     @Test
-    fun `no shopId and nothing registered resolves to NotInitialized`() {
+    fun `no shopId and nothing registered resolves to NotRegistered`() {
         assertEquals(
-            Resolution.NotInitialized,
+            Resolution.NotRegistered,
             resolve(null, live = emptySet(), pending = emptySet())
         )
     }

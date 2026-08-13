@@ -176,6 +176,51 @@ open class SDK {
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false,
         addTrailingSlash: Boolean = true
+    ) = initializeInternal(
+        context = context,
+        shopId = shopId,
+        apiDomain = apiDomain,
+        tag = tag,
+        preferencesKey = preferencesKey,
+        stream = stream,
+        autoSendPushToken = autoSendPushToken,
+        needReInitialization = needReInitialization,
+        addTrailingSlash = addTrailingSlash,
+        sendProfileOnInit = true
+    )
+
+    /**
+     * Light bring-up for handling a push in a (possibly cold) background process: keeps the persisted
+     * did (no `/init`), does not re-register the push token (it is already on the server — that is why
+     * the push arrived), and skips the GAID + profile/set call. Just enough to track the delivery and
+     * reach the message listener. Used by [Rees46.handlePush] to materialize a lazily-registered shop
+     * without the full startup work. The public [initialize] contract is unchanged.
+     */
+    internal fun initializeForPush(context: Context, config: Rees46Config) = initializeInternal(
+        context = context,
+        shopId = config.shopId,
+        apiDomain = config.apiDomain,
+        tag = config.tag,
+        preferencesKey = PreferencesPartition.LEGACY_KEY,
+        stream = config.stream,
+        autoSendPushToken = false,
+        needReInitialization = false,
+        addTrailingSlash = config.addTrailingSlash,
+        sendProfileOnInit = false
+    )
+
+    private fun initializeInternal(
+        context: Context,
+        shopId: String,
+        apiDomain: String,
+        tag: String,
+        preferencesKey: String,
+        stream: String,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean,
+        addTrailingSlash: Boolean,
+        // When false, skip the background GAID + profile/set call (the push-context bring-up).
+        sendProfileOnInit: Boolean
     ) {
 
         val sdkComponent = DaggerSdkComponent.factory().create(
@@ -233,24 +278,26 @@ open class SDK {
         SdkRegistry.register(shopId = shopId, sdk = this)
         isSdkInitialized = true
 
-        CoroutineScope(Dispatchers.IO).launch {
-            val advertisingId = initializeAdvertisingIdUseCase.invoke()
+        if (sendProfileOnInit) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val advertisingId = initializeAdvertisingIdUseCase.invoke()
 
-            profile(
-                data = ProfileParams
-                    .Builder()
-                    .put(GAID_KEY, advertisingId)
-                    .build(),
-                listener = object : OnApiCallbackListener() {
-                    override fun onSuccess(response: JSONObject?) {
-                        debug("Profile GAID sent successfully: $advertisingId")
-                    }
+                profile(
+                    data = ProfileParams
+                        .Builder()
+                        .put(GAID_KEY, advertisingId)
+                        .build(),
+                    listener = object : OnApiCallbackListener() {
+                        override fun onSuccess(response: JSONObject?) {
+                            debug("Profile GAID sent successfully: $advertisingId")
+                        }
 
-                    override fun onError(code: Int, msg: String?) {
-                        warn("Profile GAID send failed: $code | $msg")
+                        override fun onError(code: Int, msg: String?) {
+                            warn("Profile GAID send failed: $code | $msg")
+                        }
                     }
-                }
-            )
+                )
+            }
         }
 
     }
@@ -383,7 +430,14 @@ open class SDK {
 
     /**
      * @param listener Event on message receive
+     * @deprecated Per-instance and must be set on every shop; a shop it was never set on silently
+     * shows nothing. Use the process-global [Rees46.setOnMessageListener], which fires for every shop
+     * with its `shopId`. This one still works and fires alongside the global listener.
      */
+    @Deprecated(
+        "Use Rees46.setOnMessageListener { shopId, data -> ... } — one process-global listener covers " +
+            "every shop instead of wiring one per instance."
+    )
     fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
     }
@@ -994,15 +1048,16 @@ open class SDK {
     }
 
     private fun receiveMessage(data: Map<String, String>) {
+        // Track the delivery on this instance's network and fire the deprecated per-instance listener.
+        // The process-global listener (Rees46.setOnMessageListener) is dispatched by the router
+        // ([Rees46.handlePush] / the [onMessage] companion) instead, so the notification shows even for a
+        // shop that has no live instance yet.
         notificationReceived(data = data)
-
-        onMessageListener?.onMessage(
-            data = data.toNotificationData()
-        )
+        onMessageListener?.onMessage(data = data.toNotificationData())
     }
 
-    /** Entry point for [Rees46.handlePush] once it has resolved this as the target instance. */
-    internal fun onPushReceived(data: Map<String, String>) = receiveMessage(data)
+    /** Entry point for [Rees46.handlePush]: track a received push on the already-resolved instance. */
+    internal fun onPushReceived(data: Map<String, String>) = receiveMessage(data = data)
 
     companion object {
 
@@ -1100,18 +1155,36 @@ open class SDK {
         }
 
         /**
-         * Routes a push `data` payload from any provider (e.g. HMS) to the SDK. See the
-         * [RemoteMessage] overload for the FCM entry point.
+         * Routes a push `data` payload among the currently-live shops. See the [RemoteMessage] overload
+         * for the FCM entry point.
+         *
+         * The payload's `shop_id` names the target, and a single-shop app resolves with no `shop_id`. An
+         * unknown `shop_id` — or none while several shops are live — is dropped, not delivered (and
+         * tracked as received) against the wrong shop. A push arriving before any `initialize()` has
+         * nowhere to route and is likewise dropped.
+         *
+         * This resolves against live shops only. The SDK's messaging services route through
+         * [Rees46.handlePush] instead, which additionally materializes a registered-but-pending shop the
+         * push targets — needed for a data-only push to reach a lazily-registered shop in a cold process.
          *
          * @param data the push data payload (title/body/icon/…)
          */
         fun onMessage(data: Map<String, String>) {
-            // Route to the shop named in the payload when present; otherwise fall back to the current
-            // instance so single-instance apps (and pushes with no shop_id) keep working, including
-            // before initialize() ran (a guarded lazy instance).
-            val target = data[PreferencesPartition.SHOP_ID_FIELD]?.let { SdkRegistry.byShopId(it) }
-                ?: SdkRegistry.currentOrLazy()
-            target.receiveMessage(data)
+            val shopId = PushTargetResolver.resolve(
+                payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD],
+                liveShopIds = SdkRegistry.shopIds()
+            )
+            val target = shopId?.let { SdkRegistry.byShopId(it) }
+            if (target == null || shopId == null) {
+                warn(
+                    "onMessage: push dropped — no shop resolves it " +
+                        "(shop_id=${data[PreferencesPartition.SHOP_ID_FIELD]}, live=${SdkRegistry.shopIds()})."
+                )
+                return
+            }
+            // Show via the process-global listener, then track received on the instance.
+            SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
+            target.receiveMessage(data = data)
         }
 
         /**

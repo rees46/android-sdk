@@ -230,24 +230,17 @@
                     android:text="@string/legacy_stories_title"
                     android:textStyle="bold" />
 
-                <!-- StoriesManager keeps a single view reference, so whichever pane registers last
-                     is the only one that receives loaded stories — here the Compose pane, which
-                     leaves this one empty. Re-registering this view reloads the block into it.
-                     Temporary: remove once the SDK can drive more than one block at a time. -->
-                <Button
-                    android:id="@+id/btnReloadLegacyStories"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/stories_reload" />
-
-                <!-- The classic integration: the block is declared in XML with app:code and handed
-                     to the SDK from MainActivity via sdk.initializeStoriesView(). -->
+                <!-- The block is declared in XML with app:code and loads itself: on attach the view
+                     resolves its SDK instance through Rees46 and fetches the block, so several blocks
+                     can live on screen at once with no manual wiring.
+                     Kept on a white background: the block colors its labels from merchant settings
+                     (assuming a light backdrop), so it must stay light even when the demo is dark. -->
                 <com.personalization.stories.views.StoriesView
                     android:id="@+id/storiesView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
+                    android:background="@android:color/white"
                     app:code="@string/stories_code" />
 
                 <TextView
@@ -260,6 +253,12 @@
                     android:typeface="monospace" />
             </LinearLayout>
         </ScrollView>
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/multiInstanceContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- Bridge theme so the Material component resolves its attributes while the app itself

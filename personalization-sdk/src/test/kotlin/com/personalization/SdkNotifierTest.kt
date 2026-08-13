@@ -136,7 +136,7 @@ class SdkNotifierTest {
         SdkRegistry.register("shop-a", SDK())
         SdkRegistry.register("shop-b", SDK())
 
-        assertThrows(AmbiguousSdkInstanceException::class.java) {
+        assertThrows(AmbiguousShopException::class.java) {
             Rees46.awaitInstance { /* never called */ }
         }
     }

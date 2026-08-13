@@ -4,11 +4,26 @@
     <color name="ic_launcher_background">#2962FF</color>
     <color name="demo_notification_color">#2962FF</color>
 
-    <!-- UI surfaces. Defined here (light) and overridden in values-night so the demo renders
-         correctly in dark mode instead of leaving a hardcoded light panel under white text. -->
+    <!-- UI surfaces (light values). Overridden in values-night so the demo renders a real dark UI
+         in night mode — which is what keeps OEM force-dark (MIUI) from inverting it into white-on-
+         white. -->
     <color name="token_panel_background">#EEEEEE</color>
     <color name="hairline">#22000000</color>
 
     <color name="bottom_nav_item_selected">#1A1A1A</color>
     <color name="bottom_nav_item_unselected">#757575</color>
+
+    <!-- HTTP-log status colors (light variants). Dark variants live in values-night/colors.xml so
+         the log stays legible in dark mode. Read via ContextCompat in HttpLogActivity. -->
+    <color name="log_status_success">#2E7D32</color>
+    <color name="log_status_error">#D32F2F</color>
+    <color name="log_status_neutral">#616161</color>
+
+    <!-- Body text (light values). Paired in values-night so text flips via the SAME resource selection
+         (night qualifier) as the panel backgrounds above. The DayNight theme resolves text out of sync
+         with the app's resource selection on some OEMs (MIUI), leaving white text on a light panel
+         ("milk"); driving text from these @color values instead of the theme keeps text and background
+         consistent in every mode. -->
+    <color name="body_text_primary">#1A1A1A</color>
+    <color name="body_text_secondary">#616161</color>
 </resources>

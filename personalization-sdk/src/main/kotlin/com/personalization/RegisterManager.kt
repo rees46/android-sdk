@@ -1,8 +1,5 @@
-@file:SuppressLint("HardwareIds")
-
 package com.personalization
 
-import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.Context
 import android.provider.Settings
@@ -62,8 +59,11 @@ class RegisterManager @Inject constructor(
     }
 
     private fun initializeNewDevice() {
-        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-        updateUserSettingsValueUseCase.updateDid(value = androidId)
+        // Do NOT seed the did with a hardware id (Settings.Secure.ANDROID_ID). Like the iOS, React
+        // Native and web SDKs, send an empty did on the first /init and let the backend assign one —
+        // handleInitSuccess persists the server's did. Keeps device identity consistent across
+        // platforms and off Google's discouraged hardware-id APIs. Existing installs already hold a
+        // non-empty did, so they keep it (this branch only runs when did is empty).
         initializeSdk(seance = null)
         init()
     }
