@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Текстовые стили дизайн-системы. Применять как android:textAppearance.
+  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), страница Typography.
+  Сгенерировано скриптом; правки вносить в источник, не здесь.
+
+  Шрифт: Inter в SDK не поставляется, поэтому используются системные
+  начертания — sans-serif (400) и sans-serif-medium (500) как ближайшее
+  к Emphasized 600. При переходе на бандл Inter меняется только fontFamily.
+
+  android:letterSpacing задаётся в em и требует API 21,
+  android:lineHeight — API 28. На более старых версиях атрибуты
+  игнорируются; интерлиньяж там ставится из кода через
+  TextViewCompat.setLineHeight с dimen personalization_line_height_*.
+-->
+<resources>
+
+    <!-- XS/Default — 12/16, трекинг 0.05px -->
+    <style name="TextAppearance.Personalization.XS.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xs</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xs</item>
+        <item name="android:letterSpacing">0.004167</item>
+    </style>
+
+    <!-- XS/Emphasized — 12/16, трекинг 0.05px -->
+    <style name="TextAppearance.Personalization.XS.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xs</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xs</item>
+        <item name="android:letterSpacing">0.004167</item>
+    </style>
+
+    <!-- SM/Default — 14/20, трекинг 0.05px -->
+    <style name="TextAppearance.Personalization.SM.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_sm</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_sm</item>
+        <item name="android:letterSpacing">0.003571</item>
+    </style>
+
+    <!-- SM/Emphasized — 14/20, трекинг 0.05px -->
+    <style name="TextAppearance.Personalization.SM.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_sm</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_sm</item>
+        <item name="android:letterSpacing">0.003571</item>
+    </style>
+
+    <!-- Base/Default — 16/24, трекинг 0px -->
+    <style name="TextAppearance.Personalization.Base.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_base</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_base</item>
+    </style>
+
+    <!-- Base/Emphasized — 16/24, трекинг 0px -->
+    <style name="TextAppearance.Personalization.Base.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_base</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_base</item>
+    </style>
+
+    <!-- LG/Default — 18/28, трекинг 0px -->
+    <style name="TextAppearance.Personalization.LG.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_lg</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_lg</item>
+    </style>
+
+    <!-- LG/Emphasized — 18/28, трекинг 0px -->
+    <style name="TextAppearance.Personalization.LG.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_lg</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_lg</item>
+    </style>
+
+    <!-- XL/Default — 20/32, трекинг 0px -->
+    <style name="TextAppearance.Personalization.XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl</item>
+    </style>
+
+    <!-- XL/Emphasized — 20/32, трекинг 0px -->
+    <style name="TextAppearance.Personalization.XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl</item>
+    </style>
+
+    <!-- 2XL/Default — 24/36, трекинг 0px -->
+    <style name="TextAppearance.Personalization.2XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl2</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl2</item>
+    </style>
+
+    <!-- 2XL/Emphasized — 24/36, трекинг 0px -->
+    <style name="TextAppearance.Personalization.2XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl2</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl2</item>
+    </style>
+
+    <!-- 3XL/Default — 30/40, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.3XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl3</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl3</item>
+        <item name="android:letterSpacing">-0.016667</item>
+    </style>
+
+    <!-- 3XL/Emphasized — 30/40, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.3XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl3</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl3</item>
+        <item name="android:letterSpacing">-0.016667</item>
+    </style>
+
+    <!-- 4XL/Default — 36/52, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.4XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl4</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl4</item>
+        <item name="android:letterSpacing">-0.013889</item>
+    </style>
+
+    <!-- 4XL/Emphasized — 36/52, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.4XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl4</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl4</item>
+        <item name="android:letterSpacing">-0.013889</item>
+    </style>
+
+    <!-- 5XL/Default — 48/64, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.5XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl5</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl5</item>
+        <item name="android:letterSpacing">-0.010417</item>
+    </style>
+
+    <!-- 5XL/Emphasized — 48/64, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.5XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl5</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl5</item>
+        <item name="android:letterSpacing">-0.010417</item>
+    </style>
+
+    <!-- 6XL/Default — 60/72, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.6XL.Default" parent="">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl6</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl6</item>
+        <item name="android:letterSpacing">-0.008333</item>
+    </style>
+
+    <!-- 6XL/Emphasized — 60/72, трекинг -0.5px -->
+    <style name="TextAppearance.Personalization.6XL.Emphasized" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">@dimen/personalization_font_size_xl6</item>
+        <item name="android:lineHeight">@dimen/personalization_line_height_xl6</item>
+        <item name="android:letterSpacing">-0.008333</item>
+    </style>
+
+</resources>

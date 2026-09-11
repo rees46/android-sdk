@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Типографика дизайн-системы: кегли и интерлиньяжи.
+  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), страница Typography.
+  Сгенерировано скриптом; правки вносить в источник, не здесь.
+-->
+<resources>
+    <dimen name="personalization_font_size_xs">12sp</dimen>
+    <dimen name="personalization_font_size_sm">14sp</dimen>
+    <dimen name="personalization_font_size_base">16sp</dimen>
+    <dimen name="personalization_font_size_lg">18sp</dimen>
+    <dimen name="personalization_font_size_xl">20sp</dimen>
+    <dimen name="personalization_font_size_xl2">24sp</dimen>
+    <dimen name="personalization_font_size_xl3">30sp</dimen>
+    <dimen name="personalization_font_size_xl4">36sp</dimen>
+    <dimen name="personalization_font_size_xl5">48sp</dimen>
+    <dimen name="personalization_font_size_xl6">60sp</dimen>
+
+    <dimen name="personalization_line_height_xs">16sp</dimen>
+    <dimen name="personalization_line_height_sm">20sp</dimen>
+    <dimen name="personalization_line_height_base">24sp</dimen>
+    <dimen name="personalization_line_height_lg">28sp</dimen>
+    <dimen name="personalization_line_height_xl">32sp</dimen>
+    <dimen name="personalization_line_height_xl2">36sp</dimen>
+    <dimen name="personalization_line_height_xl3">40sp</dimen>
+    <dimen name="personalization_line_height_xl4">52sp</dimen>
+    <dimen name="personalization_line_height_xl5">64sp</dimen>
+    <dimen name="personalization_line_height_xl6">72sp</dimen>
+
+    <!-- Отступы. Шкала своя, с типографической не совпадает. -->
+    <dimen name="personalization_spacing_xs">2dp</dimen>
+    <dimen name="personalization_spacing_sm">4dp</dimen>
+    <dimen name="personalization_spacing_md">8dp</dimen>
+    <dimen name="personalization_spacing_lg">12dp</dimen>
+    <dimen name="personalization_spacing_xl">16dp</dimen>
+    <dimen name="personalization_spacing_xl2">24dp</dimen>
+    <dimen name="personalization_spacing_xl3">32dp</dimen>
+    <dimen name="personalization_spacing_xl4">48dp</dimen>
+    <dimen name="personalization_spacing_xl5">64dp</dimen>
+
+    <!-- Радиусы скругления. Rounded — pill, платформа сама ограничит -->
+    <!-- радиус половиной меньшей стороны. -->
+    <dimen name="personalization_radius_xs">2dp</dimen>
+    <dimen name="personalization_radius_sm">4dp</dimen>
+    <dimen name="personalization_radius_md">6dp</dimen>
+    <dimen name="personalization_radius_lg">8dp</dimen>
+    <dimen name="personalization_radius_xl">10dp</dimen>
+    <dimen name="personalization_radius_xl2">12dp</dimen>
+    <dimen name="personalization_radius_xl3">14dp</dimen>
+    <dimen name="personalization_radius_xl4">16dp</dimen>
+    <dimen name="personalization_radius_xl5">20dp</dimen>
+    <dimen name="personalization_radius_xl6">24dp</dimen>
+    <dimen name="personalization_radius_rounded">999dp</dimen>
+
+    <!-- Высоты. Android рисует тень сам по elevation в dp, поэтому две
+         наложенные тени из макета здесь невыразимы: значение взято по
+         смещению верхнего слоя. Точное совпадение с макетом требует
+         рисованного фона вместо системной тени. -->
+    <dimen name="personalization_elevation_none">0dp</dimen>
+    <dimen name="personalization_elevation_e1">2dp</dimen>
+    <dimen name="personalization_elevation_e2">6dp</dimen>
+    <dimen name="personalization_elevation_e3">10dp</dimen>
+    <dimen name="personalization_elevation_e4">15dp</dimen>
+    <dimen name="personalization_elevation_e5">23dp</dimen>
+</resources>

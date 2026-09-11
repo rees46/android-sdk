@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка star-fill дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M14.1791 2.5955 C14.8891 1.0304 17.1119 1.0302 17.8217 2.5955 L21.1439 9.9207 L29.1371 10.8162 C30.8447 11.0078 31.5319 13.1222 30.2631 14.281 L24.3226 19.7039 L25.9408 27.5828 C26.2865 29.2662 24.4878 30.5731 22.9935 29.7244 L16.0004 25.7498 L9.0072 29.7244 C7.5129 30.5733 5.7143 29.2663 6.0599 27.5828 L7.6781 19.7039 L1.7377 14.281 C0.4684 13.1222 1.1556 11.0076 2.8637 10.8162 L10.8568 9.9207 L14.1791 2.5955 Z"
+        android:fillColor="#000000"/>
+</vector>

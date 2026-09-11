@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка grid-2x2 дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M12 17 C13.657 17 15 18.3431 15 20 L15 26 C15 27.6569 13.657 29 12 29 L6 29 C4.343 29 3 27.6569 3 26 L3 20 C3 18.3431 4.343 17 6 17 L12 17 Z M6 19 C5.448 19 5 19.4477 5 20 L5 26 C5 26.5523 5.448 27 6 27 L12 27 C12.552 27 13 26.5523 13 26 L13 20 C13 19.4477 12.552 19 12 19 L6 19 Z"
+        android:fillColor="#000000"
+        android:fillType="evenOdd"/>
+    <path
+        android:pathData="M26 17 C27.657 17 29 18.3431 29 20 L29 26 C29 27.6569 27.657 29 26 29 L20 29 C18.343 29 17 27.6569 17 26 L17 20 C17 18.3431 18.343 17 20 17 L26 17 Z M20 19 C19.448 19 19 19.4477 19 20 L19 26 C19 26.5523 19.448 27 20 27 L26 27 C26.552 27 27 26.5523 27 26 L27 20 C27 19.4477 26.552 19 26 19 L20 19 Z"
+        android:fillColor="#000000"
+        android:fillType="evenOdd"/>
+    <path
+        android:pathData="M12 3 C13.657 3 15 4.3431 15 6 L15 12 C15 13.6569 13.657 15 12 15 L6 15 C4.343 15 3 13.6569 3 12 L3 6 C3 4.3431 4.343 3 6 3 L12 3 Z M6 5 C5.448 5 5 5.4477 5 6 L5 12 C5 12.5523 5.448 13 6 13 L12 13 C12.552 13 13 12.5523 13 12 L13 6 C13 5.4477 12.552 5 12 5 L6 5 Z"
+        android:fillColor="#000000"
+        android:fillType="evenOdd"/>
+    <path
+        android:pathData="M26 3 C27.657 3 29 4.3431 29 6 L29 12 C29 13.6569 27.657 15 26 15 L20 15 C18.343 15 17 13.6569 17 12 L17 6 C17 4.3431 18.343 3 20 3 L26 3 Z M20 5 C19.448 5 19 5.4477 19 6 L19 12 C19 12.5523 19.448 13 20 13 L26 13 C26.552 13 27 12.5523 27 12 L27 6 C27 5.4477 26.552 5 26 5 L20 5 Z"
+        android:fillColor="#000000"
+        android:fillType="evenOdd"/>
+</vector>

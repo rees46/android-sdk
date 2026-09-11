@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Цвета дизайн-системы, тёмная тема.
+  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), страница Colors,
+  фреймы 57:141 (Light) и 187:362 (Dark). Снято 2026-09-09.
+
+  Формат #AARRGGBB. Значения ниже уже с прозрачностью,
+  отдельного альфа-канала выставлять не нужно.
+-->
+<resources>
+
+    <!-- brand -->
+    <color name="personalization_brand_primary">#FF007DF2</color>
+
+    <!-- semantic -->
+    <color name="personalization_semantic_warning">#FFF37A17</color>
+
+    <!-- background -->
+    <color name="personalization_background_primary">#FF007DF2</color>
+    <color name="personalization_background_generic">#FF141414</color>
+    <color name="personalization_background_card">#FF0D0D0D</color>
+    <color name="personalization_background_input">#FF141414</color>
+    <color name="personalization_background_transparent">#00FFFFFF</color>
+    <color name="personalization_background_input_disabled">#0DFFFFFF</color>
+
+    <!-- button -->
+    <color name="personalization_button_primary">#FF007DF2</color>
+    <color name="personalization_button_primary_focus">#FF32AFFF</color>
+    <color name="personalization_button_secondary">#0DFFFFFF</color>
+    <color name="personalization_button_secondary_focus">#1AFFFFFF</color>
+    <color name="personalization_button_primary_disabled">#FF32AFFF</color>
+    <color name="personalization_button_secondary_disabled">#0DFFFFFF</color>
+    <color name="personalization_button_ghost">#00FFFFFF</color>
+
+    <!-- line -->
+    <color name="personalization_line_brand">#FF007DF2</color>
+    <color name="personalization_line_generic">#33FFFFFF</color>
+    <color name="personalization_line_generic_subtle">#0DFFFFFF</color>
+    <color name="personalization_line_input">#33FFFFFF</color>
+    <color name="personalization_line_input_focus">#FF007DF2</color>
+
+    <!-- text -->
+    <color name="personalization_text_primary">#FFFFFFFF</color>
+    <color name="personalization_text_secondary">#CCFFFFFF</color>
+    <color name="personalization_text_hint">#80FFFFFF</color>
+    <color name="personalization_text_dark_primary">#FF000000</color>
+    <color name="personalization_text_dark_secondary">#B2000000</color>
+    <color name="personalization_text_dark_hint">#66000000</color>
+    <color name="personalization_text_light_primary">#FFFFFFFF</color>
+    <color name="personalization_text_light_secondary">#CCFFFFFF</color>
+    <color name="personalization_text_light_hint">#80FFFFFF</color>
+    <color name="personalization_text_inverted_primary">#FF000000</color>
+    <color name="personalization_text_inverted_secondary">#B2000000</color>
+    <color name="personalization_text_inverted_hint">#66000000</color>
+    <color name="personalization_text_brand">#FF007DF2</color>
+    <color name="personalization_text_link">#FF007DF2</color>
+    <color name="personalization_text_link_visited">#FF4D00F2</color>
+
+</resources>

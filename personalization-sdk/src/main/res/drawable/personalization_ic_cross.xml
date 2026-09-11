@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка cross дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M23.293 7.293 C23.684 6.9025 24.317 6.9025 24.707 7.293 C25.098 7.6836 25.098 8.3166 24.707 8.7071 L17.414 16.0001 L24.707 23.293 C25.098 23.6836 25.098 24.3166 24.707 24.7071 C24.317 25.0976 23.684 25.0976 23.293 24.7071 L16 17.4141 L8.707 24.7071 C8.317 25.0976 7.684 25.0976 7.293 24.7071 C6.902 24.3166 6.902 23.6836 7.293 23.293 L14.586 16.0001 L7.293 8.7071 C6.902 8.3166 6.902 7.6836 7.293 7.293 C7.684 6.9025 8.317 6.9025 8.707 7.293 L16 14.586 L23.293 7.293 Z"
+        android:fillColor="#000000"/>
+</vector>
