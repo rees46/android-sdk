@@ -85,6 +85,11 @@ object PersonalizationTheme {
         R.dimen.personalization_radius_xl5 to R.attr.personalizationRadiusXl5,
         R.dimen.personalization_radius_xl6 to R.attr.personalizationRadiusXl6,
         R.dimen.personalization_radius_rounded to R.attr.personalizationRadiusRounded,
+        R.dimen.personalization_radius_button_lg to R.attr.personalizationRadiusButtonLg,
+        R.dimen.personalization_radius_button_md to R.attr.personalizationRadiusButtonMd,
+        R.dimen.personalization_radius_button_sm to R.attr.personalizationRadiusButtonSm,
+        R.dimen.personalization_radius_segmented_md to R.attr.personalizationRadiusSegmentedMd,
+        R.dimen.personalization_radius_segmented_sm to R.attr.personalizationRadiusSegmentedSm,
     )
 
     /** Цвет токена: из темы, иначе из ресурса. */

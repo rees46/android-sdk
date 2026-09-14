@@ -89,7 +89,7 @@ class PersonalizationTag @JvmOverloads constructor(
 
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_md)
+            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_button_sm)
             setColor(
                 PersonalizationTheme.color(context,
                     if (isPrimary) R.color.personalization_button_primary

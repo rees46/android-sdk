@@ -48,7 +48,7 @@ class PersonalizationInputField @JvmOverloads constructor(
         // LG берёт кегль со ступени lg, а интерлиньяж со ступени xl: в макете 18/32,
         // тогда как ступень lg — это 18/28. SM так же смешан: 14/24 против 14/20.
         LG(
-            R.dimen.personalization_radius_xl,
+            R.dimen.personalization_radius_button_lg,
             R.dimen.personalization_spacing_lg,
             R.dimen.personalization_spacing_xl,
             R.dimen.personalization_spacing_xl,
@@ -58,7 +58,7 @@ class PersonalizationInputField @JvmOverloads constructor(
             32
         ),
         MD(
-            R.dimen.personalization_radius_lg,
+            R.dimen.personalization_radius_button_md,
             R.dimen.personalization_spacing_md,
             R.dimen.personalization_spacing_lg,
             R.dimen.personalization_spacing_lg,
@@ -67,9 +67,8 @@ class PersonalizationInputField @JvmOverloads constructor(
             0f,
             24
         ),
-        // Радиус SM — 6, из переменной Button SM, а не 4 из общей шкалы: так в макете.
         SM(
-            R.dimen.personalization_radius_md,
+            R.dimen.personalization_radius_button_sm,
             R.dimen.personalization_spacing_sm,
             R.dimen.personalization_spacing_lg,
             R.dimen.personalization_spacing_md,

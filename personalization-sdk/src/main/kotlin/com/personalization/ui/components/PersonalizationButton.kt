@@ -42,6 +42,8 @@ class PersonalizationButton @JvmOverloads constructor(
         val paddingWideRes: Int,
         /** Горизонтальный отступ со стороны с иконкой. */
         val paddingNarrowRes: Int,
+        /** Горизонтальный отступ кнопки-иконки: у LG он 12 при вертикальном 8, у остальных равен вертикальному. */
+        val paddingIconOnlyRes: Int,
         val iconSizeDp: Int
     ) {
         // SM берёт кегль со ступени sm, а интерлиньяж со ступени base:
@@ -50,30 +52,33 @@ class PersonalizationButton @JvmOverloads constructor(
             R.dimen.personalization_font_size_xl,
             R.dimen.personalization_line_height_xl,
             0f,
-            R.dimen.personalization_radius_xl,
-            R.dimen.personalization_spacing_lg,
+            R.dimen.personalization_radius_button_lg,
+            R.dimen.personalization_spacing_md,
             R.dimen.personalization_spacing_xl2,
             R.dimen.personalization_spacing_xl,
+            R.dimen.personalization_spacing_lg,
             32
         ),
         MD(
             R.dimen.personalization_font_size_base,
             R.dimen.personalization_line_height_base,
             0f,
-            R.dimen.personalization_radius_lg,
+            R.dimen.personalization_radius_button_md,
             R.dimen.personalization_spacing_md,
             R.dimen.personalization_spacing_xl,
             R.dimen.personalization_spacing_lg,
+            R.dimen.personalization_spacing_md,
             24
         ),
         SM(
             R.dimen.personalization_font_size_sm,
             R.dimen.personalization_line_height_base,
             0.05f,
-            R.dimen.personalization_radius_sm,
+            R.dimen.personalization_radius_button_sm,
             R.dimen.personalization_spacing_sm,
             R.dimen.personalization_spacing_lg,
             R.dimen.personalization_spacing_md,
+            R.dimen.personalization_spacing_sm,
             20
         )
     }
@@ -232,8 +237,9 @@ class PersonalizationButton @JvmOverloads constructor(
         val narrow = resources.getDimensionPixelSize(size.paddingNarrowRes)
 
         if (!label.isVisible) {
-            // Кнопка-иконка: со всех сторон вертикальный отступ, 12/8/4.
-            setPadding(vertical, vertical, vertical, vertical)
+            // Кнопка-иконка: по вертикали как у текстовой, по горизонтали своё — 12/8/4.
+            val horizontal = resources.getDimensionPixelSize(size.paddingIconOnlyRes)
+            setPadding(horizontal, vertical, horizontal, vertical)
             return
         }
         setPadding(

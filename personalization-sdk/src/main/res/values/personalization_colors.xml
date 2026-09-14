@@ -19,7 +19,7 @@
     <color name="personalization_background_primary">#FF007DF2</color>
     <color name="personalization_background_generic">#FFFAFAFA</color>
     <color name="personalization_background_card">#FFF2F2F2</color>
-    <color name="personalization_background_input">#FFFAFAFA</color>
+    <color name="personalization_background_input">#FFF2F2F2</color>
     <color name="personalization_background_transparent">#00FFFFFF</color>
     <color name="personalization_background_input_disabled">#0D000000</color>
 

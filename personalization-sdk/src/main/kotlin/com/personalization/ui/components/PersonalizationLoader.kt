@@ -28,8 +28,10 @@ class PersonalizationLoader @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     private companion object {
-        /** Сторона из макета; толщина кольца пропорциональна ей. */
-        const val REFERENCE_SIDE = 26f
+        /** Слот лоадера из макета: кольцо 26 лежит в квадрате 32 с полем 3. */
+        const val SLOT_SIDE = 32f
+        /** Диаметр кольца из макета; толщина пропорциональна ему. */
+        const val RING_SIDE = 26f
         const val REFERENCE_STROKE = 3.5f
         const val PERIOD_MS = 900L
     }
@@ -43,7 +45,7 @@ class PersonalizationLoader @JvmOverloads constructor(
     private var animator: ValueAnimator? = null
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val side = (REFERENCE_SIDE * resources.displayMetrics.density).toInt()
+        val side = (SLOT_SIDE * resources.displayMetrics.density).toInt()
         setMeasuredDimension(
             resolveSize(side, widthMeasureSpec),
             resolveSize(side, heightMeasureSpec)
@@ -54,7 +56,8 @@ class PersonalizationLoader @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         val side = minOf(w, h).toFloat()
         if (side <= 0f) return
-        paint.strokeWidth = REFERENCE_STROKE * (side / REFERENCE_SIDE)
+        val ring = side * RING_SIDE / SLOT_SIDE
+        paint.strokeWidth = REFERENCE_STROKE * (ring / RING_SIDE)
         paint.shader = SweepGradient(
             side / 2f,
             side / 2f,
@@ -66,11 +69,12 @@ class PersonalizationLoader @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         val side = minOf(width, height).toFloat()
         if (side <= 0f) return
+        val ring = side * RING_SIDE / SLOT_SIDE
         val inset = paint.strokeWidth / 2f
 
         canvas.save()
         canvas.rotate(rotation, side / 2f, side / 2f)
-        canvas.drawCircle(side / 2f, side / 2f, side / 2f - inset, paint)
+        canvas.drawCircle(side / 2f, side / 2f, ring / 2f - inset, paint)
         canvas.restore()
     }
 

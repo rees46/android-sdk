@@ -33,8 +33,8 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
         val paddingDp: Int,
         val iconSizeDp: Int
     ) {
-        MD(R.dimen.personalization_radius_md, 6, 24),
-        SM(R.dimen.personalization_radius_sm, 2, 20)
+        MD(R.dimen.personalization_radius_segmented_md, 6, 24),
+        SM(R.dimen.personalization_radius_segmented_sm, 2, 20)
     }
 
     /**
@@ -76,7 +76,7 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
         setPadding(inset, inset, inset, inset)
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_lg)
+            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_button_md)
             setColor(PersonalizationTheme.color(context, R.color.personalization_button_secondary))
         }
     }

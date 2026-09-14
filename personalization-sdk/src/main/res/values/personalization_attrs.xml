@@ -60,6 +60,11 @@
     <attr name="personalizationRadiusXl5" format="dimension" />
     <attr name="personalizationRadiusXl6" format="dimension" />
     <attr name="personalizationRadiusRounded" format="dimension" />
+    <attr name="personalizationRadiusButtonLg" format="dimension" />
+    <attr name="personalizationRadiusButtonMd" format="dimension" />
+    <attr name="personalizationRadiusButtonSm" format="dimension" />
+    <attr name="personalizationRadiusSegmentedMd" format="dimension" />
+    <attr name="personalizationRadiusSegmentedSm" format="dimension" />
 
     <!-- шрифт: Inter в SDK не поставляется, по умолчанию системный -->
     <attr name="personalizationFontFamily" format="reference|string" />

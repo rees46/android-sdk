@@ -32,9 +32,9 @@ class PersonalizationBadge @JvmOverloads constructor(
         val textSizeSp: Float,
         val lineHeightSp: Float
     ) {
-        LG(12, 8, R.dimen.personalization_radius_xl, 20f, 24f),
-        MD(8, 4, R.dimen.personalization_radius_lg, 16f, 20f),
-        SM(4, 2, R.dimen.personalization_radius_md, 14f, 16f)
+        LG(12, 8, R.dimen.personalization_radius_button_lg, 20f, 24f),
+        MD(8, 4, R.dimen.personalization_radius_button_md, 16f, 20f),
+        SM(4, 2, R.dimen.personalization_radius_button_sm, 14f, 16f)
     }
 
     var size: Size = Size.LG

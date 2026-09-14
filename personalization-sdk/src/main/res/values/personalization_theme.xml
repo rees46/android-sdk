@@ -57,6 +57,11 @@
         <item name="personalizationRadiusXl5">@dimen/personalization_radius_xl5</item>
         <item name="personalizationRadiusXl6">@dimen/personalization_radius_xl6</item>
         <item name="personalizationRadiusRounded">@dimen/personalization_radius_rounded</item>
+        <item name="personalizationRadiusButtonLg">@dimen/personalization_radius_button_lg</item>
+        <item name="personalizationRadiusButtonMd">@dimen/personalization_radius_button_md</item>
+        <item name="personalizationRadiusButtonSm">@dimen/personalization_radius_button_sm</item>
+        <item name="personalizationRadiusSegmentedMd">@dimen/personalization_radius_segmented_md</item>
+        <item name="personalizationRadiusSegmentedSm">@dimen/personalization_radius_segmented_sm</item>
 
         <item name="personalizationFontFamily">sans-serif</item>
         <item name="personalizationFontFamilyEmphasized">sans-serif-medium</item>

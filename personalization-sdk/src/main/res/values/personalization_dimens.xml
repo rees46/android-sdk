@@ -52,6 +52,18 @@
     <dimen name="personalization_radius_xl6">24dp</dimen>
     <dimen name="personalization_radius_rounded">999dp</dimen>
 
+    <!--
+      Семантические радиусы: переменные Button LG/MD/SM и Segmented Button MD/SM
+      из Figma. К ним привязаны Button, Input, Badge, Tag и Button Group —
+      дизайнер меняет их отдельно от шкалы, поэтому и здесь они отдельно.
+      Segmented SM в макете не снят, выведен по шагу остальных (+2).
+    -->
+    <dimen name="personalization_radius_button_lg">12dp</dimen>
+    <dimen name="personalization_radius_button_md">10dp</dimen>
+    <dimen name="personalization_radius_button_sm">8dp</dimen>
+    <dimen name="personalization_radius_segmented_md">8dp</dimen>
+    <dimen name="personalization_radius_segmented_sm">6dp</dimen>
+
     <!-- Высоты. Android рисует тень сам по elevation в dp, поэтому две
          наложенные тени из макета здесь невыразимы: значение взято по
          смещению верхнего слоя. Точное совпадение с макетом требует
