@@ -37,6 +37,15 @@ class PersonalizationBadge @JvmOverloads constructor(
         SM(4, 2, R.dimen.personalization_radius_button_sm, 14f, 16f)
     }
 
+    /** Вид: warning — как в секции Badge, danger — бейдж скидки на карточке товара (Card/Product, 126:2263), тот же SM в цвете Semantic/Danger. */
+    enum class BadgeView { WARNING, DANGER }
+
+    var badgeView: BadgeView = BadgeView.WARNING
+        set(value) {
+            field = value
+            applyStyle()
+        }
+
     var size: Size = Size.LG
         set(value) {
             field = value
@@ -64,7 +73,13 @@ class PersonalizationBadge @JvmOverloads constructor(
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = PersonalizationTheme.radius(context, size.radiusRes)
-            setColor(PersonalizationTheme.color(context, R.color.personalization_semantic_warning))
+            setColor(
+                PersonalizationTheme.color(
+                    context,
+                    if (badgeView == BadgeView.DANGER) R.color.personalization_semantic_danger
+                    else R.color.personalization_semantic_warning
+                )
+            )
         }
     }
 

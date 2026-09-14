@@ -38,6 +38,7 @@ object PersonalizationTheme {
     private val colorAttributes: Map<Int, Int> = mapOf(
         R.color.personalization_brand_primary to R.attr.personalizationColorBrandPrimary,
         R.color.personalization_semantic_warning to R.attr.personalizationColorSemanticWarning,
+        R.color.personalization_semantic_danger to R.attr.personalizationColorSemanticDanger,
         R.color.personalization_background_primary to R.attr.personalizationColorBackgroundPrimary,
         R.color.personalization_background_generic to R.attr.personalizationColorBackgroundGeneric,
         R.color.personalization_background_card to R.attr.personalizationColorBackgroundCard,

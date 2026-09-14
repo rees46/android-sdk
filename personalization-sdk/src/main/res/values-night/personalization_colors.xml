@@ -13,6 +13,7 @@
     <color name="personalization_brand_primary">#FF007DF2</color>
 
     <!-- semantic -->
+    <color name="personalization_semantic_danger">#FFE51919</color>
     <color name="personalization_semantic_warning">#FFF37A17</color>
 
     <!-- background -->

@@ -12,6 +12,7 @@
     <style name="Theme.Personalization" parent="">
         <item name="personalizationColorBrandPrimary">@color/personalization_brand_primary</item>
         <item name="personalizationColorSemanticWarning">@color/personalization_semantic_warning</item>
+        <item name="personalizationColorSemanticDanger">@color/personalization_semantic_danger</item>
         <item name="personalizationColorBackgroundPrimary">@color/personalization_background_primary</item>
         <item name="personalizationColorBackgroundGeneric">@color/personalization_background_generic</item>
         <item name="personalizationColorBackgroundCard">@color/personalization_background_card</item>

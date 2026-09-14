@@ -14,6 +14,7 @@
 
     <!-- semantic -->
     <color name="personalization_semantic_warning">#FFF37A17</color>
+    <color name="personalization_semantic_danger">#FFE51919</color>
 
     <!-- background -->
     <color name="personalization_background_primary">#FF007DF2</color>
