@@ -8,10 +8,10 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -77,8 +77,7 @@ class PersonalizationTag @JvmOverloads constructor(
         removeIcon.isVisible = removable
 
         val isPrimary = tagView == TagView.PRIMARY
-        val textColor = ContextCompat.getColor(
-            context,
+        val textColor = PersonalizationTheme.color(context,
             if (isPrimary) R.color.personalization_text_light_primary
             else R.color.personalization_text_primary
         )
@@ -90,10 +89,9 @@ class PersonalizationTag @JvmOverloads constructor(
 
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = resources.getDimension(R.dimen.personalization_radius_md)
+            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_md)
             setColor(
-                ContextCompat.getColor(
-                    context,
+                PersonalizationTheme.color(context,
                     if (isPrimary) R.color.personalization_button_primary
                     else R.color.personalization_button_secondary
                 )

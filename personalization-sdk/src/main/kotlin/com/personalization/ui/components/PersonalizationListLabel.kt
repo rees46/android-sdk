@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.AttributeSet
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -36,6 +36,6 @@ class PersonalizationListLabel @JvmOverloads constructor(
         )
         // В макете трекинг 0.05px при кегле 14, у Android он в em.
         letterSpacing = 0.05f / 14f
-        setTextColor(ContextCompat.getColor(context, R.color.personalization_text_hint))
+        setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_hint))
     }
 }

@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Манифест только для юнит-тестов: он появляется в сборке из-за
+      includeAndroidResources, без которого Robolectric не видит ресурсы модуля.
+
+      Compose лежит в тестовых зависимостях (в main он compileOnly) и объявляет
+      minSdk 21 против наших 19, поэтому слияние манифестов падает. На
+      публикуемый AAR это не влияет — тестовый вариант отдельный.
+    -->
+    <uses-sdk tools:overrideLibrary="androidx.compose.runtime,androidx.compose.ui,androidx.compose.ui.graphics,androidx.compose.ui.text,androidx.compose.ui.unit,androidx.compose.foundation,androidx.compose.animation,androidx.compose.animation.core,androidx.emoji2,androidx.emoji2.viewsintegration,androidx.profileinstaller,androidx.lifecycle.runtime,androidx.lifecycle.viewmodel,androidx.lifecycle.viewmodel.savedstate,androidx.savedstate,androidx.autofill" />
+
+</manifest>

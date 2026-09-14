@@ -8,10 +8,10 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -81,7 +81,7 @@ class PersonalizationAccordion @JvmOverloads constructor(
         ImageViewCompat.setImageTintList(
             chevron,
             ColorStateList.valueOf(
-                ContextCompat.getColor(context, R.color.personalization_text_primary)
+                PersonalizationTheme.color(context, R.color.personalization_text_primary)
             )
         )
         expanded = false
@@ -102,7 +102,7 @@ class PersonalizationAccordion @JvmOverloads constructor(
             view,
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_base)
         )
-        view.setTextColor(ContextCompat.getColor(context, colorRes))
+        view.setTextColor(PersonalizationTheme.color(context, colorRes))
     }
 
     private fun gapParams(): LayoutParams =

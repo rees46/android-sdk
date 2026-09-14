@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Значения дизайн-системы по умолчанию. Наследуйся от этой темы, чтобы
+  переопределить часть токенов:
+
+      <style name="Theme.MyApp.Personalization" parent="Theme.Personalization">
+          <item name="personalizationColorBrandPrimary">@color/my_brand</item>
+      </style>
+-->
+<resources>
+
+    <style name="Theme.Personalization" parent="">
+        <item name="personalizationColorBrandPrimary">@color/personalization_brand_primary</item>
+        <item name="personalizationColorSemanticWarning">@color/personalization_semantic_warning</item>
+        <item name="personalizationColorBackgroundPrimary">@color/personalization_background_primary</item>
+        <item name="personalizationColorBackgroundGeneric">@color/personalization_background_generic</item>
+        <item name="personalizationColorBackgroundCard">@color/personalization_background_card</item>
+        <item name="personalizationColorBackgroundInput">@color/personalization_background_input</item>
+        <item name="personalizationColorBackgroundTransparent">@color/personalization_background_transparent</item>
+        <item name="personalizationColorBackgroundInputDisabled">@color/personalization_background_input_disabled</item>
+        <item name="personalizationColorButtonPrimary">@color/personalization_button_primary</item>
+        <item name="personalizationColorButtonPrimaryFocus">@color/personalization_button_primary_focus</item>
+        <item name="personalizationColorButtonSecondary">@color/personalization_button_secondary</item>
+        <item name="personalizationColorButtonSecondaryFocus">@color/personalization_button_secondary_focus</item>
+        <item name="personalizationColorButtonPrimaryDisabled">@color/personalization_button_primary_disabled</item>
+        <item name="personalizationColorButtonSecondaryDisabled">@color/personalization_button_secondary_disabled</item>
+        <item name="personalizationColorButtonGhost">@color/personalization_button_ghost</item>
+        <item name="personalizationColorLineBrand">@color/personalization_line_brand</item>
+        <item name="personalizationColorLineGeneric">@color/personalization_line_generic</item>
+        <item name="personalizationColorLineGenericSubtle">@color/personalization_line_generic_subtle</item>
+        <item name="personalizationColorLineInput">@color/personalization_line_input</item>
+        <item name="personalizationColorLineInputFocus">@color/personalization_line_input_focus</item>
+        <item name="personalizationColorTextPrimary">@color/personalization_text_primary</item>
+        <item name="personalizationColorTextSecondary">@color/personalization_text_secondary</item>
+        <item name="personalizationColorTextHint">@color/personalization_text_hint</item>
+        <item name="personalizationColorTextDarkPrimary">@color/personalization_text_dark_primary</item>
+        <item name="personalizationColorTextDarkSecondary">@color/personalization_text_dark_secondary</item>
+        <item name="personalizationColorTextDarkHint">@color/personalization_text_dark_hint</item>
+        <item name="personalizationColorTextLightPrimary">@color/personalization_text_light_primary</item>
+        <item name="personalizationColorTextLightSecondary">@color/personalization_text_light_secondary</item>
+        <item name="personalizationColorTextLightHint">@color/personalization_text_light_hint</item>
+        <item name="personalizationColorTextInvertedPrimary">@color/personalization_text_inverted_primary</item>
+        <item name="personalizationColorTextInvertedSecondary">@color/personalization_text_inverted_secondary</item>
+        <item name="personalizationColorTextInvertedHint">@color/personalization_text_inverted_hint</item>
+        <item name="personalizationColorTextBrand">@color/personalization_text_brand</item>
+        <item name="personalizationColorTextLink">@color/personalization_text_link</item>
+        <item name="personalizationColorTextLinkVisited">@color/personalization_text_link_visited</item>
+
+        <item name="personalizationRadiusXs">@dimen/personalization_radius_xs</item>
+        <item name="personalizationRadiusSm">@dimen/personalization_radius_sm</item>
+        <item name="personalizationRadiusMd">@dimen/personalization_radius_md</item>
+        <item name="personalizationRadiusLg">@dimen/personalization_radius_lg</item>
+        <item name="personalizationRadiusXl">@dimen/personalization_radius_xl</item>
+        <item name="personalizationRadiusXl2">@dimen/personalization_radius_xl2</item>
+        <item name="personalizationRadiusXl3">@dimen/personalization_radius_xl3</item>
+        <item name="personalizationRadiusXl4">@dimen/personalization_radius_xl4</item>
+        <item name="personalizationRadiusXl5">@dimen/personalization_radius_xl5</item>
+        <item name="personalizationRadiusXl6">@dimen/personalization_radius_xl6</item>
+        <item name="personalizationRadiusRounded">@dimen/personalization_radius_rounded</item>
+
+        <item name="personalizationFontFamily">sans-serif</item>
+        <item name="personalizationFontFamilyEmphasized">sans-serif-medium</item>
+    </style>
+
+</resources>

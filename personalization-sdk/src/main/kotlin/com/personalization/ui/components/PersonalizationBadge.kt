@@ -1,14 +1,13 @@
 package com.personalization.ui.components
 
 import android.content.Context
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -52,11 +51,11 @@ class PersonalizationBadge @JvmOverloads constructor(
         gravity = Gravity.CENTER
         includeFontPadding = false
         // Inter в SDK не поставляется, ближайшее системное к Emphasized 600.
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        typeface = PersonalizationTheme.typeface(context, emphasized = true)
 
         setTextSize(TypedValue.COMPLEX_UNIT_SP, size.textSizeSp)
         TextViewCompat.setLineHeight(this, spToPx(size.lineHeightSp))
-        setTextColor(ContextCompat.getColor(context, R.color.personalization_text_light_primary))
+        setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_light_primary))
 
         val padH = dpToPx(size.paddingHorizontalDp)
         val padV = dpToPx(size.paddingVerticalDp)
@@ -64,8 +63,8 @@ class PersonalizationBadge @JvmOverloads constructor(
 
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = resources.getDimension(size.radiusRes)
-            setColor(ContextCompat.getColor(context, R.color.personalization_semantic_warning))
+            cornerRadius = PersonalizationTheme.radius(context, size.radiusRes)
+            setColor(PersonalizationTheme.color(context, R.color.personalization_semantic_warning))
         }
     }
 

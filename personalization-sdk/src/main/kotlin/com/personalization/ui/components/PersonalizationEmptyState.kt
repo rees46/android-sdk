@@ -5,8 +5,8 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -31,7 +31,7 @@ class PersonalizationEmptyState @JvmOverloads constructor(
 
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
         TextViewCompat.setLineHeight(this, spToPx(32f))
-        setTextColor(ContextCompat.getColor(context, R.color.personalization_text_secondary))
+        setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_secondary))
 
         val padH = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
         setPadding(padH, dpToPx(92), padH, dpToPx(92))

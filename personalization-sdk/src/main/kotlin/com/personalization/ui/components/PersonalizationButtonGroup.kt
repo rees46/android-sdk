@@ -7,8 +7,8 @@ import android.util.AttributeSet
 import android.widget.LinearLayout
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.ImageViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -76,8 +76,8 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
         setPadding(inset, inset, inset, inset)
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = resources.getDimension(R.dimen.personalization_radius_lg)
-            setColor(ContextCompat.getColor(context, R.color.personalization_button_secondary))
+            cornerRadius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_lg)
+            setColor(PersonalizationTheme.color(context, R.color.personalization_button_secondary))
         }
     }
 
@@ -106,7 +106,7 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
     }
 
     private fun applySelection() {
-        val radius = resources.getDimension(size.radiusRes)
+        val radius = PersonalizationTheme.radius(context, size.radiusRes)
         items.forEachIndexed { index, item ->
             val segment = getChildAt(index) as? AppCompatImageView ?: return@forEachIndexed
             val active = index == selectedIndex
@@ -115,8 +115,7 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = radius
                 setColor(
-                    ContextCompat.getColor(
-                        context,
+                    PersonalizationTheme.color(context,
                         if (active) R.color.personalization_button_primary
                         else R.color.personalization_background_transparent
                     )
@@ -125,8 +124,7 @@ class PersonalizationButtonGroup @JvmOverloads constructor(
             ImageViewCompat.setImageTintList(
                 segment,
                 ColorStateList.valueOf(
-                    ContextCompat.getColor(
-                        context,
+                    PersonalizationTheme.color(context,
                         if (active) R.color.personalization_text_inverted_primary
                         else R.color.personalization_text_hint
                     )

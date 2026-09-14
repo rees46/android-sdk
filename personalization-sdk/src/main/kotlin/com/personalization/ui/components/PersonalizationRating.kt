@@ -2,16 +2,15 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -47,7 +46,7 @@ class PersonalizationRating @JvmOverloads constructor(
         ImageViewCompat.setImageTintList(
             star,
             ColorStateList.valueOf(
-                ContextCompat.getColor(context, R.color.personalization_line_generic)
+                PersonalizationTheme.color(context, R.color.personalization_line_generic)
             )
         )
         addView(
@@ -79,8 +78,7 @@ class PersonalizationRating @JvmOverloads constructor(
         ImageViewCompat.setImageTintList(
             star,
             ColorStateList.valueOf(
-                ContextCompat.getColor(
-                    context,
+                PersonalizationTheme.color(context,
                     if (reviews > 0) R.color.personalization_semantic_warning
                     else R.color.personalization_line_generic
                 )
@@ -91,7 +89,7 @@ class PersonalizationRating @JvmOverloads constructor(
     private fun style(view: AppCompatTextView, emphasized: Boolean, colorRes: Int) {
         view.includeFontPadding = false
         if (emphasized) {
-            view.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            view.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         }
         view.setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
@@ -101,7 +99,7 @@ class PersonalizationRating @JvmOverloads constructor(
             view,
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_sm)
         )
-        view.setTextColor(ContextCompat.getColor(context, colorRes))
+        view.setTextColor(PersonalizationTheme.color(context, colorRes))
     }
 
     private fun dpToPx(dp: Int): Int =

@@ -7,7 +7,7 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import androidx.core.content.ContextCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -77,8 +77,7 @@ class PersonalizationCheckbox @JvmOverloads constructor(
         val radius = 4f * scale
         val filled = checkState != CheckState.UNCHECKED
 
-        fillPaint.color = ContextCompat.getColor(
-            context,
+        fillPaint.color = PersonalizationTheme.color(context,
             if (filled) {
                 if (isEnabled) R.color.personalization_button_primary
                 else R.color.personalization_button_primary_disabled
@@ -96,7 +95,7 @@ class PersonalizationCheckbox @JvmOverloads constructor(
             val inset = 0.5f * scale
             borderPaint.strokeWidth = 1f * scale
             borderPaint.color =
-                ContextCompat.getColor(context, R.color.personalization_line_input)
+                PersonalizationTheme.color(context, R.color.personalization_line_input)
             boxRect.set(inset, inset, side - inset, side - inset)
             canvas.drawRoundRect(boxRect, radius, radius, borderPaint)
             return
@@ -117,7 +116,7 @@ class PersonalizationCheckbox @JvmOverloads constructor(
         }
         glyphPaint.strokeWidth = 2f * scale
         glyphPaint.color =
-            ContextCompat.getColor(context, R.color.personalization_text_light_primary)
+            PersonalizationTheme.color(context, R.color.personalization_text_light_primary)
         canvas.drawPath(glyphPath, glyphPaint)
     }
 }

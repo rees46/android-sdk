@@ -6,7 +6,7 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
-import androidx.core.content.ContextCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -62,8 +62,7 @@ class PersonalizationDots @JvmOverloads constructor(
             getChildAt(index).background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(
-                    ContextCompat.getColor(
-                        context,
+                    PersonalizationTheme.color(context,
                         if (index == selectedIndex) R.color.personalization_brand_primary
                         else R.color.personalization_line_generic
                     )

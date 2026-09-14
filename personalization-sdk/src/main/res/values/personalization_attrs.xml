@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Атрибуты темы дизайн-системы.
+
+  Хост переопределяет их, объявив тему с родителем Theme.Personalization,
+  или точечно — через ContextThemeWrapper на поддереве. Если атрибут не задан,
+  компонент берёт значение по умолчанию из ресурса с тем же именем.
+
+  Темизуются цвета, радиусы и шрифт: это поверхность брендирования. Отступы,
+  тени и кегли остаются ресурсами — это шкала макета, её менять не предполагается.
+-->
+<resources>
+
+    <!-- цвета -->
+    <attr name="personalizationColorBrandPrimary" format="color" />
+    <attr name="personalizationColorSemanticWarning" format="color" />
+    <attr name="personalizationColorBackgroundPrimary" format="color" />
+    <attr name="personalizationColorBackgroundGeneric" format="color" />
+    <attr name="personalizationColorBackgroundCard" format="color" />
+    <attr name="personalizationColorBackgroundInput" format="color" />
+    <attr name="personalizationColorBackgroundTransparent" format="color" />
+    <attr name="personalizationColorBackgroundInputDisabled" format="color" />
+    <attr name="personalizationColorButtonPrimary" format="color" />
+    <attr name="personalizationColorButtonPrimaryFocus" format="color" />
+    <attr name="personalizationColorButtonSecondary" format="color" />
+    <attr name="personalizationColorButtonSecondaryFocus" format="color" />
+    <attr name="personalizationColorButtonPrimaryDisabled" format="color" />
+    <attr name="personalizationColorButtonSecondaryDisabled" format="color" />
+    <attr name="personalizationColorButtonGhost" format="color" />
+    <attr name="personalizationColorLineBrand" format="color" />
+    <attr name="personalizationColorLineGeneric" format="color" />
+    <attr name="personalizationColorLineGenericSubtle" format="color" />
+    <attr name="personalizationColorLineInput" format="color" />
+    <attr name="personalizationColorLineInputFocus" format="color" />
+    <attr name="personalizationColorTextPrimary" format="color" />
+    <attr name="personalizationColorTextSecondary" format="color" />
+    <attr name="personalizationColorTextHint" format="color" />
+    <attr name="personalizationColorTextDarkPrimary" format="color" />
+    <attr name="personalizationColorTextDarkSecondary" format="color" />
+    <attr name="personalizationColorTextDarkHint" format="color" />
+    <attr name="personalizationColorTextLightPrimary" format="color" />
+    <attr name="personalizationColorTextLightSecondary" format="color" />
+    <attr name="personalizationColorTextLightHint" format="color" />
+    <attr name="personalizationColorTextInvertedPrimary" format="color" />
+    <attr name="personalizationColorTextInvertedSecondary" format="color" />
+    <attr name="personalizationColorTextInvertedHint" format="color" />
+    <attr name="personalizationColorTextBrand" format="color" />
+    <attr name="personalizationColorTextLink" format="color" />
+    <attr name="personalizationColorTextLinkVisited" format="color" />
+
+    <!-- радиусы -->
+    <attr name="personalizationRadiusXs" format="dimension" />
+    <attr name="personalizationRadiusSm" format="dimension" />
+    <attr name="personalizationRadiusMd" format="dimension" />
+    <attr name="personalizationRadiusLg" format="dimension" />
+    <attr name="personalizationRadiusXl" format="dimension" />
+    <attr name="personalizationRadiusXl2" format="dimension" />
+    <attr name="personalizationRadiusXl3" format="dimension" />
+    <attr name="personalizationRadiusXl4" format="dimension" />
+    <attr name="personalizationRadiusXl5" format="dimension" />
+    <attr name="personalizationRadiusXl6" format="dimension" />
+    <attr name="personalizationRadiusRounded" format="dimension" />
+
+    <!-- шрифт: Inter в SDK не поставляется, по умолчанию системный -->
+    <attr name="personalizationFontFamily" format="reference|string" />
+    <attr name="personalizationFontFamilyEmphasized" format="reference|string" />
+
+</resources>

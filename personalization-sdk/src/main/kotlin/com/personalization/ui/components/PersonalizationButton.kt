@@ -2,7 +2,6 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.AttributeSet
@@ -12,10 +11,10 @@ import android.widget.LinearLayout
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -134,7 +133,7 @@ class PersonalizationButton @JvmOverloads constructor(
         label.includeFontPadding = false
         label.gravity = Gravity.CENTER
         // Inter в SDK не поставляется, ближайшее системное к Emphasized 600.
-        label.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        label.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         // Цвет текста и тинт иконок приходят из ColorStateList родителя.
         label.isDuplicateParentStateEnabled = true
         iconStartView.isDuplicateParentStateEnabled = true
@@ -189,7 +188,7 @@ class PersonalizationButton @JvmOverloads constructor(
             ButtonView.GHOST -> R.color.personalization_background_transparent
         }
 
-        val radius = resources.getDimension(size.radiusRes)
+        val radius = PersonalizationTheme.radius(context, size.radiusRes)
         background = StateListDrawable().apply {
             addState(intArrayOf(-android.R.attr.state_enabled), fill(backgroundDisabled, radius))
             addState(intArrayOf(android.R.attr.state_pressed), fill(backgroundPressed, radius))
@@ -209,8 +208,8 @@ class PersonalizationButton @JvmOverloads constructor(
         val foreground = ColorStateList(
             arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
             intArrayOf(
-                ContextCompat.getColor(context, foregroundDisabled),
-                ContextCompat.getColor(context, foregroundDefault)
+                PersonalizationTheme.color(context, foregroundDisabled),
+                PersonalizationTheme.color(context, foregroundDefault)
             )
         )
         label.setTextColor(foreground)
@@ -249,7 +248,7 @@ class PersonalizationButton @JvmOverloads constructor(
         GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
-            setColor(ContextCompat.getColor(context, colorRes))
+            setColor(PersonalizationTheme.color(context, colorRes))
         }
 
     private fun dpToPx(dp: Int): Int =

@@ -1,15 +1,14 @@
 package com.personalization.ui.components
 
 import android.content.Context
-import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -184,7 +183,7 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
         view.includeFontPadding = false
         if (emphasized) {
             // Inter в SDK не поставляется, ближайшее системное к Emphasized 600.
-            view.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            view.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         }
         view.setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
@@ -197,7 +196,7 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
         // В макете трекинг 0.05px при кегле 14, у Android он в em.
         view.letterSpacing = 0.05f / 14f
         view.setTextColor(
-            ContextCompat.getColor(context, R.color.personalization_text_secondary)
+            PersonalizationTheme.color(context, R.color.personalization_text_secondary)
         )
     }
 

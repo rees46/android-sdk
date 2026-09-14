@@ -1,15 +1,14 @@
 package com.personalization.ui.components
 
 import android.content.Context
-import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -44,7 +43,7 @@ class PersonalizationTitle @JvmOverloads constructor(
 
         label.includeFontPadding = false
         // Inter в SDK не поставляется, ближайшее системное к Emphasized 600.
-        label.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        label.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         label.setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
             resources.getDimension(R.dimen.personalization_font_size_xl2)
@@ -53,7 +52,7 @@ class PersonalizationTitle @JvmOverloads constructor(
             label,
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_xl2)
         )
-        label.setTextColor(ContextCompat.getColor(context, R.color.personalization_text_primary))
+        label.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_primary))
 
         addView(label, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
     }

@@ -12,10 +12,10 @@ import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -241,14 +241,13 @@ class PersonalizationInputField @JvmOverloads constructor(
             Type.INPUT -> false
         }
 
-        val foreground = ContextCompat.getColor(
-            context,
+        val foreground = PersonalizationTheme.color(context,
             if (filled && isEnabled) R.color.personalization_text_primary
             else R.color.personalization_text_hint
         )
         editText.setTextColor(foreground)
         editText.setHintTextColor(
-            ContextCompat.getColor(context, R.color.personalization_text_hint)
+            PersonalizationTheme.color(context, R.color.personalization_text_hint)
         )
         // В макете иконка идёт в цвет текста: серая в Default и Disabled, тёмная в Filled.
         val tint = ColorStateList.valueOf(foreground)
@@ -272,9 +271,9 @@ class PersonalizationInputField @JvmOverloads constructor(
         }
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = resources.getDimension(size.radiusRes)
-            setColor(ContextCompat.getColor(context, fillColor))
-            setStroke(dpToPx(1), ContextCompat.getColor(context, borderColor))
+            cornerRadius = PersonalizationTheme.radius(context, size.radiusRes)
+            setColor(PersonalizationTheme.color(context, fillColor))
+            setStroke(dpToPx(1), PersonalizationTheme.color(context, borderColor))
         }
     }
 

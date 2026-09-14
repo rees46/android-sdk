@@ -6,8 +6,8 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -75,8 +75,7 @@ class PersonalizationCheckboxWithLabel @JvmOverloads constructor(
 
     private fun applyEnabledState() {
         label.setTextColor(
-            ContextCompat.getColor(
-                context,
+            PersonalizationTheme.color(context,
                 if (isEnabled) R.color.personalization_text_primary
                 else R.color.personalization_text_hint
             )

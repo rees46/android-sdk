@@ -20,6 +20,13 @@ android {
         buildConfig = true
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric читает смерженные ресурсы модуля: без этого тесты
+            // дизайн-системы падают на Resources$NotFoundException.
+            includeAndroidResources = true
+        }
+    }
     defaultConfig {
         minSdkVersion 19
         targetSdkVersion 34

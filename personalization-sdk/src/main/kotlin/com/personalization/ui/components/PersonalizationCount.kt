@@ -1,14 +1,13 @@
 package com.personalization.ui.components
 
 import android.content.Context
-import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
 
 /**
@@ -61,7 +60,7 @@ class PersonalizationCount @JvmOverloads constructor(
         view.includeFontPadding = false
         if (emphasized) {
             // Inter в SDK не поставляется, ближайшее системное к Emphasized 600.
-            view.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            view.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         }
         view.setTextSize(
             TypedValue.COMPLEX_UNIT_PX,
@@ -72,8 +71,7 @@ class PersonalizationCount @JvmOverloads constructor(
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_base)
         )
         view.setTextColor(
-            ContextCompat.getColor(
-                context,
+            PersonalizationTheme.color(context,
                 if (emphasized) R.color.personalization_text_primary
                 else R.color.personalization_text_secondary
             )
