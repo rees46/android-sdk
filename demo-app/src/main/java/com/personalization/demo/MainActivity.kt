@@ -1008,9 +1008,10 @@ class MainActivity : AppCompatActivity() {
     /**
      * Wires the bottom navigation and both stories tabs.
      *
-     * "UI Kit" renders the block with the SDK's Compose wrapper, "Legacy UI" with the XML view, so
-     * the two integration styles can be compared side by side. The API pane keeps the SDK method
-     * demos and no longer carries a stories block of its own.
+     * "UI Kit" is the design-system showcase ([UiKitPane]); its "Stories" segment renders the block
+     * with the SDK's Compose wrapper, "Legacy UI" with the XML view, so the two integration styles can
+     * be compared side by side. The API pane keeps the SDK method demos and no longer carries a
+     * stories block of its own.
      */
     private fun setupStoriesTabs() {
         val apiContent = findViewById<View>(R.id.apiContent)
@@ -1040,10 +1041,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // UI Kit pane: the Compose widget resolves the instance itself from the shopId — shop A here,
-        // named explicitly since the app is multi-shop. DemoTheme makes it follow light/dark.
+        // UI Kit pane: the design-system showcase plus the Compose stories widget, which resolves
+        // the instance itself from the shopId — shop A here, named explicitly since the app is
+        // multi-shop. DemoTheme makes the pane follow light/dark.
         uiKitContent.setContent {
-            DemoTheme { ComposeStoriesPane(code = storiesCode, shopId = BuildConfig.SHOP_ID) }
+            DemoTheme { UiKitPane(storiesCode = storiesCode, shopId = BuildConfig.SHOP_ID) }
         }
 
         // Multi-instance pane: shop A (default) and shop B living side by side.
