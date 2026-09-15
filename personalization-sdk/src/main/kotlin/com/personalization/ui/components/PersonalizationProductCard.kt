@@ -216,23 +216,26 @@ class PersonalizationProductCard @JvmOverloads constructor(
             addView(nameBlock(gapBetween = R.dimen.personalization_spacing_xs))
             addView(rating, topMargin(resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm)))
         }
+        // Вью переиспользуются между раскладками и приносят с собой прежние LayoutParams
+        // (у кнопки из колонки — match_parent), поэтому параметры здесь задаются явно.
+        val wrap = { LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT) }
         val priceBlock = LinearLayout(context).apply {
             orientation = VERTICAL
             addView(LinearLayout(context).apply {
                 orientation = HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(priceView)
-                addView(priceBadge, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+                addView(priceView, wrap())
+                addView(priceBadge, wrap().apply {
                     marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
                 })
             })
-            addView(oldPriceView)
+            addView(oldPriceView, wrap())
         }
         val bottom = LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(priceBlock, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(button)
+            addView(button, wrap())
         }
         val column = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -254,7 +257,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
         LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.BOTTOM
-            addView(priceView)
+            addView(priceView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
             addView(oldPriceView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
                 marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
             })

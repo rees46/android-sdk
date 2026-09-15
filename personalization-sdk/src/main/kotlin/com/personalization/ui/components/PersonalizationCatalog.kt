@@ -2,6 +2,7 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -79,8 +80,12 @@ class PersonalizationCatalog @JvmOverloads constructor(
 
         addView(grid, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
+        // Лоадер в макете — по центру строки; на всю ширину он бы прижал кольцо к левому краю.
         loader.isVisible = false
-        addView(loader, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        addView(loader, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
+            topMargin = gap
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
 
         count.isVisible = false
         addView(count, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
