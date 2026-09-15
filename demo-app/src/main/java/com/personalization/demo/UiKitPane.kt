@@ -42,7 +42,10 @@ import com.personalization.ui.components.PersonalizationCount
 import com.personalization.ui.components.PersonalizationDots
 import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationFavoritesBadge
+import com.personalization.ui.components.PersonalizationFilters
+import com.personalization.ui.components.PersonalizationInstantSearch
 import com.personalization.ui.components.PersonalizationInputField
+import com.personalization.ui.components.PersonalizationLink
 import com.personalization.ui.components.PersonalizationListLabel
 import com.personalization.ui.components.PersonalizationLoader
 import com.personalization.ui.components.PersonalizationProduct
@@ -52,7 +55,6 @@ import com.personalization.ui.components.PersonalizationProductsGrid
 import com.personalization.ui.components.PersonalizationRating
 import com.personalization.ui.components.PersonalizationRecommenderBlock
 import com.personalization.ui.components.PersonalizationSearchResultsTitle
-import com.personalization.ui.components.PersonalizationSearchSuggestions
 import com.personalization.ui.components.PersonalizationTag
 import com.personalization.ui.components.PersonalizationTitle
 
@@ -60,8 +62,8 @@ import com.personalization.ui.components.PersonalizationTitle
  * "UI Kit" tab — the design system, one exhibit per component.
  *
  * "Components" walks through the primitives in every size, view and state the design file defines;
- * "Blocks" shows the compositions built from them (product cards, recommender layouts, search
- * suggestions, the catalogue). "Stories" keeps the stories block through the SDK's Compose wrapper,
+ * "Blocks" shows the compositions built from them (product cards, recommender layouts, instant
+ * search, the catalogue, the filters screen). "Stories" keeps the stories block through the SDK's Compose wrapper,
  * the counterpart of the "Legacy UI" tab.
  *
  * The kit is classic Views, so each exhibit is an [AndroidView] built from a small factory. Product
@@ -137,6 +139,12 @@ private fun ComponentsShowcase() {
                 }
             )
         }
+        Exhibit("Link — text action next to a field or a label") { ctx ->
+            ctx.row(
+                PersonalizationLink(ctx).apply { text = "Cancel" },
+                PersonalizationLink(ctx).apply { text = "Clear" }
+            )
+        }
         Exhibit("Search Results Title") { ctx -> ctx.searchResultsTitle() }
         Exhibit("Accordion — collapsed with count, expanded") { ctx ->
             ctx.column(
@@ -207,6 +215,24 @@ private fun BlocksShowcase() {
                 ctx.productCard(PersonalizationProductCard.Type.LIST, DemoProducts.all[2])
             )
         }
+        Exhibit("Product Card — image 4:3, 1:1, 3:4 (carousel and list)") { ctx ->
+            val aspects = listOf(
+                PersonalizationProductImage.Aspect.LANDSCAPE,
+                PersonalizationProductImage.Aspect.SQUARE,
+                PersonalizationProductImage.Aspect.PORTRAIT
+            )
+            ctx.column(
+                ctx.hscroll(ctx.row(*aspects.mapIndexed { index, aspect ->
+                    ctx.productCard(PersonalizationProductCard.Type.CAROUSEL, DemoProducts.all[index + 3]).apply {
+                        imageAspect = aspect
+                        layoutParams = LinearLayout.LayoutParams(ctx.dp(220), ViewGroup.LayoutParams.WRAP_CONTENT)
+                    }
+                }.toTypedArray())),
+                *aspects.mapIndexed { index, aspect ->
+                    ctx.productCard(PersonalizationProductCard.Type.LIST, DemoProducts.all[index + 3]).apply { imageAspect = aspect }
+                }.toTypedArray()
+            )
+        }
         Exhibit("Recommender Block — carousel") { ctx ->
             ctx.recommender(PersonalizationRecommenderBlock.Layout.CAROUSEL, "Recommended for you", DemoProducts.all)
         }
@@ -216,22 +242,11 @@ private fun BlocksShowcase() {
         Exhibit("Recommender Block — list") { ctx ->
             ctx.recommender(PersonalizationRecommenderBlock.Layout.LIST, "Recently viewed", DemoProducts.all.take(3))
         }
-        Exhibit("Search Suggestions") { ctx ->
-            PersonalizationSearchSuggestions(ctx).apply {
-                highlight = "run"
-                showImages = true
-                imageLoader = { view, suggestion -> Glide.with(view).load(suggestion.imageUrl).into(view) }
-                setTags(listOf("running shoes", "running jacket", "run belt"))
-                setCategories(listOf(
-                    PersonalizationSearchSuggestions.Suggestion("c1", "Running shoes", "Shoes"),
-                    PersonalizationSearchSuggestions.Suggestion("c2", "Running apparel", "Clothing")
-                ))
-                setProducts(DemoProducts.all.take(3).map {
-                    PersonalizationSearchSuggestions.Suggestion(it.id, it.name.toString(), it.price, it.imageUrl)
-                })
-            }
-        }
+        Exhibit("Instant Search — recent searches") { ctx -> ctx.instantSearch(typing = false, images = false) }
+        Exhibit("Instant Search — typing, matches in bold") { ctx -> ctx.instantSearch(typing = true, images = false) }
+        Exhibit("Instant Search — with images") { ctx -> ctx.instantSearch(typing = false, images = true) }
         Exhibit("Catalog — header, grid ⇄ list, count, load more") { ctx -> ctx.catalog() }
+        Exhibit("Filters — range, checkbox lists with show more, reset / apply") { ctx -> ctx.filters() }
     }
 }
 
@@ -371,6 +386,72 @@ private fun Context.recommender(
     imageLoader = DemoProducts.glideLoader
     products = items
 }
+
+/**
+ * Instant search in its three states: recent searches before typing, suggestions with the
+ * query highlighted while typing, and rows with images. The host owns the data; the kit only
+ * renders what it is given and reports the taps.
+ */
+private fun Context.instantSearch(typing: Boolean, images: Boolean): PersonalizationInstantSearch =
+    PersonalizationInstantSearch(this).apply {
+        placeholder = "want to buy..."
+        cancelText = "Cancel"
+        showImages = images
+        imageLoader = { view, suggestion -> Glide.with(view).load(suggestion.imageUrl).into(view) }
+        categoriesLabel = if (typing) "Category" else "Popular category"
+        productsLabel = if (typing) "Products" else "Frequently searched"
+        if (typing) {
+            query = "boots"
+            setSuggestions(listOf("winter", "mens", "kids", "for outdoor", "womens", "low", "black", "orange"))
+            setCategories(listOf(
+                PersonalizationInstantSearch.Suggestion("c1", "Womens boots"),
+                PersonalizationInstantSearch.Suggestion("c2", "Mens boots"),
+                PersonalizationInstantSearch.Suggestion("c3", "Kids boots")
+            ))
+            setProducts(listOf(
+                PersonalizationInstantSearch.Suggestion("p1", "winter womens boots"),
+                PersonalizationInstantSearch.Suggestion("p2", "boots for mens"),
+                PersonalizationInstantSearch.Suggestion("p3", "winter boots for mens"),
+                PersonalizationInstantSearch.Suggestion("p4", "kids winter boots")
+            ))
+        } else {
+            recentLabel = "Recent searches"
+            clearText = "Clear"
+            moreText = "more"
+            setRecentSearches(listOf("mens winter boots", "kids shoes", "bag", "accessories", "black boots"))
+            setCategories(listOf(
+                PersonalizationInstantSearch.Suggestion("c1", "Running shoes", "Shoes", DemoProducts.all[0].imageUrl),
+                PersonalizationInstantSearch.Suggestion("c2", "Running apparel", "Clothing", DemoProducts.all[1].imageUrl),
+                PersonalizationInstantSearch.Suggestion("c3", "Trail gear", "Outdoor", DemoProducts.all[2].imageUrl)
+            ))
+            setProducts(DemoProducts.all.take(if (images) 3 else 5).map {
+                PersonalizationInstantSearch.Suggestion(it.id, it.name.toString(), it.price, it.imageUrl)
+            })
+        }
+    }
+
+/** The filters screen with the sections from the design file; toggles and ranges update its own state. */
+private fun Context.filters(): PersonalizationFilters =
+    PersonalizationFilters(this).apply {
+        text = "Filters"
+        resetText = "Reset"
+        applyText = "Apply"
+        setSections(listOf(
+            PersonalizationFilters.Section.Range("size", "Size", "From", "to", "42", "43", select = true),
+            PersonalizationFilters.Section.Options(
+                "colors", "Colors",
+                listOf("All", "Black", "White", "Red", "Light blue", "Green", "Yellow", "Brown", "Grey", "Pink")
+                    .mapIndexed { index, label -> PersonalizationFilters.Option(label.lowercase(), label, checked = index == 1) },
+                showMoreText = "Show more", showLessText = "Show less"
+            ),
+            PersonalizationFilters.Section.Range("price", "Price (USD)", "From", "to", "50", "500"),
+            PersonalizationFilters.Section.Options(
+                "rating", "Rating",
+                listOf("All", "5 stars", "4+ stars", "3+ stars")
+                    .mapIndexed { index, label -> PersonalizationFilters.Option(label, label, checked = index == 1) }
+            )
+        ))
+    }
 
 /**
  * The catalogue as a host would wire it: the results title in the header slot drives the
