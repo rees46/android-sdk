@@ -33,6 +33,7 @@ import com.personalization.R
  * Темизуются цвета, радиусы и шрифт. Отступы, тени и кегли остаются ресурсами:
  * это шкала макета, менять её не предполагается.
  */
+@InternalPersonalizationUiApi
 object PersonalizationTheme {
 
     private val colorAttributes: Map<Int, Int> = mapOf(

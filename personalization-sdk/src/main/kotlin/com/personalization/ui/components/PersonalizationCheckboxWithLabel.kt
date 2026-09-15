@@ -9,6 +9,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Чекбокс с подписью.
@@ -17,6 +18,7 @@ import com.personalization.R
  * Зазор 8, подпись 16/20 обычного начертания; в disabled подпись уходит
  * в Text/Hint.
  */
+@InternalPersonalizationUiApi
 class PersonalizationCheckboxWithLabel @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -10,6 +10,7 @@ import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Заголовок выдачи поиска.
@@ -23,6 +24,7 @@ import com.personalization.R
  * Собран из готовых компонентов: [PersonalizationTitle], [PersonalizationButton],
  * [PersonalizationButtonGroup], [PersonalizationTag].
  */
+@InternalPersonalizationUiApi
 class PersonalizationSearchResultsTitle @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

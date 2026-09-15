@@ -7,12 +7,14 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.ImageViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Метка «в избранном»: звезда в круге цвета Semantic/Warning, 24x24.
  *
  * Источник: Figma Mobile SDK UI Kit, секция Badge, символ Favorites (391:17117).
  */
+@InternalPersonalizationUiApi
 class PersonalizationFavoritesBadge @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

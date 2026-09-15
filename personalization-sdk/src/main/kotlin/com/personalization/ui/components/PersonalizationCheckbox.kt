@@ -9,6 +9,7 @@ import android.util.AttributeSet
 import android.view.View
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Чекбокс дизайн-системы, 20x20.
@@ -19,6 +20,7 @@ import com.personalization.R
  * Галка и черта рисуются штрихом по геометрии из макета:
  * `M5 10 L8.75 13.75 L15 7.5` и `M5 10 H15`, толщина 2, круглые концы.
  */
+@InternalPersonalizationUiApi
 class PersonalizationCheckbox @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

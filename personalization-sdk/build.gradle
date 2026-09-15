@@ -52,6 +52,8 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+        // UI-кит дизайн-системы до релиза закрыт маркером opt-in; библиотека использует его сама.
+        freeCompilerArgs += ['-opt-in=com.personalization.ui.InternalPersonalizationUiApi']
     }
 
     sourceSets {

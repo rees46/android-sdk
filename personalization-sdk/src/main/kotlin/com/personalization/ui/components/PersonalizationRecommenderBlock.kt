@@ -6,6 +6,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Блок рекомендаций: заголовок, товары, у карусели — точки.
@@ -18,6 +19,7 @@ import com.personalization.R
  * Собран из [PersonalizationTitle], [PersonalizationButton],
  * [PersonalizationProductsCarousel] / [PersonalizationProductsGrid], [PersonalizationDots].
  */
+@InternalPersonalizationUiApi
 class PersonalizationRecommenderBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

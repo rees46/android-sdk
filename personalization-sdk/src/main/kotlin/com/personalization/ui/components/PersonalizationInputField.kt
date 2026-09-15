@@ -17,6 +17,7 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Поле ввода дизайн-системы.
@@ -27,6 +28,7 @@ import com.personalization.R
  * Состояния из макета не задаются снаружи, а выводятся из самого поля:
  * Default — пусто, Filled — есть текст, Focus — поле в фокусе, Disabled — [setEnabled].
  */
+@InternalPersonalizationUiApi
 class PersonalizationInputField @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

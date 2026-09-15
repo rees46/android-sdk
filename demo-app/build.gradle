@@ -74,6 +74,8 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+        // Демо подключает UI-кит дизайн-системы напрямую, пока он не стал публичным API.
+        freeCompilerArgs += ['-opt-in=com.personalization.ui.InternalPersonalizationUiApi']
     }
 
     buildFeatures {

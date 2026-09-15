@@ -7,6 +7,7 @@ import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatImageView
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Изображение товара с фиксированной пропорцией.
@@ -19,6 +20,7 @@ import com.personalization.R
  * До загрузки виден плейсхолдер цвета Background/Card — в макете заливка
  * плейсхолдера к переменной не привязана, взят ближайший токен.
  */
+@InternalPersonalizationUiApi
 class PersonalizationProductImage @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

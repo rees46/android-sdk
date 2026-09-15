@@ -9,6 +9,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Счётчик «показано N из M».
@@ -17,6 +18,7 @@ import com.personalization.R
  * Слова — параметры, а не константы: локализация остаётся за интегратором.
  * В макете это «Showed 6 from 569».
  */
+@InternalPersonalizationUiApi
 class PersonalizationCount @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

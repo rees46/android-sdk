@@ -16,6 +16,7 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Кнопка дизайн-системы.
@@ -26,6 +27,7 @@ import com.personalization.R
  * Состояние Focus из макета — это нажатие: рисуется через state_pressed,
  * отдельным свойством не управляется. Disabled — обычный [setEnabled].
  */
+@InternalPersonalizationUiApi
 class PersonalizationButton @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

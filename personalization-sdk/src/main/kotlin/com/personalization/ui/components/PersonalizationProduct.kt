@@ -1,5 +1,7 @@
 package com.personalization.ui.components
 
+import com.personalization.ui.InternalPersonalizationUiApi
+
 /**
  * Данные товара для карточки и раскладок каталога.
  *
@@ -8,6 +10,7 @@ package com.personalization.ui.components
  * Изображение по [imageUrl] компонент не грузит: раскладки отдают хосту
  * `ImageView` через свой `imageLoader`.
  */
+@InternalPersonalizationUiApi
 data class PersonalizationProduct(
     val id: String,
     val name: CharSequence,

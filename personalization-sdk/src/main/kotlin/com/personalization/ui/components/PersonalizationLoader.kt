@@ -9,6 +9,7 @@ import android.graphics.SweepGradient
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Индикатор загрузки дизайн-системы.
@@ -21,6 +22,7 @@ import android.view.animation.LinearInterpolator
  * `Gradient/Loader` приходит пустым. Рисуется SweepGradient, а не картинкой —
  * чтобы не зависеть от плотности экрана.
  */
+@InternalPersonalizationUiApi
 class PersonalizationLoader @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -16,6 +16,7 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Строка подсказки поиска: товар или категория.
@@ -29,6 +30,7 @@ import com.personalization.R
  * [highlight] выделяет совпадение с запросом полужирным, как в макете подсказок.
  * Картинку хост грузит в [imageView].
  */
+@InternalPersonalizationUiApi
 class PersonalizationSuggestionRow @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

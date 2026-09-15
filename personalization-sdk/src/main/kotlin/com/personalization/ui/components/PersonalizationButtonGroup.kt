@@ -10,6 +10,7 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.ImageViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Группа кнопок (сегментированный переключатель).
@@ -21,6 +22,7 @@ import com.personalization.R
  * сегмент же есть и в MD, и в SM — поэтому размер вынесен в API,
  * а число сегментов не ограничено.
  */
+@InternalPersonalizationUiApi
 class PersonalizationButtonGroup @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

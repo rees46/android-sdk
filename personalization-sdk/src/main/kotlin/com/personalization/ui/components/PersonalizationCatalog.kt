@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Экран каталога: заголовок, плитка или список товаров, внизу лоадер, счётчик
@@ -19,6 +20,7 @@ import com.personalization.R
  * Три нижних элемента в макете скрываемые (showLoader, showCount, showLoadMore).
  * Шаг блока 12.
  */
+@InternalPersonalizationUiApi
 class PersonalizationCatalog @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

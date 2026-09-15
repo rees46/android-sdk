@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Каталог товаров: плитка в две колонки или список.
@@ -20,6 +21,7 @@ import com.personalization.R
  * Собран на RecyclerView; карточки — [PersonalizationProductCard]. Картинки
  * грузит хост через [imageLoader].
  */
+@InternalPersonalizationUiApi
 class PersonalizationProductsGrid @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

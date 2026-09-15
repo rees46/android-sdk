@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
+import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Панель подсказок поиска: теги-подсказки, категории, товары.
@@ -23,6 +24,7 @@ import com.personalization.R
  * Строки — [PersonalizationSuggestionRow], теги — [PersonalizationTag].
  * Картинки хост грузит через [imageLoader].
  */
+@InternalPersonalizationUiApi
 class PersonalizationSearchSuggestions @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
