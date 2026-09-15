@@ -48,6 +48,13 @@ class PersonalizationProductsCarousel @JvmOverloads constructor(
             productsAdapter.onAction = value
         }
 
+    /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
+    var imageAspect: PersonalizationProductImage.Aspect
+        get() = productsAdapter.imageAspect
+        set(value) {
+            productsAdapter.imageAspect = value
+        }
+
     /** Индекс первой видимой карточки: по нему Recommender-блок двигает точки. */
     var onFirstVisibleChanged: ((Int) -> Unit)? = null
 
@@ -97,6 +104,11 @@ internal class PersonalizationProductsAdapter(
         }
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)? = null
     var onAction: ((PersonalizationProduct) -> Unit)? = null
+    var imageAspect: PersonalizationProductImage.Aspect = PersonalizationProductImage.Aspect.SQUARE
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     class Holder(val card: PersonalizationProductCard) : RecyclerView.ViewHolder(card)
 
@@ -120,6 +132,7 @@ internal class PersonalizationProductsAdapter(
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val product = items[position]
         holder.card.apply {
+            imageAspect = this@PersonalizationProductsAdapter.imageAspect
             brand = product.brand
             name = product.name
             price = product.price

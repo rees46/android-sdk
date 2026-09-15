@@ -58,6 +58,13 @@ class PersonalizationCatalog @JvmOverloads constructor(
             grid.onProductAction = value
         }
 
+    /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
+    var imageAspect: PersonalizationProductImage.Aspect
+        get() = grid.imageAspect
+        set(value) {
+            grid.imageAspect = value
+        }
+
     var isLoading: Boolean = false
         set(value) {
             field = value

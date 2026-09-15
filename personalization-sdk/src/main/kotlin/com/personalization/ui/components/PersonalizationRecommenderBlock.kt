@@ -85,6 +85,14 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             grid.onProductAction = value
         }
 
+    /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
+    var imageAspect: PersonalizationProductImage.Aspect = PersonalizationProductImage.Aspect.SQUARE
+        set(value) {
+            field = value
+            carousel.imageAspect = value
+            grid.imageAspect = value
+        }
+
     init {
         orientation = VERTICAL
         showAllButton.size = PersonalizationButton.Size.SM

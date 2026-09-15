@@ -19,9 +19,13 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Карточка товара.
  *
  * Источник: Figma Mobile SDK UI Kit, секция Card, фрейм Product (126:2263):
- * Carousel — колонка 220 с картинкой 1:1, Grid — колонка 161 с картинкой во всю
- * ширину, List — строка с картинкой 120 и ценой с кнопкой внизу справа.
- * У трёх типов разная типографика цены и названия, поэтому она задана в таблице.
+ * Carousel — колонка 220, Grid — колонка 161 с картинкой во всю ширину, List — строка
+ * с картинкой шириной 120 и ценой с кнопкой внизу справа. Пропорция картинки —
+ * [imageAspect]: на странице ProductCard (88:69) карточка нарисована с 4:3, 1:1 и 3:4,
+ * и её высота идёт за картинкой.
+ * У трёх типов разная типографика названия, цены и старой цены, поэтому она задана
+ * в таблице. Старая цена карусели — 16/24 по страницам ProductCard и Product Carousel;
+ * мастер-компонент Product там же даёт 14/20 — расхождение в макете, взяты страницы.
  *
  * Собрана из готовых блоков: [PersonalizationProductImage], [PersonalizationRating],
  * [PersonalizationBadge] (скидка, вид danger), [PersonalizationButton].
@@ -39,19 +43,25 @@ class PersonalizationProductCard @JvmOverloads constructor(
         val nameLineHeightRes: Int,
         val nameLetterSpacingPx: Float,
         val priceFontRes: Int,
-        val priceLineHeightRes: Int
+        val priceLineHeightRes: Int,
+        val oldPriceFontRes: Int,
+        val oldPriceLineHeightRes: Int,
+        val oldPriceLetterSpacingPx: Float
     ) {
         CAROUSEL(
             R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, 0f,
-            R.dimen.personalization_font_size_xl, R.dimen.personalization_line_height_xl
+            R.dimen.personalization_font_size_xl, R.dimen.personalization_line_height_xl,
+            R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, 0f
         ),
         GRID(
             R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, 0f,
-            R.dimen.personalization_font_size_lg, R.dimen.personalization_line_height_lg
+            R.dimen.personalization_font_size_lg, R.dimen.personalization_line_height_lg,
+            R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, 0.05f
         ),
         LIST(
             R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, 0.05f,
-            R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base
+            R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base,
+            R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, 0.05f
         )
     }
 
@@ -72,6 +82,13 @@ class PersonalizationProductCard @JvmOverloads constructor(
         set(value) {
             field = value
             rebuild()
+        }
+
+    /** Пропорция картинки; высота карточки идёт за ней. */
+    var imageAspect: PersonalizationProductImage.Aspect
+        get() = image.aspect
+        set(value) {
+            image.aspect = value
         }
 
     var brand: CharSequence? = null
@@ -144,9 +161,6 @@ class PersonalizationProductCard @JvmOverloads constructor(
         priceView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_primary))
 
         oldPriceView.includeFontPadding = false
-        oldPriceView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.personalization_font_size_sm))
-        TextViewCompat.setLineHeight(oldPriceView, resources.getDimensionPixelSize(R.dimen.personalization_line_height_sm))
-        oldPriceView.letterSpacing = 0.05f / 14f
         oldPriceView.paintFlags = oldPriceView.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
         oldPriceView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_hint))
         oldPriceView.isVisible = false
@@ -177,6 +191,10 @@ class PersonalizationProductCard @JvmOverloads constructor(
             else type.nameLetterSpacingPx / pxToSp(resources.getDimension(type.nameFontRes))
         priceView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(type.priceFontRes))
         TextViewCompat.setLineHeight(priceView, resources.getDimensionPixelSize(type.priceLineHeightRes))
+        oldPriceView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(type.oldPriceFontRes))
+        TextViewCompat.setLineHeight(oldPriceView, resources.getDimensionPixelSize(type.oldPriceLineHeightRes))
+        oldPriceView.letterSpacing = if (type.oldPriceLetterSpacingPx == 0f) 0f
+            else type.oldPriceLetterSpacingPx / pxToSp(resources.getDimension(type.oldPriceFontRes))
     }
 
     /** У колонок скидка лежит на картинке, у списка — рядом с ценой. */
@@ -204,12 +222,15 @@ class PersonalizationProductCard @JvmOverloads constructor(
         addView(button, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { setMargins(0, gap, 0, 0) })
     }
 
-    /** List: картинка 120 слева, справа колонка — название с рейтингом сверху, цена с кнопкой снизу. */
+    /**
+     * List: картинка шириной 120 слева, справа колонка — название с рейтингом сверху,
+     * цена с кнопкой снизу. Высоту строки задаёт картинка по своей пропорции.
+     */
     private fun buildList() {
         orientation = HORIZONTAL
         val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
         val side = dpToPx(LIST_IMAGE_DP)
-        addView(imageFrame, LayoutParams(side, side))
+        addView(imageFrame, LayoutParams(side, LayoutParams.WRAP_CONTENT))
 
         val top = LinearLayout(context).apply {
             orientation = VERTICAL
@@ -243,7 +264,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
             addView(View(context), LayoutParams(0, 0, 1f))
             addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
-        addView(column, LayoutParams(0, side, 1f).apply { marginStart = gap })
+        addView(column, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { marginStart = gap })
     }
 
     private fun nameBlock(gapBetween: Int): LinearLayout =

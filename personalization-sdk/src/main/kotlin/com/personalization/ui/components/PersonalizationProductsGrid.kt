@@ -58,6 +58,13 @@ class PersonalizationProductsGrid @JvmOverloads constructor(
             productsAdapter.onAction = value
         }
 
+    /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
+    var imageAspect: PersonalizationProductImage.Aspect
+        get() = productsAdapter.imageAspect
+        set(value) {
+            productsAdapter.imageAspect = value
+        }
+
     init {
         isNestedScrollingEnabled = false
         rebuild()
@@ -71,6 +78,7 @@ class PersonalizationProductsGrid @JvmOverloads constructor(
             it.items = previous.items
             it.imageLoader = previous.imageLoader
             it.onAction = previous.onAction
+            it.imageAspect = previous.imageAspect
         }
         adapter = productsAdapter
 
