@@ -45,6 +45,7 @@ class PersonalizationSuggestionRow @JvmOverloads constructor(
     private val titleView = AppCompatTextView(context)
     private val subtitleView = AppCompatTextView(context)
     private val chevron = AppCompatImageView(context)
+    private val column = LinearLayout(context)
 
     var kind: Kind = Kind.PRODUCT
         set(value) {
@@ -57,6 +58,9 @@ class PersonalizationSuggestionRow @JvmOverloads constructor(
             field = value
             imageView.isVisible = value
             subtitleView.isVisible = value && !subtitle.isNullOrEmpty()
+            // Без картинки текст начинается с края строки, как в варианте Text.
+            (column.layoutParams as LayoutParams).marginStart = if (value) dpToPx(GAP_DP) else 0
+            column.requestLayout()
         }
 
     var title: CharSequence? = null
@@ -89,12 +93,10 @@ class PersonalizationSuggestionRow @JvmOverloads constructor(
         imageView.isVisible = false
         addView(imageView, LayoutParams(dpToPx(IMAGE_DP), dpToPx(IMAGE_DP)))
 
-        val column = LinearLayout(context).apply {
-            orientation = VERTICAL
-            addView(titleView)
-            addView(subtitleView)
-        }
-        addView(column, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dpToPx(GAP_DP) })
+        column.orientation = VERTICAL
+        column.addView(titleView)
+        column.addView(subtitleView)
+        addView(column, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
 
         chevron.setImageResource(R.drawable.personalization_ic_angle_large_right)
         ImageViewCompat.setImageTintList(chevron, PersonalizationTheme.colorStateList(context, R.color.personalization_text_hint))
