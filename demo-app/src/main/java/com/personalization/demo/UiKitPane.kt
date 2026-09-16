@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.Toast
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.material.TabRow
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -57,14 +60,17 @@ import com.personalization.ui.components.PersonalizationRecommenderBlock
 import com.personalization.ui.components.PersonalizationSearchResultsTitle
 import com.personalization.ui.components.PersonalizationTag
 import com.personalization.ui.components.PersonalizationTitle
+import com.personalization.ui.widgets.PersonalizationInstantSearchField
+import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
 
 /**
  * "UI Kit" tab — the design system, one exhibit per component.
  *
  * "Components" walks through the primitives in every size, view and state the design file defines;
  * "Blocks" shows the compositions built from them (product cards, recommender layouts, instant
- * search, the catalogue, the filters screen). "Stories" keeps the stories block through the SDK's Compose wrapper,
- * the counterpart of the "Legacy UI" tab.
+ * search, the catalogue, the filters screen). "Search" runs the two data-bound search widgets against
+ * the demo shop: the instant search field, and the results screen it opens on submit. "Stories" keeps
+ * the stories block through the SDK's Compose wrapper, the counterpart of the "Legacy UI" tab.
  *
  * The kit is classic Views, so each exhibit is an [AndroidView] built from a small factory. Product
  * data is static: the kit does not fetch or format anything itself, and images are loaded by the
@@ -73,7 +79,7 @@ import com.personalization.ui.components.PersonalizationTitle
 @Composable
 fun UiKitPane(storiesCode: String, shopId: String) {
     var tab by rememberSaveable { mutableStateOf(0) }
-    val tabs = listOf("Components", "Blocks", "Stories")
+    val tabs = listOf("Components", "Blocks", "Search", "Stories")
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(
@@ -88,6 +94,7 @@ fun UiKitPane(storiesCode: String, shopId: String) {
         when (tab) {
             0 -> ComponentsShowcase()
             1 -> BlocksShowcase()
+            2 -> SearchShowcase(shopId = shopId)
             else -> ComposeStoriesPane(code = storiesCode, shopId = shopId)
         }
     }
@@ -250,6 +257,77 @@ private fun BlocksShowcase() {
         Exhibit("Filters — range, checkbox lists with show more, reset / apply") { ctx -> ctx.filters() }
     }
 }
+
+/**
+ * The search flow as a host would wire it: the instant search field resolves the SDK by shopId and
+ * searches on its own; submitting a phrase swaps it for the results screen, whose back button
+ * returns. Taps on products and categories only toast here — navigation is the host's.
+ */
+@Composable
+private fun SearchShowcase(shopId: String) {
+    var query by rememberSaveable { mutableStateOf<String?>(null) }
+    val submitted = query
+    if (submitted == null) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx -> ctx.instantSearchField(shopId) { query = it } }
+        )
+    } else {
+        key(submitted) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx -> ctx.searchResultsScreen(shopId, submitted) { query = null } }
+            )
+        }
+    }
+}
+
+private fun Context.instantSearchField(shopId: String, onSubmit: (String) -> Unit): View {
+    val field = PersonalizationInstantSearchField(this).apply {
+        this.shopId = shopId
+        placeholder = "Search"
+        cancelText = "Cancel"
+        recentLabel = "Recent searches"
+        clearText = "Clear"
+        moreText = "more"
+        categoriesLabel = "Categories"
+        productsLabel = "Products"
+        showImages = true
+        this.onSubmit = onSubmit
+        onCancel = { query = null }
+        onProductClick = { product -> toast("Product: ${product.name}") }
+        onCategoryClick = { category -> toast("Category: ${category.name}") }
+        onError = { code, message -> toast("Search error $code: $message") }
+    }
+    return ScrollView(this).apply {
+        isFillViewport = true
+        addView(field, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        setPadding(dp(16), dp(16), dp(16), dp(16))
+        clipToPadding = false
+    }
+}
+
+private fun Context.searchResultsScreen(shopId: String, query: String, onBack: () -> Unit): View =
+    PersonalizationSearchResultsScreen(this).apply {
+        this.shopId = shopId
+        productActionText = "Add to cart"
+        this.onBack = onBack
+        onProductClick = { product -> toast("Product: ${product.name}") }
+        onProductAction = { product -> toast("Add to cart: ${product.name}") }
+        // No sort picker in the design file: cycle relevance → price ↑ → price ↓ on tap.
+        onSortClick = {
+            when (sortBy) {
+                null -> { sortBy = "price"; sortDir = "asc" }
+                "price" -> if (sortDir == "asc") sortDir = "desc" else { sortBy = null; sortDir = null }
+                else -> { sortBy = null; sortDir = null }
+            }
+            toast("Sort: ${sortBy ?: "relevance"} ${sortDir.orEmpty()}")
+        }
+        onError = { code, message -> toast("Search error $code: $message") }
+        this.query = query
+    }
+
+private fun Context.toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
 // --- Compose scaffolding ------------------------------------------------------------------------
 
