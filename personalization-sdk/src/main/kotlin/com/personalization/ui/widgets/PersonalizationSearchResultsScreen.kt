@@ -462,9 +462,11 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         val sections = mutableListOf<PersonalizationFilters.Section>()
         val range = source?.priceRange
         if (range != null || applied.priceMin != null || applied.priceMax != null) {
+            // Границы диапазона — подсказками: в запрос уходит только то, что ввёл пользователь.
             sections += PersonalizationFilters.Section.Range(
                 id = SECTION_PRICE, title = priceTitle, fromLabel = fromLabel, toLabel = toLabel,
-                from = applied.priceMin, to = applied.priceMax
+                from = applied.priceMin, to = applied.priceMax,
+                fromPlaceholder = range?.let { bound(it.min) }, toPlaceholder = range?.let { bound(it.max) }
             )
         }
         val brands = source?.brands.orEmpty().mapNotNull { it.name }
@@ -501,6 +503,10 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         }
         return sections
     }
+
+    /** Граница цены без хвоста «.0»: сервер отдаёт число, форматированной строки у него нет. */
+    private fun bound(value: Double): String =
+        if (value == Math.floor(value)) value.toLong().toString() else value.toString()
 
     private fun fromSections(sections: List<PersonalizationFilters.Section>): Applied {
         var next = Applied()

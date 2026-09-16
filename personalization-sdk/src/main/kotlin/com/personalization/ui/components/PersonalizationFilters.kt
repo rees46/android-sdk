@@ -36,7 +36,10 @@ class PersonalizationFilters @JvmOverloads constructor(
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
     sealed class Section(val id: String, val title: CharSequence) {
-        /** Два поля «от — до». [select] — поля типа Select, список открывает хост. */
+        /**
+         * Два поля «от — до». [select] — поля типа Select, список открывает хост.
+         * [fromPlaceholder] / [toPlaceholder] — подсказки в пустых полях, например границы диапазона.
+         */
         class Range(
             id: String,
             title: CharSequence,
@@ -44,7 +47,9 @@ class PersonalizationFilters @JvmOverloads constructor(
             val toLabel: CharSequence,
             val from: CharSequence? = null,
             val to: CharSequence? = null,
-            val select: Boolean = false
+            val select: Boolean = false,
+            val fromPlaceholder: CharSequence? = null,
+            val toPlaceholder: CharSequence? = null
         ) : Section(id, title)
 
         /** Список чекбоксов; сверх [collapsedCount] прячется за аккордеон. */
@@ -177,8 +182,8 @@ class PersonalizationFilters @JvmOverloads constructor(
 
     private fun buildRange(section: Section.Range): LinearLayout {
         val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
-        val fromField = rangeField(section, section.from, isFrom = true)
-        val toField = rangeField(section, section.to, isFrom = false)
+        val fromField = rangeField(section, section.from, section.fromPlaceholder, isFrom = true)
+        val toField = rangeField(section, section.to, section.toPlaceholder, isFrom = false)
         val notify = {
             val from = fromField.text?.toString().orEmpty()
             val to = toField.text?.toString().orEmpty()
@@ -197,11 +202,17 @@ class PersonalizationFilters @JvmOverloads constructor(
         }
     }
 
-    private fun rangeField(section: Section.Range, value: CharSequence?, isFrom: Boolean): PersonalizationInputField =
+    private fun rangeField(
+        section: Section.Range,
+        value: CharSequence?,
+        hint: CharSequence?,
+        isFrom: Boolean
+    ): PersonalizationInputField =
         PersonalizationInputField(context).apply {
             size = PersonalizationInputField.Size.MD
             type = if (section.select) PersonalizationInputField.Type.SELECT else PersonalizationInputField.Type.INPUT
             text = value
+            placeholder = hint
             onSelectClick = { onRangeSelectClick?.invoke(section.id, isFrom) }
         }
 
@@ -246,7 +257,10 @@ class PersonalizationFilters @JvmOverloads constructor(
     private fun updateRange(sectionId: String, from: String, to: String) {
         sections = sections.map { section ->
             if (section.id != sectionId || section !is Section.Range) return@map section
-            Section.Range(section.id, section.title, section.fromLabel, section.toLabel, from, to, section.select)
+            Section.Range(
+                section.id, section.title, section.fromLabel, section.toLabel, from, to, section.select,
+                section.fromPlaceholder, section.toPlaceholder
+            )
         }
     }
 
