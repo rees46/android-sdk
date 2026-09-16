@@ -137,8 +137,21 @@ class PersonalizationProductCard @JvmOverloads constructor(
 
     var onAction: (() -> Unit)? = null
 
-    /** @param value уже отформатированная оценка: в макете «4,7» с запятой. */
-    fun setRating(value: CharSequence, reviews: Int) = rating.set(value, reviews)
+    /** Нажатие на карточку целиком (не на кнопку) — открыть товар. */
+    var onClick: (() -> Unit)? = null
+        set(value) {
+            field = value
+            isClickable = value != null
+        }
+
+    /**
+     * @param value уже отформатированная оценка: в макете «4,7» с запятой;
+     *   `null` — товар без оценки, ряд рейтинга прячется.
+     */
+    fun setRating(value: CharSequence?, reviews: Int) {
+        rating.isVisible = value != null
+        if (value != null) rating.set(value, reviews)
+    }
 
     init {
         imageBadge.size = PersonalizationBadge.Size.SM
@@ -169,6 +182,8 @@ class PersonalizationProductCard @JvmOverloads constructor(
         button.buttonView = PersonalizationButton.ButtonView.PRIMARY
         button.isVisible = false
         button.setOnClickListener { onAction?.invoke() }
+        setOnClickListener { onClick?.invoke() }
+        isClickable = false
 
         imageFrame.addView(image, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         imageFrame.addView(imageBadge, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END))

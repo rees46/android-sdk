@@ -85,6 +85,14 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             grid.onProductAction = value
         }
 
+    /** Нажатие на карточку — открыть товар. */
+    var onProductClick: ((PersonalizationProduct) -> Unit)? = null
+        set(value) {
+            field = value
+            carousel.onProductClick = value
+            grid.onProductClick = value
+        }
+
     /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
     var imageAspect: PersonalizationProductImage.Aspect = PersonalizationProductImage.Aspect.SQUARE
         set(value) {

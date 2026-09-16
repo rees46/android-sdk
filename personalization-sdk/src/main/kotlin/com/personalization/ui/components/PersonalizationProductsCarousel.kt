@@ -48,6 +48,13 @@ class PersonalizationProductsCarousel @JvmOverloads constructor(
             productsAdapter.onAction = value
         }
 
+    /** Нажатие на карточку — открыть товар. */
+    var onProductClick: ((PersonalizationProduct) -> Unit)?
+        get() = productsAdapter.onClick
+        set(value) {
+            productsAdapter.onClick = value
+        }
+
     /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
     var imageAspect: PersonalizationProductImage.Aspect
         get() = productsAdapter.imageAspect
@@ -104,6 +111,11 @@ internal class PersonalizationProductsAdapter(
         }
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)? = null
     var onAction: ((PersonalizationProduct) -> Unit)? = null
+    var onClick: ((PersonalizationProduct) -> Unit)? = null
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
     var imageAspect: PersonalizationProductImage.Aspect = PersonalizationProductImage.Aspect.SQUARE
         set(value) {
             field = value
@@ -139,8 +151,9 @@ internal class PersonalizationProductsAdapter(
             oldPrice = product.oldPrice
             discount = product.discount
             actionText = product.actionText
-            product.ratingValue?.let { setRating(it, product.reviews) }
+            setRating(product.ratingValue, product.reviews)
             onAction = { this@PersonalizationProductsAdapter.onAction?.invoke(product) }
+            onClick = this@PersonalizationProductsAdapter.onClick?.let { click -> { click(product) } }
             image.imageView.setImageDrawable(null)
             imageLoader?.invoke(image.imageView, product)
         }

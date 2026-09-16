@@ -132,11 +132,11 @@ class PersonalizationInstantSearch @JvmOverloads constructor(
             applySectionVisibility()
         }
 
-    /** Показывать ли картинки у строк: в макете есть оба варианта. */
+    /** Показывать ли картинки у строк: в макете есть оба варианта. Строка без картинки идёт без плейсхолдера. */
     var showImages: Boolean = false
         set(value) {
             field = value
-            rows().forEach { it.showImage = value }
+            rows().forEach { it.showImage = value && (it.tag as? Suggestion)?.imageUrl != null }
         }
 
     var imageLoader: ((ImageView, Suggestion) -> Unit)? = null
@@ -285,14 +285,16 @@ class PersonalizationInstantSearch @JvmOverloads constructor(
         val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
         val highlight = input.text?.toString().orEmpty()
         items.forEachIndexed { index, item ->
+            val withImage = showImages && item.imageUrl != null
             val row = PersonalizationSuggestionRow(context).apply {
+                tag = item
                 this.kind = kind
                 title = item.title
                 subtitle = item.subtitle
-                showImage = showImages
+                showImage = withImage
                 this.highlight = highlight
                 setOnClickListener { onClick(item) }
-                if (showImages) imageLoader?.invoke(imageView, item)
+                if (withImage) imageLoader?.invoke(imageView, item)
             }
             column.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
                 if (index > 0) topMargin = gap

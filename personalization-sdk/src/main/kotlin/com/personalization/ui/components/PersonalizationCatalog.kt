@@ -72,6 +72,13 @@ class PersonalizationCatalog @JvmOverloads constructor(
             grid.onProductAction = value
         }
 
+    /** Нажатие на карточку — открыть товар. */
+    var onProductClick: ((PersonalizationProduct) -> Unit)?
+        get() = grid.onProductClick
+        set(value) {
+            grid.onProductClick = value
+        }
+
     /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
     var imageAspect: PersonalizationProductImage.Aspect
         get() = grid.imageAspect

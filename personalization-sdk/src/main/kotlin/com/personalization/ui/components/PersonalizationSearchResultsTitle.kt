@@ -65,6 +65,19 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
     var onFilters: (() -> Unit)? = null
     var onSort: (() -> Unit)? = null
 
+    /** Кнопки фильтров и сортировки; в макете они есть всегда, но виджет может их убрать. */
+    var showFiltersButton: Boolean = true
+        set(value) {
+            field = value
+            filtersButton.isVisible = value
+        }
+
+    var showSortButton: Boolean = true
+        set(value) {
+            field = value
+            sortButton.isVisible = value
+        }
+
     init {
         orientation = VERTICAL
 
