@@ -246,6 +246,7 @@ private fun BlocksShowcase() {
         Exhibit("Instant Search — typing, matches in bold") { ctx -> ctx.instantSearch(typing = true, images = false) }
         Exhibit("Instant Search — with images") { ctx -> ctx.instantSearch(typing = false, images = true) }
         Exhibit("Catalog — header, grid ⇄ list, count, load more") { ctx -> ctx.catalog() }
+        Exhibit("Catalog — empty state") { ctx -> ctx.catalogEmpty() }
         Exhibit("Filters — range, checkbox lists with show more, reset / apply") { ctx -> ctx.filters() }
     }
 }
@@ -344,10 +345,10 @@ private fun Context.icon(res: Int): ImageView = AppCompatImageView(this).apply {
     layoutParams = LinearLayout.LayoutParams(dp(24), dp(24))
 }
 
-private fun Context.searchResultsTitle(): PersonalizationSearchResultsTitle =
+private fun Context.searchResultsTitle(count: Int = 128): PersonalizationSearchResultsTitle =
     PersonalizationSearchResultsTitle(this).apply {
         text = "Sneakers"
-        setResults("Found", 128, "products")
+        setResults("Found", count, "products")
         setFilters(listOf(
             PersonalizationSearchResultsTitle.Filter("Nike") {},
             PersonalizationSearchResultsTitle.Filter("Size 42") {}
@@ -484,6 +485,14 @@ private fun Context.catalog(): PersonalizationCatalog {
     render()
     return catalog
 }
+
+/** Empty results: the same header, the empty state in place of the grid, nothing below. */
+private fun Context.catalogEmpty(): PersonalizationCatalog =
+    PersonalizationCatalog(this).apply {
+        setHeader(searchResultsTitle(count = 0))
+        emptyText = "No results for your request."
+        products = emptyList()
+    }
 
 // --- Fixtures -----------------------------------------------------------------------------------
 
