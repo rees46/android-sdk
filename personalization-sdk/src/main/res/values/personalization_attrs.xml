@@ -71,4 +71,12 @@
     <attr name="personalizationFontFamily" format="reference|string" />
     <attr name="personalizationFontFamilyEmphasized" format="reference|string" />
 
+    <!-- виджеты с данными SDK: магазин при нескольких зарегистрированных, как у StoriesView -->
+    <declare-styleable name="PersonalizationInstantSearchField">
+        <attr name="shop_id" />
+    </declare-styleable>
+    <declare-styleable name="PersonalizationSearchResultsScreen">
+        <attr name="shop_id" />
+    </declare-styleable>
+
 </resources>
