@@ -20,6 +20,10 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * переключателем вида. Поэтому заголовок здесь — слот, а не вариант.
  * Три нижних элемента в макете скрываемые (showLoader, showCount, showLoadMore).
  * Шаг блока 12.
+ *
+ * Пустая выдача — страница SearchResultsScreen, Search Results/Empty State (319:7743):
+ * заголовок тот же, вместо плитки [PersonalizationEmptyState]. Показывается, когда
+ * задан [emptyText] и товаров нет.
  */
 @InternalPersonalizationUiApi
 class PersonalizationCatalog @JvmOverloads constructor(
@@ -29,6 +33,7 @@ class PersonalizationCatalog @JvmOverloads constructor(
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
     val grid = PersonalizationProductsGrid(context)
+    private val emptyState = PersonalizationEmptyState(context)
     private val loader = PersonalizationLoader(context)
     private val count = PersonalizationCount(context)
     private val loadMoreButton = PersonalizationButton(context)
@@ -44,6 +49,15 @@ class PersonalizationCatalog @JvmOverloads constructor(
         get() = grid.products
         set(value) {
             grid.products = value
+            applyEmpty()
+        }
+
+    /** Текст пустой выдачи. `null` — без пустого состояния, плитка остаётся на месте. */
+    var emptyText: CharSequence? = null
+        set(value) {
+            field = value
+            emptyState.text = value
+            applyEmpty()
         }
 
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)?
@@ -86,6 +100,8 @@ class PersonalizationCatalog @JvmOverloads constructor(
         val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
 
         addView(grid, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        emptyState.isVisible = false
+        addView(emptyState, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         // Лоадер в макете — по центру строки; на всю ширину он бы прижал кольцо к левому краю.
         loader.isVisible = false
@@ -109,10 +125,16 @@ class PersonalizationCatalog @JvmOverloads constructor(
     fun setHeader(view: View?) {
         headerView?.let(::removeView)
         headerView = view
-        view?.let {
-            addView(it, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-            (grid.layoutParams as LayoutParams).topMargin = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
-        } ?: run { (grid.layoutParams as LayoutParams).topMargin = 0 }
+        view?.let { addView(it, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)) }
+        val gap = if (view == null) 0 else resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
+        (grid.layoutParams as LayoutParams).topMargin = gap
+        (emptyState.layoutParams as LayoutParams).topMargin = gap
+    }
+
+    private fun applyEmpty() {
+        val empty = grid.products.isEmpty() && !emptyText.isNullOrEmpty()
+        emptyState.isVisible = empty
+        grid.isVisible = !empty
     }
 
     /** Счётчик «показано N из M». Слова — параметры. `prefix == null` — скрыть. */
