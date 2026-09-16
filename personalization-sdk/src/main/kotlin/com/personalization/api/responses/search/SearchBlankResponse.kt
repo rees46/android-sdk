@@ -15,5 +15,8 @@ data class SearchBlankResponse(
     @SerializedName("popular_brands")
     val popularBrands: List<PopularItem>?,
     @SerializedName("popular_links")
-    val popularLinks: List<PopularItem>?
+    val popularLinks: List<PopularItem>?,
+    /** The user's latest search phrases as the server remembers them. */
+    @SerializedName("last_queries")
+    val lastQueries: List<Suggest>? = null
 )

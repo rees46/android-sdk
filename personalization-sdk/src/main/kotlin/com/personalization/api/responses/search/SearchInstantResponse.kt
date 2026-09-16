@@ -14,7 +14,7 @@ data class SearchInstantResponse(
     val locations: List<Location> = emptyList(),
     @SerializedName("products_total")
     val productsTotal: Int,
-    val queries: List<Any>,
+    val queries: List<Query>,
     @SerializedName("requests_count")
     val requestsCount: Int,
     @SerializedName("search_query")

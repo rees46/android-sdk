@@ -44,5 +44,15 @@ data class Product(
     @SerializedName("url")
     val url: String,
     @SerializedName("url_handle")
-    val urlHandle: String
+    val urlHandle: String,
+    @SerializedName("oldprice")
+    val oldPrice: Double? = null,
+    @SerializedName("oldprice_formatted")
+    val oldPriceFormatted: String? = null,
+    @SerializedName("discount")
+    val discount: Int? = null,
+    @SerializedName("discount_formatted")
+    val discountFormatted: String? = null,
+    @SerializedName("is_new")
+    val isNew: Boolean? = null
 )

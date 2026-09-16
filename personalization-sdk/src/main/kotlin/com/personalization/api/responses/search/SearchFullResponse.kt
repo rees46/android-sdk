@@ -22,5 +22,10 @@ data class SearchFullResponse(
     @SerializedName("requests_count")
     val requestsCount: Int,
     @SerializedName("search_query")
-    val searchQuery: String
+    val searchQuery: String,
+    /** Facets keyed by name, e.g. `merchant`, `material`. Absent when the shop has none. */
+    @SerializedName("filters")
+    val filters: Map<String, SearchFilter>? = null,
+    @SerializedName("industrial_filters")
+    val industrialFilters: IndustrialFilters? = null
 )
