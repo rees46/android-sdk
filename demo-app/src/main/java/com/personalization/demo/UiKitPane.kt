@@ -498,10 +498,12 @@ private fun Context.instantSearch(typing: Boolean, images: Boolean): Personaliza
             clearText = "Clear"
             moreText = "more"
             setRecentSearches(listOf("mens winter boots", "kids shoes", "bag", "accessories", "black boots"))
+            // Categories come without pictures: the search API returns none for them, so the
+            // "with images" state only illustrates product rows.
             setCategories(listOf(
-                PersonalizationInstantSearch.Suggestion("c1", "Running shoes", "Shoes", DemoProducts.all[0].imageUrl),
-                PersonalizationInstantSearch.Suggestion("c2", "Running apparel", "Clothing", DemoProducts.all[1].imageUrl),
-                PersonalizationInstantSearch.Suggestion("c3", "Trail gear", "Outdoor", DemoProducts.all[2].imageUrl)
+                PersonalizationInstantSearch.Suggestion("c1", "Running shoes", "Shoes"),
+                PersonalizationInstantSearch.Suggestion("c2", "Running apparel", "Clothing"),
+                PersonalizationInstantSearch.Suggestion("c3", "Trail gear", "Outdoor")
             ))
             setProducts(DemoProducts.all.take(if (images) 3 else 5).map {
                 PersonalizationInstantSearch.Suggestion(it.id, it.name.toString(), it.price, it.imageUrl)
@@ -533,15 +535,20 @@ private fun Context.filters(): PersonalizationFilters =
     }
 
 /**
- * The catalogue as a host would wire it: the results title in the header slot drives the
- * grid/list switch, "load more" appends a page after a short simulated delay.
+ * The catalogue as a host would wire it: the category title (title + view switch, as on the
+ * CatalogGrid page) sits in the header slot and drives the grid/list switch, "load more"
+ * appends a page after a short simulated delay. The search results title with back, filters
+ * and sort belongs to the search flow — see the Search tab.
  */
 private fun Context.catalog(): PersonalizationCatalog {
     val catalog = PersonalizationCatalog(this)
-    val header = searchResultsTitle().apply {
-        onViewChanged = { index ->
-            catalog.view = if (index == 0) PersonalizationProductsGrid.View.GRID else PersonalizationProductsGrid.View.LIST
-        }
+    val header = PersonalizationTitle(this).apply {
+        text = "Sneakers"
+        setTrailing(buttonGroup(PersonalizationButtonGroup.Size.MD).apply {
+            onSelected = { index ->
+                catalog.view = if (index == 0) PersonalizationProductsGrid.View.GRID else PersonalizationProductsGrid.View.LIST
+            }
+        })
     }
     var shown = DemoProducts.all.take(4)
     fun render() {
@@ -604,7 +611,8 @@ private object DemoProducts {
         Glide.with(view).load(product.imageUrl).into(view)
     }
 
-    private fun image(seed: String) = "https://picsum.photos/seed/$seed/600/600"
+    /** Photos ship with the app: the showcase must not depend on the network. */
+    private fun image(seed: String) = "file:///android_asset/uikit/$seed.jpg"
 
     val all = listOf(
         PersonalizationProduct("1", "Air Zoom Pegasus 41 running shoes", "\$140", image("pegasus"), "Nike", "4.7", 128, "\$165", "-15%", "Add to cart"),
