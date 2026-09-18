@@ -86,10 +86,15 @@ class PersonalizationCatalog @JvmOverloads constructor(
             grid.imageAspect = value
         }
 
+    /**
+     * Во фреймах с лоадером (296:3544, 299:6606) счётчика и кнопки нет — на время
+     * загрузки лоадер встаёт на их место.
+     */
     var isLoading: Boolean = false
         set(value) {
             field = value
             loader.isVisible = value
+            applyFooter()
         }
 
     /** Подпись кнопки «загрузить ещё». `null` — без кнопки. */
@@ -97,8 +102,10 @@ class PersonalizationCatalog @JvmOverloads constructor(
         set(value) {
             field = value
             loadMoreButton.text = value
-            loadMoreButton.isVisible = !value.isNullOrEmpty()
+            applyFooter()
         }
+
+    private var hasCount = false
 
     var onLoadMore: (() -> Unit)? = null
 
@@ -146,7 +153,13 @@ class PersonalizationCatalog @JvmOverloads constructor(
 
     /** Счётчик «показано N из M». Слова — параметры. `prefix == null` — скрыть. */
     fun setCount(prefix: CharSequence?, shown: Int, separator: CharSequence, total: Int) {
-        count.isVisible = prefix != null
+        hasCount = prefix != null
         if (prefix != null) count.set(prefix, shown, separator, total)
+        applyFooter()
+    }
+
+    private fun applyFooter() {
+        count.isVisible = hasCount && !isLoading
+        loadMoreButton.isVisible = !loadMoreText.isNullOrEmpty() && !isLoading
     }
 }

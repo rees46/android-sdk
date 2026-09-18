@@ -2,6 +2,7 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.graphics.Paint
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -104,6 +105,19 @@ class PersonalizationProductCard @JvmOverloads constructor(
             nameView.text = value
         }
 
+    /**
+     * Сколько строк резервировать под название (1 или 2). Карусель и плитка собраны на
+     * RecyclerView, который не выравнивает высоту соседей по ряду, поэтому списки кита
+     * резервируют две строки — цена и кнопка у соседних карточек остаются на одной линии,
+     * даже когда одно название ушло на вторую строку. Одиночная карточка держит одну.
+     * В макете такой случай не нарисован: там названия в одну строку.
+     */
+    var nameMinLines: Int = 1
+        set(value) {
+            field = value.coerceIn(1, NAME_MAX_LINES)
+            nameView.minLines = field
+        }
+
     var price: CharSequence?
         get() = priceView.text
         set(value) {
@@ -167,6 +181,8 @@ class PersonalizationProductCard @JvmOverloads constructor(
         brandView.isVisible = false
 
         nameView.includeFontPadding = false
+        nameView.maxLines = NAME_MAX_LINES
+        nameView.ellipsize = TextUtils.TruncateAt.END
         nameView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_primary))
 
         priceView.includeFontPadding = false
@@ -312,6 +328,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
     private fun pxToSp(px: Float): Float = px / resources.displayMetrics.scaledDensity
 
     private companion object {
+        const val NAME_MAX_LINES = 2
         const val CAROUSEL_WIDTH_DP = 220
         const val LIST_IMAGE_DP = 120
     }

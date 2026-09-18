@@ -127,6 +127,8 @@ internal class PersonalizationProductsAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val card = PersonalizationProductCard(parent.context).apply {
             this.type = this@PersonalizationProductsAdapter.type
+            // Соседи по ряду не выравниваются RecyclerView — см. nameMinLines.
+            if (this.type != PersonalizationProductCard.Type.LIST) nameMinLines = 2
             layoutParams = ViewGroup.LayoutParams(
                 if (this@PersonalizationProductsAdapter.type == PersonalizationProductCard.Type.CAROUSEL) {
                     ViewGroup.LayoutParams.WRAP_CONTENT
