@@ -318,6 +318,22 @@ private fun BlocksShowcase() {
         Exhibit("In App Popup — icon, no buttons (cross only)") { ctx ->
             ctx.inAppPopup(PersonalizationInAppPopup.ContentView.ICON, actionText = null, closeText = null)
         }
+        Exhibit("In App Popup, fullscreen — image") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.IMAGE, fullscreen = true)
+        }
+        Exhibit("In App Popup, fullscreen — image background, both buttons") { ctx ->
+            ctx.inAppPopup(
+                PersonalizationInAppPopup.ContentView.IMAGE_BACKGROUND,
+                closeText = "Not now",
+                fullscreen = true
+            )
+        }
+        Exhibit("In App Popup, fullscreen — text only") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.TEXT, fullscreen = true)
+        }
+        Exhibit("In App Popup, fullscreen — icon") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.ICON, fullscreen = true)
+        }
     }
 }
 
@@ -329,9 +345,19 @@ private fun BlocksShowcase() {
 private fun Context.inAppPopup(
     view: PersonalizationInAppPopup.ContentView,
     actionText: String? = "Action",
-    closeText: String? = null
+    closeText: String? = null,
+    fullscreen: Boolean = false
 ): PersonalizationInAppPopup = PersonalizationInAppPopup(this).apply {
-    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(460))
+    // Полноэкранному нужно больше места: отступы и кегли там на ступень крупнее.
+    layoutParams = LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp(if (fullscreen) 620 else 460)
+    )
+    presentation = if (fullscreen) {
+        PersonalizationInAppPopup.Presentation.FULLSCREEN
+    } else {
+        PersonalizationInAppPopup.Presentation.MODAL
+    }
     contentView = view
     title = "Pizza ipsum dolor meat lovers"
     text = "Cheese ranch Philly roll pepperoni hand thin garlic bacon."
