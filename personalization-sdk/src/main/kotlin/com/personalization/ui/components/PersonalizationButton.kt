@@ -113,6 +113,17 @@ class PersonalizationButton @JvmOverloads constructor(
 
     /** Иконка перед текстом. Без текста кнопка становится кнопкой-иконкой. */
     @DrawableRes
+    /**
+     * Кнопка стоит поверх тёмного (картинки-фона). В макете такие контролы берут
+     * инвертированную палитру: заливка Secondary белая 5%, подпись и иконка светлые.
+     * На PRIMARY не влияет — она и так светлая по тексту.
+     */
+    var onDark: Boolean = false
+        set(value) {
+            field = value
+            applyColors()
+        }
+
     var iconStart: Int? = null
         set(value) {
             field = value
@@ -181,7 +192,9 @@ class PersonalizationButton @JvmOverloads constructor(
         val backgroundDefault = when (buttonView) {
             // Кнопка привязана к Brand/Primary, а не к Button/Primary — так в макете.
             ButtonView.PRIMARY -> R.color.personalization_brand_primary
-            ButtonView.SECONDARY -> R.color.personalization_button_secondary
+            ButtonView.SECONDARY ->
+                if (onDark) R.color.personalization_button_secondary_on_dark
+                else R.color.personalization_button_secondary
             ButtonView.GHOST -> R.color.personalization_background_transparent
         }
         val backgroundPressed = when (buttonView) {
@@ -202,12 +215,12 @@ class PersonalizationButton @JvmOverloads constructor(
             addState(intArrayOf(), fill(backgroundDefault, radius))
         }
 
-        val foregroundDefault = if (buttonView == ButtonView.PRIMARY) {
+        val foregroundDefault = if (buttonView == ButtonView.PRIMARY || onDark) {
             R.color.personalization_text_light_primary
         } else {
             R.color.personalization_text_primary
         }
-        val foregroundDisabled = if (buttonView == ButtonView.PRIMARY) {
+        val foregroundDisabled = if (buttonView == ButtonView.PRIMARY || onDark) {
             R.color.personalization_text_light_hint
         } else {
             R.color.personalization_text_hint

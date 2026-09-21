@@ -20,6 +20,10 @@
     <color name="personalization_background_primary">#FF007DF2</color>
     <color name="personalization_background_generic">#FFFAFAFA</color>
     <color name="personalization_background_card">#FFF2F2F2</color>
+    <!-- Поверхности поверх карточки. В светлой все три белые, различаются только
+         в тёмной: Card #1A1A1A, Float #262626, Modal #333333. -->
+    <color name="personalization_background_float">#FFFFFFFF</color>
+    <color name="personalization_background_modal">#FFFFFFFF</color>
     <color name="personalization_background_input">#FFF2F2F2</color>
     <color name="personalization_background_transparent">#00FFFFFF</color>
     <color name="personalization_background_input_disabled">#0D000000</color>
@@ -28,6 +32,7 @@
     <color name="personalization_button_primary">#FF007DF2</color>
     <color name="personalization_button_primary_focus">#FF004BC0</color>
     <color name="personalization_button_secondary">#0D000000</color>
+    <color name="personalization_button_secondary_on_dark">#0DFFFFFF</color>
     <color name="personalization_button_secondary_focus">#1A000000</color>
     <color name="personalization_button_primary_disabled">#FF32AFFF</color>
     <color name="personalization_button_secondary_disabled">#0D000000</color>

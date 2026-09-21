@@ -20,6 +20,8 @@
     <color name="personalization_background_primary">#FF007DF2</color>
     <color name="personalization_background_generic">#FF141414</color>
     <color name="personalization_background_card">#FF0D0D0D</color>
+    <color name="personalization_background_float">#FF262626</color>
+    <color name="personalization_background_modal">#FF333333</color>
     <color name="personalization_background_input">#FF141414</color>
     <color name="personalization_background_transparent">#00FFFFFF</color>
     <color name="personalization_background_input_disabled">#0DFFFFFF</color>
@@ -28,6 +30,7 @@
     <color name="personalization_button_primary">#FF007DF2</color>
     <color name="personalization_button_primary_focus">#FF32AFFF</color>
     <color name="personalization_button_secondary">#0DFFFFFF</color>
+    <color name="personalization_button_secondary_on_dark">#0DFFFFFF</color>
     <color name="personalization_button_secondary_focus">#1AFFFFFF</color>
     <color name="personalization_button_primary_disabled">#FF32AFFF</color>
     <color name="personalization_button_secondary_disabled">#0DFFFFFF</color>
