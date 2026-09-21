@@ -50,6 +50,7 @@ import com.personalization.ui.components.PersonalizationDots
 import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationFavoritesBadge
 import com.personalization.ui.components.PersonalizationFilters
+import com.personalization.ui.components.PersonalizationInAppPopup
 import com.personalization.ui.components.PersonalizationInstantSearch
 import com.personalization.ui.components.PersonalizationInputField
 import com.personalization.ui.components.PersonalizationLink
@@ -305,7 +306,41 @@ private fun BlocksShowcase() {
         Exhibit("Catalog — header, grid ⇄ list, count, load more") { ctx -> ctx.catalog() }
         Exhibit("Catalog — empty state") { ctx -> ctx.catalogEmpty() }
         Exhibit("Filters — range, checkbox lists with show more, reset / apply") { ctx -> ctx.filters() }
+        Exhibit("In App Popup — image, one button") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.IMAGE, closeText = null)
+        }
+        Exhibit("In App Popup — image background, both buttons") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.IMAGE_BACKGROUND, closeText = "Not now")
+        }
+        Exhibit("In App Popup — text only, close button with text") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.TEXT, closeText = "Maybe later")
+        }
+        Exhibit("In App Popup — icon, no buttons (cross only)") { ctx ->
+            ctx.inAppPopup(PersonalizationInAppPopup.ContentView.ICON, actionText = null, closeText = null)
+        }
     }
+}
+
+/**
+ * The popup as the SDK will hand it over: the host loads the image and wires the two callbacks.
+ * Fixed height here only because the showcase is a scrolling list — on screen the popup is sized
+ * by whoever presents it.
+ */
+private fun Context.inAppPopup(
+    view: PersonalizationInAppPopup.ContentView,
+    actionText: String? = "Action",
+    closeText: String? = null
+): PersonalizationInAppPopup = PersonalizationInAppPopup(this).apply {
+    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(460))
+    contentView = view
+    title = "Pizza ipsum dolor meat lovers"
+    text = "Cheese ranch Philly roll pepperoni hand thin garlic bacon."
+    this.actionText = actionText
+    this.closeText = closeText
+    icon = R.drawable.ic_tab_ui_kit
+    imageLoader = { image -> Glide.with(image).load(DemoProducts.popupImage).into(image) }
+    onAction = { toast("Popup action") }
+    onClose = { toast("Popup closed") }
 }
 
 /**
@@ -663,6 +698,9 @@ private object DemoProducts {
 
     /** Photos ship with the app: the showcase must not depend on the network. */
     private fun image(seed: String) = "file:///android_asset/uikit/$seed.jpg"
+
+    /** Stand-in artwork for the in-app popup exhibits. */
+    val popupImage = image("jacket")
 
     val all = listOf(
         PersonalizationProduct("1", "Air Zoom Pegasus 41 running shoes", "\$140", image("pegasus"), "Nike", "4.7", 128, "\$165", "-15%", "Add to cart"),
