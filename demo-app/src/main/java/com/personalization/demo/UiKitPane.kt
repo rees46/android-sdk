@@ -9,9 +9,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,10 +23,12 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Tab
 import androidx.compose.material.TabRow
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -82,6 +86,12 @@ fun UiKitPane(storiesCode: String, shopId: String) {
     val tabs = listOf("Components", "Blocks", "Search", "Stories")
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            AppearanceSwitch()
+        }
         TabRow(
             selectedTabIndex = tab,
             backgroundColor = MaterialTheme.colors.surface,
@@ -98,6 +108,46 @@ fun UiKitPane(storiesCode: String, shopId: String) {
             else -> ComposeStoriesPane(code = storiesCode, shopId = shopId)
         }
     }
+}
+
+/**
+ * Appearance switch: cycles the app between following the system, light and dark, so the kit's dark
+ * set can be checked without leaving for the system settings.
+ *
+ * [AppCompatDelegate.setDefaultNightMode] recreates the activity, and that is the point — it is what
+ * makes the kit's views re-resolve their colours out of `values/` or `values-night/`. The bottom tab
+ * survives that because [MainActivity] restores the selected one.
+ *
+ * The mode is held in state seeded from the delegate, not read from it on every composition: picking
+ * the mode the device is already in (Light under a light system) changes no configuration and so
+ * recreates nothing, and the label would have stayed on the previous value. `remember` rather than
+ * `rememberSaveable` — after a recreate the fresh composition seeds itself from the delegate, which
+ * is by then the one holding the truth.
+ */
+@Composable
+private fun AppearanceSwitch() {
+    var mode by remember { mutableStateOf(AppCompatDelegate.getDefaultNightMode()) }
+    TextButton(
+        onClick = {
+            mode = nextNightMode(mode)
+            AppCompatDelegate.setDefaultNightMode(mode)
+        }
+    ) {
+        Text(nightModeLabel(mode))
+    }
+}
+
+private fun nextNightMode(mode: Int): Int = when (mode) {
+    AppCompatDelegate.MODE_NIGHT_NO -> AppCompatDelegate.MODE_NIGHT_YES
+    AppCompatDelegate.MODE_NIGHT_YES -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+    else -> AppCompatDelegate.MODE_NIGHT_NO
+}
+
+/** Label of the switch: the mode it is in now, not the one it would go to. */
+private fun nightModeLabel(mode: Int): String = when (mode) {
+    AppCompatDelegate.MODE_NIGHT_NO -> "Light"
+    AppCompatDelegate.MODE_NIGHT_YES -> "Dark"
+    else -> "Auto"
 }
 
 @Composable

@@ -53,8 +53,12 @@ class MainActivity : AppCompatActivity() {
     /** Most recent OnClickListener callbacks from the "Legacy UI" tab, newest first. */
     private val legacyStoriesEvents = mutableListOf<String>()
 
+    /** Bottom tab currently shown, kept so it survives the activity being recreated. */
+    private var selectedTabId = R.id.tabApi
+
     private companion object {
         const val MAX_LOGGED_STORIES_EVENTS = 20
+        const val STATE_SELECTED_TAB = "selectedTabId"
     }
 
     private object DemoTrackingNamespaceConstants {
@@ -122,6 +126,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        selectedTabId = savedInstanceState?.getInt(STATE_SELECTED_TAB, R.id.tabApi) ?: R.id.tabApi
         setContentView(R.layout.activity_main)
 
         // Initialize Firebase if not already initialized
@@ -1062,6 +1067,7 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener { item ->
+            selectedTabId = item.itemId
             apiContent.visibility = if (item.itemId == R.id.tabApi) View.VISIBLE else View.GONE
             uiKitContent.visibility = if (item.itemId == R.id.tabUiKit) View.VISIBLE else View.GONE
             legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
@@ -1070,8 +1076,15 @@ class MainActivity : AppCompatActivity() {
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible
-        // pane cannot drift apart (including after the activity is recreated).
-        bottomNav.selectedItemId = R.id.tabApi
+        // pane cannot drift apart (including after the activity is recreated). The appearance
+        // switch on the UI Kit pane flips the night mode, which recreates the activity — come back
+        // to the tab the user was on rather than dropping them on the first one.
+        bottomNav.selectedItemId = selectedTabId
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(STATE_SELECTED_TAB, selectedTabId)
     }
 
     private fun appendLegacyStoriesLog(target: TextView, message: String) {
