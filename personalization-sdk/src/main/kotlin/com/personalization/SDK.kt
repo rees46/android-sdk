@@ -26,6 +26,7 @@ import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
@@ -251,6 +252,9 @@ open class SDK {
         this.context = context
         TAG = tag
 
+        // Before the init request goes out: its response may already carry a popup.
+        ForegroundActivity.install(context)
+
         onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
 
         // A host that leaves preferencesKey at its default gets a per-shop partition instead of the
@@ -332,6 +336,8 @@ open class SDK {
         storiesView.attach(this)
     }
 
+    @Deprecated("Not needed any more: popups are shown in the activity on screen.")
+    @Suppress("DEPRECATION")
     fun initializeFragmentManager(fragmentManager: FragmentManager) {
         inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
     }

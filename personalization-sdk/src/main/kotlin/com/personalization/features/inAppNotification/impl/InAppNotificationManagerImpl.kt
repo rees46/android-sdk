@@ -12,6 +12,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
 import com.personalization.SDK
@@ -33,6 +34,7 @@ import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.sdk.data.models.dto.popUp.Position
 import com.personalization.ui.click.NotificationClickListener
+import java.lang.ref.WeakReference
 import javax.inject.Inject
 
 class InAppNotificationManagerImpl @Inject constructor(
@@ -41,12 +43,14 @@ class InAppNotificationManagerImpl @Inject constructor(
     private val trackEventManager: Lazy<TrackEventManager>
 ) : InAppNotificationManager {
 
-    private lateinit var fragmentManager: FragmentManager
+    // Weak: the manager belongs to an activity, and holding it would outlive that activity.
+    private var fragmentManager: WeakReference<FragmentManager>? = null
     private val popupShownFlags: MutableMap<Int, Long> = mutableMapOf()
     private val handler: Handler = Handler(Looper.getMainLooper())
 
+    @Deprecated("Not needed any more: popups are shown in the activity on screen.")
     override fun initFragmentManager(fragmentManager: FragmentManager) {
-        this.fragmentManager = fragmentManager
+        this.fragmentManager = WeakReference(fragmentManager)
     }
 
     override fun shopPopUp(popupDto: PopupDto) {
@@ -67,11 +71,15 @@ class InAppNotificationManagerImpl @Inject constructor(
             }
         }
 
+        // Whatever did not reach the screen is neither remembered nor reported as shown.
+        val target = defaultTarget()
+        if (target == null) {
+            SDK.warn("Popup ${popupDto.id} was not shown: no activity on screen to show it in")
+            return
+        }
         try {
-            showDialog(extractDialogData(popupDto))
+            showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
-            // No FragmentManager yet, or the activity has already saved its state. Nothing reached
-            // the screen, so the popup is neither remembered nor reported as shown.
             SDK.error("Popup ${popupDto.id} was not shown: ${exception.message}", exception)
             return
         }
@@ -120,53 +128,30 @@ class InAppNotificationManagerImpl @Inject constructor(
         )
     }
 
-    private fun showDialog(dialogData: DialogDataDto) {
-        when (dialogData.position) {
-            Position.CENTERED -> showAlertDialog(
-                title = dialogData.title,
-                message = dialogData.message,
-                imageUrl = dialogData.imageUrl,
-                buttonConfirmColor = dialogData.buttonConfirmColor,
-                buttonDeclineColor = dialogData.buttonDeclineColor,
-                buttonConfirmText = dialogData.buttonConfirmText,
-                buttonDeclineText = dialogData.buttonDeclineText,
-                onConfirmClick = dialogData.onConfirmClick
-            )
-
-            Position.BOTTOM -> showBottomDialog(
-                title = dialogData.title,
-                message = dialogData.message,
-                imageUrl = dialogData.imageUrl,
-                buttonConfirmColor = dialogData.buttonConfirmColor,
-                buttonDeclineColor = dialogData.buttonDeclineColor,
-                buttonConfirmText = dialogData.buttonConfirmText,
-                buttonDeclineText = dialogData.buttonDeclineText,
-                onConfirmClick = dialogData.onConfirmClick
-            )
-
-            Position.TOP -> showTopDialog(
-                title = dialogData.title,
-                message = dialogData.message,
-                imageUrl = dialogData.imageUrl,
-                buttonConfirmColor = dialogData.buttonConfirmColor,
-                buttonDeclineColor = dialogData.buttonDeclineColor,
-                buttonConfirmText = dialogData.buttonConfirmText,
-                buttonDeclineText = dialogData.buttonDeclineText,
-                onConfirmClick = dialogData.onConfirmClick
-            )
-
-            else -> showFullScreenDialog(
-                title = dialogData.title,
-                message = dialogData.message,
-                imageUrl = dialogData.imageUrl,
-                buttonConfirmColor = dialogData.buttonConfirmColor,
-                buttonDeclineColor = dialogData.buttonDeclineColor,
-                buttonConfirmText = dialogData.buttonConfirmText,
-                buttonDeclineText = dialogData.buttonDeclineText,
-                onConfirmClick = dialogData.onConfirmClick
-            )
-        }
+    /**
+     * Where a dialog goes: the FragmentManager handed over through [initFragmentManager] while its
+     * activity can still take one, else the activity on screen.
+     */
+    private fun defaultTarget(): FragmentManager? {
+        fragmentManager?.get()?.takeIf { it.canShowDialog() }?.let { return it }
+        val activity = ForegroundActivity.get() as? FragmentActivity ?: return null
+        return activity.supportFragmentManager.takeIf { it.canShowDialog() }
     }
+
+    private fun FragmentManager.canShowDialog() = !isDestroyed && !isStateSaved
+
+    private fun showDialog(target: FragmentManager, dialogData: DialogDataDto) = showDialog(
+        position = dialogData.position,
+        title = dialogData.title,
+        message = dialogData.message,
+        imageUrl = dialogData.imageUrl,
+        buttonConfirmText = dialogData.buttonConfirmText,
+        buttonDeclineText = dialogData.buttonDeclineText,
+        buttonConfirmColor = dialogData.buttonConfirmColor,
+        buttonDeclineColor = dialogData.buttonDeclineColor,
+        onConfirmClick = dialogData.onConfirmClick,
+        target = target
+    )
 
     override fun showAlertDialog(
         title: String,
@@ -177,33 +162,10 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonConfirmColor: Int?,
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
-    ) {
-        val dialog = AlertDialog.newInstance(
-            title = title,
-            message = message,
-            imageUrl = imageUrl,
-            buttonConfirmColor = buttonConfirmColor,
-            buttonDeclineColor = buttonDeclineColor,
-            buttonConfirmText = buttonConfirmText,
-            buttonDeclineText = buttonDeclineText
-        )
-
-        dialog.listener = (
-            object : NotificationClickListener {
-                override fun onConfirmClick() {
-                    onConfirmClick?.invoke()
-                }
-                override fun onDeclineClick() {
-                    dialog.dismiss()
-                }
-            }
-        )
-
-        dialog.show(
-            /* manager = */ fragmentManager,
-            /* tag = */ ALERT_DIALOG_TAG
-        )
-    }
+    ) = showDialog(
+        Position.CENTERED, title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+        buttonConfirmColor, buttonDeclineColor, onConfirmClick, defaultTarget()
+    )
 
     override fun showFullScreenDialog(
         title: String,
@@ -214,33 +176,10 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonConfirmColor: Int?,
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
-    ) {
-        val dialog = FullScreenDialog.newInstance(
-            title = title,
-            message = message,
-            imageUrl = imageUrl,
-            buttonConfirmColor = buttonConfirmColor,
-            buttonDeclineColor = buttonDeclineColor,
-            buttonConfirmText = buttonConfirmText,
-            buttonDeclineText = buttonDeclineText,
-        )
-
-        dialog.listener = (
-            object : NotificationClickListener {
-                override fun onConfirmClick() {
-                    onConfirmClick?.invoke()
-                }
-                override fun onDeclineClick() {
-                    dialog.dismiss()
-                }
-            }
-        )
-
-        dialog.show(
-            /* manager = */ fragmentManager,
-            /* tag = */ FULL_SCREEN_DIALOG_TAG
-        )
-    }
+    ) = showDialog(
+        Position.UNKNOWN, title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+        buttonConfirmColor, buttonDeclineColor, onConfirmClick, defaultTarget()
+    )
 
     override fun showBottomDialog(
         title: String,
@@ -251,33 +190,10 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonConfirmColor: Int?,
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
-    ) {
-        val dialog = BottomDialog.newInstance(
-            title = title,
-            message = message,
-            imageUrl = imageUrl,
-            buttonConfirmColor = buttonConfirmColor,
-            buttonDeclineColor = buttonDeclineColor,
-            buttonConfirmText = buttonConfirmText,
-            buttonDeclineText = buttonDeclineText,
-        )
-
-        dialog.listener = (
-            object : NotificationClickListener {
-                override fun onConfirmClick() {
-                    onConfirmClick?.invoke()
-                }
-                override fun onDeclineClick() {
-                    dialog.dismiss()
-                }
-            }
-        )
-
-        dialog.show(
-            /* manager = */ fragmentManager,
-            /* tag = */ BOTTOM_DIALOG_TAG
-        )
-    }
+    ) = showDialog(
+        Position.BOTTOM, title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+        buttonConfirmColor, buttonDeclineColor, onConfirmClick, defaultTarget()
+    )
 
     override fun showTopDialog(
         title: String,
@@ -288,16 +204,50 @@ class InAppNotificationManagerImpl @Inject constructor(
         buttonConfirmColor: Int?,
         buttonDeclineColor: Int?,
         onConfirmClick: (() -> Unit)?
+    ) = showDialog(
+        Position.TOP, title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+        buttonConfirmColor, buttonDeclineColor, onConfirmClick, defaultTarget()
+    )
+
+    private fun showDialog(
+        position: Position,
+        title: String,
+        message: String,
+        imageUrl: String?,
+        buttonConfirmText: String?,
+        buttonDeclineText: String?,
+        buttonConfirmColor: Int?,
+        buttonDeclineColor: Int?,
+        onConfirmClick: (() -> Unit)?,
+        target: FragmentManager?
     ) {
-        val dialog = TopDialog.newInstance(
-            title = title,
-            message = message,
-            imageUrl = imageUrl,
-            buttonConfirmColor = buttonConfirmColor,
-            buttonDeclineColor = buttonDeclineColor,
-            buttonConfirmText = buttonConfirmText,
-            buttonDeclineText = buttonDeclineText,
-        )
+        if (target == null) {
+            SDK.warn("Dialog was not shown: no activity on screen to show it in")
+            return
+        }
+
+        val (dialog, tag) = when (position) {
+            Position.CENTERED -> AlertDialog.newInstance(
+                title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+                buttonConfirmColor, buttonDeclineColor
+            ) to ALERT_DIALOG_TAG
+
+            Position.BOTTOM -> BottomDialog.newInstance(
+                title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+                buttonConfirmColor, buttonDeclineColor
+            ) to BOTTOM_DIALOG_TAG
+
+            Position.TOP -> TopDialog.newInstance(
+                title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+                buttonConfirmColor, buttonDeclineColor
+            ) to TOP_DIALOG_TAG
+
+            // A popup with no position set comes out fullscreen.
+            else -> FullScreenDialog.newInstance(
+                title, message, imageUrl, buttonConfirmText, buttonDeclineText,
+                buttonConfirmColor, buttonDeclineColor
+            ) to FULL_SCREEN_DIALOG_TAG
+        }
 
         dialog.listener = (
             object : NotificationClickListener {
@@ -311,8 +261,8 @@ class InAppNotificationManagerImpl @Inject constructor(
         )
 
         dialog.show(
-            /* manager = */ fragmentManager,
-            /* tag = */ TOP_DIALOG_TAG
+            /* manager = */ target,
+            /* tag = */ tag
         )
     }
 

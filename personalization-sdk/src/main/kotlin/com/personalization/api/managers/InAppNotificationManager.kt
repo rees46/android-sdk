@@ -6,6 +6,7 @@ import com.personalization.sdk.data.models.dto.popUp.PopupDto
 
 interface InAppNotificationManager {
 
+    @Deprecated("Not needed any more: popups are shown in the activity on screen.")
     fun initFragmentManager(fragmentManager: FragmentManager)
 
     fun shopPopUp(popupDto: PopupDto)
