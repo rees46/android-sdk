@@ -81,7 +81,14 @@ class InAppNotificationManagerImpl @Inject constructor(
         val listener = presentation.listener
         val target = when {
             listener != null -> {
-                val activity = listener(popupDto)
+                // Host code, called from the SDK's own main-thread callback: a throw here would
+                // take the whole app down instead of just this popup.
+                val activity = try {
+                    listener(popupDto)
+                } catch (exception: Exception) {
+                    SDK.error("Popup ${popupDto.id} was not shown: the presentation listener failed", exception)
+                    return
+                }
                 if (activity == null) {
                     SDK.debug("Popup ${popupDto.id} was kept back by the presentation listener")
                     return

@@ -156,6 +156,17 @@ class InAppNotificationManagerImplTest {
         verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
     }
 
+    @Test
+    fun `a listener that throws costs the popup, not the app`() {
+        Robolectric.buildActivity(FragmentActivity::class.java).setup()
+        manager.presentation.listener = { error("host bug") }
+
+        manager.shopPopUp(popup())
+        idle() // would rethrow if the exception escaped the SDK's callback
+
+        verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
+    }
+
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
     private fun popup() = PopupDto(
