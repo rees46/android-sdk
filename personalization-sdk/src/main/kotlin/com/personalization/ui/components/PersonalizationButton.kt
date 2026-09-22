@@ -111,8 +111,6 @@ class PersonalizationButton @JvmOverloads constructor(
             applyStyle()
         }
 
-    /** Иконка перед текстом. Без текста кнопка становится кнопкой-иконкой. */
-    @DrawableRes
     /**
      * Кнопка стоит поверх тёмного (картинки-фона). В макете такие контролы берут
      * инвертированную палитру: заливка Secondary белая 5%, подпись и иконка светлые.
@@ -124,6 +122,8 @@ class PersonalizationButton @JvmOverloads constructor(
             applyColors()
         }
 
+    /** Иконка перед текстом. Без текста кнопка становится кнопкой-иконкой. */
+    @DrawableRes
     var iconStart: Int? = null
         set(value) {
             field = value
