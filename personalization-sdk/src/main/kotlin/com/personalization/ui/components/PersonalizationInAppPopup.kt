@@ -85,14 +85,14 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         get() = titleView.text
         set(value) {
             titleView.text = value
-            titleView.isVisible = !value.isNullOrEmpty()
+            applyVisibility()
         }
 
     var text: CharSequence?
         get() = textView.text
         set(value) {
             textView.text = value
-            textView.isVisible = !value.isNullOrEmpty()
+            applyVisibility()
         }
 
     /** Подпись кнопки действия. Пусто — кнопки нет. */
@@ -100,7 +100,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         set(value) {
             field = value
             actionButton.text = value
-            actionButton.isVisible = !value.isNullOrEmpty()
+            applyVisibility()
         }
 
     /** Подпись кнопки закрытия. Пусто — остаётся только крестик. */
@@ -108,7 +108,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         set(value) {
             field = value
             closeButton.text = value
-            closeButton.isVisible = !value.isNullOrEmpty()
+            applyVisibility()
         }
 
     /** Иконка вида [ContentView.ICON]. */
@@ -236,6 +236,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         }
 
         addView(column, LayoutParams(MATCH, MATCH))
+        applyVisibility()
 
         // Крестик всегда на месте — у видов без картинки тоже. У фона-картинки он уже
         // стоит в колонке, здесь накладкой поверх содержимого.
@@ -300,6 +301,32 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
             }
             elevation = if (modal) resources.getDimension(R.dimen.personalization_elevation_e3) else 0f
         }
+    }
+
+    /**
+     * Пустое — не показывается: заголовок, текст и обе кнопки. Сеттеры при создании не
+     * срабатывают, поэтому это же зовёт [rebuild] — иначе попап без подписей рисовал бы пустые
+     * кнопки. Отступ между соседями снимается, когда верхнего нет, а блок кнопок без единой
+     * кнопки прячется целиком — иначе его отступ оставлял бы пустую полосу снизу.
+     */
+    private fun applyVisibility() {
+        val hasTitle = !titleView.text.isNullOrEmpty()
+        val hasAction = !actionText.isNullOrEmpty()
+        val hasClose = !closeText.isNullOrEmpty()
+        titleView.isVisible = hasTitle
+        textView.isVisible = !textView.text.isNullOrEmpty()
+        textView.setTopMargin(if (hasTitle) gapText() else 0)
+        actionButton.isVisible = hasAction
+        closeButton.isVisible = hasClose
+        closeButton.setTopMargin(if (hasAction) gapText() else 0)
+        buttons.isVisible = hasAction || hasClose
+    }
+
+    private fun View.setTopMargin(value: Int) {
+        val params = layoutParams as? MarginLayoutParams ?: return
+        if (params.topMargin == value) return
+        params.topMargin = value
+        layoutParams = params
     }
 
     private fun gapText(): Int =
