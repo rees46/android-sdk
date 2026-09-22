@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
+import androidx.recyclerview.widget.RecyclerView
 import com.personalization.Cancellable
 import com.personalization.R
 import com.personalization.Rees46
@@ -215,7 +216,6 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
             scheduleReload()
         }
 
-    private val scroll = NestedScrollView(context)
     private val filtersScroll = NestedScrollView(context)
     private var sdk: SDK? = null
     private var instanceHandle: Cancellable? = null
@@ -249,14 +249,18 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         catalog.onProductClick = { card -> loaded.firstOrNull { it.id == card.id }?.let { productTapped(it) } }
         catalog.onProductAction = { card -> loaded.firstOrNull { it.id == card.id }?.let { onProductAction?.invoke(it) } }
         catalog.onLoadMore = { loadMore() }
-        scroll.isFillViewport = true
-        scroll.setBackgroundColor(background)
-        scroll.addView(catalog, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        scroll.setOnScrollChangeListener { v: NestedScrollView, _, scrollY, _, _ ->
-            val content = v.getChildAt(0) ?: return@setOnScrollChangeListener
-            if (infiniteScroll && scrollY + v.height >= content.height - v.height / 2) loadMore()
-        }
-        addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Каталог прокручивается сам, а не во внешнем скролле: там его лента раскладывалась бы
+        // целиком, и каждая догруженная страница оставалась бы в памяти всеми карточками.
+        catalog.setBackgroundColor(background)
+        catalog.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                // Следующая страница — за полэкрана до конца ленты.
+                val left = recyclerView.computeVerticalScrollRange() -
+                    recyclerView.computeVerticalScrollOffset() - recyclerView.computeVerticalScrollExtent()
+                if (infiniteScroll && dy > 0 && left <= recyclerView.height / 2) loadMore()
+            }
+        })
+        addView(catalog, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         title.onBack = { onBack?.invoke() }
         title.onViewChanged = { index ->
@@ -355,6 +359,8 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         total = 0
         page = 0
         renderProducts()
+        // Новая выдача — с начала ленты, а не с места, где пользователь бросил прошлую.
+        catalog.scrollToPosition(0)
         if (text.isEmpty()) return
         sdk.tracking.search(text)
         request(sdk, text, nextPage = 1)

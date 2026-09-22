@@ -1,12 +1,16 @@
 package com.personalization.ui.components
 
 import android.content.Context
+import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import androidx.core.view.isVisible
+import androidx.recyclerview.widget.ConcatAdapter
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.personalization.R
 import com.personalization.ui.InternalPersonalizationUiApi
 
@@ -24,32 +28,43 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Пустая выдача — страница SearchResultsScreen, Search Results/Empty State (319:7743):
  * заголовок тот же, вместо плитки [PersonalizationEmptyState]. Показывается, когда
  * задан [emptyText] и товаров нет.
+ *
+ * Весь каталог — одна лента [RecyclerView]: заголовок, карточки и нижние элементы —
+ * её строки. Поэтому его не вкладывают в прокрутку, он прокручивается сам: карточки
+ * создаются только под видимую часть и переиспользуются, сколько бы страниц ни
+ * догрузилось. Внутри чужой вертикальной прокрутки (высота по содержимому) он
+ * раскладывается целиком, как обычный блок.
  */
 @InternalPersonalizationUiApi
 class PersonalizationCatalog @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : LinearLayout(context, attrs, defStyleAttr) {
+) : RecyclerView(context, attrs, defStyleAttr) {
 
-    val grid = PersonalizationProductsGrid(context)
     private val emptyState = PersonalizationEmptyState(context)
     private val loader = PersonalizationLoader(context)
     private val count = PersonalizationCount(context)
     private val loadMoreButton = PersonalizationButton(context)
-    private var headerView: View? = null
 
-    var view: PersonalizationProductsGrid.View
-        get() = grid.view
+    private val header = SlotsAdapter()
+    private var productsAdapter = PersonalizationProductsAdapter(PersonalizationProductCard.Type.GRID)
+    private val footer = SlotsAdapter()
+    private val concat = ConcatAdapter(header, productsAdapter, footer)
+    private val grid = GridLayoutManager(context, COLUMNS)
+
+    var view: PersonalizationProductsGrid.View = PersonalizationProductsGrid.View.GRID
         set(value) {
-            grid.view = value
+            if (field == value) return
+            field = value
+            rebuildProducts()
         }
 
     var products: List<PersonalizationProduct>
-        get() = grid.products
+        get() = productsAdapter.items
         set(value) {
-            grid.products = value
-            applyEmpty()
+            productsAdapter.items = value
+            applySlots()
         }
 
     /** Текст пустой выдачи. `null` — без пустого состояния, плитка остаётся на месте. */
@@ -57,33 +72,33 @@ class PersonalizationCatalog @JvmOverloads constructor(
         set(value) {
             field = value
             emptyState.text = value
-            applyEmpty()
+            applySlots()
         }
 
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)?
-        get() = grid.imageLoader
+        get() = productsAdapter.imageLoader
         set(value) {
-            grid.imageLoader = value
+            productsAdapter.imageLoader = value
         }
 
     var onProductAction: ((PersonalizationProduct) -> Unit)?
-        get() = grid.onProductAction
+        get() = productsAdapter.onAction
         set(value) {
-            grid.onProductAction = value
+            productsAdapter.onAction = value
         }
 
     /** Нажатие на карточку — открыть товар. */
     var onProductClick: ((PersonalizationProduct) -> Unit)?
-        get() = grid.onProductClick
+        get() = productsAdapter.onClick
         set(value) {
-            grid.onProductClick = value
+            productsAdapter.onClick = value
         }
 
     /** Пропорция картинок карточек, см. [PersonalizationProductCard.imageAspect]. */
     var imageAspect: PersonalizationProductImage.Aspect
-        get() = grid.imageAspect
+        get() = productsAdapter.imageAspect
         set(value) {
-            grid.imageAspect = value
+            productsAdapter.imageAspect = value
         }
 
     /**
@@ -93,8 +108,7 @@ class PersonalizationCatalog @JvmOverloads constructor(
     var isLoading: Boolean = false
         set(value) {
             field = value
-            loader.isVisible = value
-            applyFooter()
+            applySlots()
         }
 
     /** Подпись кнопки «загрузить ещё». `null` — без кнопки. */
@@ -102,7 +116,7 @@ class PersonalizationCatalog @JvmOverloads constructor(
         set(value) {
             field = value
             loadMoreButton.text = value
-            applyFooter()
+            applySlots()
         }
 
     private var hasCount = false
@@ -110,56 +124,158 @@ class PersonalizationCatalog @JvmOverloads constructor(
     var onLoadMore: (() -> Unit)? = null
 
     init {
-        orientation = VERTICAL
-        val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
+        // Отступы хоста — поля ленты, а не рамка: строки прокручиваются под ними.
+        clipToPadding = false
+        // Строки-одиночки держат один экземпляр своей view. Анимация изменения создала бы
+        // второй холдер того же типа, пока жив первый, и view пришлось бы делить.
+        itemAnimator = null
 
-        addView(grid, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-        emptyState.isVisible = false
-        addView(emptyState, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
-
-        // Лоадер в макете — по центру строки; на всю ширину он бы прижал кольцо к левому краю.
-        loader.isVisible = false
-        addView(loader, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-            topMargin = gap
-            gravity = Gravity.CENTER_HORIZONTAL
-        })
-
-        count.isVisible = false
-        addView(count, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int =
+                if (isProduct(position)) 1 else grid.spanCount
+        }
+        layoutManager = grid
+        adapter = concat
+        addItemDecoration(Gaps())
 
         loadMoreButton.size = PersonalizationButton.Size.MD
         loadMoreButton.buttonView = PersonalizationButton.ButtonView.SECONDARY
         loadMoreButton.iconStart = R.drawable.personalization_ic_arrow_rotate_cw
-        loadMoreButton.isVisible = false
         loadMoreButton.setOnClickListener { onLoadMore?.invoke() }
-        addView(loadMoreButton, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+
+        applySlots()
     }
 
     /** Заголовок над товарами: выдача или категория. `null` — убрать. */
     fun setHeader(view: View?) {
-        headerView?.let(::removeView)
-        headerView = view
-        view?.let { addView(it, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)) }
-        val gap = if (view == null) 0 else resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
-        (grid.layoutParams as LayoutParams).topMargin = gap
-        (emptyState.layoutParams as LayoutParams).topMargin = gap
-    }
-
-    private fun applyEmpty() {
-        val empty = grid.products.isEmpty() && !emptyText.isNullOrEmpty()
-        emptyState.isVisible = empty
-        grid.isVisible = !empty
+        header.slots = listOfNotNull(view?.let { Slot(TYPE_HEADER, it) })
+        invalidateItemDecorations()
     }
 
     /** Счётчик «показано N из M». Слова — параметры. `prefix == null` — скрыть. */
     fun setCount(prefix: CharSequence?, shown: Int, separator: CharSequence, total: Int) {
         hasCount = prefix != null
         if (prefix != null) count.set(prefix, shown, separator, total)
-        applyFooter()
+        applySlots()
     }
 
-    private fun applyFooter() {
-        count.isVisible = hasCount && !isLoading
-        loadMoreButton.isVisible = !loadMoreText.isNullOrEmpty() && !isLoading
+    private fun applySlots() {
+        val empty = productsAdapter.items.isEmpty() && !emptyText.isNullOrEmpty()
+        footer.slots = buildList {
+            if (empty) add(Slot(TYPE_EMPTY, emptyState))
+            // Лоадер в макете — по центру строки; на всю ширину он бы прижал кольцо к левому краю.
+            if (isLoading) add(Slot(TYPE_LOADER, loader, centered = true))
+            if (hasCount && !isLoading) add(Slot(TYPE_COUNT, count))
+            if (!loadMoreText.isNullOrEmpty() && !isLoading) add(Slot(TYPE_LOAD_MORE, loadMoreButton))
+        }
+    }
+
+    private fun rebuildProducts() {
+        val previous = productsAdapter
+        productsAdapter = PersonalizationProductsAdapter(
+            if (view == PersonalizationProductsGrid.View.GRID) {
+                PersonalizationProductCard.Type.GRID
+            } else {
+                PersonalizationProductCard.Type.LIST
+            }
+        ).also {
+            it.items = previous.items
+            it.imageLoader = previous.imageLoader
+            it.onAction = previous.onAction
+            it.onClick = previous.onClick
+            it.imageAspect = previous.imageAspect
+        }
+        concat.removeAdapter(previous)
+        concat.addAdapter(1, productsAdapter)
+        grid.spanCount = if (view == PersonalizationProductsGrid.View.GRID) COLUMNS else 1
+        invalidateItemDecorations()
+    }
+
+    private fun isProduct(position: Int): Boolean {
+        val first = header.itemCount
+        return position >= first && position < first + productsAdapter.itemCount
+    }
+
+    /** Одиночная строка ленты: своя view и свой тип, у каждой вида строки — ровно одна. */
+    private class Slot(val type: Int, val view: View, val centered: Boolean = false)
+
+    private class SlotsAdapter : Adapter<SlotsAdapter.Holder>() {
+
+        var slots: List<Slot> = emptyList()
+            set(value) {
+                val previous = field
+                field = value
+                if (previous.map { it.view } == value.map { it.view }) return
+                // Точечно, а не notifyDataSetChanged: ConcatAdapter поднял бы его до всей ленты
+                // и перепривязал видимые карточки на каждое включение лоадера.
+                notifyItemRangeRemoved(0, previous.size)
+                notifyItemRangeInserted(0, value.size)
+            }
+
+        class Holder(val frame: FrameLayout) : ViewHolder(frame)
+
+        override fun getItemCount(): Int = slots.size
+
+        override fun getItemViewType(position: Int): Int = slots[position].type
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
+            Holder(FrameLayout(parent.context).apply {
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            })
+
+        override fun onBindViewHolder(holder: Holder, position: Int) {
+            val slot = slots[position]
+            if (slot.view.parent === holder.frame) return
+            (slot.view.parent as? ViewGroup)?.removeView(slot.view)
+            holder.frame.removeAllViews()
+            holder.frame.addView(
+                slot.view,
+                if (slot.centered) {
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER_HORIZONTAL
+                    )
+                } else {
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * Шаги ленты. Между блоками — 12 (шаг блока каталога), внутри плитки — 16 по обеим
+     * осям: половина зазора у внутренних краёв колонок, полный сверху со второй строки.
+     */
+    private inner class Gaps : ItemDecoration() {
+        private val block = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
+        private val tile = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
+
+        override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: State) {
+            val position = parent.getChildAdapterPosition(view)
+            if (position == NO_POSITION) return
+            if (!isProduct(position)) {
+                if (position > 0) outRect.top = block
+                return
+            }
+            val columns = grid.spanCount
+            val index = position - header.itemCount
+            val column = index % columns
+            outRect.left = tile * column / columns
+            outRect.right = tile - tile * (column + 1) / columns
+            outRect.top = if (index >= columns) tile else if (header.itemCount > 0) block else 0
+        }
+    }
+
+    private companion object {
+        const val COLUMNS = 2
+        const val TYPE_HEADER = 1
+        const val TYPE_EMPTY = 2
+        const val TYPE_LOADER = 3
+        const val TYPE_COUNT = 4
+        const val TYPE_LOAD_MORE = 5
     }
 }

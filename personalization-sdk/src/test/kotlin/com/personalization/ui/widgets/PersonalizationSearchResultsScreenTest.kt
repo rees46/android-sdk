@@ -2,11 +2,15 @@ package com.personalization.ui.widgets
 
 import android.content.Context
 import android.os.Looper
+import android.view.View
+import android.view.ViewGroup
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.SDK
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackingApi
+import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.search.SearchFullResponse
+import com.personalization.ui.components.PersonalizationProductCard
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -15,6 +19,7 @@ import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -104,10 +109,56 @@ class PersonalizationSearchResultsScreenTest {
         verify(exactly = 2) { tracking.search("jacket", any(), any()) }
     }
 
+    @Test
+    fun `ten loaded pages keep a screenful of cards, not two hundred`() {
+        screen.query = "jacket"
+        idle()
+        answers.last()(response(total = 200, page = 0))
+        for (page in 1 until 10) {
+            screen.loadMore()
+            answers.last()(response(total = 200, page = page))
+        }
+
+        layOut(screen)
+
+        assertEquals(200, screen.products.size)
+        val cards = cards(screen)
+        assertTrue("expected a screenful of cards, got $cards", cards in 1..30)
+    }
+
+    @Test
+    fun `infinite scroll asks for the next page near the end`() {
+        screen.infiniteScroll = true
+        screen.query = "jacket"
+        idle()
+        answers.last()(response(total = 200, page = 0))
+        layOut(screen)
+
+        screen.catalog.scrollBy(0, 20_000)
+
+        verify(exactly = 2) { search.searchFull(any(), any(), any(), any()) }
+    }
+
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
-    private fun response(total: Int): SearchFullResponse = mockk(relaxed = true) {
-        every { products } returns emptyList()
+    private fun layOut(view: View) {
+        view.measure(
+            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1920, View.MeasureSpec.EXACTLY)
+        )
+        view.layout(0, 0, 1080, 1920)
+    }
+
+    private fun cards(root: View): Int = when (root) {
+        is PersonalizationProductCard -> 1
+        is ViewGroup -> (0 until root.childCount).sumOf { cards(root.getChildAt(it)) }
+        else -> 0
+    }
+
+    private fun response(total: Int, page: Int? = null): SearchFullResponse = mockk(relaxed = true) {
+        every { products } returns if (page == null) emptyList() else (0 until 20).map { index ->
+            mockk<Product>(relaxed = true) { every { id } returns "p${page * 20 + index}" }
+        }
         every { productsTotal } returns total
     }
 }
