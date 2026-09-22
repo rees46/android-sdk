@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -24,6 +25,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
+import com.personalization.PopupPresentationListener
 import com.personalization.PushProvider
 import com.personalization.Rees46
 import com.personalization.SDK
@@ -145,9 +147,6 @@ class MainActivity : AppCompatActivity() {
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 
-        // Initialize fragment manager for popups
-        sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
-
         setupStoriesTabs()
 
         findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
@@ -157,6 +156,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnShowTestPopup).setOnClickListener {
             showTestPopup()
         }
+
+        setupPopupHoldBack()
 
         findViewById<Button>(R.id.btnTrackEventCustomFields).setOnClickListener {
             trackEventWithCustomFieldsSuccess()
@@ -977,6 +978,33 @@ class MainActivity : AppCompatActivity() {
         )
         tokenView.text = pushTokens.entries.joinToString("\n\n") { (provider, token) ->
             "${provider.id}: $token"
+        }
+    }
+
+    /**
+     * Popups need no wiring: the SDK shows them in the activity on screen. The checkbox installs a
+     * presentation listener that keeps them back instead — what a host does on a screen where a popup
+     * would be in the way, or when it draws popups itself (then it reports the show with
+     * sdk.tracking.popupShown). The listener lives on the shared instance, so the choice outlives a
+     * recreated activity.
+     */
+    private fun setupPopupHoldBack() {
+        val checkbox = findViewById<CheckBox>(R.id.checkHoldPopups)
+        checkbox.isChecked = sdk.popupPresentationListener != null
+        // The application context, not the activity: the listener outlives this activity.
+        val appContext = applicationContext
+        checkbox.setOnCheckedChangeListener { _, hold ->
+            sdk.popupPresentationListener = if (hold) {
+                PopupPresentationListener { _, popup ->
+                    Log.d("MainActivity", "Popup ${popup.id} held back: $popup")
+                    val title = popup.components?.header.orEmpty()
+                    val message = appContext.getString(R.string.popup_held_back, popup.id, title)
+                    Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+                    null
+                }
+            } else {
+                null
+            }
         }
     }
 

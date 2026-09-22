@@ -19,6 +19,8 @@
     <string name="push_token_value">Token: %1$s</string>
     <string name="push_token_unavailable">Token: unavailable</string>
     <string name="show_test_popup">Show Test Popup</string>
+    <string name="hold_popups_back">Hold popups back (presentation listener)</string>
+    <string name="popup_held_back">Popup %1$d held back: %2$s</string>
     <string name="track_event_custom_fields">Track event (custom fields)</string>
     <string name="track_event_reserved_collision">Track event (reserved key collision)</string>
     <string name="track_view_no_params">Track view (product id only)</string>
