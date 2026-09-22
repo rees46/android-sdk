@@ -14,6 +14,7 @@ import com.personalization.sdk.data.models.dto.popUp.Position
 import dagger.Lazy
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -99,6 +100,60 @@ class InAppNotificationManagerImplTest {
         idle()
 
         verify(exactly = 1) { tracking.trackPopupShown(POPUP_ID, null) }
+    }
+
+    @Test
+    fun `a listener picks the activity, not the tracker`() {
+        val picked = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        manager.presentation.listener = { picked }
+
+        manager.shopPopUp(popup())
+        idle()
+
+        assertNotNull(picked.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        verify(exactly = 1) { tracking.trackPopupShown(POPUP_ID, null) }
+    }
+
+    @Test
+    fun `a popup the listener keeps back is not counted, and is offered again`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val offered = mutableListOf<Int>()
+        manager.presentation.listener = { popup -> offered += popup.id; null }
+
+        manager.shopPopUp(popup())
+        manager.shopPopUp(popup())
+        idle()
+
+        // Kept back means not remembered either: a host drawing it itself gets every copy.
+        assertEquals(listOf(POPUP_ID, POPUP_ID), offered)
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
+    }
+
+    @Test
+    fun `a listener has the final word even with automatic presentation off`() {
+        val picked = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        manager.presentation.autoPresentation = false
+        manager.presentation.listener = { picked }
+
+        manager.shopPopUp(popup())
+        idle()
+
+        assertNotNull(picked.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+    }
+
+    @Test
+    fun `with automatic presentation off and no listener nothing is shown`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        manager.presentation.autoPresentation = false
+
+        manager.shopPopUp(popup())
+        idle()
+
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
     }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()

@@ -34,6 +34,7 @@ object Rees46 {
     @Suppress("DEPRECATION")
     fun initialize(context: Context, config: Rees46Config): SDK {
         val sdk = SDK()
+        sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
         sdk.initialize(
             context = context,
             shopId = config.shopId,

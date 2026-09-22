@@ -182,6 +182,10 @@ internal class TrackingApiImpl @Inject constructor(
         )
     }
 
+    override fun popupShown(popupId: Int, listener: OnApiCallbackListener?) {
+        trackEventManager.trackPopupShown(popupId = popupId, listener = listener)
+    }
+
     override fun setSource(source: TrackingSource) {
         setTrackingSourceUseCase(type = source.type.value, code = source.code)
     }

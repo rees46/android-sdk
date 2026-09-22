@@ -14,6 +14,8 @@ package com.personalization
  * @property needReInitialization forces a fresh `init` request instead of reusing stored session data.
  * @property addTrailingSlash whether a trailing slash is appended to [apiDomain] when building URLs.
  * @property tag log tag for this instance.
+ * @property enableAutoPopupPresentation whether server popups are shown in the activity on screen
+ * while no [SDK.popupPresentationListener] is set.
  */
 data class Rees46Config(
     val shopId: String,
@@ -22,5 +24,6 @@ data class Rees46Config(
     val autoSendPushToken: Boolean = true,
     val needReInitialization: Boolean = false,
     val addTrailingSlash: Boolean = true,
-    val tag: String = "SDK"
+    val tag: String = "SDK",
+    val enableAutoPopupPresentation: Boolean = true
 )

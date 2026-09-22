@@ -43,12 +43,18 @@ class InAppNotificationManagerImpl @Inject constructor(
     private val trackEventManager: Lazy<TrackEventManager>
 ) : InAppNotificationManager {
 
+    // Set by the SDK's DI module; the default only serves managers built by hand, as in tests.
+    internal var presentation: PopupPresentation = PopupPresentation()
+
     // Weak: the manager belongs to an activity, and holding it would outlive that activity.
     private var fragmentManager: WeakReference<FragmentManager>? = null
     private val popupShownFlags: MutableMap<Int, Long> = mutableMapOf()
     private val handler: Handler = Handler(Looper.getMainLooper())
 
-    @Deprecated("Not needed any more: popups are shown in the activity on screen.")
+    @Deprecated(
+        "Not needed any more: popups are shown in the activity on screen. To pick the activity, " +
+            "or keep a popup from being shown, set SDK.popupPresentationListener."
+    )
     override fun initFragmentManager(fragmentManager: FragmentManager) {
         this.fragmentManager = WeakReference(fragmentManager)
     }
@@ -72,9 +78,26 @@ class InAppNotificationManagerImpl @Inject constructor(
         }
 
         // Whatever did not reach the screen is neither remembered nor reported as shown.
-        val target = defaultTarget()
+        val listener = presentation.listener
+        val target = when {
+            listener != null -> {
+                val activity = listener(popupDto)
+                if (activity == null) {
+                    SDK.debug("Popup ${popupDto.id} was kept back by the presentation listener")
+                    return
+                }
+                activity.supportFragmentManager.takeIf { it.canShowDialog() }
+            }
+
+            presentation.autoPresentation -> defaultTarget()
+
+            else -> {
+                SDK.debug("Popup ${popupDto.id} was not shown: automatic presentation is off")
+                return
+            }
+        }
         if (target == null) {
-            SDK.warn("Popup ${popupDto.id} was not shown: no activity on screen to show it in")
+            SDK.warn("Popup ${popupDto.id} was not shown: no activity that can take a dialog")
             return
         }
         try {
