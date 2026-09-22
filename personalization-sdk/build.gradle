@@ -101,6 +101,10 @@ dependencies {
     implementation 'org.jetbrains:annotations:24.1.0'
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    // Starts following the activity on screen when the process starts, before any activity exists,
+    // so popups can find one however late the host initializes the SDK. Already on the classpath
+    // through lifecycle-process; declared because the SDK now relies on it directly.
+    implementation 'androidx.startup:startup-runtime:1.1.1'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'

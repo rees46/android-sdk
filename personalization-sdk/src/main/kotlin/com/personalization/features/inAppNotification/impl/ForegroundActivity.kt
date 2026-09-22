@@ -4,14 +4,15 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import androidx.startup.Initializer
 import java.lang.ref.WeakReference
 
 /**
  * The activity on screen, so popups can be shown without the host handing a FragmentManager over.
  *
  * Process-wide: every SDK instance shares it. It only learns about activities resumed after
- * [install], so an SDK initialized once the first activity is already on screen sees nothing until
- * the next one resumes — initialize from Application.onCreate or an activity's onCreate.
+ * [install], which is why [ForegroundActivityInitializer] installs it at process start; SDK
+ * initialization installs it too, for hosts that turned androidx.startup off.
  */
 internal object ForegroundActivity : Application.ActivityLifecycleCallbacks {
 
@@ -56,4 +57,17 @@ internal object ForegroundActivity : Application.ActivityLifecycleCallbacks {
     override fun onActivityPaused(activity: Activity) = Unit
 
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+}
+
+/**
+ * Installs [ForegroundActivity] at process start through androidx.startup, before any activity is
+ * created. Without it the tracker would only start with the first SDK initialization, and a shop
+ * initialized lazily or from Dart after the first activity resumed would find no activity to show
+ * popups in. Hosts that remove the startup provider still get it installed on initialization.
+ */
+internal class ForegroundActivityInitializer : Initializer<Unit> {
+
+    override fun create(context: Context) = ForegroundActivity.install(context)
+
+    override fun dependencies(): List<Class<out Initializer<*>>> = emptyList()
 }
