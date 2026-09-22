@@ -106,8 +106,18 @@ internal class PersonalizationProductsAdapter(
 
     var items: List<PersonalizationProduct> = emptyList()
         set(value) {
+            val previous = field
             field = value
-            notifyDataSetChanged()
+            // Следующая страница выдачи дописывается в конец: уже показанные карточки не
+            // перепривязываются и не перезапрашивают картинки. Иначе каждая страница
+            // перерисовывала бы весь список заново.
+            val appended = previous.isNotEmpty() && value.size > previous.size &&
+                value.subList(0, previous.size) == previous
+            if (appended) {
+                notifyItemRangeInserted(previous.size, value.size - previous.size)
+            } else {
+                notifyDataSetChanged()
+            }
         }
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)? = null
     var onAction: ((PersonalizationProduct) -> Unit)? = null
