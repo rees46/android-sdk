@@ -37,7 +37,7 @@ class PersonalizationListLabel @JvmOverloads constructor(
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_sm)
         )
         // В макете трекинг 0.05px при кегле 14, у Android он в em.
-        letterSpacing = 0.05f / 14f
+        setLetterSpacingCompat(0.05f / 14f)
         setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_hint))
     }
 }

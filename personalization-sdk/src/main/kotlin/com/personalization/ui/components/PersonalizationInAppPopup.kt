@@ -3,6 +3,7 @@ package com.personalization.ui.components
 import android.content.Context
 import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -157,7 +158,9 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         textBlock.orientation = LinearLayout.VERTICAL
         buttons.orientation = LinearLayout.VERTICAL
 
-        clipToOutline = true
+        // Обрезка по скруглению и тень — API 21. На 19–20 модалка остаётся без них: углы
+        // картинки не скругляются, но попап цел.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) clipToOutline = true
         rebuild()
     }
 
@@ -289,12 +292,14 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
             cornerRadius = radius
             setColor(PersonalizationTheme.color(context, R.color.personalization_background_modal))
         }
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, radius)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, radius)
+                }
             }
+            elevation = if (modal) resources.getDimension(R.dimen.personalization_elevation_e3) else 0f
         }
-        elevation = if (modal) resources.getDimension(R.dimen.personalization_elevation_e3) else 0f
     }
 
     private fun gapText(): Int =

@@ -209,7 +209,7 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
             resources.getDimensionPixelSize(R.dimen.personalization_line_height_sm)
         )
         // В макете трекинг 0.05px при кегле 14, у Android он в em.
-        view.letterSpacing = 0.05f / 14f
+        view.setLetterSpacingCompat(0.05f / 14f)
         view.setTextColor(
             PersonalizationTheme.color(context, R.color.personalization_text_secondary)
         )

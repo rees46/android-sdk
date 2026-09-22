@@ -59,7 +59,7 @@ class PersonalizationTag @JvmOverloads constructor(
         label.includeFontPadding = false
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
         TextViewCompat.setLineHeight(label, spToPx(16f))
-        label.letterSpacing = 0.05f / 12f  // 0.05px при кегле 12 -> в em
+        label.setLetterSpacingCompat(0.05f / 12f)  // 0.05px при кегле 12 -> в em
         addView(label)
 
         removeIcon.setImageResource(R.drawable.personalization_ic_cross)

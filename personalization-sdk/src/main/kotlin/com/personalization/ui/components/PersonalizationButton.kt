@@ -181,11 +181,13 @@ class PersonalizationButton @JvmOverloads constructor(
         )
         TextViewCompat.setLineHeight(label, resources.getDimensionPixelSize(size.lineHeightRes))
         // В макете трекинг задан в px, у Android он в em.
-        label.letterSpacing = if (size.letterSpacingPx == 0f) {
-            0f
-        } else {
-            size.letterSpacingPx / pxToSp(resources.getDimension(size.fontSizeRes))
-        }
+        label.setLetterSpacingCompat(
+            if (size.letterSpacingPx == 0f) {
+                0f
+            } else {
+                size.letterSpacingPx / pxToSp(resources.getDimension(size.fontSizeRes))
+            }
+        )
     }
 
     private fun applyColors() {

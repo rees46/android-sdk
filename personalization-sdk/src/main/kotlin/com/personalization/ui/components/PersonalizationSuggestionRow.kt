@@ -137,7 +137,7 @@ class PersonalizationSuggestionRow @JvmOverloads constructor(
         view.typeface = PersonalizationTheme.typeface(context, emphasized = false)
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.personalization_font_size_sm))
         TextViewCompat.setLineHeight(view, resources.getDimensionPixelSize(R.dimen.personalization_line_height_sm))
-        view.letterSpacing = 0.05f / 14f
+        view.setLetterSpacingCompat(0.05f / 14f)
         view.setTextColor(PersonalizationTheme.color(context, colorRes))
     }
 

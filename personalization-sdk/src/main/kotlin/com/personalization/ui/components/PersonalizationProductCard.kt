@@ -176,7 +176,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
         brandView.includeFontPadding = false
         brandView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.personalization_font_size_xs))
         TextViewCompat.setLineHeight(brandView, resources.getDimensionPixelSize(R.dimen.personalization_line_height_xs))
-        brandView.letterSpacing = 0.05f / 12f
+        brandView.setLetterSpacingCompat(0.05f / 12f)
         brandView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_secondary))
         brandView.isVisible = false
 
@@ -218,14 +218,18 @@ class PersonalizationProductCard @JvmOverloads constructor(
     private fun applyTypography() {
         nameView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(type.nameFontRes))
         TextViewCompat.setLineHeight(nameView, resources.getDimensionPixelSize(type.nameLineHeightRes))
-        nameView.letterSpacing = if (type.nameLetterSpacingPx == 0f) 0f
+        nameView.setLetterSpacingCompat(
+            if (type.nameLetterSpacingPx == 0f) 0f
             else type.nameLetterSpacingPx / pxToSp(resources.getDimension(type.nameFontRes))
+        )
         priceView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(type.priceFontRes))
         TextViewCompat.setLineHeight(priceView, resources.getDimensionPixelSize(type.priceLineHeightRes))
         oldPriceView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(type.oldPriceFontRes))
         TextViewCompat.setLineHeight(oldPriceView, resources.getDimensionPixelSize(type.oldPriceLineHeightRes))
-        oldPriceView.letterSpacing = if (type.oldPriceLetterSpacingPx == 0f) 0f
+        oldPriceView.setLetterSpacingCompat(
+            if (type.oldPriceLetterSpacingPx == 0f) 0f
             else type.oldPriceLetterSpacingPx / pxToSp(resources.getDimension(type.oldPriceFontRes))
+        )
     }
 
     /** У колонок скидка лежит на картинке, у списка — рядом с ценой. */

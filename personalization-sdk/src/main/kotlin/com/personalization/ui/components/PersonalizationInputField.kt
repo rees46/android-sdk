@@ -191,11 +191,13 @@ class PersonalizationInputField @JvmOverloads constructor(
         )
         TextViewCompat.setLineHeight(editText, resources.getDimensionPixelSize(size.lineHeightRes))
         // В макете трекинг задан в px, у Android он в em.
-        editText.letterSpacing = if (size.letterSpacingPx == 0f) {
-            0f
-        } else {
-            size.letterSpacingPx / pxToSp(resources.getDimension(size.fontSizeRes))
-        }
+        editText.setLetterSpacingCompat(
+            if (size.letterSpacingPx == 0f) {
+                0f
+            } else {
+                size.letterSpacingPx / pxToSp(resources.getDimension(size.fontSizeRes))
+            }
+        )
     }
 
     private fun applyContent() {
