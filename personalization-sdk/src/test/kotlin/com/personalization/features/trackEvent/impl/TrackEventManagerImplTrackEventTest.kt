@@ -1,11 +1,16 @@
 package com.personalization.features.trackEvent.impl
 
+import android.os.Looper
+import androidx.test.core.app.ApplicationProvider
+import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.recommendation.GetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
+import dagger.Lazy
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -21,6 +26,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -152,5 +158,48 @@ class TrackEventManagerImplTrackEventTest {
         val body = paramsSlot.captured
         assertEquals("e", body.getString("event"))
         assertFalse(body.has("payload"))
+    }
+
+    /**
+     * A popup that cannot be shown (here: no FragmentManager, as in the Flutter plugin) used to throw
+     * inside the network callback, and the host got onError for an event that had been sent.
+     */
+    @Test
+    fun track_popupThatCannotBeShown_stillReportsSuccess() {
+        val popups = InAppNotificationManagerImpl(
+            ApplicationProvider.getApplicationContext(),
+            getUserSettingsValueUseCase,
+            Lazy { impl }
+        )
+        impl = TrackEventManagerImpl(
+            getRecommendedByUseCase,
+            setRecommendedByUseCase,
+            sendNetworkMethodUseCase,
+            popups,
+            getUserSettingsValueUseCase,
+            mockk<GetTrackingSourceUseCase>(relaxed = true).also {
+                every { it.invoke() } returns null
+            }
+        )
+        val networkListener = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.postAsync(any(), any(), capture(networkListener))
+        } just Runs
+        val listener = mockk<OnApiCallbackListener>(relaxed = true)
+
+        impl.track(Params.TrackEvent.VIEW, Params(), listener)
+        networkListener.captured.onSuccess(
+            JSONObject(
+                """
+                {"popup":{"id":7,"position":"centered",
+                  "components":"{\"header\":\"Title\",\"text\":\"Body\"}",
+                  "popup_actions":"{\"close\":{\"button_text\":\"Close\"}}"}}
+                """.trimIndent()
+            )
+        )
+        shadowOf(Looper.getMainLooper()).idle()
+
+        verify(exactly = 1) { listener.onSuccess(any<JSONObject>()) }
+        verify(exactly = 0) { listener.onError(any(), any()) }
     }
 }

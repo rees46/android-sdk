@@ -2,14 +2,18 @@ package com.personalization
 
 import android.content.ContentResolver
 import android.content.Context
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.TrackEventManager
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.push.PushTokenManager
 import com.personalization.sdk.domain.usecases.network.ExecuteQueueTasksUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
+import dagger.Lazy
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -21,6 +25,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
@@ -101,5 +106,39 @@ class RegisterManagerDidTest {
         verify(exactly = 0) { update.updateDid(any()) }
         listener.captured.onSuccess(JSONObject("""{"did":"REFRESHED_DID","seance":"S"}"""))
         verify(exactly = 1) { update.updateDid("REFRESHED_DID") }
+    }
+
+    /**
+     * The popup rides on the /init response and used to be shown right inside the network callback.
+     * A host that never handed over a FragmentManager (the Flutter plugin never does) made that throw
+     * before the did was persisted, and the network layer turned the throw into a retried init error.
+     */
+    @Test
+    fun `a popup that cannot be shown never blocks persisting the did`() {
+        val tracking = mockk<TrackEventManager>(relaxed = true)
+        val inAppManager = InAppNotificationManagerImpl(context, get, Lazy { tracking })
+        manager = RegisterManager(update, get, network, queue, inAppManager, pushTokens)
+        every { get.getDid() } returns ""
+        val listener = slot<OnApiCallbackListener>()
+        every { network.get(eq("init"), any(), capture(listener)) } just Runs
+
+        manager.initialize(context, contentResolver, autoSendPushToken = false)
+        listener.captured.onSuccess(JSONObject(INIT_WITH_POPUP))
+        shadowOf(Looper.getMainLooper()).idle()
+
+        verify(exactly = 1) { update.updateDid("SERVER_DID") }
+        // Nothing was on screen, so nothing is reported as shown.
+        verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
+    }
+
+    private companion object {
+        // components and popup_actions arrive as JSON strings, not objects.
+        val INIT_WITH_POPUP = """
+            {"did":"SERVER_DID","seance":"S","popup":{
+              "id":7,"position":"centered",
+              "components":"{\"header\":\"Title\",\"text\":\"Body\"}",
+              "popup_actions":"{\"close\":{\"button_text\":\"Close\"}}"
+            }}
+        """.trimIndent()
     }
 }

@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
+import com.personalization.SDK
 import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.errors.EmptyFieldError
@@ -49,6 +50,14 @@ class InAppNotificationManagerImpl @Inject constructor(
     }
 
     override fun shopPopUp(popupDto: PopupDto) {
+        // Popups ride on network responses and arrive on a worker thread. Showing one right there
+        // breaks the UI-thread rule and lets a failure escape into the network callback, which turns
+        // it into an error for the request that carried the popup — an init that never persists its
+        // did, a track that reports failure after it was sent.
+        handler.post { present(popupDto) }
+    }
+
+    private fun present(popupDto: PopupDto) {
         // Check if popup was shown in the last 60 seconds
         val shownTime = popupShownFlags[popupDto.id]
         if (shownTime != null) {
@@ -58,8 +67,14 @@ class InAppNotificationManagerImpl @Inject constructor(
             }
         }
 
-        val dialogData = extractDialogData(popupDto)
-        showDialog(dialogData)
+        try {
+            showDialog(extractDialogData(popupDto))
+        } catch (exception: Exception) {
+            // No FragmentManager yet, or the activity has already saved its state. Nothing reached
+            // the screen, so the popup is neither remembered nor reported as shown.
+            SDK.error("Popup ${popupDto.id} was not shown: ${exception.message}", exception)
+            return
+        }
 
         // Store popup shown flag in memory for 60 seconds
         popupShownFlags[popupDto.id] = System.currentTimeMillis()
