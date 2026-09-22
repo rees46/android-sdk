@@ -1,6 +1,8 @@
 package com.personalization.ui.widgets
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -74,7 +76,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
             val changed = field != value
             field = value
             title.text = titleText ?: value
-            if (changed) reload()
+            if (changed) scheduleReload()
         }
 
     /** Заголовок экрана; `null` — сама фраза. */
@@ -91,7 +93,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         set(value) {
             if (field == value) return
             field = value
-            reload()
+            scheduleReload()
         }
 
     /** `asc` / `desc`. */
@@ -99,7 +101,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         set(value) {
             if (field == value) return
             field = value
-            reload()
+            scheduleReload()
         }
 
     /** Список id локаций через запятую. */
@@ -174,7 +176,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     var emptyText: CharSequence? = "No results for your request."
         set(value) {
             field = value
-            catalog.emptyText = value
+            applyEmpty()
         }
     var filtersTitle: CharSequence? = "Filters"
     var resetText: CharSequence? = "Reset"
@@ -210,7 +212,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     var applied: Applied = Applied()
         set(value) {
             field = value
-            reload()
+            scheduleReload()
         }
 
     private val scroll = NestedScrollView(context)
@@ -224,6 +226,12 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     private var facetSource: SearchFullResponse? = null
     private var requestSeq = 0
 
+    // Пришёл ли ответ на первую страницу текущей фразы. Пустое состояние — только после него:
+    // до ответа товаров нет потому, что они ещё грузятся, а не потому, что ничего не нашлось.
+    private var answered = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val scheduledReload = Runnable { reload() }
+
     init {
         context.theme.obtainStyledAttributes(attrs, R.styleable.PersonalizationSearchResultsScreen, 0, 0).apply {
             try {
@@ -236,7 +244,6 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         val background = PersonalizationTheme.color(context, R.color.personalization_background_generic)
 
         catalog.setHeader(title)
-        catalog.emptyText = emptyText
         catalog.setPadding(padding, padding, padding, padding)
         catalog.imageLoader = { imageView, product -> loadImage(imageView, product.imageUrl) }
         catalog.onProductClick = { card -> loaded.firstOrNull { it.id == card.id }?.let { productTapped(it) } }
@@ -285,6 +292,16 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         reload()
     }
 
+    /**
+     * Свойства, от которых зависит запрос, перезапрашивают на следующем проходе главного
+     * потока, а не сразу: хост, выставивший sortBy и sortDir подряд, получает один запрос
+     * и одно событие `search`, а не два.
+     */
+    private fun scheduleReload() {
+        handler.removeCallbacks(scheduledReload)
+        handler.post(scheduledReload)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (sdk != null) return
@@ -322,18 +339,23 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         filtersScroll.isVisible = false
     }
 
-    /** Первая страница заново. */
+    /** Первая страница заново — сразу, отменяя перезапрос, запланированный свойствами. */
     fun reload() {
+        handler.removeCallbacks(scheduledReload)
         val sdk = sdk ?: return
         val text = query?.trim().orEmpty()
+        // Ответ на прошлый запрос больше не нужен, и снимать лоадер он уже не будет — его
+        // отбросит проверка requestSeq. Поэтому лоадер снимается здесь, иначе при пустой фразе
+        // он крутился бы вечно, а loadMore так и стоял бы заблокированным.
+        requestSeq++
+        loading = false
+        catalog.isLoading = false
+        answered = false
         loaded = emptyList()
         total = 0
         page = 0
         renderProducts()
-        if (text.isEmpty()) {
-            requestSeq++
-            return
-        }
+        if (text.isEmpty()) return
         sdk.tracking.search(text)
         request(sdk, text, nextPage = 1)
     }
@@ -362,7 +384,10 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
                     total = response.productsTotal
                     val items = response.products.orEmpty()
                     loaded = if (nextPage == 1) items else loaded + items
-                    if (nextPage == 1) facetSource = response
+                    if (nextPage == 1) {
+                        facetSource = response
+                        answered = true
+                    }
                     renderProducts()
                 }
             },
@@ -404,7 +429,12 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         if (loaded.isEmpty()) catalog.setCount(null, 0, countSeparator, 0)
         else catalog.setCount(countPrefix, loaded.size, countSeparator, total)
         applyLoadMore()
+        applyEmpty()
         renderAppliedTags()
+    }
+
+    private fun applyEmpty() {
+        catalog.emptyText = if (answered && loaded.isEmpty()) emptyText else null
     }
 
     private fun applyLoadMore() {
