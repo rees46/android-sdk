@@ -43,8 +43,10 @@ class PersonalizationProductImage @JvmOverloads constructor(
         }
 
     init {
+        // Заглушка до загрузки. В макете она нетокенный серый, здесь — Neutral 50:
+        // полупрозрачная, поэтому видна и на карточке, и прямо на фоне экрана.
         setBackgroundColor(
-            PersonalizationTheme.color(context, R.color.personalization_background_card)
+            PersonalizationTheme.color(context, R.color.personalization_neutral_50)
         )
         imageView.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
         addView(imageView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))

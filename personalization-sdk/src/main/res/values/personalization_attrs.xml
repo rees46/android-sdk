@@ -13,9 +13,9 @@
 
     <!-- цвета -->
     <attr name="personalizationColorBrandPrimary" format="color" />
+    <attr name="personalizationColorNeutral50" format="color" />
     <attr name="personalizationColorSemanticWarning" format="color" />
     <attr name="personalizationColorSemanticDanger" format="color" />
-    <attr name="personalizationColorBackgroundPrimary" format="color" />
     <attr name="personalizationColorBackgroundGeneric" format="color" />
     <attr name="personalizationColorBackgroundCard" format="color" />
     <attr name="personalizationColorBackgroundInput" format="color" />
@@ -60,12 +60,17 @@
     <attr name="personalizationRadiusXl4" format="dimension" />
     <attr name="personalizationRadiusXl5" format="dimension" />
     <attr name="personalizationRadiusXl6" format="dimension" />
+    <attr name="personalizationRadiusXl7" format="dimension" />
     <attr name="personalizationRadiusRounded" format="dimension" />
     <attr name="personalizationRadiusButtonLg" format="dimension" />
     <attr name="personalizationRadiusButtonMd" format="dimension" />
     <attr name="personalizationRadiusButtonSm" format="dimension" />
+    <attr name="personalizationRadiusSegmentedLg" format="dimension" />
     <attr name="personalizationRadiusSegmentedMd" format="dimension" />
     <attr name="personalizationRadiusSegmentedSm" format="dimension" />
+    <attr name="personalizationRadiusCard" format="dimension" />
+    <attr name="personalizationRadiusToast" format="dimension" />
+    <attr name="personalizationRadiusModal" format="dimension" />
 
     <!-- шрифт: Inter в SDK не поставляется, по умолчанию системный -->
     <attr name="personalizationFontFamily" format="reference|string" />

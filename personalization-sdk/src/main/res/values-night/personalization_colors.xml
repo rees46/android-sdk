@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Цвета дизайн-системы, тёмная тема.
-  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), страница Colors,
-  фреймы 57:141 (Light) и 187:362 (Dark). Снято 2026-09-09.
+  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), коллекция переменных Color,
+  режимы Light и Dark. Сверено 2026-09-23.
 
   Формат #AARRGGBB. Значения ниже уже с прозрачностью,
   отдельного альфа-канала выставлять не нужно.
@@ -12,17 +12,19 @@
     <!-- brand -->
     <color name="personalization_brand_primary">#FF007DF2</color>
 
+    <!-- neutral: полупрозрачная ступень, одинаково заметна на любом фоне — заглушки картинок -->
+    <color name="personalization_neutral_50">#0DFFFFFF</color>
+
     <!-- semantic -->
     <color name="personalization_semantic_danger">#FFE51919</color>
     <color name="personalization_semantic_warning">#FFF37A17</color>
 
     <!-- background -->
-    <color name="personalization_background_primary">#FF007DF2</color>
-    <color name="personalization_background_generic">#FF141414</color>
-    <color name="personalization_background_card">#FF0D0D0D</color>
+    <color name="personalization_background_generic">#FF0D0D0D</color>
+    <color name="personalization_background_card">#FF1A1A1A</color>
     <color name="personalization_background_float">#FF262626</color>
     <color name="personalization_background_modal">#FF333333</color>
-    <color name="personalization_background_input">#FF141414</color>
+    <color name="personalization_background_input">#FF0D0D0D</color>
     <color name="personalization_background_transparent">#00FFFFFF</color>
     <color name="personalization_background_input_disabled">#0DFFFFFF</color>
 
@@ -32,7 +34,8 @@
     <color name="personalization_button_secondary">#0DFFFFFF</color>
     <color name="personalization_button_secondary_on_dark">#0DFFFFFF</color>
     <color name="personalization_button_secondary_focus">#1AFFFFFF</color>
-    <color name="personalization_button_primary_disabled">#FF32AFFF</color>
+    <!-- Brand/Primary с прозрачностью 65%. -->
+    <color name="personalization_button_primary_disabled">#A6007DF2</color>
     <color name="personalization_button_secondary_disabled">#0DFFFFFF</color>
     <color name="personalization_button_ghost">#00FFFFFF</color>
 

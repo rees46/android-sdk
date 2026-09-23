@@ -11,9 +11,9 @@
 
     <style name="Theme.Personalization" parent="">
         <item name="personalizationColorBrandPrimary">@color/personalization_brand_primary</item>
+        <item name="personalizationColorNeutral50">@color/personalization_neutral_50</item>
         <item name="personalizationColorSemanticWarning">@color/personalization_semantic_warning</item>
         <item name="personalizationColorSemanticDanger">@color/personalization_semantic_danger</item>
-        <item name="personalizationColorBackgroundPrimary">@color/personalization_background_primary</item>
         <item name="personalizationColorBackgroundGeneric">@color/personalization_background_generic</item>
         <item name="personalizationColorBackgroundCard">@color/personalization_background_card</item>
         <item name="personalizationColorBackgroundInput">@color/personalization_background_input</item>
@@ -57,12 +57,17 @@
         <item name="personalizationRadiusXl4">@dimen/personalization_radius_xl4</item>
         <item name="personalizationRadiusXl5">@dimen/personalization_radius_xl5</item>
         <item name="personalizationRadiusXl6">@dimen/personalization_radius_xl6</item>
+        <item name="personalizationRadiusXl7">@dimen/personalization_radius_xl7</item>
         <item name="personalizationRadiusRounded">@dimen/personalization_radius_rounded</item>
         <item name="personalizationRadiusButtonLg">@dimen/personalization_radius_button_lg</item>
         <item name="personalizationRadiusButtonMd">@dimen/personalization_radius_button_md</item>
         <item name="personalizationRadiusButtonSm">@dimen/personalization_radius_button_sm</item>
+        <item name="personalizationRadiusSegmentedLg">@dimen/personalization_radius_segmented_lg</item>
         <item name="personalizationRadiusSegmentedMd">@dimen/personalization_radius_segmented_md</item>
         <item name="personalizationRadiusSegmentedSm">@dimen/personalization_radius_segmented_sm</item>
+        <item name="personalizationRadiusCard">@dimen/personalization_radius_card</item>
+        <item name="personalizationRadiusToast">@dimen/personalization_radius_toast</item>
+        <item name="personalizationRadiusModal">@dimen/personalization_radius_modal</item>
 
         <item name="personalizationFontFamily">sans-serif</item>
         <item name="personalizationFontFamilyEmphasized">sans-serif-medium</item>

@@ -89,7 +89,7 @@ class PersonalizationSuggestionRow @JvmOverloads constructor(
         isClickable = true
 
         imageView.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-        imageView.setBackgroundColor(PersonalizationTheme.color(context, R.color.personalization_background_card))
+        imageView.setBackgroundColor(PersonalizationTheme.color(context, R.color.personalization_neutral_50))
         imageView.isVisible = false
         addView(imageView, LayoutParams(dpToPx(IMAGE_DP), dpToPx(IMAGE_DP)))
 

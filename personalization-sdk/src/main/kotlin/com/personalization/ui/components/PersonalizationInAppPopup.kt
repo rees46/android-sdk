@@ -38,8 +38,9 @@ import com.personalization.ui.PersonalizationTheme
  * отдельным тумблером рядом с кнопкой действия, поэтому она здесь вторичной кнопкой
  * под основной. Пустой текст — кнопки нет, остаётся один крестик.
  *
- * Отступ 20 у модалки и интерлиньяж 48 у полноэкранного заголовка вне шкал кита —
- * взяты из макета как есть.
+ * Поля и зазор между блоками — семантические отступы Padding/Gap Modal (20) и
+ * Padding/Gap Full Screen (24), скругление модалки — радиус Modal, фон — Background/Card,
+ * тень — Elevation 3.
  */
 @InternalPersonalizationUiApi
 class PersonalizationInAppPopup @JvmOverloads constructor(
@@ -174,8 +175,14 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
         textBlock.gravity = Gravity.NO_GRAVITY
         val modal = presentation == Presentation.MODAL
-        val pad = dpToPx(if (modal) 20 else 24)
-        val gapSection = dpToPx(if (modal) 20 else 24)
+        val pad = resources.getDimensionPixelSize(
+            if (modal) R.dimen.personalization_spacing_padding_modal
+            else R.dimen.personalization_spacing_padding_full_screen
+        )
+        val gapSection = resources.getDimensionPixelSize(
+            if (modal) R.dimen.personalization_spacing_gap_modal
+            else R.dimen.personalization_spacing_gap_full_screen
+        )
         val overImage = contentView == ContentView.IMAGE_BACKGROUND
 
         applyTypography(modal)
@@ -261,11 +268,11 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
     private fun applyTypography(modal: Boolean) {
         val titleSize = if (modal) R.dimen.personalization_font_size_xl3 else R.dimen.personalization_font_size_xl4
         val textSize = if (modal) R.dimen.personalization_font_size_lg else R.dimen.personalization_font_size_xl2
-        val titleLine = if (modal) resources.getDimensionPixelSize(R.dimen.personalization_line_height_xl3) else dpToPx(48)
+        val titleLine = if (modal) R.dimen.personalization_line_height_xl3 else R.dimen.personalization_line_height_xl4
         val textLine = if (modal) R.dimen.personalization_line_height_lg else R.dimen.personalization_line_height_xl2
 
         titleView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(titleSize))
-        TextViewCompat.setLineHeight(titleView, titleLine)
+        TextViewCompat.setLineHeight(titleView, resources.getDimensionPixelSize(titleLine))
         textView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(textSize))
         TextViewCompat.setLineHeight(textView, resources.getDimensionPixelSize(textLine))
     }
@@ -282,16 +289,13 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
     private fun applyShape(modal: Boolean) {
         val radius = if (modal) {
-            resources.getDimension(R.dimen.personalization_radius_xl6)
+            PersonalizationTheme.radius(context, R.dimen.personalization_radius_modal)
         } else {
             0f
         }
-        // Background/Modal, а не Card: в светлой они совпадают (белый), в тёмной у модалки
-        // своя ступень #333333. В Figma компонент привязан к Card, но значение Card в ките
-        // отстало от файла (там уже #FFFFFF) — ресинк цветов отдельной задачей.
         background = GradientDrawable().apply {
             cornerRadius = radius
-            setColor(PersonalizationTheme.color(context, R.color.personalization_background_modal))
+            setColor(PersonalizationTheme.color(context, R.color.personalization_background_card))
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             outlineProvider = object : ViewOutlineProvider() {

@@ -56,7 +56,7 @@ class PersonalizationButton @JvmOverloads constructor(
             0f,
             R.dimen.personalization_radius_button_lg,
             R.dimen.personalization_spacing_md,
-            R.dimen.personalization_spacing_xl2,
+            R.dimen.personalization_spacing_xl3,
             R.dimen.personalization_spacing_xl,
             R.dimen.personalization_spacing_lg,
             32

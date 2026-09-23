@@ -120,7 +120,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.016667</item>
     </style>
 
-    <!-- 4XL/Default — 36/52, трекинг -0.5px -->
+    <!-- 4XL/Default — 36/48, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.4XL.Default" parent="">
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl4</item>
@@ -128,7 +128,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.013889</item>
     </style>
 
-    <!-- 4XL/Emphasized — 36/52, трекинг -0.5px -->
+    <!-- 4XL/Emphasized — 36/48, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.4XL.Emphasized" parent="">
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl4</item>
@@ -136,7 +136,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.013889</item>
     </style>
 
-    <!-- 5XL/Default — 48/64, трекинг -0.5px -->
+    <!-- 5XL/Default — 48/56, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.5XL.Default" parent="">
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl5</item>
@@ -144,7 +144,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.010417</item>
     </style>
 
-    <!-- 5XL/Emphasized — 48/64, трекинг -0.5px -->
+    <!-- 5XL/Emphasized — 48/56, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.5XL.Emphasized" parent="">
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl5</item>
@@ -152,7 +152,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.010417</item>
     </style>
 
-    <!-- 6XL/Default — 60/72, трекинг -0.5px -->
+    <!-- 6XL/Default — 60/64, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.6XL.Default" parent="">
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl6</item>
@@ -160,7 +160,7 @@
         <item name="android:letterSpacing" tools:targetApi="21">-0.008333</item>
     </style>
 
-    <!-- 6XL/Emphasized — 60/72, трекинг -0.5px -->
+    <!-- 6XL/Emphasized — 60/64, трекинг -0.5px -->
     <style name="TextAppearance.Personalization.6XL.Emphasized" parent="">
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textSize">@dimen/personalization_font_size_xl6</item>

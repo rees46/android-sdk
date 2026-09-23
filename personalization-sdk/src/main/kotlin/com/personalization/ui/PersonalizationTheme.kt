@@ -38,9 +38,9 @@ object PersonalizationTheme {
 
     private val colorAttributes: Map<Int, Int> = mapOf(
         R.color.personalization_brand_primary to R.attr.personalizationColorBrandPrimary,
+        R.color.personalization_neutral_50 to R.attr.personalizationColorNeutral50,
         R.color.personalization_semantic_warning to R.attr.personalizationColorSemanticWarning,
         R.color.personalization_semantic_danger to R.attr.personalizationColorSemanticDanger,
-        R.color.personalization_background_primary to R.attr.personalizationColorBackgroundPrimary,
         R.color.personalization_background_generic to R.attr.personalizationColorBackgroundGeneric,
         R.color.personalization_background_card to R.attr.personalizationColorBackgroundCard,
         R.color.personalization_background_input to R.attr.personalizationColorBackgroundInput,
@@ -86,12 +86,17 @@ object PersonalizationTheme {
         R.dimen.personalization_radius_xl4 to R.attr.personalizationRadiusXl4,
         R.dimen.personalization_radius_xl5 to R.attr.personalizationRadiusXl5,
         R.dimen.personalization_radius_xl6 to R.attr.personalizationRadiusXl6,
+        R.dimen.personalization_radius_xl7 to R.attr.personalizationRadiusXl7,
         R.dimen.personalization_radius_rounded to R.attr.personalizationRadiusRounded,
         R.dimen.personalization_radius_button_lg to R.attr.personalizationRadiusButtonLg,
         R.dimen.personalization_radius_button_md to R.attr.personalizationRadiusButtonMd,
         R.dimen.personalization_radius_button_sm to R.attr.personalizationRadiusButtonSm,
+        R.dimen.personalization_radius_segmented_lg to R.attr.personalizationRadiusSegmentedLg,
         R.dimen.personalization_radius_segmented_md to R.attr.personalizationRadiusSegmentedMd,
         R.dimen.personalization_radius_segmented_sm to R.attr.personalizationRadiusSegmentedSm,
+        R.dimen.personalization_radius_card to R.attr.personalizationRadiusCard,
+        R.dimen.personalization_radius_toast to R.attr.personalizationRadiusToast,
+        R.dimen.personalization_radius_modal to R.attr.personalizationRadiusModal,
     )
 
     /** Цвет токена: из темы, иначе из ресурса. */
