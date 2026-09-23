@@ -122,6 +122,17 @@ class PersonalizationButton @JvmOverloads constructor(
             applyColors()
         }
 
+    /**
+     * Скругление Rounded вместо радиуса размера: кнопка-иконка становится кругом.
+     * Так в макете устроен крестик Close (секция Button) — кнопка MD Secondary,
+     * у которой радиус переопределён на Rounded.
+     */
+    var rounded: Boolean = false
+        set(value) {
+            field = value
+            applyColors()
+        }
+
     /** Иконка перед текстом. Без текста кнопка становится кнопкой-иконкой. */
     @DrawableRes
     var iconStart: Int? = null
@@ -210,7 +221,10 @@ class PersonalizationButton @JvmOverloads constructor(
             ButtonView.GHOST -> R.color.personalization_background_transparent
         }
 
-        val radius = PersonalizationTheme.radius(context, size.radiusRes)
+        val radius = PersonalizationTheme.radius(
+            context,
+            if (rounded) R.dimen.personalization_radius_rounded else size.radiusRes
+        )
         background = StateListDrawable().apply {
             addState(intArrayOf(-android.R.attr.state_enabled), fill(backgroundDisabled, radius))
             addState(intArrayOf(android.R.attr.state_pressed), fill(backgroundPressed, radius))

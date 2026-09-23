@@ -33,7 +33,9 @@ import com.personalization.ui.PersonalizationTheme
  * а кегли на ступень крупнее.
  *
  * Крестик стоит **всегда** и живёт в самом попапе, а не в контейнере картинки: в макете
- * виды «только текст» и «иконка» картинки не имеют, но крестик у них нарисован.
+ * виды «только текст» и «иконка» картинки не имеют, но крестик у них нарисован. Он круглый
+ * (компонент Close: кнопка MD с радиусом Rounded) и лежит поверх содержимого в углу, на
+ * отступе попапа; над фотографией — в тёмном варианте.
  * Текстовая кнопка закрытия ([closeText]) в макете не нарисована — её даёт админка
  * отдельным тумблером рядом с кнопкой действия, поэтому она здесь вторичной кнопкой
  * под основной. Пустой текст — кнопки нет, остаётся один крестик.
@@ -149,6 +151,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
         closeIcon.size = PersonalizationButton.Size.MD
         closeIcon.buttonView = PersonalizationButton.ButtonView.SECONDARY
+        closeIcon.rounded = true
         closeIcon.iconStart = R.drawable.personalization_ic_cross_large
         closeIcon.setOnClickListener { onClose?.invoke() }
 
@@ -198,7 +201,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         textBlock.addView(textView, wrap().also { it.topMargin = gapText() })
 
         buttons.addView(actionButton, match())
-        buttons.addView(closeButton, match().also { it.topMargin = gapText() })
+        buttons.addView(closeButton, match().also { it.topMargin = gapButtons() })
 
         when (contentView) {
             ContentView.IMAGE -> {
@@ -213,12 +216,6 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
             ContentView.IMAGE_BACKGROUND -> {
                 addView(backgroundImage, LayoutParams(MATCH, MATCH))
                 column.setPadding(pad, pad, pad, pad)
-                // Здесь крестик не накладкой, а первым в колонке: в макете он занимает свою
-                // строку, иначе заголовок заезжает под него.
-                column.addView(
-                    closeIcon,
-                    LinearLayout.LayoutParams(WRAP, WRAP).also { it.gravity = Gravity.END }
-                )
                 // Текст прижат к низу колонки, над кнопками.
                 textBlock.gravity = Gravity.BOTTOM
                 column.addView(textBlock, match().also { it.weight = 1f })
@@ -245,21 +242,19 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         addView(column, LayoutParams(MATCH, MATCH))
         applyVisibility()
 
-        // Крестик всегда на месте — у видов без картинки тоже. У фона-картинки он уже
-        // стоит в колонке, здесь накладкой поверх содержимого.
-        if (contentView != ContentView.IMAGE_BACKGROUND) {
-            addView(
-                closeIcon,
-                LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END).also {
-                    it.topMargin = pad
-                    it.marginEnd = pad
-                }
-            )
-        }
+        // Крестик всегда на месте — у видов без картинки тоже, накладкой поверх содержимого.
+        addView(
+            closeIcon,
+            LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END).also {
+                it.topMargin = pad
+                it.marginEnd = pad
+            }
+        )
 
         // Поверх картинки контролы берут инвертированную палитру, иначе тёмная подпись
-        // вторичной кнопки тонет в фотографии.
-        closeIcon.onDark = overImage
+        // вторичной кнопки тонет в фотографии. Крестик над фотографией и у вида с картинкой
+        // сверху: в макете у него там тёмный режим.
+        closeIcon.onDark = overImage || contentView == ContentView.IMAGE
         closeButton.onDark = overImage
 
         imageLoader?.invoke(if (overImage) backgroundImage else topImage)
@@ -322,7 +317,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         textView.setTopMargin(if (hasTitle) gapText() else 0)
         actionButton.isVisible = hasAction
         closeButton.isVisible = hasClose
-        closeButton.setTopMargin(if (hasAction) gapText() else 0)
+        closeButton.setTopMargin(if (hasAction) gapButtons() else 0)
         buttons.isVisible = hasAction || hasClose
     }
 
@@ -335,6 +330,12 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
     private fun gapText(): Int =
         resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+
+    /** Между кнопками: 12 у модалки, 16 у полноэкранного. */
+    private fun gapButtons(): Int = resources.getDimensionPixelSize(
+        if (presentation == Presentation.MODAL) R.dimen.personalization_spacing_lg
+        else R.dimen.personalization_spacing_xl
+    )
 
     private fun match(): LinearLayout.LayoutParams =
         LinearLayout.LayoutParams(MATCH, WRAP)
