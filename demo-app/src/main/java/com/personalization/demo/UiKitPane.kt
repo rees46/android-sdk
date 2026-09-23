@@ -1,9 +1,14 @@
 package com.personalization.demo
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -40,6 +45,7 @@ import com.personalization.R as SdkR
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationAccordion
 import com.personalization.ui.components.PersonalizationBadge
+import com.personalization.ui.components.PersonalizationBarcode
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationButtonGroup
 import com.personalization.ui.components.PersonalizationCatalog
@@ -51,11 +57,12 @@ import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationFavoritesBadge
 import com.personalization.ui.components.PersonalizationFilters
 import com.personalization.ui.components.PersonalizationInAppPopup
-import com.personalization.ui.components.PersonalizationInstantSearch
 import com.personalization.ui.components.PersonalizationInputField
+import com.personalization.ui.components.PersonalizationInstantSearch
 import com.personalization.ui.components.PersonalizationLink
 import com.personalization.ui.components.PersonalizationListLabel
 import com.personalization.ui.components.PersonalizationLoader
+import com.personalization.ui.components.PersonalizationLoyaltyCard
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationProductCard
 import com.personalization.ui.components.PersonalizationProductImage
@@ -65,6 +72,7 @@ import com.personalization.ui.components.PersonalizationRecommenderBlock
 import com.personalization.ui.components.PersonalizationSearchResultsTitle
 import com.personalization.ui.components.PersonalizationTag
 import com.personalization.ui.components.PersonalizationTitle
+import com.personalization.ui.components.PersonalizationToast
 import com.personalization.ui.widgets.PersonalizationInstantSearchField
 import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
 
@@ -253,6 +261,7 @@ private fun ComponentsShowcase() {
             )
         }
         Exhibit("Empty State") { ctx -> PersonalizationEmptyState(ctx).apply { text = "No results for your request." } }
+        Exhibit("Barcode — Code 128 on a white plate") { ctx -> ctx.barcode("2000012345678") }
         Exhibit("Icons — the full set, 24 dp") { ctx ->
             ctx.hscroll(ctx.row(*DemoIcons.all.map { ctx.icon(it) }.toTypedArray()))
         }
@@ -334,8 +343,73 @@ private fun BlocksShowcase() {
         Exhibit("In App Popup, fullscreen — icon") { ctx ->
             ctx.inAppPopup(PersonalizationInAppPopup.ContentView.ICON, fullscreen = true)
         }
+        Exhibit("Toast — as a view, and shown over the screen at the bottom and at the top") { ctx ->
+            ctx.toasts()
+        }
+        Exhibit("Loyalty Card — light, stamps 0 of 5") { ctx -> ctx.loyaltyCard(stamps = 0) }
+        Exhibit("Loyalty Card — brand colour, stamps 4 of 5") { ctx ->
+            ctx.loyaltyCard(stamps = 4, brand = Color.parseColor("#0087E8"))
+        }
     }
 }
+
+/**
+ * The toast pill as a plain view, and the presenter the way a host calls it — from any view of the
+ * window, which the toast then covers. Stories will show "Copied" this way under a promo code.
+ */
+private fun Context.toasts(): View {
+    val pill = FrameLayout(this).apply {
+        // Room for the Elevation 2 shadow, which the exhibit's bounds would otherwise cut square.
+        setPadding(dp(24), dp(16), dp(24), dp(24))
+        addView(PersonalizationToast(context).apply { text = "Copied" })
+    }
+    val bottom = button("Show at the bottom", PersonalizationButton.Size.SM, PersonalizationButton.ButtonView.SECONDARY)
+    bottom.setOnClickListener { PersonalizationToast.show(it, "Copied") }
+    val top = button("Show at the top", PersonalizationButton.Size.SM, PersonalizationButton.ButtonView.SECONDARY)
+    top.setOnClickListener {
+        PersonalizationToast.show(it, "Code copied to clipboard", PersonalizationToast.Position.TOP)
+    }
+    return column(row(pill), row(bottom, top))
+}
+
+/**
+ * A loyalty card filled the way a host would: the SDK's loyalty status only knows the level, so the
+ * balance, stamps and card number come from the shop's own backend. The art ships with the app.
+ */
+private fun Context.loyaltyCard(stamps: Int, brand: Int? = null): View {
+    val card = PersonalizationLoyaltyCard(this).apply {
+        if (brand != null) {
+            cardColor = brand
+            contentColor = Color.WHITE
+        }
+        // The logo is the host's picture: the kit does not tint it, the demo matches it to the text.
+        val logoTint = contentColor
+            ?: PersonalizationTheme.color(context, SdkR.color.personalization_text_primary)
+        logoLoader = { view ->
+            view.setImageResource(R.drawable.demo_loyalty_logo)
+            ImageViewCompat.setImageTintList(view, ColorStateList.valueOf(logoTint))
+        }
+        stripeLoader = { view -> view.setImageBitmap(assetBitmap("uikit/loyalty_stripe.jpg")) }
+        emblemLoader = { view -> view.setImageBitmap(assetBitmap("uikit/loyalty_emblem.png")) }
+        balanceLabel = "Бонусы"
+        balance = "50 550"
+        fields = listOf(
+            PersonalizationLoyaltyCard.Field("Владелец", "Олег"),
+            PersonalizationLoyaltyCard.Field("Уровень", "Базовый")
+        )
+        stampsTotal = 5
+        this.stamps = stamps
+        code = "2000012345678"
+    }
+    // Room for the Elevation 3 shadow, which the exhibit's bounds would otherwise cut square.
+    return FrameLayout(this).apply {
+        setPadding(dp(12), dp(8), dp(12), dp(32))
+        addView(card)
+    }
+}
+
+/** Decoded straight from the APK: Glide waits for a pre-draw that Compose-hosted views may never get. */
+private fun Context.assetBitmap(path: String): Bitmap = assets.open(path).use(BitmapFactory::decodeStream)
 
 /**
  * The popup as the SDK will hand it over: the host loads the image and wires the two callbacks.
@@ -528,6 +602,16 @@ private fun Context.badge(
 private fun Context.checkbox(state: PersonalizationCheckbox.CheckState): PersonalizationCheckbox =
     PersonalizationCheckbox(this).apply { checkState = state }
 
+/** The kit draws bars only; the white plate under them is the host's, as on the loyalty card. */
+private fun Context.barcode(code: String): View = FrameLayout(this).apply {
+    setBackgroundColor(Color.WHITE)
+    setPadding(dp(20), dp(20), dp(20), dp(20))
+    addView(
+        PersonalizationBarcode(context).apply { this.code = code },
+        FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER)
+    )
+}
+
 private fun Context.icon(res: Int): ImageView = AppCompatImageView(this).apply {
     setImageResource(res)
     ImageViewCompat.setImageTintList(this, PersonalizationTheme.colorStateList(context, SdkR.color.personalization_text_primary))
@@ -700,6 +784,7 @@ private object DemoIcons {
         SdkR.drawable.personalization_ic_arrow_left,
         SdkR.drawable.personalization_ic_arrow_rotate_cw,
         SdkR.drawable.personalization_ic_arrows_up_down,
+        SdkR.drawable.personalization_ic_check_rosette_fill,
         SdkR.drawable.personalization_ic_copy,
         SdkR.drawable.personalization_ic_cross_large,
         SdkR.drawable.personalization_ic_cross,
@@ -709,6 +794,7 @@ private object DemoIcons {
         SdkR.drawable.personalization_ic_list_fill,
         SdkR.drawable.personalization_ic_list,
         SdkR.drawable.personalization_ic_magnifier,
+        SdkR.drawable.personalization_ic_rosette,
         SdkR.drawable.personalization_ic_spacing_md,
         SdkR.drawable.personalization_ic_star_fill
     )
