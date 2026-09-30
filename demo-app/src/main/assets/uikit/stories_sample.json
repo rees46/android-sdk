@@ -1,0 +1,330 @@
+{
+ "id": "sample",
+ "settings": {},
+ "stories": [
+  {
+   "id": 901,
+   "name": "Скидки",
+   "avatar": "file:///android_asset/uikit/sneakers.jpg",
+   "pinned": true,
+   "viewed": false,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "901_0",
+     "type": "",
+     "duration": 6,
+     "background": "",
+     "elements": [
+      {
+       "type": "product",
+       "title": " ",
+       "item": {
+        "id": "1",
+        "brand": "Pegasus",
+        "name": "Кроссовки беговые Pegasus 41, сетчатый верх",
+        "image_url": "file:///android_asset/uikit/sneakers.jpg",
+        "picture": "file:///android_asset/uikit/sneakers.jpg",
+        "price": 9990,
+        "price_formatted": "9 990 ₽",
+        "url": "https://example.com/p/1",
+        "oldprice": 12990,
+        "oldprice_formatted": "12 990 ₽",
+        "discount": 23,
+        "discount_percent": 23
+       }
+      },
+      {
+       "type": "button",
+       "title": "Купить",
+       "link": "https://example.com",
+       "link_android": "https://example.com",
+       "background": "#3b82f6",
+       "color": "#ffffff"
+      }
+     ]
+    },
+    {
+     "id": "901_1",
+     "type": "",
+     "duration": 6,
+     "background": "",
+     "elements": [
+      {
+       "type": "product",
+       "title": " ",
+       "item": {
+        "id": "2",
+        "brand": "Chrono",
+        "name": "Часы наручные Chrono Classic, сталь, 40 мм",
+        "image_url": "file:///android_asset/uikit/watch.jpg",
+        "picture": "file:///android_asset/uikit/watch.jpg",
+        "price": 24990,
+        "price_formatted": "24 990 ₽",
+        "url": "https://example.com/p/2",
+        "promocode": "YAGODA-MALINA",
+        "price_with_promocode_formatted": "19 990 ₽"
+       }
+      },
+      {
+       "type": "button",
+       "title": "Купить",
+       "link": "https://example.com",
+       "link_android": "https://example.com",
+       "background": "#3b82f6",
+       "color": "#ffffff"
+      }
+     ]
+    },
+    {
+     "id": "901_2",
+     "type": "",
+     "duration": 6,
+     "background": "",
+     "elements": [
+      {
+       "type": "product",
+       "title": " ",
+       "item": {
+        "id": "3",
+        "brand": "Sonic",
+        "name": "Наушники беспроводные Sonic Pro с шумоподавлением",
+        "image_url": "file:///android_asset/uikit/headphones.jpg",
+        "picture": "file:///android_asset/uikit/headphones.jpg",
+        "price": 7490,
+        "price_formatted": "7 490 ₽",
+        "url": "https://example.com/p/3"
+       }
+      },
+      {
+       "type": "button",
+       "title": "Купить",
+       "link": "https://example.com",
+       "link_android": "https://example.com",
+       "background": "#3b82f6",
+       "color": "#ffffff"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 902,
+   "name": "Образ",
+   "avatar": "file:///android_asset/uikit/jacket.jpg",
+   "pinned": false,
+   "viewed": false,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "902_0",
+     "type": "image",
+     "duration": 8,
+     "background": "file:///android_asset/uikit/jacket.jpg",
+     "background_color": "#000000",
+     "elements": [
+      {
+       "type": "button",
+       "title": "Смотреть образ",
+       "link": "https://example.com",
+       "link_android": "https://example.com",
+       "background": "#3b82f6",
+       "color": "#ffffff"
+      },
+      {
+       "type": "products",
+       "labels": {
+        "show_carousel": "Используемые товары",
+        "hide_carousel": "Скрыть товары"
+       },
+       "products": [
+        {
+         "id": "4",
+         "brand": "Trail",
+         "name": "Рюкзак городской Trail 20 л",
+         "image_url": "file:///android_asset/uikit/backpack.jpg",
+         "picture": "file:///android_asset/uikit/backpack.jpg",
+         "price": 4990,
+         "price_formatted": "4 990 ₽",
+         "url": "https://example.com/p/4",
+         "oldprice": 5990,
+         "oldprice_formatted": "5 990 ₽",
+         "discount": 17
+        },
+        {
+         "id": "5",
+         "brand": "Sunny",
+         "name": "Очки солнцезащитные Sunny",
+         "image_url": "file:///android_asset/uikit/sunglasses.jpg",
+         "picture": "file:///android_asset/uikit/sunglasses.jpg",
+         "price": 2990,
+         "price_formatted": "2 990 ₽",
+         "url": "https://example.com/p/5"
+        },
+        {
+         "id": "6",
+         "brand": "Aqua",
+         "name": "Бутылка для воды Aqua 0,75 л",
+         "image_url": "file:///android_asset/uikit/bottle.jpg",
+         "picture": "file:///android_asset/uikit/bottle.jpg",
+         "price": 990,
+         "price_formatted": "990 ₽",
+         "url": "https://example.com/p/6",
+         "oldprice": 1290,
+         "oldprice_formatted": "1 290 ₽",
+         "discount": 23
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "902_1",
+     "type": "image",
+     "duration": 6,
+     "background": "file:///android_asset/uikit/backpack.jpg",
+     "background_color": "#000000",
+     "elements": []
+    }
+   ]
+  },
+  {
+   "id": 903,
+   "name": "Текст",
+   "avatar": "file:///android_asset/uikit/bottle.jpg",
+   "pinned": false,
+   "viewed": false,
+   "start_position": 1,
+   "slides": [
+    {
+     "id": "903_0",
+     "type": "image",
+     "duration": 6,
+     "background": "file:///android_asset/uikit/sunglasses.jpg",
+     "background_color": "#000000",
+     "elements": [
+      {
+       "type": "text_block",
+       "text_input": "Первый слайд уже просмотрен — лента продолжила со второго",
+       "font_size": 20,
+       "y_offset": 40,
+       "text_align": "left",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#0087E8",
+       "text_background_color_opacity": "100%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      }
+     ]
+    },
+    {
+     "id": "903_1",
+     "type": "image",
+     "duration": 8,
+     "background": "file:///android_asset/uikit/bottle.jpg",
+     "background_color": "#000000",
+     "elements": [
+      {
+       "type": "text_block",
+       "text_input": "Open eat dear winding belonging.",
+       "font_size": 48,
+       "y_offset": 0,
+       "text_align": "left",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#1BAA1B",
+       "text_background_color_opacity": "100%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "text_block",
+       "text_input": "Open eat dear winding belonging though differed stand left.",
+       "font_size": 30,
+       "y_offset": 27,
+       "text_align": "left",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#F37A17",
+       "text_background_color_opacity": "100%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "text_block",
+       "text_input": "Open eat dear winding belonging though differed stand left.",
+       "font_size": 20,
+       "y_offset": 45,
+       "text_align": "left",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#0087E8",
+       "text_background_color_opacity": "100%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "text_block",
+       "text_input": "Open eat dear winding belonging.",
+       "font_size": 48,
+       "y_offset": 56,
+       "text_align": "center",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#0087E8",
+       "text_background_color_opacity": "0%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "text_block",
+       "text_input": "Open eat dear winding belonging though differed stand left.",
+       "font_size": 20,
+       "y_offset": 80,
+       "text_align": "right",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#0087E8",
+       "text_background_color_opacity": "0%",
+       "text_line_spacing": 1.0,
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "button",
+       "title": "Подробнее",
+       "link": "https://example.com",
+       "link_android": "https://example.com",
+       "background": "#3b82f6",
+       "color": "#ffffff"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 904,
+   "name": "Просмотрено",
+   "avatar": "file:///android_asset/uikit/watch.jpg",
+   "pinned": false,
+   "viewed": true,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "904_0",
+     "type": "image",
+     "duration": 5,
+     "background": "file:///android_asset/uikit/watch.jpg",
+     "background_color": "#000000",
+     "elements": []
+    }
+   ]
+  }
+ ]
+}

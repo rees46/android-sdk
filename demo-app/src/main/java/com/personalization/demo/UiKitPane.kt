@@ -26,7 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
+import androidx.compose.material.ScrollableTabRow
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
@@ -84,6 +84,7 @@ import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
  * search, the catalogue, the filters screen). "Search" runs the two data-bound search widgets against
  * the demo shop: the instant search field, and the results screen it opens on submit. "Stories" keeps
  * the stories block through the SDK's Compose wrapper, the counterpart of the "Legacy UI" tab.
+ * "Stories V2" is the same block drawn by the kit (see [StoriesV2Showcase]).
  *
  * The kit is classic Views, so each exhibit is an [AndroidView] built from a small factory. Product
  * data is static: the kit does not fetch or format anything itself, and images are loaded by the
@@ -92,7 +93,7 @@ import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
 @Composable
 fun UiKitPane(storiesCode: String, shopId: String) {
     var tab by rememberSaveable { mutableStateOf(0) }
-    val tabs = listOf("Components", "Blocks", "Search", "Stories")
+    val tabs = listOf("Components", "Blocks", "Search", "Stories", "Stories V2")
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -101,7 +102,8 @@ fun UiKitPane(storiesCode: String, shopId: String) {
         ) {
             AppearanceSwitch()
         }
-        TabRow(
+        // Five tabs do not fit a fixed row on a phone: the labels would break mid-word.
+        ScrollableTabRow(
             selectedTabIndex = tab,
             backgroundColor = MaterialTheme.colors.surface,
             contentColor = MaterialTheme.colors.primary
@@ -114,7 +116,8 @@ fun UiKitPane(storiesCode: String, shopId: String) {
             0 -> ComponentsShowcase()
             1 -> BlocksShowcase()
             2 -> SearchShowcase(shopId = shopId)
-            else -> ComposeStoriesPane(code = storiesCode, shopId = shopId)
+            3 -> ComposeStoriesPane(code = storiesCode, shopId = shopId)
+            else -> StoriesV2Showcase(storiesCode = storiesCode, shopId = shopId)
         }
     }
 }
@@ -409,7 +412,7 @@ private fun Context.loyaltyCard(stamps: Int, brand: Int? = null): View {
 }
 
 /** Decoded straight from the APK: Glide waits for a pre-draw that Compose-hosted views may never get. */
-private fun Context.assetBitmap(path: String): Bitmap = assets.open(path).use(BitmapFactory::decodeStream)
+internal fun Context.assetBitmap(path: String): Bitmap = assets.open(path).use(BitmapFactory::decodeStream)
 
 /**
  * The popup as the SDK will hand it over: the host loads the image and wires the two callbacks.
@@ -517,7 +520,7 @@ private fun Context.toast(message: String) = Toast.makeText(this, message, Toast
 // --- Compose scaffolding ------------------------------------------------------------------------
 
 @Composable
-private fun Showcase(content: @Composable () -> Unit) {
+internal fun Showcase(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -529,7 +532,7 @@ private fun Showcase(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Exhibit(title: String, build: (Context) -> View) {
+internal fun Exhibit(title: String, build: (Context) -> View) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = title,
@@ -542,9 +545,9 @@ private fun Exhibit(title: String, build: (Context) -> View) {
 
 // --- View factories -----------------------------------------------------------------------------
 
-private fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+internal fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-private fun Context.row(vararg children: View): LinearLayout = LinearLayout(this).apply {
+internal fun Context.row(vararg children: View): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.HORIZONTAL
     gravity = Gravity.CENTER_VERTICAL
     children.forEachIndexed { index, child ->
@@ -555,7 +558,7 @@ private fun Context.row(vararg children: View): LinearLayout = LinearLayout(this
     }
 }
 
-private fun Context.column(vararg children: View): LinearLayout = LinearLayout(this).apply {
+internal fun Context.column(vararg children: View): LinearLayout = LinearLayout(this).apply {
     orientation = LinearLayout.VERTICAL
     children.forEachIndexed { index, child ->
         val params = (child.layoutParams as? LinearLayout.LayoutParams)
