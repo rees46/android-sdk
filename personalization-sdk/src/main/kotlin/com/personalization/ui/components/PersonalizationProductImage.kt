@@ -52,9 +52,12 @@ class PersonalizationProductImage @JvmOverloads constructor(
         addView(imageView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
+    /** Высота при ширине [width] — по ней меряется и сама картинка. */
+    internal fun heightFor(width: Int): Int = width * aspect.height / aspect.width
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val height = width * aspect.height / aspect.width
+        val height = heightFor(width)
         val exactWidth = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
         val exactHeight = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
         super.onMeasure(exactWidth, exactHeight)

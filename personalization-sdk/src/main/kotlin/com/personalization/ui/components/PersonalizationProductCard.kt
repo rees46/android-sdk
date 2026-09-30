@@ -6,7 +6,6 @@ import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
@@ -79,6 +78,9 @@ class PersonalizationProductCard @JvmOverloads constructor(
     private val oldPriceView = AppCompatTextView(context)
     private val button = PersonalizationButton(context)
 
+    /** Колонка справа от картинки у List: она не ниже картинки. У других типов — `null`. */
+    private var listColumn: LinearLayout? = null
+
     var type: Type = Type.CAROUSEL
         set(value) {
             field = value
@@ -90,6 +92,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
         get() = image.aspect
         set(value) {
             image.aspect = value
+            listColumn?.minimumHeight = image.heightFor(dpToPx(LIST_IMAGE_DP))
         }
 
     var brand: CharSequence? = null
@@ -210,6 +213,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
     private fun rebuild() {
         detachAll()
         removeAllViews()
+        listColumn = null
         applyTypography()
         applyBadgeVisibility()
         if (type == Type.LIST) buildList() else buildColumn()
@@ -259,7 +263,9 @@ class PersonalizationProductCard @JvmOverloads constructor(
 
     /**
      * List: картинка шириной 120 слева, справа колонка — название с рейтингом сверху,
-     * цена с кнопкой снизу. Высоту строки задаёт картинка по своей пропорции.
+     * цена с кнопкой снизу. Высота строки — большее из картинки и текста, как на iOS:
+     * колонка тянется до картинки (цена с кнопкой уходят вниз), а низкая картинка 4:3
+     * её не сжимает — картинка тогда стоит сверху.
      */
     private fun buildList() {
         orientation = HORIZONTAL
@@ -293,13 +299,17 @@ class PersonalizationProductCard @JvmOverloads constructor(
             addView(priceBlock, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             addView(button, wrap())
         }
+        // Колонка по содержимому, но не ниже картинки; лишнюю высоту забирает верх, и цена
+        // с кнопкой прижимаются к низу. Пустая вью-распорка тут не годится: у колонки
+        // wrap_content, и в режиме AT_MOST такая вью раздувается на всё доступное место.
         val column = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(top)
-            addView(View(context), LayoutParams(0, 0, 1f))
+            minimumHeight = image.heightFor(side)
+            addView(top, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, 1f))
             addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
-        addView(column, LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply { marginStart = gap })
+        listColumn = column
+        addView(column, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = gap })
     }
 
     private fun nameBlock(gapBetween: Int): LinearLayout =
