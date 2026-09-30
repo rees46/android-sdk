@@ -514,14 +514,14 @@ class PersonalizationStoriesViewer(
                     addView(playerView, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
                     poster.bringToFront()
                 }
-                // Скрим сверху и снизу: у фото без текста чёрный 50%, у слайдов с товаром
-                // и текстом — 30% (Card/Story, виды Slide и Product/Text).
-                val strong = StoriesMapping.product(slide) == null && StoriesMapping.textBlocks(slide).isEmpty()
-                addView(
-                    View(context).apply { background = scrim(if (strong) SCRIM_STRONG else SCRIM_LIGHT) },
-                    LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-                )
             }
+            // Скрим сверху и снизу — у всех видов Card/Story, и на белом фоне тоже:
+            // у фото без текста чёрный 50%, у слайдов с товаром и текстом — 30%.
+            val strong = media && StoriesMapping.product(slide) == null && StoriesMapping.textBlocks(slide).isEmpty()
+            addView(
+                View(context).apply { background = scrim(if (strong) SCRIM_STRONG else SCRIM_LIGHT) },
+                LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+            )
 
             // Слой касаний: тап — листать, удержание — пауза. Кнопки лежат выше и забирают свои касания.
             val detector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
