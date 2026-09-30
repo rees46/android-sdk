@@ -16,6 +16,9 @@
     <attr name="personalizationColorNeutral50" format="color" />
     <attr name="personalizationColorSemanticWarning" format="color" />
     <attr name="personalizationColorSemanticDanger" format="color" />
+    <attr name="personalizationColorNeutral100" format="color" />
+    <attr name="personalizationColorSemanticInfo" format="color" />
+    <attr name="personalizationColorSemanticNeutralSubtle" format="color" />
     <attr name="personalizationColorBackgroundGeneric" format="color" />
     <attr name="personalizationColorBackgroundCard" format="color" />
     <attr name="personalizationColorBackgroundInput" format="color" />

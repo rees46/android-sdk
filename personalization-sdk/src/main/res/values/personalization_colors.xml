@@ -14,10 +14,15 @@
 
     <!-- neutral: полупрозрачная ступень, одинаково заметна на любом фоне — заглушки картинок -->
     <color name="personalization_neutral_50">#0D000000</color>
+    <!-- подложка таймера сторис -->
+    <color name="personalization_neutral_100">#1A000000</color>
 
     <!-- semantic -->
     <color name="personalization_semantic_warning">#FFF37A17</color>
     <color name="personalization_semantic_danger">#FFE51919</color>
+    <color name="personalization_semantic_info">#FF0087E8</color>
+    <!-- кольцо просмотренной сторис -->
+    <color name="personalization_semantic_neutral_subtle">#FFCCCCCC</color>
 
     <!-- background -->
     <color name="personalization_background_generic">#FFF2F2F2</color>
