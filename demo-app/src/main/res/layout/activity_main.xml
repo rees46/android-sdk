@@ -89,6 +89,12 @@
                 android:text="@string/show_test_popup"
                 android:layout_marginTop="16dp" />
 
+            <CheckBox
+                android:id="@+id/checkHoldPopups"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/hold_popups_back" />
+
             <Button
                 android:id="@+id/btnTrackEventCustomFields"
                 android:layout_width="wrap_content"

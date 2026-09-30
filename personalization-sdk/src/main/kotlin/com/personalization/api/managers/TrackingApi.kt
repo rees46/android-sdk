@@ -129,6 +129,14 @@ interface TrackingApi {
     )
 
     /**
+     * A server popup was shown (`popup/showed`).
+     *
+     * The SDK reports the popups it shows. Call this only for one you drew yourself after keeping it
+     * from the SDK through a [com.personalization.PopupPresentationListener].
+     */
+    fun popupShown(popupId: Int, listener: OnApiCallbackListener? = null)
+
+    /**
      * Stores the attribution source and attaches it to every event for the next 48 hours.
      *
      * Use it when the source outlives a single call — a user entering the catalog from a recommender

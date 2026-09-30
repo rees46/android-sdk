@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -24,6 +25,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
+import com.personalization.PopupPresentationListener
 import com.personalization.PushProvider
 import com.personalization.Rees46
 import com.personalization.SDK
@@ -53,8 +55,12 @@ class MainActivity : AppCompatActivity() {
     /** Most recent OnClickListener callbacks from the "Legacy UI" tab, newest first. */
     private val legacyStoriesEvents = mutableListOf<String>()
 
+    /** Bottom tab currently shown, kept so it survives the activity being recreated. */
+    private var selectedTabId = R.id.tabApi
+
     private companion object {
         const val MAX_LOGGED_STORIES_EVENTS = 20
+        const val STATE_SELECTED_TAB = "selectedTabId"
     }
 
     private object DemoTrackingNamespaceConstants {
@@ -122,6 +128,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        selectedTabId = savedInstanceState?.getInt(STATE_SELECTED_TAB, R.id.tabApi) ?: R.id.tabApi
         setContentView(R.layout.activity_main)
 
         // Initialize Firebase if not already initialized
@@ -140,9 +147,6 @@ class MainActivity : AppCompatActivity() {
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 
-        // Initialize fragment manager for popups
-        sdk.inAppNotificationManager.initFragmentManager(supportFragmentManager)
-
         setupStoriesTabs()
 
         findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
@@ -152,6 +156,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnShowTestPopup).setOnClickListener {
             showTestPopup()
         }
+
+        setupPopupHoldBack()
 
         findViewById<Button>(R.id.btnTrackEventCustomFields).setOnClickListener {
             trackEventWithCustomFieldsSuccess()
@@ -975,6 +981,33 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Popups need no wiring: the SDK shows them in the activity on screen. The checkbox installs a
+     * presentation listener that keeps them back instead — what a host does on a screen where a popup
+     * would be in the way, or when it draws popups itself (then it reports the show with
+     * sdk.tracking.popupShown). The listener lives on the shared instance, so the choice outlives a
+     * recreated activity.
+     */
+    private fun setupPopupHoldBack() {
+        val checkbox = findViewById<CheckBox>(R.id.checkHoldPopups)
+        checkbox.isChecked = sdk.popupPresentationListener != null
+        // The application context, not the activity: the listener outlives this activity.
+        val appContext = applicationContext
+        checkbox.setOnCheckedChangeListener { _, hold ->
+            sdk.popupPresentationListener = if (hold) {
+                PopupPresentationListener { _, popup ->
+                    Log.d("MainActivity", "Popup ${popup.id} held back: $popup")
+                    val title = popup.components?.header.orEmpty()
+                    val message = appContext.getString(R.string.popup_held_back, popup.id, title)
+                    Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+                    null
+                }
+            } else {
+                null
+            }
+        }
+    }
+
     private fun showTestPopup() {
         val testPopup = PopupDto(
             id = 999,
@@ -1008,9 +1041,10 @@ class MainActivity : AppCompatActivity() {
     /**
      * Wires the bottom navigation and both stories tabs.
      *
-     * "UI Kit" renders the block with the SDK's Compose wrapper, "Legacy UI" with the XML view, so
-     * the two integration styles can be compared side by side. The API pane keeps the SDK method
-     * demos and no longer carries a stories block of its own.
+     * "UI Kit" is the design-system showcase ([UiKitPane]); its "Stories" segment renders the block
+     * with the SDK's Compose wrapper, "Legacy UI" with the XML view, so the two integration styles can
+     * be compared side by side. The API pane keeps the SDK method demos and no longer carries a
+     * stories block of its own.
      */
     private fun setupStoriesTabs() {
         val apiContent = findViewById<View>(R.id.apiContent)
@@ -1040,10 +1074,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // UI Kit pane: the Compose widget resolves the instance itself from the shopId — shop A here,
-        // named explicitly since the app is multi-shop. DemoTheme makes it follow light/dark.
+        // UI Kit pane: the design-system showcase plus the Compose stories widget, which resolves
+        // the instance itself from the shopId — shop A here, named explicitly since the app is
+        // multi-shop. DemoTheme makes the pane follow light/dark.
         uiKitContent.setContent {
-            DemoTheme { ComposeStoriesPane(code = storiesCode, shopId = BuildConfig.SHOP_ID) }
+            DemoTheme { UiKitPane(storiesCode = storiesCode, shopId = BuildConfig.SHOP_ID) }
         }
 
         // Multi-instance pane: shop A (default) and shop B living side by side.
@@ -1060,6 +1095,7 @@ class MainActivity : AppCompatActivity() {
 
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener { item ->
+            selectedTabId = item.itemId
             apiContent.visibility = if (item.itemId == R.id.tabApi) View.VISIBLE else View.GONE
             uiKitContent.visibility = if (item.itemId == R.id.tabUiKit) View.VISIBLE else View.GONE
             legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
@@ -1068,8 +1104,15 @@ class MainActivity : AppCompatActivity() {
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible
-        // pane cannot drift apart (including after the activity is recreated).
-        bottomNav.selectedItemId = R.id.tabApi
+        // pane cannot drift apart (including after the activity is recreated). The appearance
+        // switch on the UI Kit pane flips the night mode, which recreates the activity — come back
+        // to the tab the user was on rather than dropping them on the first one.
+        bottomNav.selectedItemId = selectedTabId
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(STATE_SELECTED_TAB, selectedTabId)
     }
 
     private fun appendLegacyStoriesLog(target: TextView, message: String) {

@@ -20,6 +20,7 @@ import com.personalization.features.cart.CartManagerImpl
 import com.personalization.features.category.impl.CategoryManagerImpl
 import com.personalization.features.collection.impl.CollectionManagerImpl
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
+import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.loyalty.impl.LoyaltyManagerImpl
 import com.personalization.features.orders.impl.OrdersManagerImpl
@@ -186,16 +187,17 @@ class SdkModule {
 
     @Singleton
     @Provides
-    fun provideInAppNotificationManager(
+    internal fun provideInAppNotificationManager(
         context: Context,
         getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
-        trackEventManagerProvider: javax.inject.Provider<TrackEventManager>
+        trackEventManagerProvider: javax.inject.Provider<TrackEventManager>,
+        popupPresentation: PopupPresentation
     ): InAppNotificationManager {
         return InAppNotificationManagerImpl(
             context = context,
             getUserSettingsValueUseCase = getUserSettingsValueUseCase,
             trackEventManager = dagger.Lazy { trackEventManagerProvider.get() }
-        )
+        ).apply { presentation = popupPresentation }
     }
 
     @Singleton

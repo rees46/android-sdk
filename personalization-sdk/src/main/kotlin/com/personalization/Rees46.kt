@@ -2,6 +2,7 @@ package com.personalization
 
 import android.content.Context
 import android.os.Bundle
+import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import java.util.concurrent.ConcurrentHashMap
 
@@ -34,6 +35,7 @@ object Rees46 {
     @Suppress("DEPRECATION")
     fun initialize(context: Context, config: Rees46Config): SDK {
         val sdk = SDK()
+        sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
         sdk.initialize(
             context = context,
             shopId = config.shopId,
@@ -60,6 +62,9 @@ object Rees46 {
         eagerInit: Boolean = false
     ) {
         val appContext = context.applicationContext
+        // A lazily registered shop initializes on first use, usually after the first activity
+        // resumed. The startup initializer covers that; this covers hosts that turned it off.
+        ForegroundActivity.install(appContext)
         configs.forEach { config ->
             if (eagerInit) {
                 initialize(appContext, config)

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка grid-2x2-fill дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M12 17 C13.657 17 15 18.343 15 20 L15 26 C15 27.657 13.657 29 12 29 L6 29 C4.343 29 3 27.657 3 26 L3 20 C3 18.343 4.343 17 6 17 L12 17 Z"
+        android:fillColor="#000000"/>
+    <path
+        android:pathData="M26 17 C27.657 17 29 18.343 29 20 L29 26 C29 27.657 27.657 29 26 29 L20 29 C18.343 29 17 27.657 17 26 L17 20 C17 18.343 18.343 17 20 17 L26 17 Z"
+        android:fillColor="#000000"/>
+    <path
+        android:pathData="M12 3 C13.657 3 15 4.343 15 6 L15 12 C15 13.657 13.657 15 12 15 L6 15 C4.343 15 3 13.657 3 12 L3 6 C3 4.343 4.343 3 6 3 L12 3 Z"
+        android:fillColor="#000000"/>
+    <path
+        android:pathData="M26 3 C27.657 3 29 4.343 29 6 L29 12 C29 13.657 27.657 15 26 15 L20 15 C18.343 15 17 13.657 17 12 L17 6 C17 4.343 18.343 3 20 3 L26 3 Z"
+        android:fillColor="#000000"/>
+</vector>

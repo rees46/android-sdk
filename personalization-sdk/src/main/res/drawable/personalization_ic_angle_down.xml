@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка angle-down дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M22.293 12.293 C22.684 11.9025 23.317 11.9025 23.707 12.293 C24.098 12.6836 24.098 13.3166 23.707 13.7071 L16.707 20.7071 C16.317 21.0976 15.684 21.0976 15.293 20.7071 L8.293 13.7071 C7.903 13.3166 7.903 12.6836 8.293 12.293 C8.684 11.9025 9.317 11.9025 9.707 12.293 L16 18.586 L22.293 12.293 Z"
+        android:fillColor="#000000"/>
+</vector>

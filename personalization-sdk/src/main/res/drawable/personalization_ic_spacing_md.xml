@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка spacing-md дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M27 23 C27.552 23 28 23.4477 28 24 C28 24.5523 27.552 25 27 25 L5 25 C4.448 25 4 24.5523 4 24 C4 23.4477 4.448 23 5 23 L27 23 Z"
+        android:fillColor="#000000"/>
+    <path
+        android:pathData="M27 15 C27.552 15 28 15.4477 28 16 C28 16.5523 27.552 17 27 17 L5 17 C4.448 17 4 16.5523 4 16 C4 15.4477 4.448 15 5 15 L27 15 Z"
+        android:fillColor="#000000"/>
+    <path
+        android:pathData="M27 7 C27.552 7 28 7.4477 28 8 C28 8.5523 27.552 9 27 9 L5 9 C4.448 9 4 8.5523 4 8 C4 7.4477 4.448 7 5 7 L27 7 Z"
+        android:fillColor="#000000"/>
+</vector>

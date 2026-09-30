@@ -150,6 +150,9 @@ internal object SdkRegistry {
     /** Shop ids with a live, initialized instance. */
     fun shopIds(): Set<String> = byShop.keys.toSet()
 
+    /** The shop [sdk] is registered under, or null for an instance that never registered. */
+    fun shopIdOf(sdk: SDK): String? = byShop.entries.firstOrNull { it.value === sdk }?.key
+
     /** Number of initialized instances currently registered. */
     fun count(): Int = instances.size
 

@@ -26,6 +26,8 @@ import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.inAppNotification.impl.ForegroundActivity
+import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
@@ -135,6 +137,31 @@ open class SDK {
     lateinit var inAppNotificationManager: InAppNotificationManager
 
     @Inject
+    internal lateinit var popupPresentation: PopupPresentation
+
+    /**
+     * Decides where each server popup is shown, or keeps it from being shown; see
+     * [PopupPresentationListener]. Once set, [enableAutoPopupPresentation] is not consulted. May be
+     * set before or after initialization.
+     */
+    var popupPresentationListener: PopupPresentationListener? = null
+        set(value) {
+            field = value
+            applyPopupPresentation()
+        }
+
+    /**
+     * Whether server popups are shown in the activity on screen while no [popupPresentationListener]
+     * is set. Turn it off and, without a listener, popups are not shown at all. Defaults to true;
+     * [Rees46Config.enableAutoPopupPresentation] sets it for instances made through [Rees46].
+     */
+    var enableAutoPopupPresentation: Boolean = true
+        set(value) {
+            field = value
+            applyPopupPresentation()
+        }
+
+    @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
 
     @Inject
@@ -209,18 +236,21 @@ open class SDK {
      * reach the message listener. Used by [Rees46.handlePush] to materialize a lazily-registered shop
      * without the full startup work. The public [initialize] contract is unchanged.
      */
-    internal fun initializeForPush(context: Context, config: Rees46Config) = initializeInternal(
-        context = context,
-        shopId = config.shopId,
-        apiDomain = config.apiDomain,
-        tag = config.tag,
-        preferencesKey = PreferencesPartition.LEGACY_KEY,
-        stream = config.stream,
-        autoSendPushToken = false,
-        needReInitialization = false,
-        addTrailingSlash = config.addTrailingSlash,
-        sendProfileOnInit = false
-    )
+    internal fun initializeForPush(context: Context, config: Rees46Config) {
+        enableAutoPopupPresentation = config.enableAutoPopupPresentation
+        initializeInternal(
+            context = context,
+            shopId = config.shopId,
+            apiDomain = config.apiDomain,
+            tag = config.tag,
+            preferencesKey = PreferencesPartition.LEGACY_KEY,
+            stream = config.stream,
+            autoSendPushToken = false,
+            needReInitialization = false,
+            addTrailingSlash = config.addTrailingSlash,
+            sendProfileOnInit = false
+        )
+    }
 
     private fun initializeInternal(
         context: Context,
@@ -250,6 +280,10 @@ open class SDK {
         sdkComponent.inject(sdk = this)
         this.context = context
         TAG = tag
+
+        // Before the init request goes out: its response may already carry a popup.
+        ForegroundActivity.install(context)
+        applyPopupPresentation()
 
         onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
 
@@ -332,6 +366,11 @@ open class SDK {
         storiesView.attach(this)
     }
 
+    @Deprecated(
+        "Not needed any more: popups are shown in the activity on screen. To pick the activity, " +
+            "or keep a popup from being shown, set SDK.popupPresentationListener."
+    )
+    @Suppress("DEPRECATION")
     fun initializeFragmentManager(fragmentManager: FragmentManager) {
         inAppNotificationManager.initFragmentManager(fragmentManager = fragmentManager)
     }
@@ -479,6 +518,14 @@ open class SDK {
         if (::pushTokenManager.isInitialized) {
             pushTokenManager.setOnPushTokenListener(listener)
         }
+    }
+
+    private fun applyPopupPresentation() {
+        if (!::popupPresentation.isInitialized) return
+        popupPresentation.listener = popupPresentationListener?.let { listener ->
+            { popup -> listener.shouldPresentPopup(this, popup) }
+        }
+        popupPresentation.autoPresentation = enableAutoPopupPresentation
     }
 
     /**

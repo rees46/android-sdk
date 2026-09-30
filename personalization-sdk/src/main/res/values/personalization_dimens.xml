@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Типографика дизайн-системы: кегли и интерлиньяжи.
+  Figma Mobile SDK UI Kit (SSwS49L1fG1psWA7xbakV6), страница Typography.
+  Сгенерировано скриптом; правки вносить в источник, не здесь.
+-->
+<resources>
+    <dimen name="personalization_font_size_xs">12sp</dimen>
+    <dimen name="personalization_font_size_sm">14sp</dimen>
+    <dimen name="personalization_font_size_base">16sp</dimen>
+    <dimen name="personalization_font_size_lg">18sp</dimen>
+    <dimen name="personalization_font_size_xl">20sp</dimen>
+    <dimen name="personalization_font_size_xl2">24sp</dimen>
+    <dimen name="personalization_font_size_xl3">30sp</dimen>
+    <dimen name="personalization_font_size_xl4">36sp</dimen>
+    <dimen name="personalization_font_size_xl5">48sp</dimen>
+    <dimen name="personalization_font_size_xl6">60sp</dimen>
+
+    <dimen name="personalization_line_height_xs">16sp</dimen>
+    <dimen name="personalization_line_height_sm">20sp</dimen>
+    <dimen name="personalization_line_height_base">24sp</dimen>
+    <dimen name="personalization_line_height_lg">28sp</dimen>
+    <dimen name="personalization_line_height_xl">32sp</dimen>
+    <dimen name="personalization_line_height_xl2">36sp</dimen>
+    <dimen name="personalization_line_height_xl3">40sp</dimen>
+    <dimen name="personalization_line_height_xl4">48sp</dimen>
+    <dimen name="personalization_line_height_xl5">56sp</dimen>
+    <dimen name="personalization_line_height_xl6">64sp</dimen>
+
+    <!-- Отступы, коллекция Spacings. Шкала своя, с типографической не совпадает. -->
+    <dimen name="personalization_spacing_xs">2dp</dimen>
+    <dimen name="personalization_spacing_sm">4dp</dimen>
+    <dimen name="personalization_spacing_md">8dp</dimen>
+    <dimen name="personalization_spacing_lg">12dp</dimen>
+    <dimen name="personalization_spacing_xl">16dp</dimen>
+    <dimen name="personalization_spacing_xl2">20dp</dimen>
+    <dimen name="personalization_spacing_xl3">24dp</dimen>
+    <dimen name="personalization_spacing_xl4">32dp</dimen>
+    <dimen name="personalization_spacing_xl5">48dp</dimen>
+    <dimen name="personalization_spacing_xl6">56dp</dimen>
+    <dimen name="personalization_spacing_xl7">64dp</dimen>
+
+    <!-- Семантические отступы: поля и зазоры блоков, модалки и полноэкранного окна. -->
+    <dimen name="personalization_spacing_padding_x">16dp</dimen>
+    <dimen name="personalization_spacing_padding_y">16dp</dimen>
+    <dimen name="personalization_spacing_gap_x">16dp</dimen>
+    <dimen name="personalization_spacing_gap_y">16dp</dimen>
+    <dimen name="personalization_spacing_padding_modal">20dp</dimen>
+    <dimen name="personalization_spacing_gap_modal">20dp</dimen>
+    <dimen name="personalization_spacing_padding_full_screen">24dp</dimen>
+    <dimen name="personalization_spacing_gap_full_screen">24dp</dimen>
+
+    <!-- Радиусы скругления. Rounded — pill, платформа сама ограничит -->
+    <!-- радиус половиной меньшей стороны. -->
+    <dimen name="personalization_radius_xs">2dp</dimen>
+    <dimen name="personalization_radius_sm">4dp</dimen>
+    <dimen name="personalization_radius_md">6dp</dimen>
+    <dimen name="personalization_radius_lg">8dp</dimen>
+    <dimen name="personalization_radius_xl">10dp</dimen>
+    <dimen name="personalization_radius_xl2">12dp</dimen>
+    <dimen name="personalization_radius_xl3">14dp</dimen>
+    <dimen name="personalization_radius_xl4">16dp</dimen>
+    <dimen name="personalization_radius_xl5">20dp</dimen>
+    <dimen name="personalization_radius_xl6">24dp</dimen>
+    <dimen name="personalization_radius_xl7">32dp</dimen>
+    <dimen name="personalization_radius_rounded">999dp</dimen>
+
+    <!--
+      Семантические радиусы из коллекции Radius. К Button LG/MD/SM привязаны Button,
+      Input, Badge, Tag, к Segmented Button — Button Group, к Modal — попап.
+      Дизайнер меняет их отдельно от шкалы, поэтому и здесь они отдельно.
+    -->
+    <dimen name="personalization_radius_button_lg">12dp</dimen>
+    <dimen name="personalization_radius_button_md">10dp</dimen>
+    <dimen name="personalization_radius_button_sm">8dp</dimen>
+    <dimen name="personalization_radius_segmented_lg">10dp</dimen>
+    <dimen name="personalization_radius_segmented_md">8dp</dimen>
+    <dimen name="personalization_radius_segmented_sm">6dp</dimen>
+    <dimen name="personalization_radius_card">16dp</dimen>
+    <dimen name="personalization_radius_toast">999dp</dimen>
+    <dimen name="personalization_radius_modal">24dp</dimen>
+
+    <!-- Высоты, стили Elevation 1–3. Android рисует тень сам по elevation в dp,
+         поэтому две наложенные тени из макета здесь невыразимы: значение взято по
+         смещению верхнего слоя. Цвет тени (Shadow/Heavy: 8% в светлой, 50% в тёмной)
+         тоже не переносится — системная тень калибрует прозрачность сама.
+         Точное совпадение с макетом требует рисованного фона вместо системной тени. -->
+    <dimen name="personalization_elevation_none">0dp</dimen>
+    <dimen name="personalization_elevation_e1">2dp</dimen>
+    <dimen name="personalization_elevation_e2">10dp</dimen>
+    <dimen name="personalization_elevation_e3">23dp</dimen>
+</resources>

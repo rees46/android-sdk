@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Иконка magnifier дизайн-системы. Перекрашивается через android:tint
+  или app:tint на ImageView — цвет здесь чёрный по умолчанию.
+  fillType требует API 24; ниже отрабатывает VectorDrawableCompat
+  из appcompat, который уже в зависимостях.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <path
+        android:pathData="M14 3 C20.075 3 25 7.9249 25 14 C25 16.6775 24.042 19.1306 22.452 21.0381 L28.707 27.293 C29.098 27.6835 29.098 28.3165 28.707 28.707 C28.317 29.0976 27.683 29.0976 27.293 28.707 L21.038 22.4521 C19.131 24.0422 16.677 25 14 25 C7.925 25 3 20.0751 3 14 C3 7.9249 7.925 3 14 3 Z M14 5 C9.029 5 5 9.0294 5 14 C5 18.9706 9.029 23 14 23 C18.971 23 23 18.9706 23 14 C23 9.0294 18.971 5 14 5 Z"
+        android:fillColor="#000000"
+        android:fillType="evenOdd"/>
+</vector>

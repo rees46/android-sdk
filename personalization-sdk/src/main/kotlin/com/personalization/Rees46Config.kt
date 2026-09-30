@@ -14,13 +14,19 @@ package com.personalization
  * @property needReInitialization forces a fresh `init` request instead of reusing stored session data.
  * @property addTrailingSlash whether a trailing slash is appended to [apiDomain] when building URLs.
  * @property tag log tag for this instance.
+ * @property enableAutoPopupPresentation whether server popups are shown in the activity on screen
+ * while no [SDK.popupPresentationListener] is set.
+ *
+ * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
+ * Java code written against the seven-argument constructor keeps compiling as parameters are added.
  */
-data class Rees46Config(
+data class Rees46Config @JvmOverloads constructor(
     val shopId: String,
     val apiDomain: String = "api.rees46.ru",
     val stream: String = "android",
     val autoSendPushToken: Boolean = true,
     val needReInitialization: Boolean = false,
     val addTrailingSlash: Boolean = true,
-    val tag: String = "SDK"
+    val tag: String = "SDK",
+    val enableAutoPopupPresentation: Boolean = true
 )

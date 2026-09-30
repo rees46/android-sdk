@@ -30,7 +30,7 @@ import com.personalization.Product
 import com.personalization.stories.compose.StoriesWidget
 
 /**
- * "UI Kit" tab — the stories block through the SDK's Compose wrapper.
+ * "Stories" segment of the "UI Kit" tab — the stories block through the SDK's Compose wrapper.
  *
  * The counterpart of the "Legacy UI" tab in [MainActivity], which shows the same block through the
  * XML [com.personalization.stories.views.StoriesView].

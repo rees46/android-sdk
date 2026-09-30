@@ -664,5 +664,16 @@ class TrackingApiImplTest {
         assertEquals("12000000", item.getString("price"))
     }
 
+    @Test
+    fun popupShown_reportsThePopupWithoutAttribution() {
+        tracking.setSource(TrackingSource(TrackingSourceType.FULL_SEARCH, "boots"))
+
+        tracking.popupShown(7)
+
+        val body = capturedBody(path = "popup/showed")
+        assertEquals("7", body.getString("popup"))
+        assertFalse(body.has("source"))
+    }
+
     // endregion
 }
