@@ -86,5 +86,10 @@
     <declare-styleable name="PersonalizationSearchResultsScreen">
         <attr name="shop_id" />
     </declare-styleable>
+    <!-- Сторис V2: code — тот же атрибут, что у старого StoriesView. -->
+    <declare-styleable name="PersonalizationStories">
+        <attr name="code" />
+        <attr name="shop_id" />
+    </declare-styleable>
 
 </resources>
