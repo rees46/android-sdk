@@ -8,6 +8,7 @@ import androidx.core.view.doOnLayout
 import com.bumptech.glide.Glide
 import com.personalization.SDK
 import com.personalization.api.responses.product.Product
+import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import org.json.JSONArray
 
@@ -15,6 +16,7 @@ import org.json.JSONArray
  * Категория, на которую можно перейти из поиска: из подсказок instant-поиска
  * (есть id) или из популярных категорий пустого запроса (только имя и ссылка).
  */
+@InternalPersonalizationUiApi
 data class PersonalizationSearchCategory(
     val id: String?,
     val name: String,
