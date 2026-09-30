@@ -16,8 +16,11 @@ package com.personalization
  * @property tag log tag for this instance.
  * @property enableAutoPopupPresentation whether server popups are shown in the activity on screen
  * while no [SDK.popupPresentationListener] is set.
+ *
+ * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
+ * Java code written against the seven-argument constructor keeps compiling as parameters are added.
  */
-data class Rees46Config(
+data class Rees46Config @JvmOverloads constructor(
     val shopId: String,
     val apiDomain: String = "api.rees46.ru",
     val stream: String = "android",
