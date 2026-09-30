@@ -693,12 +693,12 @@ private fun Context.instantSearch(typing: Boolean, images: Boolean): Personaliza
             clearText = "Clear"
             moreText = "more"
             setRecentSearches(listOf("mens winter boots", "kids shoes", "bag", "accessories", "black boots"))
-            // Categories come without pictures: the search API returns none for them, so the
-            // "with images" state only illustrates product rows.
+            // The design gives categories pictures too. Photos other than the three products
+            // below, so the two sections do not repeat each other.
             setCategories(listOf(
-                PersonalizationInstantSearch.Suggestion("c1", "Running shoes", "Shoes"),
-                PersonalizationInstantSearch.Suggestion("c2", "Running apparel", "Clothing"),
-                PersonalizationInstantSearch.Suggestion("c3", "Trail gear", "Outdoor")
+                PersonalizationInstantSearch.Suggestion("c1", "Running shoes", "Shoes", DemoProducts.image("sneakers")),
+                PersonalizationInstantSearch.Suggestion("c2", "Running apparel", "Clothing", DemoProducts.image("jacket")),
+                PersonalizationInstantSearch.Suggestion("c3", "Trail gear", "Outdoor", DemoProducts.image("watch"))
             ))
             setProducts(DemoProducts.all.take(if (images) 3 else 5).map {
                 PersonalizationInstantSearch.Suggestion(it.id, it.name.toString(), it.price, it.imageUrl)
@@ -809,7 +809,7 @@ private object DemoProducts {
     }
 
     /** Photos ship with the app: the showcase must not depend on the network. */
-    private fun image(seed: String) = "file:///android_asset/uikit/$seed.jpg"
+    fun image(seed: String) = "file:///android_asset/uikit/$seed.jpg"
 
     /** Stand-in artwork for the in-app popup exhibits. */
     val popupImage = image("jacket")
