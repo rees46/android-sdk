@@ -27,6 +27,11 @@ class PersonalizationStoriesController {
         view?.openStory(storyId)
     }
 
+    /** То же по id строкой (F12). */
+    fun openStory(storyId: String) {
+        view?.openStory(storyId)
+    }
+
     fun pause() {
         view?.pause()
     }

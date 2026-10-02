@@ -24,19 +24,20 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
-/** The widget's programmatic control: open, open by id, pause and resume around one viewer. */
+/** The widget's programmatic control (open, open by id, pause, resume) and show() without the bar. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PersonalizationStoriesTest {
 
     private val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     private lateinit var sdk: SDK
+    private var served = listOf(11, 12, 13)
 
     @Before
     fun setUp() {
         val manager = mockk<StoriesManager>(relaxed = true)
         every { manager.requestStories(any(), any()) } answers {
-            secondArg<OnApiCallbackListener>().onSuccess(block(ids = listOf(11, 12, 13)))
+            secondArg<OnApiCallbackListener>().onSuccess(block(served))
         }
         sdk = mockk(relaxed = true)
         every { sdk.storiesManager } returns manager
@@ -70,6 +71,64 @@ class PersonalizationStoriesTest {
         widget.resume()
         idle()
         assertEquals(0, ShadowDialog.getShownDialogs().size)
+    }
+
+    @Test
+    fun `a story opens by its id as a string, a non-number opens nothing`() {
+        val widget = widget()
+        widget.openStory("x")
+        idle()
+        assertEquals(0, ShadowDialog.getShownDialogs().size)
+
+        widget.openStory(" 13 ")
+        idle()
+        assertEquals(2, pager(ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).currentItem)
+    }
+
+    @Test
+    fun `show reports the viewer closing`() {
+        var closed = 0
+        var errors = 0
+        show(startStoryId = 12, onError = { errors++ }, onClose = { closed++ })
+        val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
+        assertEquals(1, pager(viewer).currentItem)
+        assertEquals(0, closed)
+
+        viewer.dismiss()
+        idle()
+        assertEquals(1, closed)
+        assertEquals(0, errors)
+    }
+
+    @Test
+    fun `show with an unknown start story opens the first one`() {
+        show(startStoryId = 99)
+        assertEquals(0, pager(ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).currentItem)
+    }
+
+    @Test
+    fun `show of an empty block reports the error and opens nothing`() {
+        served = emptyList()
+        var closed = 0
+        var errors = 0
+        show(onError = { errors++ }, onClose = { closed++ })
+
+        assertEquals(1, errors)
+        assertEquals(0, closed)
+        assertEquals(0, ShadowDialog.getShownDialogs().size)
+    }
+
+    private fun show(startStoryId: Int? = null, onError: () -> Unit = {}, onClose: () -> Unit = {}) {
+        PersonalizationStories.show(
+            context = activity,
+            code = "BLOCK",
+            sdk = sdk,
+            startStoryId = startStoryId,
+            onError = { _, _ -> onError() },
+            onClose = onClose,
+            imageLoader = { _, _ -> }
+        )
+        idle()
     }
 
     /** Photo slides whose loader never answers: the slide clock stands, nothing pages by itself. */

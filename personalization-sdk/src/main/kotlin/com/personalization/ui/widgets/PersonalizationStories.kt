@@ -165,6 +165,11 @@ class PersonalizationStories @JvmOverloads constructor(
         stories.indexOfFirst { it.id == storyId }.takeIf { it >= 0 }?.let(::open)
     }
 
+    /** То же по id строкой — как его отдают другие платформы (F12). Не число — ничего. */
+    fun openStory(storyId: String) {
+        storyId.trim().toIntOrNull()?.let { openStory(it) }
+    }
+
     /** Пауза открытого просмотра (B8); без просмотра — ничего. */
     fun pause() {
         viewer?.pause()
@@ -243,9 +248,12 @@ class PersonalizationStories @JvmOverloads constructor(
 
         /**
          * Показать сторис блока [code] без ленты (B8): загрузить блок и открыть просмотр
-         * со сторис [startStoryId] (или с первой). SDK — [sdk], иначе инстанс магазина
-         * [shopId]. Тексты `null` — по умолчанию из ресурсов. Ошибки — в [onError].
-         * Возвращает отмену ещё не открытого показа.
+         * со сторис [startStoryId] (нет такой — с первой). SDK — [sdk], иначе инстанс
+         * магазина [shopId]. Тексты `null` — по умолчанию из ресурсов.
+         *
+         * Пустой блок, ошибка загрузки, магазин не найден или 15 с без ответа — [onError],
+         * и показ на этом заканчивается. Просмотр закрыли — [onClose] (F12; на RN и Flutter
+         * так завершаются Promise и Future). Возвращает отмену ещё не открытого показа.
          */
         @JvmStatic
         @JvmOverloads
@@ -257,6 +265,7 @@ class PersonalizationStories @JvmOverloads constructor(
             startStoryId: Int? = null,
             onClickListener: com.personalization.OnClickListener? = null,
             onError: ((code: Int, message: String?) -> Unit)? = null,
+            onClose: (() -> Unit)? = null,
             imageLoader: ((ImageView, String) -> Unit)? = null,
             promoCaption: CharSequence? = null,
             promoCopiedText: CharSequence? = null,
@@ -284,7 +293,7 @@ class PersonalizationStories @JvmOverloads constructor(
                 soundOnLabel?.let { widget.soundOnLabel = it }
                 soundOffLabel?.let { widget.soundOffLabel = it }
             }
-            return widget.showDetached(sdk, startStoryId)
+            return widget.showDetached(sdk, startStoryId, onClose)
         }
     }
 
@@ -292,7 +301,7 @@ class PersonalizationStories @JvmOverloads constructor(
      * Показ без ленты: виджет не на экране, поэтому SDK и таймаут ведутся вручную,
      * а просмотр открывается, как только блок пришёл.
      */
-    private fun showDetached(explicitSdk: SDK?, startStoryId: Int?): Cancellable {
+    private fun showDetached(explicitSdk: SDK?, startStoryId: Int?, onClose: (() -> Unit)?): Cancellable {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
         handler.postDelayed(giveUp, LOAD_TIMEOUT_MS)
         pendingOpen = open@{
@@ -302,7 +311,10 @@ class PersonalizationStories @JvmOverloads constructor(
                 return@open
             }
             val index = startStoryId?.let { id -> stories.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
-            newViewer(context, stories, index).show()
+            newViewer(context, stories, index).apply {
+                setOnDismissListener { onClose?.invoke() }
+                show()
+            }
         }
         val previousError = onError
         onError = { code, message ->
