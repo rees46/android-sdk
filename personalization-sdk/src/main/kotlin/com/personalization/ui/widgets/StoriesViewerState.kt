@@ -202,6 +202,16 @@ internal class StoriesViewerState(
     }
 
     /**
+     * Хост открывает сторис [index], пока просмотр открыт (F11): листаем к ней в нём же.
+     * Шторка закрывается; сторис откроется по правилу A4, когда пейджер на неё встанет.
+     */
+    fun jumpTo(index: Int): Move {
+        if (index !in stories.indices || index == storyIndex) return Move.None
+        if (sheetOpen) setSheet(false)
+        return away(Move.Story(index))
+    }
+
+    /**
      * Уходим со сторис: часы стоят, пока пейджер не встанет на соседнюю, — иначе каждый
      * следующий тик снова просил бы перейти.
      */

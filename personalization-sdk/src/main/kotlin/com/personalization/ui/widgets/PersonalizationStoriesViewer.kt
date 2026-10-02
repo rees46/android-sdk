@@ -57,7 +57,7 @@ class PersonalizationStoriesViewer(
 
     /** Сторис без слайдов не показываются (C16). */
     private val stories: List<Story> = stories.filter { it.slidesCount > 0 }
-    private val startIndex: Int = stories.getOrNull(startStory)?.let { this.stories.indexOf(it) }?.takeIf { it >= 0 } ?: 0
+    private var startIndex: Int = stories.getOrNull(startStory)?.let { this.stories.indexOf(it) }?.takeIf { it >= 0 } ?: 0
 
     /** Код блока — для трекинга. */
     var code: String? = null
@@ -125,6 +125,23 @@ class PersonalizationStoriesViewer(
 
     /** Снять паузу хоста. */
     fun resume() = setHostPaused(false)
+
+    /**
+     * Открыть сторис [storyId] в уже открытом просмотре (F11): пейджер листает к ней, просмотр
+     * не пересоздаётся. `false` — такой сторис в просмотре нет или он уже закрыт.
+     */
+    internal fun showStory(storyId: Int): Boolean {
+        if (dismissed) return false
+        val index = stories.indexOfFirst { it.id == storyId }
+        if (index < 0) return false
+        if (!created) {
+            startIndex = index
+            return true
+        }
+        if (state.sheetOpen) currentSlideView()?.closeSheet()
+        apply(state.jumpTo(index))
+        return true
+    }
 
     private fun setHostPaused(paused: Boolean) {
         hostPaused = paused

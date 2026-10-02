@@ -202,6 +202,32 @@ class StoriesViewerStateTest {
     }
 
     @Test
+    fun `opening another story from the host pages there inside the open viewer`() {
+        seen.markSeen(3, "3_0")
+        val state = entered(story(1, slides = 2), story(2, slides = 2), story(3, slides = 3))
+        state.mediaReady()
+        state.setSheet(true)
+
+        assertEquals(Move.Story(2), state.jumpTo(2))
+        assertFalse(state.sheetOpen)
+        // The clock stands until the pager settles on the new story.
+        assertFalse(state.isRunning)
+        assertEquals(Move.None, state.tick(StoriesMapping.DEFAULT_DURATION_MS))
+
+        state.selectStory(2)
+        assertTrue(state.enter())
+        assertEquals(1, state.slideIndex)
+    }
+
+    @Test
+    fun `opening the current or a missing story from the host changes nothing`() {
+        val state = entered(story(1, slides = 2), story(2, slides = 2))
+        assertEquals(Move.None, state.jumpTo(0))
+        assertEquals(Move.None, state.jumpTo(5))
+        assertTrue(state.entered)
+    }
+
+    @Test
     fun `the time is up only once per slide`() {
         val state = entered(story(1, slides = 1), story(2, slides = 1))
         state.mediaReady()

@@ -135,13 +135,17 @@ class PersonalizationStories @JvmOverloads constructor(
         )
     }
 
-    /** Открыть просмотр со сторис [index]. До загрузки блока — откроется, когда он придёт. */
+    /**
+     * Открыть просмотр со сторис [index]. До загрузки блока — откроется, когда он придёт.
+     * Просмотр уже открыт — листает к ней в нём, не пересоздавая его (F11).
+     */
     fun open(index: Int) {
         if (stories.isEmpty()) {
             pendingOpen = { open(index) }
             return
         }
-        if (index !in stories.indices) return
+        val story = stories.getOrNull(index) ?: return
+        if (viewer?.showStory(story.id) == true) return
         viewer?.dismiss()
         viewer = newViewer(context, stories, index).also { viewer ->
             viewer.setOnDismissListener {
@@ -161,7 +165,7 @@ class PersonalizationStories @JvmOverloads constructor(
         stories.indexOfFirst { it.id == storyId }.takeIf { it >= 0 }?.let(::open)
     }
 
-    /** Пауза открытого просмотра (B8). */
+    /** Пауза открытого просмотра (B8); без просмотра — ничего. */
     fun pause() {
         viewer?.pause()
     }
