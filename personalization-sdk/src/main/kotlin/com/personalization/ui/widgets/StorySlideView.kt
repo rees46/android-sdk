@@ -248,9 +248,14 @@ internal class StorySlideView(
         retry.visibility = if (show) View.VISIBLE else View.GONE
     }
 
-    /** При открытой шторке тап мимо неё только закрывает её (B5). */
+    /**
+     * При открытой шторке тап мимо неё только закрывает её (B5). Крестик не в счёт: он
+     * закрывает просмотр всегда, и при открытой шторке тоже (F2).
+     */
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && host.sheetOpen && !inside(usedHost, event)) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && host.sheetOpen &&
+            !inside(usedHost, event) && !inside(navigation.closeButton, event)
+        ) {
             sheetTapPending = true
             return true
         }

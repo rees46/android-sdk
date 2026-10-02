@@ -113,6 +113,9 @@ class PersonalizationStoryNavigation @JvmOverloads constructor(
 
     private val close = AppCompatImageView(context)
 
+    /** Крестик: слайд пропускает к нему касания и при открытой шторке товаров (F2). */
+    internal val closeButton: View get() = close
+
     var onClose: (() -> Unit)? = null
 
     var closeContentDescription: CharSequence? = "Close"
