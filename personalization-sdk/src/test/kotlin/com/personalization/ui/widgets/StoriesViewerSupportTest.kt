@@ -3,6 +3,7 @@ package com.personalization.ui.widgets
 import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.TimeUnit
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -12,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** The viewer's helpers: timers that stand still in the background. */
+/** The viewer's helpers: timers that stand still in the background, the kept sound choice. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class StoriesViewerSupportTest {
@@ -72,6 +73,44 @@ class StoriesViewerSupportTest {
         assertEquals(0, fired)
         idle(4_000)
         assertEquals(1, fired)
+    }
+
+    @Test
+    fun `an audio interruption silences this viewer but keeps the chosen sound`() {
+        val sound = StoriesSound()
+        sound.choose(false)
+
+        assertTrue(sound.silence())
+        assertTrue(sound.muted)
+        assertFalse(StoriesSound.chosenMuted)
+        // The next viewer opens with the kept choice.
+        assertFalse(StoriesSound().muted)
+    }
+
+    @Test
+    fun `the user's own choice lifts the silence`() {
+        val sound = StoriesSound()
+        sound.choose(false)
+        sound.silence()
+
+        sound.choose(false)
+        assertFalse(sound.muted)
+        assertFalse(sound.silenced)
+    }
+
+    @Test
+    fun `nothing is silenced while the sound is already off`() {
+        val sound = StoriesSound()
+        sound.choose(true)
+
+        assertFalse(sound.silence())
+        assertFalse(sound.silenced)
+        assertTrue(StoriesSound.chosenMuted)
+    }
+
+    @After
+    fun resetSound() {
+        StoriesSound.chosenMuted = true
     }
 
     private fun idle(ms: Long) = looper.idleFor(ms, TimeUnit.MILLISECONDS)

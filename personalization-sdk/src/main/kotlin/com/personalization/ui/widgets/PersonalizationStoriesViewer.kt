@@ -109,6 +109,7 @@ class PersonalizationStoriesViewer(
     private var player: ExoPlayer? = null
     private var playerSlide: StorySlideView? = null
     private var audioFocus: StoriesAudioFocus? = null
+    private val sound = StoriesSound()
     private var insets: Insets = Insets.NONE
     private var hostLifecycle: Lifecycle? = null
     private var created = false
@@ -177,7 +178,7 @@ class PersonalizationStoriesViewer(
         }
         setContentView(root)
         volumeControlStream = AudioManager.STREAM_MUSIC
-        audioFocus = StoriesAudioFocus(hostContext) { setMuted(true) }
+        audioFocus = StoriesAudioFocus(hostContext) { silence() }
         observeHost()
 
         if (stories.isEmpty()) {
@@ -266,7 +267,7 @@ class PersonalizationStoriesViewer(
 
     /** Кнопка громкости вверх включает звук (C7); громкость меняет система, как обычно. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && muted) setMuted(false)
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && sound.muted) setMuted(false)
         return super.onKeyDown(keyCode, event)
     }
 
@@ -402,7 +403,7 @@ class PersonalizationStoriesViewer(
 
     private val slideHost = object : StorySlideHost {
         override val texts: StoriesTexts get() = this@PersonalizationStoriesViewer.texts
-        override val muted: Boolean get() = Companion.muted
+        override val muted: Boolean get() = sound.muted
         override val sheetOpen: Boolean get() = created && state.sheetOpen
         override val insets: Insets get() = this@PersonalizationStoriesViewer.insets
 
@@ -456,7 +457,7 @@ class PersonalizationStoriesViewer(
 
         override fun onPromoCopied() = track("click")
 
-        override fun onSoundToggle() = setMuted(!Companion.muted)
+        override fun onSoundToggle() = setMuted(!sound.muted)
 
         override fun onRetry(view: StorySlideView) = retry(view)
 
@@ -671,31 +672,41 @@ class PersonalizationStoriesViewer(
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            // Выдернули наушники: звук выключается, ролик идёт дальше без звука.
+            // Выдернули наушники: ролик идёт дальше без звука, выбор звука не меняется (F6).
             if (reason == androidx.media3.common.Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) {
-                setMuted(true)
+                silence()
                 sync()
             }
         }
     }
 
+    /** Звук включил или выключил пользователь: выбор запоминается на весь процесс (C7). */
     private fun setMuted(value: Boolean) {
-        muted = value
+        sound.choose(value)
+        applySound()
+    }
+
+    /** Звонок, другой плеер, выдернутые наушники: глушится только это воспроизведение (F6). */
+    private fun silence() {
+        if (sound.silence()) applySound()
+    }
+
+    private fun applySound() {
         applyVolume()
-        pages.values.forEach { it.slideView?.setMuted(value) }
+        pages.values.forEach { it.slideView?.setMuted(sound.muted) }
         updateAudioFocus()
     }
 
     private fun applyVolume() {
         val exo = player ?: return
-        exo.volume = if (muted) 0f else 1f
-        exo.setHandleAudioBecomingNoisy(!muted)
+        exo.volume = if (sound.muted) 0f else 1f
+        exo.setHandleAudioBecomingNoisy(!sound.muted)
     }
 
     /** Фокус берётся, только пока звук включён и видео на экране (C7). */
     private fun updateAudioFocus() {
         val focus = audioFocus ?: return
-        val wanted = created && !dismissed && !muted && playerSlide != null && !state.isPaused(Pause.BACKGROUND)
+        val wanted = created && !dismissed && !sound.muted && playerSlide != null && !state.isPaused(Pause.BACKGROUND)
         if (wanted) focus.request() else focus.abandon()
     }
 
@@ -772,10 +783,6 @@ class PersonalizationStoriesViewer(
     }
 
     private companion object {
-        /** Выбор звука живёт до конца процесса (C7); первый просмотр — без звука. */
-        @Volatile
-        var muted = true
-
         /** Без слушателя хоста — поведение по умолчанию из контракта: SDK открывает сам. */
         val DEFAULT_CLICKS = object : OnClickListener {}
 
