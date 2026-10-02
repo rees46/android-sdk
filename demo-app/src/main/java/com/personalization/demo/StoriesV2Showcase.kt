@@ -51,12 +51,12 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
             ctx.row(
                 PersonalizationStoryCover(ctx).apply {
                     segments = 5
-                    seenSegments = 2
+                    seenSegments = setOf(0, 1)
                     ctx.loadAsset(imageView, "sneakers.jpg")
                 },
                 PersonalizationStoryCover(ctx).apply {
                     segments = 3
-                    seenSegments = 1
+                    seenSegments = setOf(0)
                     state = PersonalizationStoryCover.State.PINNED
                     ctx.loadAsset(imageView, "watch.jpg")
                 }
@@ -117,7 +117,7 @@ private fun Context.sampleStories(): View {
                     else -> PersonalizationStoryCover.State.DEFAULT
                 },
                 segments = story.slidesCount,
-                seenSegments = if (story.isViewed) 0 else story.startPosition
+                seenSegments = if (story.isViewed) emptySet() else (0 until story.startPosition).toSet()
             )
         }
     }

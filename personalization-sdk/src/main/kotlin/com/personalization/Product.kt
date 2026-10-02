@@ -1,5 +1,6 @@
 package com.personalization
 
+import java.math.BigDecimal
 import org.json.JSONObject
 
 class Product(json: JSONObject) {
@@ -16,6 +17,15 @@ class Product(json: JSONObject) {
     val priceWithPromocode: String = json.optString("price_with_promocode_formatted", "")
     val discountPercent: String = json.optString("discount_percent", "")
 
+    /**
+     * Raw numeric prices, for comparing them (Stories V2 shows an old price only when it is greater
+     * than the price). `null` when the field is absent or not a number. Read as decimals: a price may
+     * have kopecks/cents, and an Int would silently drop them.
+     */
+    internal val priceDecimal: BigDecimal? = json.decimal("price")
+    internal val oldPriceDecimal: BigDecimal? = json.decimal("oldprice")
+    internal val priceWithPromocodeDecimal: BigDecimal? = json.decimal("price_with_promocode")
+
     init {
         val oldPriceValue = json.optDouble("oldprice", 0.0)
         oldPrice = if (oldPriceValue > 0) {
@@ -31,3 +41,6 @@ class Product(json: JSONObject) {
         }
     }
 }
+
+private fun JSONObject.decimal(name: String): BigDecimal? =
+    opt(name)?.takeIf { it != JSONObject.NULL }?.toString()?.trim()?.toBigDecimalOrNull()

@@ -152,6 +152,6 @@ class PersonalizationStories @JvmOverloads constructor(
             val loader = imageLoader
             if (loader != null) loader(view, url) else SearchImages.load(view, url)
         }
-        bar.items = stories.map(StoriesMapping::item)
+        bar.items = stories.map { StoriesMapping.item(it, emptySet()) }
     }
 }

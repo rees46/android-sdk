@@ -17,6 +17,12 @@ class Slide(json: JSONObject) : Serializable {
     val preview: String = json.optString("preview", "")
     val type: String = json.optString("type", "")
     var duration: Long = json.optLong("duration", DEFAULT_DURATION_SECONDS.toLong()) * 1000L
+
+    /**
+     * The admin duration in seconds as sent, 0 when absent. [duration] already folds a default in,
+     * so Stories V2 reads this one to apply its own default.
+     */
+    internal val adminDurationSeconds: Long = json.optLong("duration", 0L)
     private val elements: MutableList<Element> = ArrayList()
     var isPrepared: Boolean = false
 

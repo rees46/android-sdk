@@ -258,7 +258,7 @@ class PersonalizationStoriesViewer(
         fun bind(index: Int) {
             release()
             storyIndex = index
-            slideIndex = StoriesMapping.startSlide(story)
+            slideIndex = StoriesMapping.startSlide(story, emptySet())
             showSlide(start = false)
         }
 

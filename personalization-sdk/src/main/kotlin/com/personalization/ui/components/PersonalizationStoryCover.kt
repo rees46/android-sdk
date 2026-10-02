@@ -30,8 +30,9 @@ import com.personalization.ui.PersonalizationTheme
  * закреплённая (кольцо Semantic/Warning и звезда Favorites справа внизу), обычная
  * (Button/Primary), просмотренная (Semantic/Neutral Subtle) и скелетон загрузки.
  *
- * Кольцо делится на сегменты по числу слайдов ([segments]); уже просмотренные
- * ([seenSegments]) — цветом Button/Primary Disabled, как в вариантах Progress/Circular.
+ * Кольцо делится на сегменты по числу слайдов ([segments]); просмотренные слайды
+ * ([seenSegments], по индексу) — цветом Button/Primary Disabled, как в вариантах
+ * Progress/Circular.
  *
  * Картинку кладёт хост в [imageView] — кит ничего не качает.
  */
@@ -57,10 +58,10 @@ class PersonalizationStoryCover @JvmOverloads constructor(
             invalidate()
         }
 
-    /** Сколько первых сегментов уже просмотрено. */
-    var seenSegments: Int = 0
+    /** Индексы просмотренных сегментов: сегмент i отмечен, если виден слайд i. */
+    var seenSegments: Set<Int> = emptySet()
         set(value) {
-            field = value.coerceAtLeast(0)
+            field = value
             invalidate()
         }
 
@@ -144,7 +145,7 @@ class PersonalizationStoryCover @JvmOverloads constructor(
         val sweep = 360f / segments
         val gap = SEGMENT_GAP_DEGREES.coerceAtMost(sweep / 3f)
         for (index in 0 until segments) {
-            ringPaint.color = if (index < seenSegments) seen else main
+            ringPaint.color = if (index in seenSegments) seen else main
             canvas.drawArc(ringBounds, START_ANGLE + index * sweep + gap / 2f, sweep - gap, false, ringPaint)
         }
     }
@@ -182,8 +183,8 @@ class PersonalizationStoryCover @JvmOverloads constructor(
  * Превью сторис: обложка и подпись под ней.
  *
  * Источник: Figma, Story/Preview (391:17082): колонка шириной с обложку, шаг 8,
- * подпись Regular 12/16 по центру цветом Text/Primary. У скелетона вместо подписи —
- * полоска 64×8 со скруглением 5.
+ * подпись Regular 12/16 по центру цветом Text/Primary — до двух строк с многоточием
+ * в конце, как у старых сторис. У скелетона вместо подписи — полоска 64×8 со скруглением 5.
  */
 @InternalPersonalizationUiApi
 class PersonalizationStoryPreview @JvmOverloads constructor(
@@ -218,7 +219,7 @@ class PersonalizationStoryPreview @JvmOverloads constructor(
 
         label.includeFontPadding = false
         label.gravity = Gravity.CENTER
-        label.maxLines = 1
+        label.maxLines = LABEL_MAX_LINES
         label.ellipsize = TextUtils.TruncateAt.END
         label.typeface = PersonalizationTheme.typeface(context, emphasized = false)
         label.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.personalization_font_size_xs))
@@ -245,7 +246,7 @@ class PersonalizationStoryPreview @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Ширина превью — ширина обложки, подпись режется многоточием.
+        // Ширина превью — ширина обложки, длинная подпись режется многоточием на второй строке.
         super.onMeasure(MeasureSpec.makeMeasureSpec(cover.coverSize, MeasureSpec.EXACTLY), heightMeasureSpec)
     }
 
@@ -260,6 +261,7 @@ class PersonalizationStoryPreview @JvmOverloads constructor(
     private companion object {
         /** Трекинг в макете 0.05 — в процентах кегля, то есть почти ноль; в em так же. */
         const val LABEL_LETTER_SPACING_EM = 0.0005f
+        const val LABEL_MAX_LINES = 2
     }
 }
 
@@ -271,7 +273,8 @@ data class PersonalizationStoryItem(
     val imageUrl: String? = null,
     val state: PersonalizationStoryCover.State = PersonalizationStoryCover.State.DEFAULT,
     val segments: Int = 1,
-    val seenSegments: Int = 0
+    /** Индексы просмотренных слайдов — отмечаются на кольце. */
+    val seenSegments: Set<Int> = emptySet()
 )
 
 /**

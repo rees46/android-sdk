@@ -23,7 +23,8 @@ import com.personalization.ui.PersonalizationTheme
  * Text/Light Primary на фоне и Text/Primary без него.
  *
  * Кегль, цвет, выравнивание и начертание сторис задаёт админка — всё это свойства,
- * пресеты [Size] только стартовые значения.
+ * пресеты [Size] только стартовые значения. Без своего интерлиньяжа ([lineHeightSp] = `null`)
+ * берётся высота строки ближайшего по кеглю пресета.
  */
 @InternalPersonalizationUiApi
 class PersonalizationStoryTextBlock @JvmOverloads constructor(
@@ -35,7 +36,15 @@ class PersonalizationStoryTextBlock @JvmOverloads constructor(
     enum class Size(val textSp: Float, val lineHeightSp: Float) {
         LARGE(48f, 48f),
         MEDIUM(30f, 36f),
-        SMALL(20f, 24f)
+        SMALL(20f, 24f);
+
+        internal companion object {
+            /** Пресет, ближайший к кеглю [textSp]. */
+            fun nearest(textSp: Float): Size = values().minByOrNull { kotlin.math.abs(it.textSp - textSp) } ?: SMALL
+
+            /** Высота строки пресета, пересчитанная на кегль: 48/48 → 1.0, 30/36 и 20/24 → 1.2. */
+            fun lineHeightFor(textSp: Float): Float = nearest(textSp).let { textSp * it.lineHeightSp / it.textSp }
+        }
     }
 
     enum class Align { START, CENTER, END }
@@ -54,7 +63,7 @@ class PersonalizationStoryTextBlock @JvmOverloads constructor(
             applyStyle()
         }
 
-    /** Интерлиньяж; `null` — по шрифту. */
+    /** Интерлиньяж; `null` — высота строки пресета для этого кегля. */
     var lineHeightSp: Float? = Size.SMALL.lineHeightSp
         set(value) {
             field = value
@@ -115,7 +124,8 @@ class PersonalizationStoryTextBlock @JvmOverloads constructor(
 
     private fun applyStyle() {
         setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
-        lineHeightSp?.let { TextViewCompat.setLineHeight(this, spPx(it)) }
+        // Без своего интерлиньяжа — пресет для кегля: иначе осталась бы высота прошлого кегля.
+        TextViewCompat.setLineHeight(this, spPx(lineHeightSp ?: Size.lineHeightFor(textSizeSp)))
         val base = when (fontFamily) {
             "serif" -> Typeface.SERIF
             "monospaced", "monospace" -> Typeface.MONOSPACE
