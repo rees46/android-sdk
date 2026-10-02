@@ -25,13 +25,14 @@ import com.personalization.ui.widgets.PersonalizationStoriesWidget
 
 /**
  * The Compose wrapper of the Stories V2 block on the demo shop, driven by a controller (open a story
- * by index), and the same block shown without the bar through PersonalizationStories.show().
+ * by index — while the viewer is open it pages there), and the same block shown without the bar
+ * through PersonalizationStories.show(), which reports the viewer closing.
  */
 @Composable
 internal fun StoriesV2ComposeExhibit(storiesCode: String, shopId: String) {
     val context = LocalContext.current
     val controller = remember { PersonalizationStoriesController() }
-    var status by remember { mutableStateOf("Errors of the block and of show() appear here") }
+    var status by remember { mutableStateOf("Errors of the block and of show(), and its closing, appear here") }
     val clicks = remember { DemoStoriesClicks(context) }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -55,7 +56,8 @@ internal fun StoriesV2ComposeExhibit(storiesCode: String, shopId: String) {
                     code = storiesCode,
                     shopId = shopId,
                     onClickListener = clicks,
-                    onError = { code, message -> status = "show() onError $code: $message" }
+                    onError = { code, message -> status = "show() onError $code: $message" },
+                    onClose = { status = "show() viewer closed" }
                 )
             }) { Text("Show without bar") }
         }
