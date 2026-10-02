@@ -106,7 +106,8 @@ internal class StorySlideView(
         navigation.onClose = { host.onClose() }
         navigation.progress.count = slideCount
         navigation.progress.current = slideIndex
-        column.addView(navigation, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
+        column.addView(navigation, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         buildContent()
         addView(column, matchParent())
 
