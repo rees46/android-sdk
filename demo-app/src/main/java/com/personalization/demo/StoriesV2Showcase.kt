@@ -124,11 +124,12 @@ private fun Context.sampleStories(): View {
     bar.imageLoader = { view, url -> Glide.with(view).load(url).into(view) }
     bar.onItemClick = { index, _ ->
         PersonalizationStoriesViewer(this, stories, index).apply {
-            onLinkClick = { link ->
-                toast("Link: $link")
-                true
+            onClickListener = object : com.personalization.OnClickListener {
+                override fun onClick(url: String): Boolean {
+                    toast("Link: $url")
+                    return false
+                }
             }
-            onStoryProgress = { render() }
             setOnDismissListener { render() }
             show()
         }
