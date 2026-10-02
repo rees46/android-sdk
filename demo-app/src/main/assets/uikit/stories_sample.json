@@ -4,7 +4,7 @@
  "stories": [
   {
    "id": 901,
-   "name": "Скидки",
+   "name": "Скидки недели на обувь и часы",
    "avatar": "file:///android_asset/uikit/sneakers.jpg",
    "pinned": true,
    "viewed": false,
@@ -109,8 +109,138 @@
    ]
   },
   {
+   "id": 905,
+   "name": "Видео и товары",
+   "avatar": "file:///android_asset/uikit/headphones.jpg",
+   "pinned": false,
+   "viewed": false,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "905_0",
+     "type": "video",
+     "duration": 0,
+     "background": "https://cdn.stories.rees46.ru/9f3065c8-82bc-4f4f-8fca-6b9ee4d4ae57.mp4",
+     "preview": "https://cdn.stories.rees46.ru/69c1044a-0ba5-42a4-b8b8-2fae2dff9125.jpg",
+     "background_color": "#101820",
+     "elements": [
+      {
+       "type": "product",
+       "title": "Ваш промокод",
+       "item": {
+        "id": "3",
+        "brand": "Sonic",
+        "name": "Наушники беспроводные Sonic Pro с шумоподавлением",
+        "image_url": "file:///android_asset/uikit/headphones.jpg",
+        "price": 7490,
+        "price_formatted": "7 490 ₽",
+        "url": "https://example.com/p/3",
+        "promocode": "SOUND15",
+        "price_with_promocode_formatted": "6 367 ₽"
+       }
+      },
+      {
+       "type": "button",
+       "title": "Купить",
+       "link_android": "https://example.com/buy/3"
+      },
+      {
+       "type": "button",
+       "title": "Все наушники",
+       "link": "https://example.com/c/headphones"
+      },
+      {
+       "type": "products",
+       "labels": {
+        "show_carousel": "С этим покупают",
+        "hide_carousel": "Скрыть"
+       },
+       "products": [
+        {
+         "id": "4",
+         "brand": "Trail",
+         "name": "Рюкзак городской Trail 20 л",
+         "image_url": "file:///android_asset/uikit/backpack.jpg",
+         "picture": "file:///android_asset/uikit/backpack.jpg",
+         "price": 4990,
+         "price_formatted": "4 990 ₽",
+         "url": "https://example.com/p/4",
+         "oldprice": 5990,
+         "oldprice_formatted": "5 990 ₽",
+         "discount": 17
+        },
+        {
+         "id": "5",
+         "brand": "Sunny",
+         "name": "Очки солнцезащитные Sunny",
+         "image_url": "file:///android_asset/uikit/sunglasses.jpg",
+         "picture": "file:///android_asset/uikit/sunglasses.jpg",
+         "price": 2990,
+         "price_formatted": "2 990 ₽",
+         "url": "https://example.com/p/5"
+        },
+        {
+         "id": "6",
+         "brand": "Aqua",
+         "name": "Бутылка для воды Aqua 0,75 л",
+         "image_url": "file:///android_asset/uikit/bottle.jpg",
+         "picture": "file:///android_asset/uikit/bottle.jpg",
+         "price": 990,
+         "price_formatted": "990 ₽",
+         "url": "https://example.com/p/6",
+         "oldprice": 1290,
+         "oldprice_formatted": "1 290 ₽",
+         "discount": 23
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 906,
+   "name": "Фото целиком и ошибка",
+   "avatar": "file:///android_asset/uikit/loyalty_stripe.jpg",
+   "pinned": false,
+   "viewed": false,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "906_0",
+     "type": "image",
+     "duration": 5,
+     "background": "file:///android_asset/uikit/loyalty_stripe.jpg",
+     "background_color": "#1B2A41",
+     "elements": []
+    },
+    {
+     "id": "906_1",
+     "type": "image",
+     "duration": 5,
+     "background": "https://invalid.example/missing.jpg",
+     "background_color": "#000000",
+     "elements": [
+      {
+       "type": "text_block",
+       "text_input": "Картинка не загрузится — нажмите «Повторить»",
+       "font_size": 20,
+       "y_offset": 10,
+       "text_align": "center",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#000000",
+       "text_background_color_opacity": "0%",
+       "bold": false,
+       "italic": false,
+       "font_type": ""
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": 902,
-   "name": "Образ",
+   "name": "Образ на выходные",
    "avatar": "file:///android_asset/uikit/jacket.jpg",
    "pinned": false,
    "viewed": false,
@@ -214,6 +344,20 @@
        "text_background_color_opacity": "100%",
        "text_line_spacing": 1.0,
        "bold": false,
+       "italic": false,
+       "font_type": ""
+      },
+      {
+       "type": "text_block",
+       "text_input": "Промокод SALE10 — нажмите, чтобы скопировать",
+       "promocode": "SALE10",
+       "font_size": 20,
+       "y_offset": 70,
+       "text_align": "center",
+       "text_color": "#FFFFFF",
+       "text_background_color": "#1BAA1B",
+       "text_background_color_opacity": "100%",
+       "bold": true,
        "italic": false,
        "font_type": ""
       }

@@ -45,13 +45,17 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
                 this.shopId = shopId
             }
         }
-        Exhibit("Stories V2 — sample block with every slide kind (offline)") { ctx -> ctx.sampleStories() }
-        Exhibit("Story Preview — pinned, default, viewed, skeleton") { ctx -> ctx.previews() }
-        Exhibit("Story Cover — ring split by slides, 2 of 5 seen") { ctx ->
+        StoriesV2ComposeExhibit(storiesCode = storiesCode, shopId = shopId)
+        Exhibit(
+            "Stories V2 — sample block: fitted photo with letterbox, Retry, product video slide with " +
+                "buttons + carousel + sound, text-block promo code, two-line labels"
+        ) { ctx -> ctx.sampleStories() }
+        Exhibit("Story Preview — pinned, default, viewed, two-line label, skeleton") { ctx -> ctx.previews() }
+        Exhibit("Story Cover — ring split by slides, slides 2 and 4 seen; pinned with slide 1 seen") { ctx ->
             ctx.row(
                 PersonalizationStoryCover(ctx).apply {
                     segments = 5
-                    seenSegments = setOf(0, 1)
+                    seenSegments = setOf(1, 3)
                     ctx.loadAsset(imageView, "sneakers.jpg")
                 },
                 PersonalizationStoryCover(ctx).apply {
@@ -124,12 +128,7 @@ private fun Context.sampleStories(): View {
     bar.imageLoader = { view, url -> Glide.with(view).load(url).into(view) }
     bar.onItemClick = { index, _ ->
         PersonalizationStoriesViewer(this, stories, index).apply {
-            onClickListener = object : com.personalization.OnClickListener {
-                override fun onClick(url: String): Boolean {
-                    toast("Link: $url")
-                    return false
-                }
-            }
+            onClickListener = DemoStoriesClicks(this@sampleStories)
             setOnDismissListener { render() }
             show()
         }
@@ -149,6 +148,7 @@ private fun Context.previews(): View {
         preview("Pinned", PersonalizationStoryCover.State.PINNED, "sneakers.jpg"),
         preview("Default", PersonalizationStoryCover.State.DEFAULT, "jacket.jpg"),
         preview("Viewed", PersonalizationStoryCover.State.VIEWED, "watch.jpg"),
+        preview("Two-line label that is cut at the end", PersonalizationStoryCover.State.DEFAULT, "bottle.jpg"),
         preview("", PersonalizationStoryCover.State.SKELETON, null)
     )
 }
