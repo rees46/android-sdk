@@ -99,6 +99,18 @@ class PersonalizationStoryCard @JvmOverloads constructor(
 
     var onButtonClick: (() -> Unit)? = null
 
+    /** Тап по фото товара; `null` — фото не нажимается, и касания уходят под карточку. */
+    var onImageClick: (() -> Unit)? = null
+        set(value) {
+            field = value
+            if (value == null) {
+                imageCard.setOnClickListener(null)
+                imageCard.isClickable = false
+            } else {
+                imageCard.setOnClickListener { onImageClick?.invoke() }
+            }
+        }
+
     init {
         orientation = VERTICAL
 

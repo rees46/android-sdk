@@ -11,8 +11,10 @@ import androidx.core.graphics.Insets
 import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.ui.components.PersonalizationStoryCard
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,7 +24,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** One slide's touch routing: what reaches the controls while the products sheet is open. */
+/** One slide's touch routing: the controls over an open products sheet, the product picture. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class StorySlideViewTest {
@@ -47,6 +49,17 @@ class StorySlideViewTest {
         assertTrue(view.onInterceptTouchEvent(down(middle)))
         host.sheetOpen = false
         assertFalse(view.onInterceptTouchEvent(down(middle)))
+    }
+
+    @Test
+    fun `the product picture opens the product like the product button`() {
+        val view = laidOut(productSlide())
+        val card = view.first(PersonalizationStoryCard::class.java)!!
+        val picture = card.imageView.parent as View
+
+        assertTrue(picture.isClickable)
+        picture.performClick()
+        assertEquals(listOf("p1"), host.products.map { it.id })
     }
 
     /** On screen: an unattached view has no location, and the slide hit-tests by location. */
@@ -81,6 +94,26 @@ class StorySlideViewTest {
                 )
             )
     )
+
+    private fun productSlide(): Slide = Slide(
+        JSONObject()
+            .put("id", "2")
+            .put(
+                "elements",
+                JSONArray().put(
+                    JSONObject()
+                        .put("type", "product")
+                        .put("item", JSONObject().put("id", "p1").put("name", "Sneakers").put("price_formatted", "100 ₽"))
+                )
+            )
+    )
+
+    private fun <T : View> View.first(type: Class<T>): T? {
+        if (type.isInstance(this)) return type.cast(this)
+        if (this !is ViewGroup) return null
+        for (index in 0 until childCount) getChildAt(index).first(type)?.let { return it }
+        return null
+    }
 
     private class FakeHost : StorySlideHost {
         override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off")

@@ -14,7 +14,7 @@ import com.personalization.ui.components.PersonalizationToast
 
 /**
  * Карточка товарного слайда (C8): бренд, название, фото, цена. Кнопки рисует слайд —
- * все кнопки админки, а не одну кнопку карточки.
+ * все кнопки админки, а не одну кнопку карточки. Фото нажимается, как кнопка товара (F8).
  */
 internal object StoryProductCard {
 
@@ -24,6 +24,9 @@ internal object StoryProductCard {
             title = product.brand.takeIf { it.isNotEmpty() }
             subtitle = product.name
             if (product.image.isNotEmpty()) host.loadImage(imageView, product.image)
+            imageView.contentDescription = product.name
+            // Тап по фото — как кнопка товара: клик, просмотр закрывается, товар открывается (F8).
+            onImageClick = { host.onProduct(product) }
             this.price.type = price.type
             this.price.price = price.price
             this.price.oldPrice = price.oldPrice
