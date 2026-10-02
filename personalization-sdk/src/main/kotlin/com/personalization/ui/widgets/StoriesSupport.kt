@@ -46,36 +46,33 @@ internal object StoriesMapping {
     )
 
     /**
-     * Цена товарного слайда (C10). С промокодом крупно — цена по промокоду, зачёркнута
-     * старая цена, а без неё — обычная, если она отличается. Скидка — процент как есть,
-     * с дробной частью. Зачёркнутая цена показывается, только если она численно больше.
+     * Цена товарного слайда (C10, F10). Старая цена имеет смысл, только если она численно
+     * больше обычной. С промокодом крупно — цена по промокоду, зачёркнута старая цена, а без
+     * неё — обычная, если она отличается от цены по промокоду. Скидка — процент как есть,
+     * с дробной частью.
      */
     fun price(product: Product): Price {
         val regular = product.priceDecimal ?: Decimals.parse(product.price)
-        val old = product.oldPrice.takeIf { it.isNotEmpty() }
-        val oldValue = product.oldPriceDecimal ?: Decimals.parse(product.oldPrice)
+        val old = product.oldPrice.takeIf {
+            it.isNotEmpty() && Decimals.greater(product.oldPriceDecimal ?: Decimals.parse(it), regular)
+        }
         val promo = product.promocode.trim().takeIf { it.isNotEmpty() && it != "null" }
         if (promo != null) {
             val withPromo = product.priceWithPromocode.takeIf { it.isNotEmpty() }
-            val shownValue = if (withPromo != null) {
-                product.priceWithPromocodeDecimal ?: Decimals.parse(withPromo)
-            } else {
-                regular
-            }
+            val promoValue = withPromo?.let { product.priceWithPromocodeDecimal ?: Decimals.parse(it) }
             val crossed = when {
-                old != null && Decimals.greater(oldValue, shownValue) -> old
-                withPromo != null && Decimals.greater(regular, shownValue) -> product.price
+                old != null -> old
+                Decimals.differ(regular, promoValue) -> product.price
                 else -> null
             }
             return Price(PersonalizationStoryPrice.Type.PROMO_CODE, withPromo ?: product.price, crossed, null, promo)
         }
-        val crossed = old?.takeIf { Decimals.greater(oldValue, regular) }
         val percent = Decimals.parse(product.discountPercent)?.takeIf { it.signum() > 0 }
         if (percent != null) {
             val text = percent.stripTrailingZeros().toPlainString() + "%"
-            return Price(PersonalizationStoryPrice.Type.DISCOUNT, product.price, crossed, text, null)
+            return Price(PersonalizationStoryPrice.Type.DISCOUNT, product.price, old, text, null)
         }
-        return Price(PersonalizationStoryPrice.Type.PRICE, product.price, crossed, null, null)
+        return Price(PersonalizationStoryPrice.Type.PRICE, product.price, old, null, null)
     }
 
     /** Товар карусели «Используемые товары» → карточка кита. */
@@ -235,6 +232,10 @@ internal object Decimals {
 
     fun greater(left: BigDecimal?, right: BigDecimal?): Boolean =
         left != null && right != null && left > right
+
+    /** Оба числа есть и они разные (`1.0` и `1.00` — одно и то же). */
+    fun differ(left: BigDecimal?, right: BigDecimal?): Boolean =
+        left != null && right != null && left.compareTo(right) != 0
 
     fun parse(text: String?): BigDecimal? {
         val raw = text?.trim().orEmpty()

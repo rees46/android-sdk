@@ -59,6 +59,46 @@ class StoriesMappingTest {
     }
 
     @Test
+    fun `under a promo code an old price counts only above the regular price`() {
+        // 950 is above the promo price but below the regular one: the regular price is crossed out.
+        val belowRegular = StoriesMapping.price(
+            product(
+                "price" to 1000, "price_formatted" to "1 000 ₽",
+                "oldprice" to 950, "oldprice_formatted" to "950 ₽",
+                "promocode" to "PROMO", "price_with_promocode" to 900, "price_with_promocode_formatted" to "900 ₽"
+            )
+        )
+        assertEquals("1 000 ₽", belowRegular.oldPrice)
+        // An old price equal to the regular one is no markdown either.
+        val equalToRegular = StoriesMapping.price(
+            product(
+                "price" to 1000, "price_formatted" to "1 000 ₽",
+                "oldprice" to 1000, "oldprice_formatted" to "1 000.00 ₽",
+                "promocode" to "PROMO", "price_with_promocode_formatted" to "900 ₽"
+            )
+        )
+        assertEquals("1 000 ₽", equalToRegular.oldPrice)
+    }
+
+    @Test
+    fun `under a promo code the regular price is crossed out only when it differs from the promo price`() {
+        val same = StoriesMapping.price(
+            product(
+                "price" to 1000, "price_formatted" to "1 000 ₽",
+                "promocode" to "PROMO", "price_with_promocode" to "1000.00", "price_with_promocode_formatted" to "1 000 ₽"
+            )
+        )
+        assertNull(same.oldPrice)
+        val higherPromo = StoriesMapping.price(
+            product(
+                "price" to 1000, "price_formatted" to "1 000 ₽",
+                "promocode" to "PROMO", "price_with_promocode_formatted" to "1 100 ₽"
+            )
+        )
+        assertEquals("1 000 ₽", higherPromo.oldPrice)
+    }
+
+    @Test
     fun `a promo code without a promo price shows the regular price and crosses nothing`() {
         val price = StoriesMapping.price(
             product("price" to 1000, "price_formatted" to "1 000 ₽", "promocode" to "PROMO")
