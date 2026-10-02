@@ -12,24 +12,31 @@ import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Управление сторис из Compose (B8): то же, что методы [PersonalizationStories].
- * Передаётся в [PersonalizationStoriesWidget]; до показа виджета вызовы ничего не делают.
+ * Передаётся в [PersonalizationStoriesWidget]. Открытие до показа виджета ждёт его, как
+ * ждёт загрузки блока (F11); пауза и остальное без виджета ничего не делают.
  */
 @InternalPersonalizationUiApi
 class PersonalizationStoriesController {
 
     internal var view: PersonalizationStories? = null
+        set(value) {
+            field = value
+            if (value != null) pendingOpen?.also { pendingOpen = null }?.invoke(value)
+        }
 
-    fun open(index: Int) {
-        view?.open(index)
-    }
+    /** Последнее открытие, вызванное до показа виджета. */
+    private var pendingOpen: ((PersonalizationStories) -> Unit)? = null
 
-    fun openStory(storyId: Int) {
-        view?.openStory(storyId)
-    }
+    fun open(index: Int) = openWhenShown { it.open(index) }
+
+    fun openStory(storyId: Int) = openWhenShown { it.openStory(storyId) }
 
     /** То же по id строкой (F12). */
-    fun openStory(storyId: String) {
-        view?.openStory(storyId)
+    fun openStory(storyId: String) = openWhenShown { it.openStory(storyId) }
+
+    private fun openWhenShown(action: (PersonalizationStories) -> Unit) {
+        val target = view
+        if (target != null) action(target) else pendingOpen = action
     }
 
     fun pause() {

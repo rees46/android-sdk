@@ -86,6 +86,17 @@ class PersonalizationStoriesTest {
     }
 
     @Test
+    fun `the compose controller keeps an open call until the widget shows`() {
+        val controller = PersonalizationStoriesController()
+        controller.openStory("12")
+        controller.pause()
+
+        controller.view = widget()
+        idle()
+        assertEquals(1, pager(ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).currentItem)
+    }
+
+    @Test
     fun `show reports the viewer closing`() {
         var closed = 0
         var errors = 0
