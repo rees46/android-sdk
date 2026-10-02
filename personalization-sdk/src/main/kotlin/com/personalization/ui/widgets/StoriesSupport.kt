@@ -344,10 +344,15 @@ internal object StoriesLoader {
         }
     }
 
-    /** Сторис без слайдов выбрасываются (C16): их нечего показывать. */
+    /**
+     * Сторис без слайдов выбрасываются (C16): их нечего показывать. Повтор id тоже — сервер
+     * иногда отдаёт одну сторис дважды; остаётся первая, иначе просмотренность склеивается.
+     */
     fun parse(response: JSONObject?): List<Story> {
         val array = response?.optJSONArray("stories") ?: return emptyList()
-        return List(array.length()) { Story(array.getJSONObject(it)) }.filter { it.slidesCount > 0 }
+        return List(array.length()) { Story(array.getJSONObject(it)) }
+            .filter { it.slidesCount > 0 }
+            .distinctBy { it.id }
     }
 
     /** Код ошибки, которая случилась до сервера или без кода HTTP. */

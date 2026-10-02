@@ -129,6 +129,13 @@ class PersonalizationStoriesTest {
         assertEquals(0, ShadowDialog.getShownDialogs().size)
     }
 
+    @Test
+    fun `a repeated story id is dropped, the first story stays`() {
+        val stories = StoriesLoader.parse(block(listOf(7, 8, 7)))
+
+        assertEquals(listOf(7, 8), stories.map { it.id })
+    }
+
     private fun show(startStoryId: Int? = null, onError: () -> Unit = {}, onClose: () -> Unit = {}) {
         PersonalizationStories.show(
             context = activity,
