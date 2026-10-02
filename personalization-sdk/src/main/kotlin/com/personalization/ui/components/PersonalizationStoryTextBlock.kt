@@ -42,8 +42,12 @@ class PersonalizationStoryTextBlock @JvmOverloads constructor(
             /** Пресет, ближайший к кеглю [textSp]. */
             fun nearest(textSp: Float): Size = values().minByOrNull { kotlin.math.abs(it.textSp - textSp) } ?: SMALL
 
-            /** Высота строки пресета, пересчитанная на кегль: 48/48 → 1.0, 30/36 и 20/24 → 1.2. */
-            fun lineHeightFor(textSp: Float): Float = nearest(textSp).let { textSp * it.lineHeightSp / it.textSp }
+            /**
+             * Высота строки пресета, пересчитанная на кегль и округлённая (F4): 48/48 → 1.0,
+             * 30/36 и 20/24 → 1.2. Ничья между пресетами — у крупного.
+             */
+            fun lineHeightFor(textSp: Float): Float =
+                nearest(textSp).let { Math.round(textSp * it.lineHeightSp / it.textSp).toFloat() }
         }
     }
 

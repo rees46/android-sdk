@@ -344,7 +344,11 @@ class StoriesMappingTest {
         assertEquals(48f, PersonalizationStoryTextBlock.Size.lineHeightFor(48f), 0.01f)
         assertEquals(36f, PersonalizationStoryTextBlock.Size.lineHeightFor(30f), 0.01f)
         assertEquals(24f, PersonalizationStoryTextBlock.Size.lineHeightFor(20f), 0.01f)
-        assertEquals(16.8f, PersonalizationStoryTextBlock.Size.lineHeightFor(14f), 0.01f)
+        // round(size × ratio): 14 × 1.2 = 16.8 → 17.
+        assertEquals(17f, PersonalizationStoryTextBlock.Size.lineHeightFor(14f), 0.01f)
+        // 39 is as far from Large (48) as from Medium (30): the tie goes to Large, ratio 1.0.
+        assertEquals(39f, PersonalizationStoryTextBlock.Size.lineHeightFor(39f), 0.01f)
+        assertEquals(PersonalizationStoryTextBlock.Size.LARGE, PersonalizationStoryTextBlock.Size.nearest(39f))
     }
 
     // --- Loading (C16) --------------------------------------------------------------------------
