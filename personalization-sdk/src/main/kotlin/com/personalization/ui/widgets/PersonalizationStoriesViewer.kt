@@ -336,13 +336,11 @@ class PersonalizationStoriesViewer(
     /** Слайд стал текущим на остановившейся странице: трекинг, медиа, предзагрузка. */
     private fun onSlideStarted() {
         track("view")
+        preloadNext()
+        // Страницы может ещё не быть: тогда медиа запустит привязка адаптера.
         val page = currentPage() ?: return
         page.showSlide(state.slideIndex)
-        page.slideView?.let { view ->
-            startMedia(view)
-            applySystemBars(view)
-        }
-        preloadNext()
+        page.slideView?.let(::startMedia)
     }
 
     private fun apply(move: StoriesViewerState.Move) {
@@ -530,6 +528,7 @@ class PersonalizationStoriesViewer(
     private fun startMedia(view: StorySlideView) {
         if (view.mediaStarted || dismissed) return
         view.mediaStarted = true
+        applySystemBars(view)
         cancelMediaTimers()
         when {
             view.isVideo -> attachVideo(view)
