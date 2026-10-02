@@ -104,6 +104,8 @@ class PersonalizationStoriesViewer(
     private val pages = HashMap<Int, StoryPage>()
     private val handler = Handler(Looper.getMainLooper())
     private val frameClock = StoryFrameClock(::onFrame)
+    private val readyTimer = StoryTimer(handler) { onReadyTimeout() }
+    private val videoRetryTimer = StoryTimer(handler) { currentSlideView()?.let(::retry) }
     private var player: ExoPlayer? = null
     private var playerSlide: StorySlideView? = null
     private var audioFocus: StoriesAudioFocus? = null
@@ -222,6 +224,7 @@ class PersonalizationStoriesViewer(
         hostLifecycle = lifecycle
         hostStopped = !lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         lifecycle.addObserver(hostObserver)
+        setBackground()
     }
 
     private val hostObserver = LifecycleEventObserver { _, event ->
@@ -236,7 +239,11 @@ class PersonalizationStoriesViewer(
     private fun setBackground(stopped: Boolean = hostStopped) {
         hostStopped = stopped
         if (!created) return
-        state.setPaused(Pause.BACKGROUND, hostStopped || !windowFocused)
+        val background = hostStopped || !windowFocused
+        state.setPaused(Pause.BACKGROUND, background)
+        // Ожидание готовности и автоповтор видео в фоне стоят и потом идут с остатка (F5).
+        readyTimer.freeze(background)
+        videoRetryTimer.freeze(background)
         sync()
     }
 
@@ -523,7 +530,9 @@ class PersonalizationStoriesViewer(
 
     /**
      * Часы слайда пойдут, когда медиа готово (C5): картинка загружена, видео играет.
-     * Не готово за 10 с или ошибка — пауза и «Повторить».
+     * Не готово за 10 с или ошибка — пауза и «Повторить». Время в фоне не считается (F5):
+     * Glide на `onStop` хоста ставит загрузки на паузу без ошибки и сам продолжает их на
+     * `onStart`, а ожидание готовности тем временем заморожено.
      */
     private fun startMedia(view: StorySlideView) {
         if (view.mediaStarted || dismissed) return
@@ -538,7 +547,7 @@ class PersonalizationStoriesViewer(
             }
             else -> onMediaReady(view, null)
         }
-        if (view.isMedia) handler.postDelayed(readyTimeout, READY_TIMEOUT_MS)
+        if (view.isMedia) readyTimer.start(READY_TIMEOUT_MS)
     }
 
     private fun onImageState(view: StorySlideView) {
@@ -552,8 +561,7 @@ class PersonalizationStoriesViewer(
     private fun onMediaReady(view: StorySlideView, videoDurationMs: Long?) {
         if (view !== currentSlideView() || dismissed) return
         view.mediaReadyOnce = true
-        handler.removeCallbacks(readyTimeout)
-        handler.removeCallbacks(videoRetry)
+        cancelMediaTimers()
         view.showRetry(false)
         state.mediaReady(videoDurationMs)
         sync()
@@ -561,23 +569,18 @@ class PersonalizationStoriesViewer(
 
     private fun onMediaFailed(view: StorySlideView) {
         if (view !== currentSlideView() || dismissed) return
-        handler.removeCallbacks(readyTimeout)
+        readyTimer.cancel()
         state.mediaFailed()
         view.showRetry(true)
         // Видео пробует ещё раз само; картинка — по кнопке.
-        if (view.isVideo) {
-            handler.removeCallbacks(videoRetry)
-            handler.postDelayed(videoRetry, VIDEO_RETRY_MS)
-        }
+        if (view.isVideo) videoRetryTimer.start(VIDEO_RETRY_MS)
         sync()
     }
 
-    private val readyTimeout = Runnable {
-        val view = currentSlideView() ?: return@Runnable
+    private fun onReadyTimeout() {
+        val view = currentSlideView() ?: return
         if (!view.mediaReadyOnce && !state.hasError) onMediaFailed(view)
     }
-
-    private val videoRetry = Runnable { currentSlideView()?.let(::retry) }
 
     private fun retry(view: StorySlideView) {
         if (view !== currentSlideView() || dismissed) return
@@ -593,8 +596,8 @@ class PersonalizationStoriesViewer(
     }
 
     private fun cancelMediaTimers() {
-        handler.removeCallbacks(readyTimeout)
-        handler.removeCallbacks(videoRetry)
+        readyTimer.cancel()
+        videoRetryTimer.cancel()
     }
 
     /** Уход со слайда: таймеры и повторы отменяются, плеер отдан. */

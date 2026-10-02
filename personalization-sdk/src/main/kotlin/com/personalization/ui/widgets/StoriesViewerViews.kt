@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Handler
+import android.os.SystemClock
 import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.VelocityTracker
@@ -93,6 +95,56 @@ internal class StoryFrameClock(private val onTick: (deltaMs: Long) -> Unit) : Ch
 
     private companion object {
         const val MAX_FRAME_MS = 250L
+    }
+}
+
+/**
+ * Отложенное действие просмотра: ожидание готовности медиа (10 с) и автоповтор видео (15 с).
+ * В фоне оно заморожено ([freeze]): время не идёт, а после возврата продолжается с остатка
+ * (F5) — пока приложение свёрнуто, слайд не успевает «не загрузиться».
+ */
+internal class StoryTimer(private val handler: Handler, private val action: () -> Unit) {
+
+    /** Сколько осталось до срабатывания, мс; `null` — не заведён. */
+    private var remainingMs: Long? = null
+    private var postedAt = 0L
+    private var frozen = false
+    private val runnable = Runnable {
+        remainingMs = null
+        action()
+    }
+
+    val isScheduled: Boolean get() = remainingMs != null
+
+    /** Завести заново на [delayMs]. В заморозке отсчёт начнётся после разморозки. */
+    fun start(delayMs: Long) {
+        cancel()
+        remainingMs = delayMs
+        if (!frozen) post()
+    }
+
+    fun cancel() {
+        handler.removeCallbacks(runnable)
+        remainingMs = null
+    }
+
+    /** Заморозить отсчёт или продолжить его с остатка. */
+    fun freeze(value: Boolean) {
+        if (frozen == value) return
+        frozen = value
+        val left = remainingMs ?: return
+        if (value) {
+            handler.removeCallbacks(runnable)
+            remainingMs = (left - (SystemClock.uptimeMillis() - postedAt)).coerceAtLeast(0L)
+        } else {
+            post()
+        }
+    }
+
+    private fun post() {
+        val delay = remainingMs ?: return
+        postedAt = SystemClock.uptimeMillis()
+        handler.postDelayed(runnable, delay)
     }
 }
 
