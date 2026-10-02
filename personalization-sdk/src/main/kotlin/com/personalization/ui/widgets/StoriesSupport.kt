@@ -48,7 +48,7 @@ internal object StoriesMapping {
     /**
      * Цена товарного слайда (C10, F10). Старая цена имеет смысл, только если она численно
      * больше обычной. С промокодом крупно — цена по промокоду, зачёркнута старая цена, а без
-     * неё — обычная, если она отличается от цены по промокоду. Скидка — процент как есть,
+     * неё — обычная, если она выше цены по промокоду (F10). Скидка — процент как есть,
      * с дробной частью.
      */
     fun price(product: Product): Price {
@@ -62,7 +62,7 @@ internal object StoriesMapping {
             val promoValue = withPromo?.let { product.priceWithPromocodeDecimal ?: Decimals.parse(it) }
             val crossed = when {
                 old != null -> old
-                Decimals.differ(regular, promoValue) -> product.price
+                Decimals.greater(regular, promoValue) -> product.price
                 else -> null
             }
             return Price(PersonalizationStoryPrice.Type.PROMO_CODE, withPromo ?: product.price, crossed, null, promo)
@@ -232,10 +232,6 @@ internal object Decimals {
 
     fun greater(left: BigDecimal?, right: BigDecimal?): Boolean =
         left != null && right != null && left > right
-
-    /** Оба числа есть и они разные (`1.0` и `1.00` — одно и то же). */
-    fun differ(left: BigDecimal?, right: BigDecimal?): Boolean =
-        left != null && right != null && left.compareTo(right) != 0
 
     fun parse(text: String?): BigDecimal? {
         val raw = text?.trim().orEmpty()

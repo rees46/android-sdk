@@ -81,7 +81,7 @@ class StoriesMappingTest {
     }
 
     @Test
-    fun `under a promo code the regular price is crossed out only when it differs from the promo price`() {
+    fun `under a promo code the regular price is crossed out only when it is above the promo price`() {
         val same = StoriesMapping.price(
             product(
                 "price" to 1000, "price_formatted" to "1 000 ₽",
@@ -95,7 +95,7 @@ class StoriesMappingTest {
                 "promocode" to "PROMO", "price_with_promocode_formatted" to "1 100 ₽"
             )
         )
-        assertEquals("1 000 ₽", higherPromo.oldPrice)
+        assertNull(higherPromo.oldPrice)
     }
 
     @Test
