@@ -93,8 +93,9 @@ class PersonalizationStoryUsedProducts @JvmOverloads constructor(
 
     var onSoundClick: (() -> Unit)? = null
 
-    var soundOnDescription: CharSequence = "Mute"
-    var soundOffDescription: CharSequence = "Unmute"
+    /** Описание кнопки звука для TalkBack: звук включён — [soundOnDescription], выключен — [soundOffDescription]. */
+    var soundOnDescription: CharSequence = "Sound on"
+    var soundOffDescription: CharSequence = "Sound off"
 
     init {
         orientation = VERTICAL
