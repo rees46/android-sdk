@@ -145,6 +145,8 @@ class PersonalizationStoryUsedProducts @JvmOverloads constructor(
         // В макете выключенный звук — иконка на 65%, включённый — непрозрачная.
         sound.alpha = if (muted) MUTED_ALPHA else 1f
         sound.contentDescription = if (muted) soundOffDescription else soundOnDescription
+        // Состояние переключателя для TalkBack: звук включён — кнопка выбрана (F1).
+        sound.isSelected = !muted
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

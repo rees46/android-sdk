@@ -6,7 +6,9 @@ import android.content.Context
 import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -133,6 +135,27 @@ class PersonalizationStoryComponentsTest {
 
         cover.state = PersonalizationStoryCover.State.VIEWED
         assertEquals(View.GONE, star.visibility)
+    }
+
+    @Test
+    fun `the sound button names the current sound state and is selected while the sound is on`() {
+        val used = PersonalizationStoryUsedProducts(activity).apply {
+            showSoundButton = true
+            muted = true
+        }
+        val sound = firstImage(used) { it.contentDescription == "Sound off" }!!
+        assertFalse(sound.isSelected)
+
+        used.muted = false
+        assertEquals("Sound on", sound.contentDescription)
+        assertTrue(sound.isSelected)
+    }
+
+    private fun firstImage(view: View, matches: (ImageView) -> Boolean): ImageView? {
+        if (view is ImageView && matches(view)) return view
+        if (view !is ViewGroup) return null
+        for (index in 0 until view.childCount) firstImage(view.getChildAt(index), matches)?.let { return it }
+        return null
     }
 
     private fun rightBlocks(price: PersonalizationStoryPrice): Pair<View, View> =
