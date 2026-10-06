@@ -109,6 +109,24 @@
    ]
   },
   {
+   "id": 907,
+   "name": "GIF",
+   "avatar": "file:///android_asset/uikit/story_clock.gif",
+   "pinned": false,
+   "viewed": false,
+   "start_position": 0,
+   "slides": [
+    {
+     "id": "907_0",
+     "type": "image",
+     "duration": 5,
+     "background": "file:///android_asset/uikit/story_clock.gif",
+     "background_color": "#1B2A41",
+     "elements": []
+    }
+   ]
+  },
+  {
    "id": 905,
    "name": "Видео и товары",
    "avatar": "file:///android_asset/uikit/headphones.jpg",

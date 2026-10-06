@@ -47,8 +47,9 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
         }
         StoriesV2ComposeExhibit(storiesCode = storiesCode, shopId = shopId)
         Exhibit(
-            "Stories V2 — sample block: fitted photo with letterbox, Retry, product video slide with " +
-                "buttons + carousel + sound, text-block promo code, two-line labels"
+            "Stories V2 — sample block: GIF slide (8 s dial over a 5 s duration), fitted photo with " +
+                "letterbox, Retry, product video slide with buttons + carousel + sound, text-block promo " +
+                "code, two-line labels"
         ) { ctx -> ctx.sampleStories() }
         Exhibit("Story Preview — pinned, default, viewed, two-line label, skeleton") { ctx -> ctx.previews() }
         Exhibit("Story Cover — ring split by slides, slides 2 and 4 seen; pinned with slide 1 seen") { ctx ->
@@ -125,7 +126,8 @@ private fun Context.sampleStories(): View {
             )
         }
     }
-    bar.imageLoader = { view, url -> Glide.with(view).load(url).into(view) }
+    // Like the SDK default: a GIF cover stays on its first frame, only the slide plays it.
+    bar.imageLoader = { view, url -> Glide.with(view).asBitmap().load(url).into(view) }
     bar.onItemClick = { index, _ ->
         PersonalizationStoriesViewer(this, stories, index).apply {
             onClickListener = DemoStoriesClicks(this@sampleStories)
