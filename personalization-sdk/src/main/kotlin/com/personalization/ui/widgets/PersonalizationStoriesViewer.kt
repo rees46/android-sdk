@@ -3,8 +3,10 @@ package com.personalization.ui.widgets
 import android.app.Dialog
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
@@ -23,6 +25,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.viewpager2.widget.ViewPager2
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.gif.GifDrawable
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.CustomViewTarget
+import com.bumptech.glide.request.target.Target
+import com.bumptech.glide.request.transition.Transition
 import com.personalization.OnClickListener
 import com.personalization.SDK
 import com.personalization.stories.models.Story
@@ -383,6 +393,7 @@ class PersonalizationStoriesViewer(
             StoriesViewerState.Move.Restart -> {
                 val view = currentSlideView()
                 if (view != null && view === playerSlide) player?.seekTo(0)
+                view?.restartAnimation()
                 view?.setProgress(0f)
             }
             StoriesViewerState.Move.CloseSheet -> currentSlideView()?.closeSheet()
@@ -399,6 +410,7 @@ class PersonalizationStoriesViewer(
         if (!created || dismissed) return
         if (state.isRunning) frameClock.start() else frameClock.stop()
         player?.playWhenReady = playerSlide != null && state.playerShouldPlay
+        currentSlideView()?.setAnimationRunning(state.isRunning)
         pager.isUserInputEnabled = !state.sheetOpen
         currentSlideView()?.setProgress(state.progress)
         updateAudioFocus()
@@ -426,6 +438,14 @@ class PersonalizationStoriesViewer(
 
         override fun loadImage(view: ImageView, url: String, onReady: (() -> Unit)?, onFailed: (() -> Unit)?) =
             this@PersonalizationStoriesViewer.loadImage(view, url, onReady, onFailed)
+
+        override fun loadSlideImage(
+            view: ImageView,
+            url: String,
+            onAnimation: (Long?, GifDrawable) -> Unit,
+            onReady: () -> Unit,
+            onFailed: () -> Unit
+        ) = this@PersonalizationStoriesViewer.loadSlideImage(view, url, onAnimation, onReady, onFailed)
 
         override fun onTap(x: Float, width: Int, rtl: Boolean) = apply(state.tap(StoriesViewerState.zone(x, width, rtl)))
 
@@ -511,6 +531,7 @@ class PersonalizationStoriesViewer(
         runCatching { sdk?.storiesManager?.trackStory(event, blockCode, story.id, slide.id) }
     }
 
+    /** Картинка компонента: у GIF только первый кадр (G6). */
     private fun loadImage(view: ImageView, url: String, onReady: (() -> Unit)?, onFailed: (() -> Unit)?) {
         val loader = imageLoader
         if (loader != null) {
@@ -518,12 +539,12 @@ class PersonalizationStoriesViewer(
             loader(view, url)
             return
         }
-        com.bumptech.glide.Glide.with(view).load(url)
-            .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
+        Glide.with(view).asBitmap().load(url)
+            .listener(object : RequestListener<Bitmap> {
                 override fun onLoadFailed(
-                    e: com.bumptech.glide.load.engine.GlideException?,
+                    e: GlideException?,
                     model: Any?,
-                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
+                    target: Target<Bitmap>,
                     isFirstResource: Boolean
                 ): Boolean {
                     onFailed?.invoke()
@@ -531,10 +552,10 @@ class PersonalizationStoriesViewer(
                 }
 
                 override fun onResourceReady(
-                    resource: android.graphics.drawable.Drawable,
+                    resource: Bitmap,
                     model: Any,
-                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>?,
-                    dataSource: com.bumptech.glide.load.DataSource,
+                    target: Target<Bitmap>?,
+                    dataSource: DataSource,
                     isFirstResource: Boolean
                 ): Boolean {
                     onReady?.invoke()
@@ -542,6 +563,43 @@ class PersonalizationStoriesViewer(
                 }
             })
             .into(view)
+    }
+
+    /**
+     * Фон слайда: GIF здесь играет (G1). Своя цель вместо обычной: Glide сам запускает GIF
+     * при показе и на `onStart` хоста, а он должен идти только вместе с часами слайда (G5).
+     * Проход и сам GIF отдаются до того, как картинка встанет во вьюху: по ней слайд готов.
+     */
+    private fun loadSlideImage(
+        view: ImageView,
+        url: String,
+        onAnimation: (Long?, GifDrawable) -> Unit,
+        onReady: () -> Unit,
+        onFailed: () -> Unit
+    ) {
+        val loader = imageLoader
+        if (loader != null) {
+            // GIF загрузчика хоста SDK не трогает и не меряет (G8).
+            loader(view, url)
+            return
+        }
+        Glide.with(view).load(url).into(object : CustomViewTarget<ImageView, Drawable>(view) {
+            override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
+                if (resource is GifDrawable) {
+                    resource.setLoopCount(GifDrawable.LOOP_FOREVER)
+                    onAnimation(StoriesGif.loopMs(resource.buffer), resource)
+                }
+                this.view.setImageDrawable(resource)
+                onReady()
+            }
+
+            override fun onLoadFailed(errorDrawable: Drawable?) = onFailed()
+
+            override fun onResourceCleared(placeholder: Drawable?) {
+                (this.view.drawable as? GifDrawable)?.stop()
+                this.view.setImageDrawable(placeholder)
+            }
+        })
     }
 
     // --- Медиа -----------------------------------------------------------------------------
@@ -581,7 +639,7 @@ class PersonalizationStoriesViewer(
         view.mediaReadyOnce = true
         cancelMediaTimers()
         view.showRetry(false)
-        state.mediaReady(videoDurationMs)
+        state.mediaReady(videoDurationMs, view.animationLoopMs)
         sync()
     }
 
@@ -618,10 +676,11 @@ class PersonalizationStoriesViewer(
         videoRetryTimer.cancel()
     }
 
-    /** Уход со слайда: таймеры и повторы отменяются, плеер отдан. */
+    /** Уход со слайда: таймеры и повторы отменяются, плеер отдан, GIF стоит. */
     private fun stopMedia() {
         cancelMediaTimers()
         detachPlayer()
+        currentSlideView()?.stopAnimation()
     }
 
     @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])

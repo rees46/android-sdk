@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.graphics.Insets
+import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
@@ -61,6 +62,24 @@ class StorySlideViewTest {
         picture.performClick()
         assertEquals(listOf("p1"), host.products.map { it.id })
     }
+
+    @Test
+    fun `only the slide background may play a gif, the video poster stays on the first frame`() {
+        StorySlideView(activity, 0, 0, mediaSlide("image", "https://example.com/a.gif"), 1, host)
+        StorySlideView(activity, 0, 0, mediaSlide("video", "https://example.com/v.mp4", "https://example.com/p.gif"), 1, host)
+
+        assertEquals(listOf("https://example.com/a.gif"), host.slideImages)
+        assertEquals(listOf("https://example.com/p.gif"), host.images)
+    }
+
+    private fun mediaSlide(type: String, background: String, preview: String = ""): Slide = Slide(
+        JSONObject()
+            .put("id", "3")
+            .put("type", type)
+            .put("background", background)
+            .put("preview", preview)
+            .put("elements", JSONArray())
+    )
 
     /** On screen: an unattached view has no location, and the slide hit-tests by location. */
     private fun laidOut(slide: Slide): StorySlideView =
@@ -122,7 +141,22 @@ class StorySlideViewTest {
         override val insets: Insets = Insets.NONE
         val products = mutableListOf<Product>()
 
-        override fun loadImage(view: ImageView, url: String, onReady: (() -> Unit)?, onFailed: (() -> Unit)?) = Unit
+        val images = mutableListOf<String>()
+        val slideImages = mutableListOf<String>()
+
+        override fun loadImage(view: ImageView, url: String, onReady: (() -> Unit)?, onFailed: (() -> Unit)?) {
+            images += url
+        }
+
+        override fun loadSlideImage(
+            view: ImageView,
+            url: String,
+            onAnimation: (Long?, GifDrawable) -> Unit,
+            onReady: () -> Unit,
+            onFailed: () -> Unit
+        ) {
+            slideImages += url
+        }
         override fun onTap(x: Float, width: Int, rtl: Boolean) = Unit
         override fun onHold(hold: Boolean) = Unit
         override fun onOutsideSheetTap() = Unit

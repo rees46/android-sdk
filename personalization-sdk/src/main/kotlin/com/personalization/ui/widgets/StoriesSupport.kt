@@ -173,6 +173,13 @@ internal object StoriesMapping {
 
     fun isVideo(slide: Slide): Boolean = slide.type == "video" && slide.background.isNotEmpty()
 
+    /**
+     * Длина слайда с GIF (G2): большее из времени админки и одного прохода GIF. Проход
+     * неизвестен (загрузчик хоста, файл не разобрали) — время админки.
+     */
+    fun animatedDurationMs(serverMs: Long, loopMs: Long?): Long =
+        if (loopMs == null || loopMs <= 0) serverMs else maxOf(serverMs, loopMs)
+
     /** Скрим сверху и снизу есть у каждого слайда; 50% — только у голого медиа (C3). */
     fun scrimAlpha(slide: Slide): Int {
         val bare = isMedia(slide) && product(slide) == null && textBlocks(slide).isEmpty()

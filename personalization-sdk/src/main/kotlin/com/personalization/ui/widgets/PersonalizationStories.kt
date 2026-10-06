@@ -95,7 +95,7 @@ class PersonalizationStories @JvmOverloads constructor(
         addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         bar.onItemClick = { index, _ -> open(index) }
         // Загрузчик ставится один раз: каждая установка перерисовывает ленту.
-        bar.imageLoader = { view, url -> imageLoader?.invoke(view, url) ?: SearchImages.load(view, url) }
+        bar.imageLoader = { view, url -> imageLoader?.invoke(view, url) ?: SearchImages.load(view, url, firstFrame = true) }
         bar.showSkeleton()
     }
 

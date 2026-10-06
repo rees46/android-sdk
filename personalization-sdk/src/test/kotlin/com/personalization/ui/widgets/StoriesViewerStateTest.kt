@@ -165,6 +165,34 @@ class StoriesViewerStateTest {
     }
 
     @Test
+    fun `a gif slide lasts the longer of its loop and the admin duration`() {
+        val longer = entered(story(1, slides = 2, durationMs = 5000))
+        longer.mediaReady(animationLoopMs = 8000)
+        assertEquals(StoriesViewerState.Clock.TIMER, longer.clock)
+        assertEquals(Move.None, longer.tick(5000))
+        assertEquals(Move.Slide, longer.tick(3000))
+
+        val shorter = entered(story(2, slides = 2, durationMs = 5000))
+        shorter.mediaReady(animationLoopMs = 700)
+        assertEquals(Move.Slide, shorter.tick(5000))
+    }
+
+    @Test
+    fun `a gif slide keeps its length on restart and measures it again after a retry`() {
+        val state = entered(story(1, slides = 2, durationMs = 5000))
+        state.mediaReady(animationLoopMs = 8000)
+        state.tick(6000)
+        assertEquals(Move.Restart, state.previous())
+        assertEquals(8000L, state.durationMs)
+
+        state.mediaFailed()
+        state.retry()
+        assertEquals(5000L, state.durationMs)
+        state.mediaReady(animationLoopMs = 8000)
+        assertEquals(8000L, state.durationMs)
+    }
+
+    @Test
     fun `a failed media pauses the slide until retried`() {
         val state = entered(story(1, slides = 2))
         state.mediaFailed()

@@ -86,7 +86,8 @@ internal fun storageKey(sdk: SDK, requestedShopId: String?): String =
  * После layout размер известен, и Glide стартует сразу.
  */
 internal object SearchImages {
-    fun load(imageView: ImageView, url: String?) {
+    /** [firstFrame] — у GIF только первый кадр: так рисуются обложки сторис (G6). */
+    fun load(imageView: ImageView, url: String?, firstFrame: Boolean = false) {
         imageView.tag = url
         if (url.isNullOrEmpty()) {
             Glide.with(imageView).clear(imageView)
@@ -95,7 +96,9 @@ internal object SearchImages {
         }
         imageView.doOnLayout { view ->
             // Пока ждали layout, view могла уйти под другой товар.
-            if (view.tag == url) Glide.with(view).load(url).into(view as ImageView)
+            if (view.tag != url) return@doOnLayout
+            val request = Glide.with(view)
+            if (firstFrame) request.asBitmap().load(url).into(view as ImageView) else request.load(url).into(view as ImageView)
         }
     }
 }

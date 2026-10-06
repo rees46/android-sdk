@@ -272,11 +272,15 @@ internal class StoriesViewerState(
     /**
      * Медиа готово (C5): картинка декодирована, видео играет. [videoDurationMs] — длина
      * ролика, если известна: слайд идёт по ней, а не по времени из админки (C4).
+     * [animationLoopMs] — проход GIF: слайд идёт по большему из него и админки (G2).
      */
-    fun mediaReady(videoDurationMs: Long? = null) {
+    fun mediaReady(videoDurationMs: Long? = null, animationLoopMs: Long? = null) {
         if (videoDurationMs != null && videoDurationMs > 0) {
             clock = Clock.PLAYER
             durationMs = videoDurationMs
+        } else if (animationLoopMs != null) {
+            val serverMs = slide?.durationMs ?: StoriesMapping.DEFAULT_DURATION_MS
+            durationMs = StoriesMapping.animatedDurationMs(serverMs, animationLoopMs)
         }
         setPaused(Pause.ERROR, false)
         setPaused(Pause.LOADING, false)

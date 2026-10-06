@@ -16,6 +16,7 @@ import androidx.core.graphics.Insets
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.personalization.Product
 import com.personalization.R
 import com.personalization.stories.models.Slide
@@ -32,7 +33,21 @@ internal interface StorySlideHost {
     val muted: Boolean
     val sheetOpen: Boolean
     val insets: Insets
+    /** Картинка компонента — товар, постер видео: GIF стоит на первом кадре (G6). */
     fun loadImage(view: ImageView, url: String, onReady: (() -> Unit)? = null, onFailed: (() -> Unit)? = null)
+
+    /**
+     * Фон слайда — GIF здесь играет (G1). [onAnimation] зовётся до того, как картинка встанет
+     * во вьюху, и только для GIF, загруженного SDK: с проходом, мс, и самим GIF (G2, G5).
+     */
+    fun loadSlideImage(
+        view: ImageView,
+        url: String,
+        onAnimation: (loopMs: Long?, gif: GifDrawable) -> Unit,
+        onReady: () -> Unit,
+        onFailed: () -> Unit
+    )
+
     fun onTap(x: Float, width: Int, rtl: Boolean)
     fun onHold(hold: Boolean)
     fun onOutsideSheetTap()
@@ -83,6 +98,16 @@ internal class StorySlideView(
 
     /** Картинка слайда загрузилась или нет. */
     var onImageState: (() -> Unit)? = null
+
+    /** Проход GIF фона, мс; `null` — не GIF, проход не разобран или GIF грузил хост (G2, G8). */
+    var animationLoopMs: Long? = null
+        private set
+
+    /** GIF фона, которым управляет SDK: идёт вместе с часами слайда (G5). */
+    private var animation: GifDrawable? = null
+
+    /** Следующий запуск GIF — с первого кадра: слайд начался или начат заново (G5). */
+    private var animationFromStart = true
 
     private val poster = StoryImageView(context)
     private val column = LinearLayout(context)
@@ -138,13 +163,60 @@ internal class StorySlideView(
     fun loadImage() {
         val url = if (isVideo) slide.preview else slide.background
         imageState = ImageState.LOADING
+        animation?.stop()
+        animation = null
+        animationLoopMs = null
         if (url.isEmpty()) {
             setImageState(if (isVideo) ImageState.READY else ImageState.FAILED)
             return
         }
         poster.visibility = View.VISIBLE
         poster.onDrawable = { setImageState(ImageState.READY) }
-        host.loadImage(poster, url, { setImageState(ImageState.READY) }, { setImageState(ImageState.FAILED) })
+        if (isVideo) {
+            host.loadImage(poster, url, { setImageState(ImageState.READY) }, { setImageState(ImageState.FAILED) })
+            return
+        }
+        host.loadSlideImage(
+            poster,
+            url,
+            onAnimation = { loopMs, gif ->
+                animationLoopMs = loopMs
+                animation = gif
+                animationFromStart = true
+            },
+            onReady = { setImageState(ImageState.READY) },
+            onFailed = { setImageState(ImageState.FAILED) }
+        )
+    }
+
+    /**
+     * GIF фона идёт, только пока идут часы слайда (G5): пауза оставляет текущий кадр,
+     * продолжение — с него же, новый или начатый заново слайд — с первого кадра.
+     */
+    fun setAnimationRunning(running: Boolean) {
+        val gif = animation ?: return
+        if (!running) {
+            if (gif.isRunning) gif.stop()
+            return
+        }
+        if (animationFromStart) {
+            animationFromStart = false
+            if (gif.isRunning) gif.stop()
+            gif.startFromFirstFrame()
+        } else if (!gif.isRunning) {
+            gif.start()
+        }
+    }
+
+    /** Слайд начат заново (B3): GIF пойдёт с первого кадра, без новой загрузки (F3). */
+    fun restartAnimation() {
+        animationFromStart = true
+    }
+
+    /** Слайд ушёл с экрана — GIF стоит. */
+    fun stopAnimation() {
+        animation?.stop()
+        animationFromStart = true
     }
 
     private fun setImageState(state: ImageState) {
