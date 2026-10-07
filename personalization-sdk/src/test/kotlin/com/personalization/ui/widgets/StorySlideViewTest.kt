@@ -56,14 +56,25 @@ class StorySlideViewTest {
     }
 
     @Test
-    fun `the product picture opens the product like the product button`() {
+    fun `a tap on the product picture pages the story and does not open the product`() {
         val view = laidOut(productSlide())
         val card = view.first(PersonalizationStoryCard::class.java)!!
         val picture = card.imageView.parent as View
+        assertFalse(picture.isClickable)
 
-        assertTrue(picture.isClickable)
-        picture.performClick()
-        assertEquals(listOf("p1"), host.products.map { it.id })
+        // The right edge of the picture lies in the right third of the slide: a tap there pages forward.
+        val slideAt = IntArray(2).also(view::getLocationOnScreen)
+        val pictureAt = IntArray(2).also(picture::getLocationOnScreen)
+        val x = (pictureAt[0] - slideAt[0] + picture.width - 2).toFloat()
+        val y = (pictureAt[1] - slideAt[1] + picture.height / 2).toFloat()
+        assertTrue("the picture must reach the right third", x > view.width * 2 / 3f)
+        val now = SystemClock.uptimeMillis()
+        view.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        view.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, y, 0))
+
+        assertEquals(1, host.taps.size)
+        assertEquals(StoriesViewerState.Zone.NEXT, StoriesViewerState.zone(host.taps[0], view.width, false))
+        assertTrue(host.products.isEmpty())
     }
 
     @Test
@@ -180,7 +191,11 @@ class StorySlideViewTest {
         ) {
             slideImages += url
         }
-        override fun onTap(x: Float, width: Int, rtl: Boolean) = Unit
+        val taps = mutableListOf<Float>()
+
+        override fun onTap(x: Float, width: Int, rtl: Boolean) {
+            taps += x
+        }
         override fun onHold(hold: Boolean) = Unit
         override fun onOutsideSheetTap() = Unit
         override fun onSheet(open: Boolean) = Unit
