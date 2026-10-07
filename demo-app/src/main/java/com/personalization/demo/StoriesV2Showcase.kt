@@ -47,7 +47,8 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
         }
         StoriesV2ComposeExhibit(storiesCode = storiesCode, shopId = shopId)
         Exhibit(
-            "Stories V2 — sample block: GIF slide (8 s dial over a 5 s duration), fitted photo with " +
+            "Stories V2 — sample block: GIF slide (8 s dial over a 5 s duration), product with the promo " +
+                "code of its text block (SOUND10), fitted photo with " +
                 "letterbox, Retry, product video slide with buttons + carousel + sound, text-block promo " +
                 "code, two-line labels"
         ) { ctx -> ctx.sampleStories() }

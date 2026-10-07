@@ -83,6 +83,13 @@
      "background": "",
      "elements": [
       {
+       "type": "text_block",
+       "text_input": "Ваш промокод SOUND10",
+       "promocode": "SOUND10",
+       "font_size": 20,
+       "y_offset": 10
+      },
+      {
        "type": "product",
        "title": " ",
        "item": {
