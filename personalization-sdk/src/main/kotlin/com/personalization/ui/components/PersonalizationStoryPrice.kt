@@ -98,6 +98,7 @@ class PersonalizationStoryPrice @JvmOverloads constructor(
     private val priceView = AppCompatTextView(context)
     private val discountView = AppCompatTextView(context)
     private val promoBox = FrameLayout(context)
+    private val promoColumn = LinearLayout(context)
     private val promoCaptionView = AppCompatTextView(context)
     private val promoCodeView = AppCompatTextView(context)
     private val copyIcon = AppCompatImageView(context)
@@ -126,7 +127,7 @@ class PersonalizationStoryPrice @JvmOverloads constructor(
         discountView.setPadding(dp(16), 0, dp(16), 0)
         discountView.background = endRounded(PersonalizationTheme.color(context, R.color.personalization_brand_primary))
 
-        val promoColumn = LinearLayout(context).apply {
+        promoColumn.apply {
             orientation = VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(16), dp(12), dp(16), dp(12))
@@ -181,7 +182,21 @@ class PersonalizationStoryPrice @JvmOverloads constructor(
             val params = promoBox.layoutParams as LayoutParams
             if (params.width != width) params.width = width
         }
+        // Чёрный блок тянется по высоте ряда, а ряд меряется по колонке цены: без старой цены
+        // она ниже подписи с кодом, и те обрезались. Колонка цены не ниже промокода.
+        priceColumn.minimumHeight = if (promoBox.visibility == View.VISIBLE) promoHeight() else 0
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    private fun promoHeight(): Int {
+        val width = (promoBox.layoutParams as LayoutParams).width
+        val widthSpec = if (width > 0) {
+            MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
+        } else {
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        }
+        promoColumn.measure(widthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        return promoColumn.measuredHeight
     }
 
     private fun render() {

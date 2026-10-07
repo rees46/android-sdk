@@ -106,6 +106,32 @@ class PersonalizationStoryComponentsTest {
     }
 
     @Test
+    fun `without an old price the row is tall enough for the promo caption and code`() {
+        val price = PersonalizationStoryPrice(activity).apply {
+            type = PersonalizationStoryPrice.Type.PROMO_CODE
+            this.price = "7 490 ₽"
+            promoCode = "SOUND10"
+        }
+        price.measure(
+            View.MeasureSpec.makeMeasureSpec(dp(370), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        price.layout(0, 0, price.measuredWidth, price.measuredHeight)
+
+        val promo = rightBlocks(price).second as ViewGroup
+        val column = promo.getChildAt(0)
+        // Measured inside the box the column is clamped to it; ask what it needs unclamped.
+        column.measure(
+            View.MeasureSpec.makeMeasureSpec(column.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        assertTrue(
+            "promo column ${column.measuredHeight} must fit the box ${promo.height}",
+            column.measuredHeight <= promo.height
+        )
+    }
+
+    @Test
     fun `tapping the promo code copies it and reports`() {
         val content: ViewGroup = activity.findViewById(android.R.id.content)
         var copied: String? = null
