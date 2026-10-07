@@ -316,6 +316,56 @@ class StoriesMappingTest {
         assertNull(StoriesMapping.textPromocode(TextBlockElement(JSONObject().put("promocode", JSONObject.NULL))))
     }
 
+    // --- Text block promo on a product slide (H) -----------------------------------------------
+
+    @Test
+    fun `a product without a promo shows the text block promo at the regular price`() {
+        val price = StoriesMapping.price(
+            product("price" to 1000, "price_formatted" to "1 000 ₽", "discount_percent" to 10),
+            slidePromo = "SLIDE"
+        )
+        assertEquals(PersonalizationStoryPrice.Type.PROMO_CODE, price.type)
+        assertEquals("1 000 ₽", price.price)
+        assertNull(price.oldPrice)
+        assertEquals("SLIDE", price.promoCode)
+    }
+
+    @Test
+    fun `the product promo wins over the text block promo`() {
+        val price = StoriesMapping.price(
+            product("price" to 1000, "price_formatted" to "1 000 ₽", "promocode" to "OWN", "price_with_promocode_formatted" to "900 ₽"),
+            slidePromo = "SLIDE"
+        )
+        assertEquals("OWN", price.promoCode)
+        assertEquals("900 ₽", price.price)
+    }
+
+    @Test
+    fun `a text block promo crosses out only an old price above the regular price`() {
+        val higher = StoriesMapping.price(
+            product("price" to 1000, "price_formatted" to "1 000 ₽", "oldprice" to 1500, "oldprice_formatted" to "1 500 ₽"),
+            slidePromo = "SLIDE"
+        )
+        assertEquals("1 500 ₽", higher.oldPrice)
+        val lower = StoriesMapping.price(
+            product("price" to 1000, "price_formatted" to "1 000 ₽", "oldprice" to 900, "oldprice_formatted" to "900 ₽"),
+            slidePromo = "SLIDE"
+        )
+        assertNull(lower.oldPrice)
+    }
+
+    @Test
+    fun `the slide promo is the first text block with a code, blank and null ones are skipped`() {
+        val blocks = JSONArray()
+            .put(JSONObject().put("type", "text_block").put("text_input", "Hello"))
+            .put(JSONObject().put("type", "text_block").put("text_input", "x").put("promocode", JSONObject.NULL))
+            .put(JSONObject().put("type", "text_block").put("text_input", "y").put("promocode", " "))
+            .put(JSONObject().put("type", "text_block").put("text_input", "Code A1").put("promocode", "A1"))
+            .put(JSONObject().put("type", "text_block").put("text_input", "Code B2").put("promocode", "B2"))
+        assertEquals("A1", StoriesMapping.slidePromocode(slide("elements" to blocks)))
+        assertNull(StoriesMapping.slidePromocode(slide("elements" to JSONArray())))
+    }
+
     // --- Text blocks (C15) ----------------------------------------------------------------------
 
     @Test

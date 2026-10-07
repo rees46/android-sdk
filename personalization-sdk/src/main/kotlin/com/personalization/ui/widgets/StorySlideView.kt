@@ -234,7 +234,7 @@ internal class StorySlideView(
         val productElement = StoriesMapping.product(slide)
         val product = productElement?.item
         val middle: View = if (productElement != null && product != null) {
-            StoryProductCard.build(context, productElement, product, host)
+            StoryProductCard.build(context, productElement, product, host, StoriesMapping.slidePromocode(slide))
         } else {
             StoryTextBlocks.build(context, slide, host)
         }

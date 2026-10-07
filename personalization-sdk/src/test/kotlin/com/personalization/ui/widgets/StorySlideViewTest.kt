@@ -13,10 +13,13 @@ import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
 import com.personalization.ui.components.PersonalizationStoryCard
+import com.personalization.ui.components.PersonalizationStoryPrice
+import com.personalization.ui.components.PersonalizationStoryTextBlock
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -61,6 +64,26 @@ class StorySlideViewTest {
         assertTrue(picture.isClickable)
         picture.performClick()
         assertEquals(listOf("p1"), host.products.map { it.id })
+    }
+
+    @Test
+    fun `a product slide shows its text block promo in the card and draws no text block`() {
+        val slide = Slide(
+            JSONObject()
+                .put("id", "4")
+                .put(
+                    "elements",
+                    JSONArray()
+                        .put(JSONObject().put("type", "product").put("item", JSONObject().put("id", "p1").put("name", "Sneakers").put("price_formatted", "100 ₽")))
+                        .put(JSONObject().put("type", "text_block").put("text_input", "Your code SALE10").put("promocode", "SALE10"))
+                )
+        )
+        val view = laidOut(slide)
+
+        val card = view.first(PersonalizationStoryCard::class.java)!!
+        assertEquals("SALE10", card.price.promoCode)
+        assertEquals(PersonalizationStoryPrice.Type.PROMO_CODE, card.price.type)
+        assertNull(view.first(PersonalizationStoryTextBlock::class.java))
     }
 
     @Test

@@ -18,8 +18,9 @@ import com.personalization.ui.components.PersonalizationToast
  */
 internal object StoryProductCard {
 
-    fun build(context: Context, element: ProductElement, product: Product, host: StorySlideHost): View {
-        val price = StoriesMapping.price(product)
+    /** [slidePromo] — промокод текстового блока слайда, если у товара своего нет (H2). */
+    fun build(context: Context, element: ProductElement, product: Product, host: StorySlideHost, slidePromo: String? = null): View {
+        val price = StoriesMapping.price(product, slidePromo)
         return PersonalizationStoryCard(context).apply {
             title = product.brand.takeIf { it.isNotEmpty() }
             subtitle = product.name

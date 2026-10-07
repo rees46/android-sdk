@@ -50,8 +50,12 @@ internal object StoriesMapping {
      * больше обычной. С промокодом крупно — цена по промокоду, зачёркнута старая цена, а без
      * неё — обычная, если она выше цены по промокоду (F10). Скидка — процент как есть,
      * с дробной частью.
+     *
+     * [slidePromo] — промокод текстового блока того же слайда (H2): сами блоки на товарном
+     * слайде не рисуются, а код идёт в блок цены, как в макете, если у товара своего нет.
+     * Цена тогда обычная, зачёркнута только старая (H3).
      */
-    fun price(product: Product): Price {
+    fun price(product: Product, slidePromo: String? = null): Price {
         val regular = product.priceDecimal ?: Decimals.parse(product.price)
         val old = product.oldPrice.takeIf {
             it.isNotEmpty() && Decimals.greater(product.oldPriceDecimal ?: Decimals.parse(it), regular)
@@ -66,6 +70,9 @@ internal object StoriesMapping {
                 else -> null
             }
             return Price(PersonalizationStoryPrice.Type.PROMO_CODE, withPromo ?: product.price, crossed, null, promo)
+        }
+        if (slidePromo != null) {
+            return Price(PersonalizationStoryPrice.Type.PROMO_CODE, product.price, old, null, slidePromo)
         }
         val percent = Decimals.parse(product.discountPercent)?.takeIf { it.signum() > 0 }
         if (percent != null) {
@@ -206,6 +213,10 @@ internal object StoriesMapping {
     /** Промокод текстового блока (C12); модель отдаёт `"null"` для явного null. */
     fun textPromocode(element: TextBlockElement): String? =
         element.promocode?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
+
+    /** Промокод слайда для блока цены товара (H2): первый текстовый блок с непустым кодом. */
+    fun slidePromocode(slide: Slide): String? =
+        slide.getElements().filterIsInstance<TextBlockElement>().firstNotNullOfOrNull(::textPromocode)
 
     /** Интерлиньяж из админки; без него — `null`, и блок берёт высоту строки пресета. */
     fun lineHeightSp(element: TextBlockElement): Float? =
