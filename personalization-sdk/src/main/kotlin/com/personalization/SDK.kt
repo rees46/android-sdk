@@ -973,7 +973,9 @@ open class SDK {
      *
      * @param email
      * @param phone
-     * @param subscriptions
+     * @param subscriptions Flags by request key, `true` subscribes and `false` unsubscribes; keys left out
+     * keep their current value. Keys: `email_*`, `sms_*`, `web_push_*`, `mobile_push_*`, `telegram_*`,
+     * `whatsapp_*`, `max_*` with the `bulk`, `chain` or `transactional` suffix, and `wallet_bulk`.
      * @param listener
      */
     fun manageSubscription(
@@ -1001,7 +1003,9 @@ open class SDK {
      * @param externalId
      * @param loyaltyId
      * @param telegramId
-     * @param subscriptions
+     * @param subscriptions Flags by request key, `true` subscribes and `false` unsubscribes; keys left out
+     * keep their current value. Keys: `email_*`, `sms_*`, `web_push_*`, `mobile_push_*`, `telegram_*`,
+     * `whatsapp_*`, `max_*` with the `bulk`, `chain` or `transactional` suffix, and `wallet_bulk`.
      * @param listener
      */
     @JvmOverloads
