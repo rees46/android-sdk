@@ -1,6 +1,8 @@
 pluginManagement {
     repositories {
         mavenLocal()
+        // Google's mirror of Maven Central first: JitPack builds get HTTP 429 from repo.maven.apache.org.
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }
         gradlePluginPortal()
     }
 }
