@@ -2,6 +2,8 @@ buildscript {
     ext.kotlin_version = '2.0.0'
     repositories {
         google()
+        // Google's mirror of Maven Central first: JitPack builds get HTTP 429 from repo.maven.apache.org.
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }
         mavenCentral()
         mavenLocal()
         maven { url 'https://developer.huawei.com/repo/' }
@@ -36,6 +38,8 @@ project(':personalization-sdk') {
 allprojects {
     repositories {
         google()
+        // Google's mirror of Maven Central first: JitPack builds get HTTP 429 from repo.maven.apache.org.
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }
         mavenCentral()
         mavenLocal()
         maven { url 'https://developer.huawei.com/repo/' }
