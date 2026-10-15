@@ -10,12 +10,15 @@ on:
 
 jobs:
   prepare:
+    # Synchronization starts in the canonical repository only; a copy has nowhere to sync to.
     if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.merged == true &&
-        startsWith(github.event.pull_request.head.ref, 'release/')
+      github.repository_owner_id == '6458050' && (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.merged == true &&
+          startsWith(github.event.pull_request.head.ref, 'release/')
+        )
       )
     runs-on: ubuntu-latest
     outputs:
