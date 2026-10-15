@@ -10,12 +10,21 @@ on:
 
 jobs:
   publish-github:
+    # The canonical repository publishes when its release PR is merged. A synchronized copy does
+    # not number releases (see version.yaml): it tags and publishes the version that a merged
+    # synchronization PR brings in.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request' &&
         github.event.pull_request.merged == true &&
-        startsWith(github.event.pull_request.head.ref, 'release/')
+        (
+          startsWith(github.event.pull_request.head.ref, 'release/') ||
+          (
+            github.repository_owner_id != '6458050' &&
+            startsWith(github.event.pull_request.head.ref, 'sync/')
+          )
+        )
       )
     runs-on: ubuntu-latest
     permissions: write-all
@@ -33,18 +42,49 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
+      - name: Generate versioner token
+        if: github.repository_owner_id != '6458050'
+        id: versioner-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.VERSIONER_ID }}
+          private-key: ${{ secrets.VERSIONER_SECRET }}
+
+      # A copy has no semantic-release run to tag for it. The tag is what JitPack builds and what
+      # the GitHub release hangs on; an existing one means this version is already out, so the
+      # rest of the job is skipped instead of publishing it twice.
+      - name: Tag the synchronized version
+        if: github.repository_owner_id != '6458050'
+        id: tag
+        env:
+          GH_TOKEN: ${{ steps.versioner-token.outputs.token }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+        run: |
+          version=$(grep -m1 VERSION_NAME version.properties | cut -d'=' -f2)
+          tag="v$version"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "$tag already exists, nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$MERGE_SHA"
+          gh release create "$tag" --title "$tag" --generate-notes
+
       - name: Set up Java
+        if: steps.tag.outputs.publish != 'false'
         uses: actions/setup-java@v4
         with:
           java-version: 22
           distribution: 'zulu'
 
       - name: Set up Gradle
+        if: steps.tag.outputs.publish != 'false'
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.8
 
       - name: Decode signing key file
+        if: steps.tag.outputs.publish != 'false'
         uses: timheuer/base64-to-file@v1.2
         with:
           fileName: com.rees46.key.gpg
@@ -52,6 +92,7 @@ jobs:
           encodedString: ${{ secrets.SIGNING_KEY_FILE_AS_BASE64_STRING }}
 
       - name: Configure gradle.properties for GitHub Packages
+        if: steps.tag.outputs.publish != 'false'
         run: |
           echo "github=true" >> gradle.properties
           # Use the same OSSRH credentials that were used before (GitHub credentials)
@@ -70,9 +111,11 @@ jobs:
           echo "Updated gradle.properties for GitHub Packages"
 
       - name: Clean
+        if: steps.tag.outputs.publish != 'false'
         run: ./gradlew clean
 
       - name: Publish to GitHub Packages
+        if: steps.tag.outputs.publish != 'false'
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: ./gradlew publishToGitHubPackages

@@ -16,10 +16,14 @@ jobs:
 
   bump-version:
     needs: find-release-commit
+    # Only the canonical repository (matched by owner id, which synchronization leaves as it is)
+    # numbers releases. A synchronized copy publishes the version synchronization brings it, so
+    # both carry the same number.
     if: |
-      github.event_name == 'workflow_dispatch' || (
-        github.event_name == 'push' &&
-        needs.find-release-commit.outputs.hasCommit == 'false')
+      github.repository_owner_id == '6458050' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event_name == 'push' &&
+          needs.find-release-commit.outputs.hasCommit == 'false'))
     uses: rees46/workflow/.github/workflows/reusable-multiplatform-version-bump.yaml@master
     permissions: write-all
     secrets:
