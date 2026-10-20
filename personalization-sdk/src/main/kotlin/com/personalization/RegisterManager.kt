@@ -54,7 +54,14 @@ class RegisterManager @Inject constructor(
         val did = getUserSettingsValueUseCase.getDid()
         when {
             did.isEmpty() || needReInitialization -> initializeNewDevice()
-            else -> initializeSdk(null)
+            else -> {
+                initializeSdk(null)
+                // A known device asks the server too, on every launch as the iOS and React Native SDKs
+                // do: the /init answer is where the server hands out the popup for the visit. Only the
+                // popup is taken from it — the did and the session stay as stored, so nobody is
+                // re-identified on upgrade.
+                init(knownDevice = true)
+            }
         }
     }
 
@@ -68,7 +75,7 @@ class RegisterManager @Inject constructor(
         init()
     }
 
-    private fun init() {
+    private fun init(knownDevice: Boolean = false) {
         if (isTestDevice) {
             BaseInfoError(
                 tag = TAG,
@@ -77,10 +84,10 @@ class RegisterManager @Inject constructor(
             return
         }
 
-        sendInitRequestWithRetry()
+        sendInitRequestWithRetry(knownDevice = knownDevice)
     }
 
-    private fun sendInitRequestWithRetry(attempt: Int = 0) {
+    private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false) {
         try {
             val params = buildInitParams()
             sendNetworkMethodUseCase.get(
@@ -88,11 +95,11 @@ class RegisterManager @Inject constructor(
                 params = params,
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        handleInitSuccess(response)
+                        handleInitSuccess(response, knownDevice)
                     }
 
                     override fun onError(code: Int, msg: String?) {
-                        handleInitError(code, msg, attempt)
+                        handleInitError(code, msg, attempt, knownDevice)
                     }
                 }
             )
@@ -108,7 +115,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    private fun handleInitSuccess(response: JSONObject?) {
+    private fun handleInitSuccess(response: JSONObject?, knownDevice: Boolean) {
         val errorHandler = JsonResponseErrorHandler(
             tag = TAG,
             response = response
@@ -123,6 +130,9 @@ class RegisterManager @Inject constructor(
             }
         }
 
+        // A known device is already set up from storage: its did and session stay as they are.
+        if (knownDevice) return
+
         val did = errorHandler.getRequiredField(fieldName = "did") ?: return
         val seance = errorHandler.getRequiredField(fieldName = "seance") ?: return
 
@@ -130,12 +140,12 @@ class RegisterManager @Inject constructor(
         initializeSdk(seance)
     }
 
-    private fun handleInitError(code: Int, msg: String?, attempt: Int) {
+    private fun handleInitError(code: Int, msg: String?, attempt: Int, knownDevice: Boolean) {
         if (code in 500..Int.MAX_VALUE || code <= 0) {
             if (attempt < MAX_INIT_RETRIES) {
                 CoroutineScope(Dispatchers.Main).launch {
                     delay(RETRY_DELAY_MILLISECONDS * (attempt + 1))
-                    sendInitRequestWithRetry(attempt + 1)
+                    sendInitRequestWithRetry(attempt + 1, knownDevice)
                 }
             }
         } else {

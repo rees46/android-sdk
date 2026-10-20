@@ -2,13 +2,18 @@ package com.personalization
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.UpdateUserSettingsValueUseCase
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.slot
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -105,11 +110,15 @@ class SdkUpgradeMigrationTest {
             mockk(relaxed = true)  // PushTokenManager
         )
 
+        val listener = slot<OnApiCallbackListener>()
+        every { network.get(eq("init"), any(), capture(listener)) } just Runs
+
         manager.initialize(context, context.contentResolver, autoSendPushToken = false)
 
-        // The migrated did is non-empty, so RegisterManager takes the existing-install branch: no /init
-        // round-trip fires and the did is left as-is — nobody is silently re-identified on upgrade.
-        verify(exactly = 0) { network.get(eq("init"), any(), any()) }
+        // The migrated did is non-empty, so RegisterManager takes the existing-install branch: /init goes
+        // out only for the popup, and even a server answer with another did leaves the stored one as-is —
+        // nobody is silently re-identified on upgrade.
+        listener.captured.onSuccess(JSONObject("""{"did":"server-assigned","seance":"S"}"""))
         assertEquals("device-123", get.getDid())
     }
 }
