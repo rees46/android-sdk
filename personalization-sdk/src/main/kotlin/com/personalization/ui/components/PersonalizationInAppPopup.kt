@@ -35,7 +35,13 @@ import com.personalization.ui.PersonalizationTheme
  * Крестик стоит **всегда** и живёт в самом попапе, а не в контейнере картинки: в макете
  * виды «только текст» и «иконка» картинки не имеют, но крестик у них нарисован. Он круглый
  * (компонент Close: кнопка MD с радиусом Rounded) и лежит поверх содержимого в углу, на
- * отступе попапа; над фотографией — в тёмном варианте.
+ * отступе попапа. Над фотографией макет рисует его в тёмном варианте (белая иконка на белой
+ * подложке 5%), но на светлом фото — а фото товара почти всегда на белом — такой крестик
+ * пропадает. Поэтому крестик везде обычный вторичный и лежит на круге цвета карточки: на
+ * любом фото виден либо круг, либо иконка.
+ *
+ * Картинка сверху вписывается целиком, с полями цвета карточки: обрезка срезала бы сам
+ * товар. Картинка фоном заполняет попап и обрезается — на то она и фон.
  * Текстовая кнопка закрытия ([closeText]) в макете не нарисована — её даёт админка
  * отдельным тумблером рядом с кнопкой действия, поэтому она здесь вторичной кнопкой
  * под основной. Пустой текст — кнопки нет, остаётся один крестик.
@@ -65,6 +71,9 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
     private val actionButton = PersonalizationButton(context)
     private val closeButton = PersonalizationButton(context)
     private val closeIcon = PersonalizationButton(context)
+
+    /** Круг цвета карточки под полупрозрачным крестиком — чтобы тот был виден на любом фото. */
+    private val closeBacking = FrameLayout(context)
 
     private val column = LinearLayout(context)
     private val body = LinearLayout(context)
@@ -133,7 +142,7 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
     init {
         backgroundImage.scaleType = ImageView.ScaleType.CENTER_CROP
-        topImage.scaleType = ImageView.ScaleType.CENTER_CROP
+        topImage.scaleType = ImageView.ScaleType.FIT_CENTER
         iconView.adjustViewBounds = true
 
         titleView.includeFontPadding = false
@@ -154,6 +163,11 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
         closeIcon.rounded = true
         closeIcon.iconStart = R.drawable.personalization_ic_cross_large
         closeIcon.setOnClickListener { onClose?.invoke() }
+        closeBacking.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(PersonalizationTheme.color(context, R.color.personalization_background_card))
+        }
+        closeBacking.addView(closeIcon, LayoutParams(WRAP, WRAP))
 
         column.orientation = LinearLayout.VERTICAL
         body.orientation = LinearLayout.VERTICAL
@@ -244,17 +258,15 @@ class PersonalizationInAppPopup @JvmOverloads constructor(
 
         // Крестик всегда на месте — у видов без картинки тоже, накладкой поверх содержимого.
         addView(
-            closeIcon,
+            closeBacking,
             LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END).also {
                 it.topMargin = pad
                 it.marginEnd = pad
             }
         )
 
-        // Поверх картинки контролы берут инвертированную палитру, иначе тёмная подпись
-        // вторичной кнопки тонет в фотографии. Крестик над фотографией и у вида с картинкой
-        // сверху: в макете у него там тёмный режим.
-        closeIcon.onDark = overImage || contentView == ContentView.IMAGE
+        // Поверх картинки текстовая кнопка закрытия берёт инвертированную палитру, иначе её
+        // тёмная подпись тонет в фотографии. Крестику хватает круга под ним.
         closeButton.onDark = overImage
 
         imageLoader?.invoke(if (overImage) backgroundImage else topImage)
