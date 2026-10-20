@@ -31,8 +31,9 @@ import org.robolectric.annotation.Config
 /**
  * Guards the device-id policy in [RegisterManager]. The SDK must NOT seed the did with a hardware id
  * (Settings.Secure.ANDROID_ID): like the iOS, React Native and web SDKs, the first `/init` goes out
- * with an empty did and the server-assigned did is persisted. An existing install (non-empty did) is
- * left untouched — no re-init, so nobody is silently re-identified on upgrade.
+ * with an empty did and the server-assigned did is persisted. An existing install (non-empty did)
+ * keeps its did and session — nobody is silently re-identified on upgrade — but still sends /init on
+ * every launch, as iOS and React Native do, for the popup the server hands out with it.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -79,14 +80,23 @@ class RegisterManagerDidTest {
     }
 
     @Test
-    fun `an existing install with a did is not re-initialized`() {
+    fun `an existing install sends init for the popup and keeps its did and session`() {
         every { get.getDid() } returns "EXISTING_DID"
+        every { get.getSid() } returns "STORED_SID"
+        every { get.getSidLastActTime() } returns System.currentTimeMillis()
+        val listener = slot<OnApiCallbackListener>()
+        every { network.get(eq("init"), any(), capture(listener)) } just Runs
 
         manager.initialize(context, contentResolver, autoSendPushToken = false)
+        verify(exactly = 1) { network.get(eq("init"), any(), any()) }
 
-        // No /init round-trip and no did write — the persisted did is reused as-is.
-        verify(exactly = 0) { network.get(eq("init"), any(), any()) }
+        // Whatever did and seance the server answers with, the stored ones stay; the popup is shown.
+        listener.captured.onSuccess(JSONObject(INIT_WITH_POPUP))
         verify(exactly = 0) { update.updateDid(any()) }
+        verify(exactly = 0) { update.updateSid("S") }
+        verify(exactly = 1) { inApp.shopPopUp(match { it.id == 7 }) }
+        // The session was set up once, from storage, before the answer came.
+        verify(exactly = 1) { queue.invoke() }
     }
 
     @Test
