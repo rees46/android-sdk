@@ -430,7 +430,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     // --- Раскладка ------------------------------------------------------------------------------
 
     private fun renderProducts() {
-        catalog.products = loaded.map { it.toCardProduct(productActionText) }
+        catalog.products = loaded.map { it.toPersonalizationProduct(productActionText) }
         title.setResults(foundPrefix, total, foundSuffix)
         if (loaded.isEmpty()) catalog.setCount(null, 0, countSeparator, 0)
         else catalog.setCount(countPrefix, loaded.size, countSeparator, total)

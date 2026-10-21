@@ -332,7 +332,7 @@ class PersonalizationInstantSearchField @JvmOverloads constructor(
     }
 
     private fun Product.toSuggestion(): PersonalizationInstantSearch.Suggestion {
-        val card = toCardProduct(actionText = null)
+        val card = toPersonalizationProduct()
         return PersonalizationInstantSearch.Suggestion(
             id = id,
             title = name,
