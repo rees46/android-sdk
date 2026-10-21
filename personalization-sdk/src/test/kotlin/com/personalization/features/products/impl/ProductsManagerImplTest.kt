@@ -1,6 +1,9 @@
 package com.personalization.features.products.impl
 
+import com.personalization.Fixtures
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.responses.product.Product
+import com.personalization.api.responses.products.ProductsListResponse
 import com.personalization.api.responses.products.counters.ProductCountersResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import io.mockk.Runs
@@ -12,6 +15,8 @@ import io.mockk.verify
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -111,5 +116,84 @@ class ProductsManagerImplTest {
         val body = paramsSlot.captured
         assertFalse(body.has(""))
         assertEquals("""{"color":["red"]}""", body.getString("filters"))
+    }
+
+    @Test
+    fun getProductsList_typed_parsesListingWithFacets() {
+        val methodSlot = slot<String>()
+        val paramsSlot = slot<JSONObject>()
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(capture(methodSlot), capture(paramsSlot), capture(listenerSlot))
+        } just Runs
+
+        var result: ProductsListResponse? = null
+        impl.getProductsList(brands = "Beko", limit = 2, page = 1, onSuccess = { result = it })
+        listenerSlot.captured.onSuccess(JSONObject(Fixtures.read("products.json")))
+
+        assertEquals(ProductsManagerImpl.GET_PRODUCT_LIST_REQUEST, methodSlot.captured)
+        assertEquals("Beko", paramsSlot.captured.getString("brands"))
+        assertEquals(2, paramsSlot.captured.getInt("limit"))
+        val listing = result!!
+        assertTrue(listing.productsTotal > 0)
+        assertEquals(2, listing.products.size)
+        assertTrue(listing.brands.isNotEmpty())
+        assertEquals(2, listing.filters!!.getValue("\"Сухой\" ТЭН").values.getValue("Да"))
+        assertEquals(10.0, listing.priceRange!!.min, 0.0)
+        val discounted = listing.products[1]
+        assertEquals("174 990 ₽", discounted.oldPriceFormatted)
+        assertEquals(5, discounted.discountPercent)
+        assertNotNull(discounted.deeplinkAndroid)
+    }
+
+    @Test
+    fun getProductInfo_typed_parsesProduct() {
+        val methodSlot = slot<String>()
+        val paramsSlot = slot<JSONObject>()
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(capture(methodSlot), capture(paramsSlot), capture(listenerSlot))
+        } just Runs
+
+        var result: Product? = null
+        impl.getProductInfo(itemId = "868", onSuccess = { result = it })
+        listenerSlot.captured.onSuccess(JSONObject(Fixtures.read("product_info.json")))
+
+        assertEquals(ProductsManagerImpl.GET_PRODUCT_INFO_REQUEST, methodSlot.captured)
+        assertEquals("868", paramsSlot.captured.getString("item_id"))
+        assertEquals("868", result?.id)
+        assertEquals("14 990 ₽", result?.priceFormatted)
+        assertNull(result?.discount)
+        assertEquals("https://www.technodom.kz/p/garnitura-nakladnaa-logitech-h-white-868", result?.deeplinkAndroid)
+    }
+
+    @Test
+    fun getProductInfo_typed_reportsAnswerWithoutProductAsError() {
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), any(), capture(listenerSlot))
+        } just Runs
+
+        var success = false
+        var code = 0
+        impl.getProductInfo(itemId = "868", onSuccess = { success = true }, onError = { c, _ -> code = c })
+        listenerSlot.captured.onSuccess(JSONObject("{}"))
+
+        assertFalse(success)
+        assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, code)
+    }
+
+    @Test
+    fun getProductInfo_typed_forwardsError() {
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), any(), capture(listenerSlot))
+        } just Runs
+
+        var code = 0
+        impl.getProductInfo(itemId = "868", onSuccess = {}, onError = { c, _ -> code = c })
+        listenerSlot.captured.onError(400, "bad request")
+
+        assertEquals(400, code)
     }
 }
