@@ -214,6 +214,30 @@ class ProductsManagerImplTest {
         assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, result.second)
     }
 
+    @Test
+    fun getProductsList_typed_reportsMalformedListingAsError() {
+        val result = typedListAnswer { it.onSuccess(JSONObject("""{"products":"not a list"}""")) }
+
+        assertEquals(null, result.first)
+        assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, result.second)
+    }
+
+    @Test
+    fun getProductInfo_typed_reportsMalformedProductAsError() {
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), any(), capture(listenerSlot))
+        } just Runs
+
+        var success = false
+        var code = 0
+        impl.getProductInfo(itemId = "868", onSuccess = { success = true }, onError = { c, _ -> code = c })
+        listenerSlot.captured.onSuccess(JSONObject("""{"id":"868","categories":"not a list"}"""))
+
+        assertFalse(success)
+        assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, code)
+    }
+
     /** Runs a typed listing request, feeds [answer] to its listener; the parsed listing and error code. */
     private fun typedListAnswer(answer: (OnApiCallbackListener) -> Unit): Pair<ProductsListResponse?, Int> {
         val listenerSlot = slot<OnApiCallbackListener>()
