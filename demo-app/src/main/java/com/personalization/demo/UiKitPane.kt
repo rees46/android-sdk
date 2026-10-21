@@ -66,9 +66,9 @@ import com.personalization.ui.components.PersonalizationLoyaltyCard
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationProductCard
 import com.personalization.ui.components.PersonalizationProductImage
+import com.personalization.ui.components.PersonalizationProductsBlock
 import com.personalization.ui.components.PersonalizationProductsGrid
 import com.personalization.ui.components.PersonalizationRating
-import com.personalization.ui.components.PersonalizationRecommenderBlock
 import com.personalization.ui.components.PersonalizationSearchResultsTitle
 import com.personalization.ui.components.PersonalizationTag
 import com.personalization.ui.components.PersonalizationTitle
@@ -303,14 +303,14 @@ private fun BlocksShowcase() {
                 }.toTypedArray()
             )
         }
-        Exhibit("Recommender Block — carousel") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.CAROUSEL, "Recommended for you", DemoProducts.all)
+        Exhibit("Products Block — carousel") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.CAROUSEL, "Recommended for you", DemoProducts.all)
         }
-        Exhibit("Recommender Block — grid") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.GRID, "Similar products", DemoProducts.all.take(4))
+        Exhibit("Products Block — grid") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.GRID, "Similar products", DemoProducts.all.take(4))
         }
-        Exhibit("Recommender Block — list") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.LIST, "Recently viewed", DemoProducts.all.take(3))
+        Exhibit("Products Block — list") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.LIST, "Recently viewed", DemoProducts.all.take(3))
         }
         Exhibit("Instant Search — recent searches") { ctx -> ctx.instantSearch(typing = false, images = false) }
         Exhibit("Instant Search — typing, matches in bold") { ctx -> ctx.instantSearch(typing = true, images = false) }
@@ -651,11 +651,11 @@ private fun Context.productCard(type: PersonalizationProductCard.Type, product: 
         Glide.with(image.imageView).load(product.imageUrl).into(image.imageView)
     }
 
-private fun Context.recommender(
-    layout: PersonalizationRecommenderBlock.Layout,
+private fun Context.productsBlock(
+    layout: PersonalizationProductsBlock.Layout,
     title: String,
     items: List<PersonalizationProduct>
-): PersonalizationRecommenderBlock = PersonalizationRecommenderBlock(this).apply {
+): PersonalizationProductsBlock = PersonalizationProductsBlock(this).apply {
     this.layout = layout
     text = title
     showAllText = "Show all"

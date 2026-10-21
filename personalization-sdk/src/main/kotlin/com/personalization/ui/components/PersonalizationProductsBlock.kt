@@ -9,7 +9,9 @@ import com.personalization.R
 import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
- * Блок рекомендаций: заголовок, товары, у карусели — точки.
+ * Блок товаров: заголовок, товары, у карусели — точки. Товары даёт хост; сам блок ничего
+ * не грузит. Блок, который сам грузит рекомендации или коллекцию, —
+ * [com.personalization.ui.widgets.PersonalizationRecommenderBlock], он собран на этом.
  *
  * Источник: Figma Mobile SDK UI Kit, секция Card — Recommender/Carousel (90:655),
  * Recommender/Grid (126:1944), Recommender/List (126:2551).
@@ -20,7 +22,7 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * [PersonalizationProductsCarousel] / [PersonalizationProductsGrid], [PersonalizationDots].
  */
 @InternalPersonalizationUiApi
-class PersonalizationRecommenderBlock @JvmOverloads constructor(
+class PersonalizationProductsBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
