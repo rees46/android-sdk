@@ -91,5 +91,10 @@
         <attr name="code" />
         <attr name="shop_id" />
     </declare-styleable>
+    <!-- Блок рекомендаций: code — код блока рекомендаций; коллекция задаётся из кода. -->
+    <declare-styleable name="PersonalizationRecommenderBlock">
+        <attr name="code" />
+        <attr name="shop_id" />
+    </declare-styleable>
 
 </resources>
