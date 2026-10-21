@@ -153,6 +153,10 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
         list.requestLayout()
     }
 
+    /** Есть ли строка заголовка — для тестов. */
+    internal val hasTitleRow: Boolean
+        get() = title.isVisible
+
     private fun gap(): Int = resources.getDimensionPixelSize(
         if (layout == Layout.CAROUSEL) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg
     )
