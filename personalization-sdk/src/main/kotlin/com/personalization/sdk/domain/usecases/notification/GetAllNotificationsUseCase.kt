@@ -18,6 +18,55 @@ class GetAllNotificationsUseCase @Inject constructor(
     private val networkRepository: NetworkRepository
 ) {
 
+    /**
+     * Notification history of a user (`GET /notifications`).
+     *
+     * The endpoint authenticates the shop by its secret key; without [shopSecret] the API
+     * answers 400 "Incorrect shop credentials". [shopSecret] comes after the paging
+     * parameters so that a call written for the variant without it can never bind here.
+     */
+    fun invoke(
+        email: String? = null,
+        phone: String? = null,
+        loyaltyId: String? = null,
+        externalId: String? = null,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int = DEFAULT_PAGE,
+        limit: Int = DEFAULT_LIMIT,
+        shopSecret: String,
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
+    ) {
+        request(
+            email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit,
+            shopSecret, onGetAllNotifications, onError
+        )
+    }
+
+    /** [invoke] with the result as a flow. */
+    fun invoke(
+        email: String? = null,
+        phone: String? = null,
+        loyaltyId: String? = null,
+        externalId: String? = null,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int = DEFAULT_PAGE,
+        limit: Int = DEFAULT_LIMIT,
+        shopSecret: String
+    ): StateFlow<ResponseResult<GetAllNotificationsResponse>> =
+        requestFlow(email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit, shopSecret)
+
+    @Deprecated(
+        message = "The API rejects the request without the shop secret. Use the variant with shopSecret.",
+        replaceWith = ReplaceWith(
+            "invoke(email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit, " +
+                "shopSecret, onGetAllNotifications, onError)"
+        )
+    )
     fun invoke(
         email: String? = null,
         phone: String? = null,
@@ -30,6 +79,45 @@ class GetAllNotificationsUseCase @Inject constructor(
         limit: Int = DEFAULT_LIMIT,
         onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
         onError: (Int, String?) -> Unit = { _: Int, _: String? -> }
+    ) {
+        request(
+            email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit,
+            null, onGetAllNotifications, onError
+        )
+    }
+
+    @Deprecated(
+        message = "The API rejects the request without the shop secret. Use the variant with shopSecret.",
+        replaceWith = ReplaceWith(
+            "invoke(email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit, shopSecret)"
+        )
+    )
+    fun invoke(
+        email: String? = null,
+        phone: String? = null,
+        loyaltyId: String? = null,
+        externalId: String? = null,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int = DEFAULT_PAGE,
+        limit: Int = DEFAULT_LIMIT
+    ): StateFlow<ResponseResult<GetAllNotificationsResponse>> =
+        requestFlow(email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit, null)
+
+    private fun request(
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        dateFrom: String,
+        types: NotificationTypes,
+        channels: NotificationChannels,
+        page: Int,
+        limit: Int,
+        shopSecret: String?,
+        onGetAllNotifications: (GetAllNotificationsResponse) -> Unit,
+        onError: (Int, String?) -> Unit
     ) {
         val type = EnumUtils.getEnumsString(types)
         val channel = EnumUtils.getEnumsString(channels)
@@ -45,6 +133,7 @@ class GetAllNotificationsUseCase @Inject constructor(
             page = page,
             limit = limit
         )
+        shopSecret?.let { params.put(SHOP_SECRET_PARAM, it) }
 
         val listener = notificationRepository.getAllNotificationListener(
             onGetAllNotifications = onGetAllNotifications,
@@ -58,16 +147,17 @@ class GetAllNotificationsUseCase @Inject constructor(
         )
     }
 
-    fun invoke(
-        email: String? = null,
-        phone: String? = null,
-        loyaltyId: String? = null,
-        externalId: String? = null,
+    private fun requestFlow(
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
         dateFrom: String,
         types: NotificationTypes,
         channels: NotificationChannels,
-        page: Int = DEFAULT_PAGE,
-        limit: Int = DEFAULT_LIMIT
+        page: Int,
+        limit: Int,
+        shopSecret: String?
     ): StateFlow<ResponseResult<GetAllNotificationsResponse>> {
 
         val resultFlow = MutableStateFlow(ResponseResult<GetAllNotificationsResponse>())
@@ -92,18 +182,9 @@ class GetAllNotificationsUseCase @Inject constructor(
             }
         }
 
-        invoke(
-            email = email,
-            phone = phone,
-            loyaltyId = loyaltyId,
-            externalId = externalId,
-            dateFrom = dateFrom,
-            types = types,
-            channels = channels,
-            page = page,
-            limit = limit,
-            onGetAllNotifications = onGetAllNotifications,
-            onError = onError
+        request(
+            email, phone, loyaltyId, externalId, dateFrom, types, channels, page, limit,
+            shopSecret, onGetAllNotifications, onError
         )
 
         return resultFlow
@@ -111,6 +192,7 @@ class GetAllNotificationsUseCase @Inject constructor(
 
     companion object {
         private const val GET_ALL_NOTIFICATIONS_REQUEST = "notifications"
+        private const val SHOP_SECRET_PARAM = "shop_secret"
 
         private const val DEFAULT_PAGE = 1
         private const val DEFAULT_LIMIT = 20
