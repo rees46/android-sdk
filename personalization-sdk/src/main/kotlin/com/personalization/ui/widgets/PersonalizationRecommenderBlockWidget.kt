@@ -42,9 +42,9 @@ class PersonalizationRecommenderBlockController {
 @InternalPersonalizationUiApi
 @Composable
 fun PersonalizationRecommenderBlockWidget(
+    modifier: Modifier = Modifier,
     code: String? = null,
     collectionId: String? = null,
-    modifier: Modifier = Modifier,
     itemId: String? = null,
     categoryId: String? = null,
     locations: String? = null,
