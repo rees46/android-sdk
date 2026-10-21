@@ -76,4 +76,25 @@ class ProductParsingTest {
         assertEquals(12, product.discount)
         assertEquals(7, product.discountPercent)
     }
+
+    @Test
+    fun `an empty old price string is no old price, a numeric one is read`() {
+        val empty = gson.fromJson("""{"id":"1","price":"100","oldprice":""}""", Product::class.java)
+        val quoted = gson.fromJson("""{"id":"1","price":"100","oldprice":"174990.0"}""", Product::class.java)
+        val junk = gson.fromJson("""{"id":"1","price":"100","oldprice":false}""", Product::class.java)
+
+        assertNull(empty.oldPrice)
+        assertEquals(174990.0, quoted.oldPrice!!, 0.0)
+        assertNull(junk.oldPrice)
+    }
+
+    @Test
+    fun `the old price survives a round trip through Gson`() {
+        val product = gson.fromJson("""{"id":"1","price":90,"oldprice":"100.5"}""", Product::class.java)
+
+        val again = gson.fromJson(gson.toJson(product), Product::class.java)
+
+        assertEquals(100.5, again.oldPrice!!, 0.0)
+        assertNull(gson.fromJson(gson.toJson(gson.fromJson("""{"id":"1"}""", Product::class.java)), Product::class.java).oldPrice)
+    }
 }

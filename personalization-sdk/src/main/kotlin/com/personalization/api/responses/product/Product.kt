@@ -47,6 +47,7 @@ data class Product(
     @SerializedName("url_handle")
     val urlHandle: String,
     @SerializedName("oldprice")
+    @JsonAdapter(LenientDoubleAdapter::class)
     val oldPrice: Double? = null,
     @SerializedName("oldprice_formatted")
     val oldPriceFormatted: String? = null,
