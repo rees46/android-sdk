@@ -11,6 +11,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -88,5 +89,27 @@ class ProductsManagerImplTest {
 
         assertEquals(404, code)
         assertTrue(msg!!.contains("not found"))
+    }
+
+    @Test
+    fun getProductsList_sendsFiltersAsJsonUnderFiltersKey() {
+        val paramsSlot = slot<JSONObject>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), capture(paramsSlot), any())
+        } just Runs
+
+        impl.getProductsList(
+            brands = null,
+            merchants = null,
+            categories = null,
+            locations = null,
+            limit = null,
+            page = null,
+            filters = mapOf("color" to listOf("red"))
+        )
+
+        val body = paramsSlot.captured
+        assertFalse(body.has(""))
+        assertEquals("""{"color":["red"]}""", body.getString("filters"))
     }
 }

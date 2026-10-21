@@ -113,6 +113,6 @@ internal class ProductsManagerImpl @Inject constructor(
         private const val MERCHANTS_KEY = "merchants"
         private const val CATEGORIES_KEY = "categories"
         private const val ITEM_ID_KEY = "item_id"
-        private const val FILTERS_KEY = ""
+        private const val FILTERS_KEY = "filters"
     }
 }
