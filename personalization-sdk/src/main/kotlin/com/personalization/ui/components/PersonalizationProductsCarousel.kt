@@ -137,7 +137,8 @@ internal class PersonalizationProductsAdapter(
         set(value) {
             if (field == value) return
             field = value
-            notifyDataSetChanged()
+            // Набор карточек тот же — перепривязываются только они, без пересборки списка.
+            notifyItemRangeChanged(0, itemCount)
         }
 
     class Holder(val card: PersonalizationProductCard) : RecyclerView.ViewHolder(card)
