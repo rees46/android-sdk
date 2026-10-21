@@ -145,6 +145,25 @@ class PersonalizationCatalogTest {
     }
 
     @Test
+    fun `switching the rating rebinds the rating row, not the pictures`() {
+        var loads = 0
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply {
+            products = rated
+            imageLoader = { _, _ -> loads++ }
+        }
+        layOut(catalog)
+        val before = loads
+        assertTrue(before > 0)
+
+        catalog.showRating = false
+        layOut(catalog)
+
+        assertEquals(before, loads)
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
+    }
+
+    @Test
     fun `switching to the list keeps the rating switched off`() {
         val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
         val catalog = PersonalizationCatalog(context).apply {

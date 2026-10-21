@@ -137,8 +137,9 @@ internal class PersonalizationProductsAdapter(
         set(value) {
             if (field == value) return
             field = value
-            // Набор карточек тот же — перепривязываются только они, без пересборки списка.
-            notifyItemRangeChanged(0, itemCount)
+            // Меняется только ряд рейтинга: с пометкой карточка не перепривязывается целиком
+            // и не перезапрашивает картинку.
+            notifyItemRangeChanged(0, itemCount, PAYLOAD_RATING)
         }
 
     class Holder(val card: PersonalizationProductCard) : RecyclerView.ViewHolder(card)
@@ -162,6 +163,14 @@ internal class PersonalizationProductsAdapter(
 
     override fun getItemCount(): Int = items.size
 
+    override fun onBindViewHolder(holder: Holder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty() && payloads.all { it == PAYLOAD_RATING }) {
+            bindRating(holder.card, items[position])
+        } else {
+            onBindViewHolder(holder, position)
+        }
+    }
+
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val product = items[position]
         holder.card.apply {
@@ -172,11 +181,19 @@ internal class PersonalizationProductsAdapter(
             oldPrice = product.oldPrice
             discount = product.discount
             actionText = product.actionText
-            setRating(if (showRating) product.ratingValue else null, product.reviews)
+            bindRating(this, product)
             onAction = { this@PersonalizationProductsAdapter.onAction?.invoke(product) }
             onClick = this@PersonalizationProductsAdapter.onClick?.let { click -> { click(product) } }
             image.imageView.setImageDrawable(null)
             imageLoader?.invoke(image.imageView, product)
         }
+    }
+
+    private fun bindRating(card: PersonalizationProductCard, product: PersonalizationProduct) {
+        card.setRating(if (showRating) product.ratingValue else null, product.reviews)
+    }
+
+    private companion object {
+        const val PAYLOAD_RATING = "rating"
     }
 }
