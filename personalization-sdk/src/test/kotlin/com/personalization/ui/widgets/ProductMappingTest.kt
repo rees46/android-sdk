@@ -104,6 +104,15 @@ class ProductMappingTest {
     }
 
     @Test
+    fun `the fallback price has no exponent and no trailing zero`() {
+        val large = product("""{"id":"1","name":"A","price":16499000,"currency":"₽"}""").toPersonalizationProduct()
+        val whole = product("""{"id":"1","name":"A","price":"90.0","currency":"₽"}""").toPersonalizationProduct()
+
+        assertEquals("16499000 ₽", large.price)
+        assertEquals("90 ₽", whole.price)
+    }
+
+    @Test
     fun `without a picture the original image is used, and empty links are none`() {
         val card = product("""{"id":"1","name":"A","price":1,"picture":"","image_url":"https://img/1.jpg","url":"","deeplink_android":""}""")
             .toPersonalizationProduct()

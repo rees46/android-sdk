@@ -2,6 +2,7 @@ package com.personalization.ui.widgets
 
 import com.personalization.api.responses.product.Product
 import com.personalization.ui.components.PersonalizationProduct
+import java.math.BigDecimal
 
 /**
  * Товар ответа API → данные карточки кита. Один маппер на все виджеты с данными: товар
@@ -9,7 +10,7 @@ import com.personalization.ui.components.PersonalizationProduct
  * рекомендациях (`recommends`).
  *
  * Строки берутся уже отформатированными сервером:
- * - цена — `price_formatted`, иначе число с валютой;
+ * - цена — `price_formatted`, иначе число с валютой: без экспоненты и хвоста «.0»;
  * - старая цена — `oldprice_formatted`, только когда `oldprice` больше цены;
  * - скидка — только вместе со старой ценой и только при положительном числе скидки
  *   (`discount`, иначе `discount_percent`): текст `discount_formatted`, иначе «число%»,
@@ -44,7 +45,7 @@ internal fun Product.toPersonalizationProduct(actionText: CharSequence? = null):
         id = productId.orEmpty(),
         name = title.orEmpty(),
         price = priceText?.takeIf { it.isNotEmpty() }
-            ?: listOfNotNull(price.toString(), currencyText?.takeIf { it.isNotEmpty() }).joinToString(" "),
+            ?: listOfNotNull(plainNumber(price), currencyText?.takeIf { it.isNotEmpty() }).joinToString(" "),
         imageUrl = pictureUrl?.takeIf { it.isNotEmpty() } ?: originalUrl?.takeIf { it.isNotEmpty() },
         brand = brandName?.takeIf { it.isNotEmpty() },
         oldPrice = if (hasOldPrice) oldPriceFormatted else null,
@@ -54,3 +55,7 @@ internal fun Product.toPersonalizationProduct(actionText: CharSequence? = null):
         deeplink = deeplinkAndroid?.takeIf { it.isNotEmpty() }
     )
 }
+
+/** `1.6499E7` → `16499000`, `90.0` → `90`, `90.5` → `90.5`. */
+private fun plainNumber(value: Double): String =
+    if (value.isFinite()) BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() else value.toString()
