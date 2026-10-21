@@ -202,6 +202,7 @@ class PersonalizationSearchResultsScreenTest {
         retryButton().performClick()
 
         assertEquals(listOf(1, 2, 2), pages)
+        verify(exactly = 1) { tracking.search("jacket", any(), any()) }
         answers.last()(response(total = 60, page = 1))
         assertEquals(40, screen.products.size)
         assertEquals(screen.loadMoreText, screen.catalog.loadMoreText)
