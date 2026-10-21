@@ -194,17 +194,23 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
             field = value
             applyEmpty()
         }
-    var errorText: CharSequence? = "Something went wrong. Check your connection and try again."
+
+    /**
+     * Текст ошибки и подпись кнопки повтора. Без них из ошибки не выйти, поэтому `null`
+     * и пустая строка заменяются текстами по умолчанию.
+     */
+    var errorText: CharSequence? = DEFAULT_ERROR_TEXT
         set(value) {
-            field = value
+            field = value?.takeIf { it.isNotEmpty() } ?: DEFAULT_ERROR_TEXT
             applyEmpty()
         }
-    var retryText: CharSequence? = "Retry"
+    var retryText: CharSequence? = DEFAULT_RETRY_TEXT
         set(value) {
-            field = value
-            catalog.retryText = value
+            field = value?.takeIf { it.isNotEmpty() } ?: DEFAULT_RETRY_TEXT
+            catalog.retryText = field
             applyLoadMore()
         }
+
     var filtersTitle: CharSequence? = "Filters"
     var resetText: CharSequence? = "Reset"
     var applyText: CharSequence? = "Apply"
@@ -496,7 +502,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         val hasMore = loaded.isNotEmpty() && loaded.size < total
         catalog.loadMoreText = when {
             !hasMore -> null
-            failed -> retryText ?: loadMoreText
+            failed -> retryText
             infiniteScroll -> null
             else -> loadMoreText
         }
@@ -624,6 +630,9 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     }
 
     private companion object {
+        const val DEFAULT_ERROR_TEXT = "Something went wrong. Check your connection and try again."
+        const val DEFAULT_RETRY_TEXT = "Retry"
+
         const val SECTION_PRICE = "price"
         const val SECTION_BRANDS = "brands"
         const val SECTION_COLORS = "colors"

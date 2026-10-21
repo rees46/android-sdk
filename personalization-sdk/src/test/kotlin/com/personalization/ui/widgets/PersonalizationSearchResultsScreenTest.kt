@@ -208,6 +208,37 @@ class PersonalizationSearchResultsScreenTest {
     }
 
     @Test
+    fun `empty error and retry texts fall back to the defaults`() {
+        val errorDefault = screen.errorText
+        val retryDefault = screen.retryText
+        screen.errorText = ""
+        screen.retryText = null
+        screen.query = "jacket"
+        idle()
+
+        failures.last()(500, null)
+
+        assertEquals(errorDefault, screen.errorText)
+        assertEquals(retryDefault, screen.retryText)
+        assertEquals(errorDefault, screen.catalog.errorText)
+        assertEquals(retryDefault, screen.catalog.retryText)
+    }
+
+    @Test
+    fun `with an empty retry text a failed page under infinite scroll still offers the button`() {
+        screen.infiniteScroll = true
+        screen.retryText = ""
+        screen.query = "jacket"
+        idle()
+        answers.last()(response(total = 60, page = 0))
+        screen.loadMore()
+
+        failures.last()(500, null)
+
+        assertEquals("Retry", screen.catalog.loadMoreText)
+    }
+
+    @Test
     fun `after a failed page infinite scroll waits for the retry button`() {
         screen.infiniteScroll = true
         screen.query = "jacket"
