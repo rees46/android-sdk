@@ -14,10 +14,13 @@
 
     <!-- neutral: полупрозрачная ступень, одинаково заметна на любом фоне — заглушки картинок -->
     <color name="personalization_neutral_50">#0DFFFFFF</color>
+    <color name="personalization_neutral_100">#1AFFFFFF</color>
 
     <!-- semantic -->
     <color name="personalization_semantic_danger">#FFE51919</color>
     <color name="personalization_semantic_warning">#FFF37A17</color>
+    <color name="personalization_semantic_info">#FF0087E8</color>
+    <color name="personalization_semantic_neutral_subtle">#FF262626</color>
 
     <!-- background -->
     <color name="personalization_background_generic">#FF0D0D0D</color>

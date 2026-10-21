@@ -14,4 +14,15 @@
     <string name="notification_data_loading_error">Invalid notification data.</string>
     <string name="has_notification_permission_message">Notifications are already enabled</string>
 
+    <!-- Stories V2 -->
+    <string name="personalization_stories_promo_caption">Промокод</string>
+    <string name="personalization_stories_promo_copied">Скопировано</string>
+    <string name="personalization_stories_product_button">Подробнее</string>
+    <string name="personalization_stories_show_products">Используемые товары</string>
+    <string name="personalization_stories_hide_products">Скрыть товары</string>
+    <string name="personalization_stories_retry">Повторить</string>
+    <string name="personalization_stories_close">Закрыть</string>
+    <string name="personalization_stories_sound_on">Звук включён</string>
+    <string name="personalization_stories_sound_off">Звук выключен</string>
+
 </resources>

@@ -16,6 +16,9 @@
     <attr name="personalizationColorNeutral50" format="color" />
     <attr name="personalizationColorSemanticWarning" format="color" />
     <attr name="personalizationColorSemanticDanger" format="color" />
+    <attr name="personalizationColorNeutral100" format="color" />
+    <attr name="personalizationColorSemanticInfo" format="color" />
+    <attr name="personalizationColorSemanticNeutralSubtle" format="color" />
     <attr name="personalizationColorBackgroundGeneric" format="color" />
     <attr name="personalizationColorBackgroundCard" format="color" />
     <attr name="personalizationColorBackgroundInput" format="color" />
@@ -81,6 +84,11 @@
         <attr name="shop_id" />
     </declare-styleable>
     <declare-styleable name="PersonalizationSearchResultsScreen">
+        <attr name="shop_id" />
+    </declare-styleable>
+    <!-- Сторис V2: code — тот же атрибут, что у старого StoriesView. -->
+    <declare-styleable name="PersonalizationStories">
+        <attr name="code" />
         <attr name="shop_id" />
     </declare-styleable>
 

@@ -26,4 +26,15 @@
     <string name="notification_data_loading_error">Invalid notification data.</string>
     <string name="has_notification_permission_message">Notifications are already enabled</string>
 
+    <!-- Stories V2: texts of the stories block and viewer. Hosts can override each one. -->
+    <string name="personalization_stories_promo_caption">Promo code</string>
+    <string name="personalization_stories_promo_copied">Copied</string>
+    <string name="personalization_stories_product_button">More info</string>
+    <string name="personalization_stories_show_products">Used products</string>
+    <string name="personalization_stories_hide_products">Hide products</string>
+    <string name="personalization_stories_retry">Retry</string>
+    <string name="personalization_stories_close">Close</string>
+    <string name="personalization_stories_sound_on">Sound on</string>
+    <string name="personalization_stories_sound_off">Sound off</string>
+
 </resources>

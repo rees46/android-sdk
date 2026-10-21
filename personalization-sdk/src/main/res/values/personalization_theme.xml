@@ -14,6 +14,9 @@
         <item name="personalizationColorNeutral50">@color/personalization_neutral_50</item>
         <item name="personalizationColorSemanticWarning">@color/personalization_semantic_warning</item>
         <item name="personalizationColorSemanticDanger">@color/personalization_semantic_danger</item>
+        <item name="personalizationColorNeutral100">@color/personalization_neutral_100</item>
+        <item name="personalizationColorSemanticInfo">@color/personalization_semantic_info</item>
+        <item name="personalizationColorSemanticNeutralSubtle">@color/personalization_semantic_neutral_subtle</item>
         <item name="personalizationColorBackgroundGeneric">@color/personalization_background_generic</item>
         <item name="personalizationColorBackgroundCard">@color/personalization_background_card</item>
         <item name="personalizationColorBackgroundInput">@color/personalization_background_input</item>
