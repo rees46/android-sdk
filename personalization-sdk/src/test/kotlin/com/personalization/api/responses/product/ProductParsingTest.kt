@@ -97,4 +97,26 @@ class ProductParsingTest {
         assertEquals(100.5, again.oldPrice!!, 0.0)
         assertNull(gson.fromJson(gson.toJson(gson.fromJson("""{"id":"1"}""", Product::class.java)), Product::class.java).oldPrice)
     }
+
+    @Test
+    fun `discount numbers survive a round trip through Gson`() {
+        val product = gson.fromJson("""{"id":"1","discount":"12","discount_percent":7}""", Product::class.java)
+
+        val json = gson.toJson(product)
+        val again = gson.fromJson(json, Product::class.java)
+
+        assertTrue(json, json.contains("\"discount\":12") && json.contains("\"discount_percent\":7"))
+        assertEquals(12, again.discount)
+        assertEquals(7, again.discountPercent)
+    }
+
+    @Test
+    fun `a boolean discount is written back as no discount`() {
+        val product = gson.fromJson("""{"id":"1","discount":false}""", Product::class.java)
+
+        val again = gson.fromJson(gson.toJson(product), Product::class.java)
+
+        assertNull(again.discount)
+        assertNull(again.discountPercent)
+    }
 }
