@@ -72,6 +72,13 @@ class PersonalizationProductsGrid @JvmOverloads constructor(
             productsAdapter.imageAspect = value
         }
 
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean
+        get() = productsAdapter.showRating
+        set(value) {
+            productsAdapter.showRating = value
+        }
+
     init {
         isNestedScrollingEnabled = false
         rebuild()
@@ -87,6 +94,7 @@ class PersonalizationProductsGrid @JvmOverloads constructor(
             it.onAction = previous.onAction
             it.onClick = previous.onClick
             it.imageAspect = previous.imageAspect
+            it.showRating = previous.showRating
         }
         adapter = productsAdapter
 

@@ -42,10 +42,12 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
             rebuild()
         }
 
+    /** Заголовок. Пустой и без кнопки «показать все» — блок без строки заголовка. */
     var text: CharSequence?
         get() = title.text
         set(value) {
             title.text = value
+            applyTitleRow()
         }
 
     /** Подпись кнопки «показать все» у карусели. `null` — без кнопки. */
@@ -53,7 +55,7 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
         set(value) {
             field = value
             showAllButton.text = value
-            title.setTrailing(if (value.isNullOrEmpty() || layout != Layout.CAROUSEL) null else showAllButton)
+            applyTitleRow()
         }
 
     var onShowAll: (() -> Unit)? = null
@@ -71,6 +73,14 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
             carousel.products = value
             grid.products = value
             dots.count = value.size
+        }
+
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean = true
+        set(value) {
+            field = value
+            carousel.showRating = value
+            grid.showRating = value
         }
 
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)? = null
@@ -115,10 +125,7 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
 
     private fun rebuild() {
         removeAllViews()
-        val gap = resources.getDimensionPixelSize(
-            if (layout == Layout.CAROUSEL) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg
-        )
-        title.setTrailing(if (layout == Layout.CAROUSEL && !showAllText.isNullOrEmpty()) showAllButton else null)
+        val gap = gap()
         addView(title, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val list = when (layout) {
@@ -126,9 +133,27 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
             Layout.GRID -> grid.also { it.view = PersonalizationProductsGrid.View.GRID }
             Layout.LIST -> grid.also { it.view = PersonalizationProductsGrid.View.LIST }
         }
-        addView(list, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        addView(list, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         dots.isVisible = showDots && layout == Layout.CAROUSEL
         addView(dots, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        applyTitleRow()
     }
+
+    /**
+     * Строка заголовка есть, когда в ней что-то есть: текст или кнопка «показать все».
+     * Без неё лента встаёт наверх блока, без отступа под заголовок.
+     */
+    private fun applyTitleRow() {
+        val showAll = layout == Layout.CAROUSEL && !showAllText.isNullOrEmpty()
+        title.setTrailing(if (showAll) showAllButton else null)
+        title.isVisible = showAll || !title.text.isNullOrEmpty()
+        val list = getChildAt(1) ?: return
+        (list.layoutParams as LayoutParams).topMargin = if (title.isVisible) gap() else 0
+        list.requestLayout()
+    }
+
+    private fun gap(): Int = resources.getDimensionPixelSize(
+        if (layout == Layout.CAROUSEL) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg
+    )
 }

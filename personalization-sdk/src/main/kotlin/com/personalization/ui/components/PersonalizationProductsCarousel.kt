@@ -62,7 +62,14 @@ class PersonalizationProductsCarousel @JvmOverloads constructor(
             productsAdapter.imageAspect = value
         }
 
-    /** Индекс первой видимой карточки: по нему Recommender-блок двигает точки. */
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean
+        get() = productsAdapter.showRating
+        set(value) {
+            productsAdapter.showRating = value
+        }
+
+    /** Индекс первой видимой карточки: по нему блок товаров двигает точки. */
     var onFirstVisibleChanged: ((Int) -> Unit)? = null
 
     init {
