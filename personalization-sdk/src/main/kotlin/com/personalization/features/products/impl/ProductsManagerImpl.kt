@@ -1,12 +1,9 @@
 package com.personalization.features.products.impl
 
 import com.google.gson.Gson
-import com.google.gson.JsonParseException
 import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.ProductsManager
-import com.personalization.api.responses.product.Product
-import com.personalization.api.responses.products.ProductsListResponse
 import com.personalization.api.responses.products.counters.ProductCountersResponse
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
@@ -41,34 +38,6 @@ internal class ProductsManagerImpl @Inject constructor(
         )
     }
 
-    override fun getProductsList(
-        brands: String?,
-        merchants: String?,
-        categories: String?,
-        locations: String?,
-        limit: Int?,
-        page: Int?,
-        filters: Map<String, Any>?,
-        onSuccess: (ProductsListResponse) -> Unit,
-        onError: (Int, String?) -> Unit
-    ) {
-        getProductsList(
-            brands = brands,
-            merchants = merchants,
-            categories = categories,
-            locations = locations,
-            limit = limit,
-            page = page,
-            filters = filters,
-            listener = parsingListener(
-                method = GET_PRODUCT_LIST_REQUEST,
-                parse = { json -> Gson().fromJson(json, ProductsListResponse::class.java) ?: ProductsListResponse() },
-                onSuccess = onSuccess,
-                onError = onError
-            )
-        )
-    }
-
     override fun getProductInfo(
         itemId: String,
         listener: OnApiCallbackListener?
@@ -79,28 +48,6 @@ internal class ProductsManagerImpl @Inject constructor(
                 itemId = itemId,
             ).build(),
             listener = listener
-        )
-    }
-
-    override fun getProductInfo(
-        itemId: String,
-        onSuccess: (Product) -> Unit,
-        onError: (Int, String?) -> Unit
-    ) {
-        getProductInfo(
-            itemId = itemId,
-            listener = parsingListener(
-                method = GET_PRODUCT_INFO_REQUEST,
-                parse = { json ->
-                    // Gson leaves non-null fields empty when the answer lacks them: no id — no product.
-                    Gson().fromJson(json, Product::class.java)?.takeIf { product ->
-                        val id: String? = product.id
-                        !id.isNullOrEmpty()
-                    }
-                },
-                onSuccess = onSuccess,
-                onError = onError
-            )
         )
     }
 
@@ -126,31 +73,6 @@ internal class ProductsManagerImpl @Inject constructor(
                 }
             }
         )
-    }
-
-    /**
-     * Parses the answer with [parse] off the raw JSON. A malformed answer, or one [parse] rejects
-     * with `null`, goes to [onError] instead of throwing on the network thread.
-     */
-    private fun <T : Any> parsingListener(
-        method: String,
-        parse: (String) -> T?,
-        onSuccess: (T) -> Unit,
-        onError: (Int, String?) -> Unit
-    ): OnApiCallbackListener = object : OnApiCallbackListener() {
-        override fun onSuccess(response: JSONObject?) {
-            val parsed = try {
-                parse(response?.toString() ?: "{}")
-            } catch (e: JsonParseException) {
-                onError(PARSE_ERROR_CODE, "$method: ${e.message}")
-                return
-            }
-            if (parsed != null) onSuccess(parsed) else onError(PARSE_ERROR_CODE, "$method: unexpected answer")
-        }
-
-        override fun onError(code: Int, msg: String?) {
-            onError(code, msg)
-        }
     }
 
     private fun Params.buildParams(
@@ -183,7 +105,7 @@ internal class ProductsManagerImpl @Inject constructor(
         const val GET_PRODUCT_COUNTERS_REQUEST = "products/counters"
 
         /** The answer came but could not be read as the expected model. */
-        const val PARSE_ERROR_CODE = -1
+        const val PARSE_ERROR_CODE = ProductsParsing.PARSE_ERROR_CODE
 
         private const val ITEM_KEY = "item"
 
