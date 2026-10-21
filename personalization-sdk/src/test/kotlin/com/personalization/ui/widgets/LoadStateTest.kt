@@ -1,6 +1,7 @@
 package com.personalization.ui.widgets
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The loading state of a data widget follows its latest request, and an error can be retried. */
@@ -68,5 +69,28 @@ class LoadStateTest {
         assertEquals(LoadState.Idle, controller.state)
         controller.retry()
         assertEquals(1, calls.size)
+    }
+
+    @Test
+    fun `loading too is set through post, not on the calling thread`() {
+        val queue = mutableListOf<() -> Unit>()
+        val queued = LoadController<List<String>>(post = { queue += it }, onChange = { states += it })
+
+        queued.load(request)
+        assertEquals(LoadState.Idle, queued.state)
+        assertTrue(states.isEmpty())
+
+        queue.toList().forEach { it() }
+        assertEquals(LoadState.Loading, queued.state)
+    }
+
+    @Test
+    fun `retry while loading sends no second request`() {
+        controller.load(request)
+
+        controller.retry()
+
+        assertEquals(1, calls.size)
+        assertEquals(LoadState.Loading, controller.state)
     }
 }
