@@ -144,6 +144,16 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
             title.selectedViewIndex = if (value == PersonalizationProductsGrid.View.GRID) 0 else 1
         }
 
+    /**
+     * Рейтинг на карточках. Оценки в ответе API пока нет, поэтому по умолчанию выключен;
+     * включённый рисует её, когда она у товара есть.
+     */
+    var showRating: Boolean = false
+        set(value) {
+            field = value
+            catalog.showRating = value
+        }
+
     var imageAspect: PersonalizationProductImage.Aspect
         get() = catalog.imageAspect
         set(value) {
@@ -244,6 +254,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         val background = PersonalizationTheme.color(context, R.color.personalization_background_generic)
 
         catalog.setHeader(title)
+        catalog.showRating = showRating
         catalog.setPadding(padding, padding, padding, padding)
         catalog.imageLoader = { imageView, product -> loadImage(imageView, product.imageUrl) }
         catalog.onProductClick = { card -> loaded.firstOrNull { it.id == card.id }?.let { productTapped(it) } }

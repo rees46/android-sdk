@@ -109,6 +109,34 @@ class PersonalizationCatalogTest {
         assertFalse(catalog.canScrollVertically(1))
     }
 
+    @Test
+    fun `cards draw the rating unless it is switched off`() {
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply { products = rated }
+        layOut(catalog)
+        assertTrue(descendants<PersonalizationRating>(catalog).any { it.visibility == View.VISIBLE })
+
+        catalog.showRating = false
+        layOut(catalog)
+
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
+    }
+
+    @Test
+    fun `switching to the list keeps the rating switched off`() {
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply {
+            products = rated
+            showRating = false
+        }
+
+        catalog.view = PersonalizationProductsGrid.View.LIST
+        layOut(catalog)
+
+        assertFalse(catalog.showRating)
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
+    }
+
     private fun layOut(view: View) {
         view.measure(
             View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),

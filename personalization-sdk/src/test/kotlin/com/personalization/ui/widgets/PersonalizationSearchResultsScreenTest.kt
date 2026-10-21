@@ -139,6 +139,16 @@ class PersonalizationSearchResultsScreenTest {
         verify(exactly = 2) { search.searchFull(any(), any(), any(), any()) }
     }
 
+    @Test
+    fun `the rating is off unless the host switches it on`() {
+        assertFalse(screen.showRating)
+        assertFalse(screen.catalog.showRating)
+
+        screen.showRating = true
+
+        assertTrue(screen.catalog.showRating)
+    }
+
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
     private fun layOut(view: View) {

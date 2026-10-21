@@ -132,6 +132,14 @@ internal class PersonalizationProductsAdapter(
             notifyDataSetChanged()
         }
 
+    /** Рисовать ли рейтинг товара; выключенный прячет ряд, даже если оценка есть. */
+    var showRating: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
     class Holder(val card: PersonalizationProductCard) : RecyclerView.ViewHolder(card)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
@@ -163,7 +171,7 @@ internal class PersonalizationProductsAdapter(
             oldPrice = product.oldPrice
             discount = product.discount
             actionText = product.actionText
-            setRating(product.ratingValue, product.reviews)
+            setRating(if (showRating) product.ratingValue else null, product.reviews)
             onAction = { this@PersonalizationProductsAdapter.onAction?.invoke(product) }
             onClick = this@PersonalizationProductsAdapter.onClick?.let { click -> { click(product) } }
             image.imageView.setImageDrawable(null)

@@ -101,6 +101,13 @@ class PersonalizationCatalog @JvmOverloads constructor(
             productsAdapter.imageAspect = value
         }
 
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean
+        get() = productsAdapter.showRating
+        set(value) {
+            productsAdapter.showRating = value
+        }
+
     /**
      * Во фреймах с лоадером (296:3544, 299:6606) счётчика и кнопки нет — на время
      * загрузки лоадер встаёт на их место.
@@ -184,6 +191,7 @@ class PersonalizationCatalog @JvmOverloads constructor(
             it.onAction = previous.onAction
             it.onClick = previous.onClick
             it.imageAspect = previous.imageAspect
+            it.showRating = previous.showRating
         }
         concat.removeAdapter(previous)
         concat.addAdapter(1, productsAdapter)
