@@ -80,6 +80,28 @@ class PersonalizationCatalogTest {
     }
 
     @Test
+    fun `an error replaces the empty state and its button retries`() {
+        var retries = 0
+        val catalog = PersonalizationCatalog(context).apply {
+            emptyText = "Nothing found"
+            errorText = "Something went wrong"
+            retryText = "Retry"
+            onRetry = { retries++ }
+        }
+        layOut(catalog)
+
+        assertEquals(listOf("Something went wrong"), descendants<PersonalizationEmptyState>(catalog).map { it.text.toString() })
+        descendants<PersonalizationButton>(catalog).single { it.text == "Retry" }.performClick()
+        assertEquals(1, retries)
+
+        catalog.products = products(2)
+        layOut(catalog)
+
+        assertTrue(descendants<PersonalizationEmptyState>(catalog).isEmpty())
+        assertTrue(descendants<PersonalizationButton>(catalog).none { it.text == "Retry" })
+    }
+
+    @Test
     fun `switching to the list keeps the products`() {
         val catalog = PersonalizationCatalog(context).apply { products = products(6) }
 

@@ -51,6 +51,11 @@ import java.util.Locale
  * нарисован), выбранное хост кладёт в [sortBy] / [sortDir]. Каждый новый запрос
  * трекается событием `search`; нажатие на карточку запоминает источник `full_search`
  * и отдаёт товар хосту через [onProductClick], кнопка карточки — через [onProductAction].
+ *
+ * Ошибка запроса уходит хосту в [onError] и видна на экране. Не загрузилась первая
+ * страница — вместо пустой выдачи текст [errorText] с кнопкой [retryText], которая
+ * повторяет запрос. Не загрузилась следующая — кнопка «загрузить ещё» становится
+ * кнопкой повтора этой страницы, и бесконечная прокрутка сама её больше не просит.
  */
 @InternalPersonalizationUiApi
 class PersonalizationSearchResultsScreen @JvmOverloads constructor(
@@ -189,6 +194,17 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
             field = value
             applyEmpty()
         }
+    var errorText: CharSequence? = "Something went wrong. Check your connection and try again."
+        set(value) {
+            field = value
+            applyEmpty()
+        }
+    var retryText: CharSequence? = "Retry"
+        set(value) {
+            field = value
+            catalog.retryText = value
+            applyLoadMore()
+        }
     var filtersTitle: CharSequence? = "Filters"
     var resetText: CharSequence? = "Reset"
     var applyText: CharSequence? = "Apply"
@@ -233,6 +249,9 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     private var total = 0
     private var page = 0
     private var loading = false
+
+    // Упал запрос страницы page + 1: первой, если товаров нет, иначе следующей.
+    private var failed = false
     private var facetSource: SearchFullResponse? = null
     private var requestSeq = 0
 
@@ -260,6 +279,8 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         catalog.onProductClick = { card -> loaded.firstOrNull { it.id == card.id }?.let { productTapped(it) } }
         catalog.onProductAction = { card -> loaded.firstOrNull { it.id == card.id }?.let { onProductAction?.invoke(it) } }
         catalog.onLoadMore = { loadMore() }
+        catalog.retryText = retryText
+        catalog.onRetry = { retry() }
         // Каталог прокручивается сам, а не во внешнем скролле: там его лента раскладывалась бы
         // целиком, и каждая догруженная страница оставалась бы в памяти всеми карточками.
         catalog.setBackgroundColor(background)
@@ -268,7 +289,8 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
                 // Следующая страница — за полэкрана до конца ленты.
                 val left = recyclerView.computeVerticalScrollRange() -
                     recyclerView.computeVerticalScrollOffset() - recyclerView.computeVerticalScrollExtent()
-                if (infiniteScroll && dy > 0 && left <= recyclerView.height / 2) loadMore()
+                // После ошибки страницу повторяет только кнопка, иначе каждый жест слал бы запрос заново.
+                if (infiniteScroll && !failed && dy > 0 && left <= recyclerView.height / 2) loadMore()
             }
         })
         addView(catalog, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -365,6 +387,7 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         requestSeq++
         loading = false
         catalog.isLoading = false
+        failed = false
         answered = false
         loaded = emptyList()
         total = 0
@@ -385,10 +408,21 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
         request(sdk, text, nextPage = page + 1)
     }
 
+    /** Повторить упавший запрос: первую страницу или следующую. */
+    fun retry() {
+        val sdk = sdk ?: return
+        val text = query?.trim().orEmpty()
+        if (text.isEmpty() || loading || !failed) return
+        request(sdk, text, nextPage = page + 1)
+    }
+
     private fun request(sdk: SDK, text: String, nextPage: Int) {
         val seq = ++requestSeq
         loading = true
+        failed = false
         catalog.isLoading = true
+        applyLoadMore()
+        applyEmpty()
         sdk.searchManager.searchFull(
             query = text,
             searchParams = buildParams(nextPage),
@@ -412,7 +446,10 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
                 MainThread.run {
                     if (seq != requestSeq) return@run
                     loading = false
+                    failed = true
                     catalog.isLoading = false
+                    applyLoadMore()
+                    applyEmpty()
                     onError?.invoke(code, message)
                 }
             }
@@ -452,11 +489,17 @@ class PersonalizationSearchResultsScreen @JvmOverloads constructor(
 
     private fun applyEmpty() {
         catalog.emptyText = if (answered && loaded.isEmpty()) emptyText else null
+        catalog.errorText = if (failed && loaded.isEmpty()) errorText else null
     }
 
     private fun applyLoadMore() {
         val hasMore = loaded.isNotEmpty() && loaded.size < total
-        catalog.loadMoreText = if (hasMore && !infiniteScroll) loadMoreText else null
+        catalog.loadMoreText = when {
+            !hasMore -> null
+            failed -> retryText ?: loadMoreText
+            infiniteScroll -> null
+            else -> loadMoreText
+        }
     }
 
     private fun renderAppliedTags() {

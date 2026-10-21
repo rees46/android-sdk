@@ -8,8 +8,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.personalization.SDK
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackingApi
+import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.search.SearchFullResponse
+import com.personalization.ui.components.PersonalizationButton
+import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationProductCard
 import io.mockk.Runs
 import io.mockk.every
@@ -40,13 +43,17 @@ class PersonalizationSearchResultsScreenTest {
     private lateinit var tracking: TrackingApi
     private lateinit var screen: PersonalizationSearchResultsScreen
     private val answers = mutableListOf<(SearchFullResponse) -> Unit>()
+    private val failures = mutableListOf<(Int, String?) -> Unit>()
+    private val pages = mutableListOf<Int>()
 
     @Before
     fun setUp() {
         search = mockk(relaxed = true)
         tracking = mockk(relaxed = true)
         every { search.searchFull(any(), any(), any(), any()) } answers {
+            pages += secondArg<SearchParams>().build().getInt("page")
             answers += thirdArg<(SearchFullResponse) -> Unit>()
+            failures += arg<(Int, String?) -> Unit>(3)
         }
         val sdk = mockk<SDK>(relaxed = true)
         every { sdk.searchManager } returns search
@@ -147,6 +154,86 @@ class PersonalizationSearchResultsScreenTest {
         screen.showRating = true
 
         assertTrue(screen.catalog.showRating)
+    }
+
+    @Test
+    fun `a first page that fails shows the error and a retry instead of nothing`() {
+        val errors = mutableListOf<Int>()
+        screen.onError = { code, _ -> errors += code }
+        screen.query = "jacket"
+        idle()
+
+        failures.last()(500, "server error")
+        layOut(screen)
+
+        assertEquals(listOf(500), errors)
+        assertFalse(screen.catalog.isLoading)
+        assertNull(screen.catalog.emptyText)
+        assertEquals(screen.errorText, screen.catalog.errorText)
+        assertTrue(descendants<PersonalizationEmptyState>(screen).any { it.text == screen.errorText })
+
+        retryButton().performClick()
+
+        assertEquals(listOf(1, 1), pages)
+        assertNull(screen.catalog.errorText)
+        assertTrue(screen.catalog.isLoading)
+        verify(exactly = 1) { tracking.search("jacket", any(), any()) }
+        answers.last()(response(total = 40, page = 0))
+        assertEquals(20, screen.products.size)
+    }
+
+    @Test
+    fun `a next page that fails turns load more into a retry of that page`() {
+        screen.query = "jacket"
+        idle()
+        answers.last()(response(total = 60, page = 0))
+        screen.loadMore()
+
+        failures.last()(500, null)
+        layOut(screen)
+
+        assertFalse(screen.catalog.isLoading)
+        assertNull(screen.catalog.errorText)
+        assertEquals(screen.retryText, screen.catalog.loadMoreText)
+        assertEquals(20, screen.products.size)
+
+        screen.catalog.scrollToPosition(screen.catalog.adapter!!.itemCount - 1)
+        layOut(screen)
+        retryButton().performClick()
+
+        assertEquals(listOf(1, 2, 2), pages)
+        answers.last()(response(total = 60, page = 1))
+        assertEquals(40, screen.products.size)
+        assertEquals(screen.loadMoreText, screen.catalog.loadMoreText)
+    }
+
+    @Test
+    fun `after a failed page infinite scroll waits for the retry button`() {
+        screen.infiniteScroll = true
+        screen.query = "jacket"
+        idle()
+        answers.last()(response(total = 200, page = 0))
+        layOut(screen)
+        screen.catalog.scrollBy(0, 20_000)
+        failures.last()(500, null)
+        layOut(screen)
+
+        screen.catalog.scrollBy(0, -2_000)
+        screen.catalog.scrollBy(0, 20_000)
+
+        assertEquals(listOf(1, 2), pages)
+        assertEquals(screen.retryText, screen.catalog.loadMoreText)
+    }
+
+    private fun retryButton(): PersonalizationButton =
+        descendants<PersonalizationButton>(screen).single { it.text == screen.retryText }
+
+    private inline fun <reified T : View> descendants(root: View): List<T> = collect(root, T::class.java)
+
+    private fun <T : View> collect(root: View, type: Class<T>): List<T> = when {
+        type.isInstance(root) -> listOf(type.cast(root)!!)
+        root is ViewGroup -> (0 until root.childCount).flatMap { collect(root.getChildAt(it), type) }
+        else -> emptyList()
     }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
