@@ -12,6 +12,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -195,5 +196,35 @@ class ProductsManagerImplTest {
         listenerSlot.captured.onError(400, "bad request")
 
         assertEquals(400, code)
+    }
+
+    @Test
+    fun getProductsList_typed_reportsAnswerWithoutProductsAsError() {
+        val result = typedListAnswer { it.onSuccess(JSONObject()) }
+
+        assertEquals(null, result.first)
+        assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, result.second)
+    }
+
+    @Test
+    fun getProductsList_typed_reportsArrayAnswerAsError() {
+        val result = typedListAnswer { it.onSuccess(JSONArray()) }
+
+        assertEquals(null, result.first)
+        assertEquals(ProductsManagerImpl.PARSE_ERROR_CODE, result.second)
+    }
+
+    /** Runs a typed listing request, feeds [answer] to its listener; the parsed listing and error code. */
+    private fun typedListAnswer(answer: (OnApiCallbackListener) -> Unit): Pair<ProductsListResponse?, Int> {
+        val listenerSlot = slot<OnApiCallbackListener>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), any(), capture(listenerSlot))
+        } just Runs
+
+        var listing: ProductsListResponse? = null
+        var code = 0
+        impl.getProductsList(onSuccess = { listing = it }, onError = { c, _ -> code = c })
+        answer(listenerSlot.captured)
+        return listing to code
     }
 }

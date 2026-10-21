@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import com.personalization.api.OnApiCallbackListener;
 import com.personalization.api.responses.products.counters.ProductCountersResponse;
 
+import org.json.JSONArray;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -79,5 +80,19 @@ public class ProductsManagerJavaTest {
         manager.listener.onError(500, "server error");
 
         assertEquals(500, code[0]);
+    }
+
+    @Test
+    public void typedProductsListReportsAnArrayAnswerAsAnError() {
+        ListenerOnlyManager manager = new ListenerOnlyManager();
+        int[] code = {0};
+
+        manager.getProductsList(null, null, null, null, null, null, null, listing -> Unit.INSTANCE, (c, message) -> {
+            code[0] = c;
+            return Unit.INSTANCE;
+        });
+        manager.listener.onSuccess(new JSONArray());
+
+        assertEquals(-1, code[0]);
     }
 }

@@ -5,6 +5,7 @@ import com.google.gson.JsonParseException
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.products.ProductsListResponse
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -19,12 +20,20 @@ internal object ProductsParsing {
     /** The answer came but could not be read as the expected model. */
     const val PARSE_ERROR_CODE = -1
 
+    private const val PRODUCTS_KEY = "products"
+
+    /**
+     * A listing must carry `products`: a page that is not JSON reaches the listener as an
+     * empty object and is an error, not an empty listing.
+     */
     fun listListener(
         onSuccess: (ProductsListResponse) -> Unit,
         onError: (Int, String?) -> Unit
     ): OnApiCallbackListener = parsingListener(
         method = ProductsManagerImpl.GET_PRODUCT_LIST_REQUEST,
-        parse = { json -> Gson().fromJson(json.toString(), ProductsListResponse::class.java) ?: ProductsListResponse() },
+        parse = { json ->
+            if (json.has(PRODUCTS_KEY)) Gson().fromJson(json.toString(), ProductsListResponse::class.java) else null
+        },
         onSuccess = onSuccess,
         onError = onError
     )
@@ -46,8 +55,8 @@ internal object ProductsParsing {
     )
 
     /**
-     * A malformed answer, or one [parse] rejects with `null`, goes to [onError] instead of
-     * throwing on the network thread.
+     * A malformed answer, one [parse] rejects with `null`, or an array instead of an object
+     * goes to [onError] instead of throwing on the network thread or never answering.
      */
     private fun <T : Any> parsingListener(
         method: String,
@@ -63,6 +72,10 @@ internal object ProductsParsing {
                 return
             }
             if (parsed != null) onSuccess(parsed) else onError(PARSE_ERROR_CODE, "$method: unexpected answer")
+        }
+
+        override fun onSuccess(response: JSONArray) {
+            onError(PARSE_ERROR_CODE, "$method: an array instead of an object")
         }
 
         override fun onError(code: Int, msg: String?) {
