@@ -11,8 +11,9 @@ import com.personalization.ui.components.PersonalizationProduct
  * Строки берутся уже отформатированными сервером:
  * - цена — `price_formatted`, иначе число с валютой;
  * - старая цена — `oldprice_formatted`, только когда `oldprice` больше цены;
- * - скидка — только вместе со старой ценой: `discount_formatted`, иначе `discount%`,
- *   со знаком «-»;
+ * - скидка — только вместе со старой ценой и только при положительном числе скидки
+ *   (`discount`, иначе `discount_percent`): текст `discount_formatted`, иначе «число%»,
+ *   ровно с одним «-» впереди. Ноль, `true`/`false` и мусор — без бейджа, «-0%» не бывает;
  * - картинка — `picture` (уменьшенная копия), иначе оригинал `image_url`;
  * - ссылка в приложение — `deeplink_android`, на сайт — `url`.
  *
@@ -29,8 +30,16 @@ internal fun Product.toPersonalizationProduct(actionText: CharSequence? = null):
     val brandName: String? = brand
     val pageUrl: String? = url
     val hasOldPrice = (oldPrice ?: 0.0) > price && !oldPriceFormatted.isNullOrEmpty()
-    val discountText = discountFormatted?.takeIf { it.isNotEmpty() && hasOldPrice }
-        ?: discount?.takeIf { it > 0 && hasOldPrice }?.let { "$it%" }
+    // Числа скидки уже прочитаны терпимо: булево и мусор в ответе — null.
+    // `discount_formatted` — запись именно `discount`: при нулевом `discount` и числе из
+    // `discount_percent` там «0%», поэтому текст тогда собирается из процента.
+    val ownDiscount = discount?.takeIf { it > 0 }
+    val discountNumber = (ownDiscount ?: discountPercent?.takeIf { it > 0 })?.takeIf { hasOldPrice }
+    val discountText = discountNumber?.let { number ->
+        val formatted = discountFormatted?.takeIf { ownDiscount != null }
+            ?.trimStart { it == '-' || it.isWhitespace() }
+        "-" + (formatted?.takeIf { it.isNotEmpty() } ?: "$number%")
+    }
     return PersonalizationProduct(
         id = productId.orEmpty(),
         name = title.orEmpty(),
@@ -39,7 +48,7 @@ internal fun Product.toPersonalizationProduct(actionText: CharSequence? = null):
         imageUrl = pictureUrl?.takeIf { it.isNotEmpty() } ?: originalUrl?.takeIf { it.isNotEmpty() },
         brand = brandName?.takeIf { it.isNotEmpty() },
         oldPrice = if (hasOldPrice) oldPriceFormatted else null,
-        discount = discountText?.let { if (it.startsWith("-")) it else "-$it" },
+        discount = discountText,
         actionText = actionText,
         url = pageUrl?.takeIf { it.isNotEmpty() },
         deeplink = deeplinkAndroid?.takeIf { it.isNotEmpty() }
