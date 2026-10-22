@@ -1,0 +1,187 @@
+package com.personalization.demo.shop
+
+import android.content.Context
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import androidx.core.view.isVisible
+import com.personalization.OnClickListener
+import com.personalization.Product
+import com.personalization.R as SdkR
+import com.personalization.api.responses.search.Category
+import com.personalization.ui.components.PersonalizationSuggestionRow
+import com.personalization.ui.components.PersonalizationTitle
+import com.personalization.ui.widgets.PersonalizationInstantSearchField
+import com.personalization.ui.widgets.PersonalizationRecommenderBlock
+import com.personalization.ui.widgets.PersonalizationStories
+
+/**
+ * Shop home: the instant search field on top, then the stories bar, the recommender block and the
+ * shop's top-level categories.
+ *
+ * The field brings its own panel — recent searches, suggestions, categories, products. Here it opens
+ * only while the field has the focus, with the rest of the page out of the way, as in a store app;
+ * "Cancel" or system back closes it. Submitting a phrase opens the results, a product its page.
+ * The panel is switched with the field's own show* flags, and an empty query makes it redraw.
+ */
+internal class ShopHome(private val shop: DemoShop) : ShopScreen {
+
+    private val context: Context = shop.context
+    private val field = PersonalizationInstantSearchField(context)
+    private val sections = LinearLayout(context)
+    private val categories = LinearLayout(context)
+    private val categoriesStatus = ShopStatus(context)
+    private val page = LinearLayout(context)
+    private var searching = false
+    private var request = 0
+
+    override val view: View = ScrollView(context).apply {
+        isFillViewport = true
+        setBackgroundColor(context.pageBackground())
+    }
+
+    init {
+        val gap = context.spacing(SdkR.dimen.personalization_spacing_xl)
+        val blockGap = context.spacing(SdkR.dimen.personalization_spacing_xl3)
+        page.orientation = LinearLayout.VERTICAL
+        page.setPadding(gap, gap, gap, gap)
+        // The page, not the field, holds the focus at rest: a focused field is an open panel.
+        page.isFocusableInTouchMode = true
+        sections.orientation = LinearLayout.VERTICAL
+        categories.orientation = LinearLayout.VERTICAL
+
+        setUpField()
+        page.addView(field, matchWidth())
+        sections.addView(stories(), matchWidth(top = blockGap))
+        sections.addView(recommenderBlock(), matchWidth(top = blockGap))
+        sections.addView(PersonalizationTitle(context).apply { text = "Categories" }, matchWidth(top = blockGap))
+        sections.addView(categories, matchWidth(top = context.spacing(SdkR.dimen.personalization_spacing_md)))
+        sections.addView(categoriesStatus, matchWidth())
+        page.addView(sections, matchWidth())
+        (view as ScrollView).addView(page, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        loadCategories()
+    }
+
+    override fun onBack(): Boolean {
+        if (!searching) return false
+        closeSearch()
+        return true
+    }
+
+    private fun setUpField() {
+        field.shopId = shop.shopId
+        field.placeholder = "Search"
+        field.recentLabel = "Recent searches"
+        field.clearText = "Clear"
+        field.moreText = "more"
+        field.categoriesLabel = "Categories"
+        field.productsLabel = "Products"
+        field.showImages = true
+        showPanel(false)
+        field.view.input.editText.setOnFocusChangeListener { _, focused -> if (focused) openSearch() }
+        field.onCancel = { closeSearch() }
+        field.onSubmit = { query ->
+            closeSearch()
+            shop.open(ShopRoute.Search(query))
+        }
+        field.onProductClick = { product ->
+            closeSearch()
+            shop.open(ShopRoute.Product(product.id))
+        }
+        // Categories of a typed query come with their id; the popular ones of the empty field only
+        // with a name and a link, so those run as a search.
+        field.onCategoryClick = { category ->
+            closeSearch()
+            val id = category.id
+            shop.open(if (id.isNullOrEmpty()) ShopRoute.Search(category.name) else ShopRoute.Category(id, category.name))
+        }
+    }
+
+    private fun openSearch() {
+        if (searching) return
+        searching = true
+        sections.isVisible = false
+        showPanel(true)
+    }
+
+    private fun closeSearch() {
+        if (!searching) return
+        searching = false
+        showPanel(false)
+        val input = field.view.input.editText
+        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+            ?.hideSoftInputFromWindow(input.windowToken, 0)
+        page.requestFocus()
+        sections.isVisible = true
+    }
+
+    private fun showPanel(show: Boolean) {
+        field.showRecent = show
+        field.showSuggestions = show
+        field.showCategories = show
+        field.showProducts = show
+        field.cancelText = if (show) "Cancel" else null
+        field.query = ""
+    }
+
+    /** The stories block the demo uses everywhere; a product tapped in a story opens its page here. */
+    private fun stories(): View = PersonalizationStories(context).apply {
+        shopId = shop.shopId
+        code = shop.storiesCode
+        onClickListener = object : OnClickListener {
+            // Links stay with the SDK: it opens them itself.
+            override fun onClick(url: String): Boolean = true
+
+            // `false` — the host handled it: the viewer closes and the shop opens the product.
+            override fun onClick(product: Product): Boolean {
+                shop.open(ShopRoute.Product(product.id))
+                return false
+            }
+        }
+    }
+
+    private fun recommenderBlock(): View = PersonalizationRecommenderBlock(context).apply {
+        shopId = shop.shopId
+        code = SHOP_BLOCK_CODE
+        actionText = ADD_TO_CART_TEXT
+        onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
+        onProductAction = { product -> shop.addToCart(this, product.id) }
+    }
+
+    /** Top-level categories (no parent) out of the `categories` facet of the products listing. */
+    private fun loadCategories() {
+        val seq = ++request
+        categoriesStatus.loading()
+        shop.sdk.productsManager.getProductsList(
+            limit = 1,
+            onSuccess = { response -> onMain { if (seq == request) showCategories(response.categories) } },
+            onError = { _, _ -> onMain { if (seq == request) categoriesStatus.failed(::loadCategories) } }
+        )
+    }
+
+    private fun showCategories(all: List<Category>?) {
+        categoriesStatus.hide()
+        categories.removeAllViews()
+        val rowPadding = context.spacing(SdkR.dimen.personalization_spacing_lg)
+        all.orEmpty().forEach { category ->
+            // Gson leaves null in missing fields, the non-null types notwithstanding.
+            val id: String? = category.id
+            val name: String? = category.name
+            val parent: String? = category.parent
+            if (id.isNullOrEmpty() || !parent.isNullOrEmpty()) return@forEach
+            categories.addView(PersonalizationSuggestionRow(context).apply {
+                kind = PersonalizationSuggestionRow.Kind.CATEGORY
+                title = name ?: id
+                setPadding(0, rowPadding, 0, rowPadding)
+                setOnClickListener { shop.open(ShopRoute.Category(id, name ?: id)) }
+            }, matchWidth())
+        }
+    }
+
+    private fun matchWidth(top: Int = 0): LinearLayout.LayoutParams =
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = top
+        }
+}
