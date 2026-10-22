@@ -80,6 +80,7 @@
     <string name="tab_ui_kit">UI Kit</string>
     <string name="tab_legacy_ui">Legacy UI</string>
     <string name="tab_multi_instance">Multi</string>
+    <string name="tab_shop">Shop</string>
 
     <!-- Stories tabs -->
     <string name="compose_stories_title">StoriesWidget (Compose)</string>

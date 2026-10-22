@@ -6,8 +6,8 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
-    <!-- Three panes swapped by the bottom navigation: the SDK method demos, the same stories
-         block through the Compose wrapper, and through the classic XML view. -->
+    <!-- Panes swapped by the bottom navigation: the SDK method demos, the UI kit showcase, the
+         classic XML stories view, two shops side by side, and the demo shop. -->
     <FrameLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
@@ -348,6 +348,13 @@
 
         <androidx.compose.ui.platform.ComposeView
             android:id="@+id/multiInstanceContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <!-- The demo shop: its screens are views of the kit, stacked here by DemoShop. -->
+        <FrameLayout
+            android:id="@+id/shopContent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone" />

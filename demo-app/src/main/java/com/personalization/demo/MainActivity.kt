@@ -14,7 +14,9 @@ import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
+import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -42,6 +44,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
+import com.personalization.demo.shop.DemoShop
 import com.personalization.sdk.data.models.dto.popUp.Components
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
@@ -58,9 +61,26 @@ class MainActivity : AppCompatActivity() {
     /** Bottom tab currently shown, kept so it survives the activity being recreated. */
     private var selectedTabId = R.id.tabApi
 
+    /** The "Shop" tab, see [DemoShop]. */
+    private lateinit var shop: DemoShop
+
+    /**
+     * System back walks the shop's own stack while its tab is shown; at the shop's Home it falls
+     * through to the system.
+     */
+    private val shopBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            if (shop.back()) return
+            isEnabled = false
+            onBackPressedDispatcher.onBackPressed()
+            isEnabled = selectedTabId == R.id.tabShop
+        }
+    }
+
     private companion object {
         const val MAX_LOGGED_STORIES_EVENTS = 20
         const val STATE_SELECTED_TAB = "selectedTabId"
+        const val STATE_SHOP = "shop"
     }
 
     private object DemoTrackingNamespaceConstants {
@@ -147,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 
+        setupShop(savedInstanceState?.getBundle(STATE_SHOP))
         setupStoriesTabs()
 
         findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
@@ -1039,7 +1060,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Wires the bottom navigation and both stories tabs.
+     * Wires the bottom navigation and both stories tabs; it also switches the "Shop" pane.
      *
      * "UI Kit" is the design-system showcase ([UiKitPane]); its "Stories" segment renders the block
      * with the SDK's Compose wrapper, "Legacy UI" with the XML view, so the two integration styles can
@@ -1051,6 +1072,7 @@ class MainActivity : AppCompatActivity() {
         val uiKitContent = findViewById<ComposeView>(R.id.uiKitContent)
         val legacyContent = findViewById<View>(R.id.legacyContent)
         val multiInstanceContent = findViewById<ComposeView>(R.id.multiInstanceContent)
+        val shopContent = findViewById<View>(R.id.shopContent)
         val storiesCode = getString(R.string.stories_code)
 
         // Legacy pane: the code comes from app:code in the layout and the view loads itself on
@@ -1101,6 +1123,8 @@ class MainActivity : AppCompatActivity() {
             legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
             multiInstanceContent.visibility =
                 if (item.itemId == R.id.tabMultiInstance) View.VISIBLE else View.GONE
+            shopContent.visibility = if (item.itemId == R.id.tabShop) View.VISIBLE else View.GONE
+            shopBack.isEnabled = item.itemId == R.id.tabShop
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible
@@ -1113,6 +1137,23 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(STATE_SELECTED_TAB, selectedTabId)
+        outState.putBundle(STATE_SHOP, shop.save())
+    }
+
+    /**
+     * "Shop" pane: the demo shop of shop A, built from the UI kit and the public SDK methods. Its
+     * stack of screens comes back after the activity is recreated.
+     */
+    private fun setupShop(state: Bundle?) {
+        shop = DemoShop(
+            context = this,
+            sdk = sdk,
+            shopId = BuildConfig.SHOP_ID,
+            storiesCode = getString(R.string.stories_code),
+            container = findViewById<FrameLayout>(R.id.shopContent)
+        )
+        shop.start(state)
+        onBackPressedDispatcher.addCallback(this, shopBack)
     }
 
     private fun appendLegacyStoriesLog(target: TextView, message: String) {

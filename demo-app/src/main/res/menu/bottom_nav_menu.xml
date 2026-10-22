@@ -20,4 +20,9 @@
         android:id="@+id/tabMultiInstance"
         android:icon="@drawable/ic_tab_api"
         android:title="@string/tab_multi_instance" />
+
+    <item
+        android:id="@+id/tabShop"
+        android:icon="@drawable/ic_tab_shop"
+        android:title="@string/tab_shop" />
 </menu>
