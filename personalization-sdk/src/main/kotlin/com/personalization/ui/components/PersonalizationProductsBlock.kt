@@ -60,8 +60,11 @@ class PersonalizationProductsBlock @JvmOverloads constructor(
 
     var onShowAll: (() -> Unit)? = null
 
-    /** У карусели точки под лентой; выключаются, как в макете (showDots). */
-    var showDots: Boolean = true
+    /**
+     * Точки под каруселью (showDots в макете). По умолчанию выключены: лента прокручивается
+     * свободно, а не постранично, и точка на каждый товар индикатором не служит.
+     */
+    var showDots: Boolean = false
         set(value) {
             field = value
             dots.isVisible = value && layout == Layout.CAROUSEL

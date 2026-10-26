@@ -157,7 +157,7 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             productsBlock.onShowAll = value
         }
 
-    /** Точки под каруселью. */
+    /** Точки под каруселью; по умолчанию выключены. */
     var showDots: Boolean
         get() = productsBlock.showDots
         set(value) {

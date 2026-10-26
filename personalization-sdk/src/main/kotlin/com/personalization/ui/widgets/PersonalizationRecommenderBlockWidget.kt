@@ -59,7 +59,7 @@ fun PersonalizationRecommenderBlockWidget(
     actionText: CharSequence? = null,
     showAllText: CharSequence? = null,
     onShowAll: (() -> Unit)? = null,
-    showDots: Boolean = true,
+    showDots: Boolean = false,
     showRating: Boolean = false,
     imageLoader: ((ImageView, String) -> Unit)? = null,
     onProductClick: ((PersonalizationProduct) -> Unit)? = null,
