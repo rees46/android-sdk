@@ -2,6 +2,7 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -55,6 +56,9 @@ class PersonalizationBadge @JvmOverloads constructor(
         }
 
     init {
+        // Бейдж — плашка в одну строку: в тесноте подпись укорачивается, а не ломается по буквам.
+        maxLines = 1
+        ellipsize = TextUtils.TruncateAt.END
         applyStyle()
     }
 
