@@ -163,7 +163,8 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
 
     /**
      * Строка «найдено N товаров». Слова — параметры, локализация за интегратором.
-     * Не задана — ряд скрыт.
+     * Не задана — ряд скрыт. Без слова перед числом («N товаров» у категории) число
+     * стоит вплотную к кнопкам, без пустого места под слово.
      */
     fun setResults(prefix: CharSequence?, count: Int, suffix: CharSequence?) {
         if (prefix == null && suffix == null) {
@@ -171,6 +172,14 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
             return
         }
         foundPrefix.text = prefix
+        foundPrefix.isVisible = !prefix.isNullOrEmpty()
+        (foundCount.layoutParams as? MarginLayoutParams)?.let { params ->
+            val start = if (foundPrefix.isVisible) resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm) else 0
+            if (params.marginStart != start) {
+                params.marginStart = start
+                foundCount.layoutParams = params
+            }
+        }
         foundCount.text = count.toString()
         foundSuffix.text = suffix
         resultsRow.isVisible = true

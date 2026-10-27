@@ -1,0 +1,94 @@
+package com.personalization.ui.widgets
+
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.personalization.api.responses.category.CategoryResponse
+import com.personalization.api.responses.product.Product
+import com.personalization.api.responses.search.Brand
+import com.personalization.api.responses.search.PriceRange
+import com.personalization.api.responses.search.SearchFilter
+import com.personalization.api.responses.search.SearchFullResponse
+
+/**
+ * Страница выдачи в общем виде: ответы поиска (`search`) и категории (`category/{id}`)
+ * одной формы, и экран выдачи читает из них одно и то же.
+ *
+ * Фасеты нужны только экрану фильтров, поэтому читаются при его открытии, а не с каждой
+ * страницей.
+ */
+internal class ListingPage(
+    val products: List<Product>,
+    val total: Int,
+    readFacets: () -> ListingFacets
+) {
+    val facets: ListingFacets by lazy(LazyThreadSafetyMode.NONE, readFacets)
+}
+
+/** Фасеты выдачи: диапазон цены, бренды, цвета и размеры, произвольные фасеты магазина. */
+internal class ListingFacets(
+    val priceRange: PriceRange?,
+    val brands: List<String>,
+    val colors: List<String>,
+    val sizes: List<String>,
+    val filters: Map<String, SearchFilter>
+)
+
+internal fun SearchFullResponse.toListingPage(): ListingPage {
+    // Gson кладёт null в поля без значения даже при non-null типе — читаем через nullable копии.
+    val items: List<Product>? = products
+    return ListingPage(items.orEmpty(), productsTotal) {
+        val brandList: List<Brand>? = brands
+        val range: PriceRange? = priceRange
+        ListingFacets(
+            priceRange = range,
+            brands = brandList.orEmpty().mapNotNull { it.name },
+            colors = industrialFilters?.colors.orEmpty().map { it.color },
+            sizes = industrialFilters?.fashionSizes.orEmpty().map { it.size },
+            filters = filters.orEmpty()
+        )
+    }
+}
+
+/** У категории нет `industrial_filters`, поэтому цветов и размеров тоже нет. */
+internal fun CategoryResponse.toListingPage(): ListingPage {
+    val items: List<Product>? = products
+    return ListingPage(items.orEmpty(), productsTotal) {
+        val brandList: List<Brand>? = brands
+        ListingFacets(
+            priceRange = priceRange,
+            brands = brandList.orEmpty().mapNotNull { it.name },
+            colors = emptyList(),
+            sizes = emptyList(),
+            filters = parseFacets(filters)
+        )
+    }
+}
+
+/**
+ * Сырой `filters` категории → фасеты той же формы, что у поиска:
+ * `{"Цвет": {"count": 1405, "values": {"Белый": 172, …}}, …}`. Что не по форме — пропускается.
+ */
+internal fun parseFacets(json: JsonObject?): Map<String, SearchFilter> {
+    val result = LinkedHashMap<String, SearchFilter>()
+    json?.entrySet()?.forEach { (name, element) ->
+        val facet = element.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+        val values = facet.get("values")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+        val counts = LinkedHashMap<String, Int>()
+        values.entrySet().forEach { (value, count) -> counts[value] = count.intOrZero() }
+        result[name] = SearchFilter(count = facet.get("count").intOrZero(), values = counts)
+    }
+    return result
+}
+
+private fun JsonElement?.intOrZero(): Int =
+    if (this != null && isJsonPrimitive && asJsonPrimitive.isNumber) asInt else 0
+
+/** Значения фасета; Gson оставляет null вместо пустого. */
+internal fun valuesOf(facet: SearchFilter): Map<String, Int> {
+    val values: Map<String, Int>? = facet.values
+    return values.orEmpty()
+}
+
+/** Цена, введённая в фильтре, числом: «1 000» и «99,5» тоже; не число — `null`. */
+internal fun priceNumber(text: String?): Double? =
+    text?.filterNot { it.isWhitespace() }?.replace(',', '.')?.toDoubleOrNull()
