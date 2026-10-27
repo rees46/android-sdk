@@ -2,109 +2,59 @@ package com.personalization.demo.shop
 
 import android.content.Context
 import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import androidx.core.view.isVisible
 import com.personalization.R as SdkR
-import com.personalization.api.responses.category.CategoryResponse
-import com.personalization.api.responses.product.Product
-import com.personalization.ui.components.PersonalizationButtonGroup
-import com.personalization.ui.components.PersonalizationCatalog
-import com.personalization.ui.components.PersonalizationProductsGrid
+import com.personalization.ui.widgets.PersonalizationCategoryScreen
 
 /**
- * A category: `getCategory(id, limit = 20, page)` page by page in the kit's catalog. The title row
- * carries back, the category name and the grid ⇄ list switch; under the products — "Showing N of M"
- * and "Load more". The catalog draws the empty state, and the error of a failed first page with
- * Retry; a failed next page turns "Load more" into Retry for that page. No filters or sorting in this
- * iteration.
+ * A category: the shop's search field on top ([ShopSearchBar]), under it the kit's category screen.
+ * The screen runs `getCategory` itself — pages, filters, sorting, the empty state and errors with
+ * Retry — and tracks the category view once. Its title is the category name, back goes down the
+ * shop's stack, sorting is the shop's picker ([pickSort]), "Add to cart" tracks the cart and shows
+ * the toast.
  */
 internal class ShopCategory(
     private val shop: DemoShop,
-    private val route: ShopRoute.Category,
-    trackView: Boolean
+    route: ShopRoute.Category
 ) : ShopScreen {
 
     private val context: Context = shop.context
-    private val catalog = PersonalizationCatalog(context)
-    private val loaded = mutableListOf<Product>()
-    private var total = 0
-    private var page = 0
-    private var hasMore = false
-    private var loading = false
-    private var request = 0
+    private val root = LinearLayout(context)
+    private val screen = PersonalizationCategoryScreen(context).apply {
+        shopId = shop.shopId
+        titleText = route.name
+        productActionText = ADD_TO_CART_TEXT
+        onBack = { shop.close() }
+        onSortClick = { pickSort(context, this) }
+        onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
+        onProductAction = { product -> shop.addToCart(this, product.id, product.price) }
+        categoryId = route.id
+    }
+    private val search = ShopSearchBar(shop, root) { searching -> screen.isVisible = !searching }
 
-    override val view: View = catalog
+    override val view: View = root
 
     init {
         val gap = context.spacing(SdkR.dimen.personalization_spacing_xl)
-        catalog.setPadding(gap, gap, gap, gap)
-        catalog.setBackgroundColor(context.pageBackground())
-        catalog.setHeader(context.backTitle(route.name) { shop.close() }.apply {
-            setTrailing(PersonalizationButtonGroup(context).apply {
-                size = PersonalizationButtonGroup.Size.MD
-                items = listOf(
-                    PersonalizationButtonGroup.Item(SdkR.drawable.personalization_ic_grid_2x2, SdkR.drawable.personalization_ic_grid_2x2_fill),
-                    PersonalizationButtonGroup.Item(SdkR.drawable.personalization_ic_list, SdkR.drawable.personalization_ic_list_fill)
-                )
-                onSelected = { index ->
-                    catalog.view = if (index == 0) PersonalizationProductsGrid.View.GRID else PersonalizationProductsGrid.View.LIST
-                }
-            })
-        })
-        catalog.imageLoader = glideCardLoader
-        catalog.retryText = RETRY_TEXT
-        catalog.onRetry = { load(1) }
-        catalog.onLoadMore = { load(page + 1) }
-        catalog.onProductClick = { card -> shop.open(ShopRoute.Product(card.id)) }
-        catalog.onProductAction = { card ->
-            shop.addToCart(catalog, card.id, loaded.firstOrNull { it.id == card.id }?.price)
+        root.orientation = LinearLayout.VERTICAL
+        root.setBackgroundColor(context.pageBackground())
+        // The open panel is taller than the field: with the screen hidden it scrolls in what is left.
+        val bar = ScrollView(context).apply {
+            setPadding(gap, gap, gap, 0)
+            clipToPadding = false
+            addView(search.field, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
-        if (trackView) shop.sdk.tracking.categoryView(route.id)
-        load(1)
+        root.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        root.addView(screen, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
     }
 
-    private fun load(target: Int) {
-        if (loading) return
-        loading = true
-        val seq = ++request
-        catalog.errorText = null
-        catalog.isLoading = true
-        shop.sdk.categoryManager.getCategory(
-            category = route.id,
-            limit = PAGE_SIZE,
-            page = target,
-            onSuccess = { response -> onMain { if (seq == request) onPage(target, response) } },
-            onError = { _, _ -> onMain { if (seq == request) onFailure() } }
-        )
-    }
-
-    private fun onPage(target: Int, response: CategoryResponse) {
-        loading = false
-        // Gson leaves null in a missing list, the non-null type notwithstanding.
-        val products: List<Product>? = response.products
-        val items = products.orEmpty()
-        page = target
-        total = maxOf(response.productsTotal, loaded.size + items.size)
-        loaded += items
-        hasMore = items.isNotEmpty() && loaded.size < total
-        catalog.isLoading = false
-        // Empty state only for an answer: before it the catalog shows just the loader.
-        catalog.emptyText = "No products in this category yet."
-        catalog.products = loaded.map { it.toCard() }
-        catalog.setCount(if (loaded.isEmpty()) null else "Showing", loaded.size, "of", total)
-        catalog.loadMoreText = if (hasMore) "Load more" else null
-    }
-
-    private fun onFailure() {
-        loading = false
-        catalog.isLoading = false
-        if (loaded.isEmpty()) {
-            catalog.errorText = ERROR_TEXT
-        } else {
-            // The next page did not come: the button retries it.
-            catalog.loadMoreText = RETRY_TEXT
-        }
-    }
-
-    private companion object {
-        const val PAGE_SIZE = 20
+    override fun onBack(): Boolean {
+        if (search.onBack()) return true
+        if (!screen.isFiltersOpen) return false
+        screen.closeFilters()
+        return true
     }
 }

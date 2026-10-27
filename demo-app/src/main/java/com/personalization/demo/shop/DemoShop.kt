@@ -17,9 +17,12 @@ import org.json.JSONObject
  * app would build one. It is the live integration example of the kit:
  * - Home ([ShopHome]) — the instant search field, the stories bar, a recommender block and the
  *   shop's top-level categories;
- * - Category ([ShopCategory]) — the kit's catalog over `getCategory`, page by page;
+ * - Category ([ShopCategory]) — the kit's category screen: `getCategory` with filters and sorting;
  * - Product ([ShopProduct]) — `getProductInfo`, the view tracked, similar products under it;
  * - Search ([ShopSearch]) — the kit's search results screen.
+ *
+ * Home, Category and Product carry the same instant search field on top ([ShopSearchBar]); Search and
+ * Category sort with the shop's picker ([pickSort]).
  *
  * There is no cart screen: "Add to cart" anywhere tracks the event and shows the kit's toast.
  * Attribution of the recommender block is set by the block itself before it hands over a product.
@@ -67,7 +70,7 @@ internal class DemoShop(
 
     private fun screen(route: ShopRoute, restored: Boolean): ShopScreen = when (route) {
         ShopRoute.Home -> ShopHome(this)
-        is ShopRoute.Category -> ShopCategory(this, route, trackView = !restored)
+        is ShopRoute.Category -> ShopCategory(this, route)
         is ShopRoute.Product -> ShopProduct(this, route, trackView = !restored)
         is ShopRoute.Search -> ShopSearch(this, route)
     }
@@ -78,16 +81,16 @@ internal class DemoShop(
 }
 
 /**
- * Search results for a phrase submitted on Home. The screen runs the search, its paging and filters
- * itself and tracks `search`; a tap remembers the `full_search` source and opens the product page.
- * No sort picker in this iteration, so the sort button is off.
+ * Search results for a submitted phrase. The screen runs the search, its paging and filters itself and
+ * tracks `search`; a tap remembers the `full_search` source and opens the product page. Sorting is the
+ * shop's picker.
  */
 internal class ShopSearch(private val shop: DemoShop, route: ShopRoute.Search) : ShopScreen {
 
     private val screen = PersonalizationSearchResultsScreen(shop.context).apply {
         shopId = shop.shopId
-        showSort = false
         productActionText = ADD_TO_CART_TEXT
+        onSortClick = { pickSort(context, this) }
         onBack = { shop.close() }
         onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
         onProductAction = { product -> shop.addToCart(this, product.id, product.price) }

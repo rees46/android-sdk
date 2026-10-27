@@ -8,12 +8,11 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
-import com.bumptech.glide.Glide
 import com.personalization.R as SdkR
 import com.personalization.api.responses.product.Product
 import com.personalization.ui.PersonalizationTheme
@@ -22,6 +21,7 @@ import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationLoader
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationTitle
+import com.personalization.ui.widgets.PersonalizationListingScreen
 import java.math.BigDecimal
 
 /** Recommender block of the demo shop (c1140c…) that has products: "Популярные" on home and on a product. */
@@ -82,9 +82,30 @@ internal fun Product.toCard(actionText: CharSequence? = ADD_TO_CART_TEXT): Perso
 private fun plainNumber(value: Double): String =
     if (value.isFinite()) BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() else value.toString()
 
-/** Card images of the kit's catalog: the host loads them, Glide here. */
-internal val glideCardLoader: (ImageView, PersonalizationProduct) -> Unit = { view, product ->
-    Glide.with(view).load(product.imageUrl).into(view)
+/** A sort of the shop's picker: the label and what goes to the screen's `sortBy` / `sortDir`. */
+private class ShopSort(val label: String, val by: String?, val dir: String?)
+
+private val SHOP_SORTS = listOf(
+    ShopSort("Relevance", null, null),
+    ShopSort("Price: low to high", "price", "asc"),
+    ShopSort("Price: high to low", "price", "desc"),
+    ShopSort("Discount", "discount", "desc")
+)
+
+/**
+ * The sort picker of Search and Category — the kit draws none, so a plain platform dialog. The choice
+ * goes to the screen, which asks for the first page again.
+ */
+internal fun pickSort(context: Context, screen: PersonalizationListingScreen) {
+    val current = SHOP_SORTS.indexOfFirst { it.by == screen.sortBy && it.dir == screen.sortDir }
+    AlertDialog.Builder(context)
+        .setTitle("Sort by")
+        .setSingleChoiceItems(SHOP_SORTS.map { it.label }.toTypedArray(), current) { dialog, which ->
+            screen.sortBy = SHOP_SORTS[which].by
+            screen.sortDir = SHOP_SORTS[which].dir
+            dialog.dismiss()
+        }
+        .show()
 }
 
 private val mainHandler = Handler(Looper.getMainLooper())
