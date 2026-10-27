@@ -99,6 +99,38 @@ class PersonalizationWrapRowTest {
         assertEquals(0, second.left)
     }
 
+    @Test
+    fun `wrapping above puts the second child over the first`() {
+        val first = Fixed(100, 30)
+        val second = Fixed(80, 20)
+        val row = PersonalizationWrapRow(context, 8, 4, pinEnd = false, wrapAbove = true).apply {
+            addView(first)
+            addView(second)
+        }
+
+        layOut(row, width = 150)
+
+        assertTrue(row.isWrapped)
+        assertEquals(0, second.top)
+        assertEquals(24, first.top)
+        assertEquals(0, first.left)
+    }
+
+    @Test
+    fun `bottom alignment lines children up by their bottoms`() {
+        val first = Fixed(100, 30)
+        val second = Fixed(80, 20)
+        val row = PersonalizationWrapRow(context, 8, 4, pinEnd = false, alignBottom = true).apply {
+            addView(first)
+            addView(second)
+        }
+
+        layOut(row, width = 300)
+
+        assertFalse(row.isWrapped)
+        assertEquals(first.bottom, second.bottom)
+    }
+
     private fun row(pinEnd: Boolean, vararg children: View) =
         PersonalizationWrapRow(context, horizontalGap = 8, verticalGap = 4, pinEnd = pinEnd).apply {
             children.forEach { addView(it) }

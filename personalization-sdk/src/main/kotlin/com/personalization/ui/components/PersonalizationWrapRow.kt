@@ -9,15 +9,21 @@ import android.view.ViewGroup
  * Нужен list-карточке товара: в узкой колонке (экран 360 dp, крупный системный шрифт)
  * цена с бейджем скидки и кнопка иначе делят ширину, и бейдж ломается по буквам.
  *
- * В строке дети выровнены по центру по вертикали, второй стоит через [horizontalGap] после
- * первого, а с [pinEnd] — у правого края. После переноса второй лежит под первым через
- * [verticalGap]: у левого края, а с [pinEnd] — у правого. Ребёнок шире ряда ужимается до него.
+ * Он же держит цену со старой ценой у карточек колонкой: длинные цены («799 990 ₽» и
+ * «1 574 990 ₽») в колонку плитки рядом не помещаются.
+ *
+ * В строке дети выровнены по центру по вертикали (с [alignBottom] — по низу), второй стоит
+ * через [horizontalGap] после первого, а с [pinEnd] — у правого края. После переноса второй
+ * лежит под первым через [verticalGap] (с [wrapAbove] — над ним): у левого края, а с [pinEnd] —
+ * у правого. Ребёнок шире ряда ужимается до него.
  */
 internal class PersonalizationWrapRow(
     context: Context,
     private val horizontalGap: Int,
     private val verticalGap: Int,
-    private val pinEnd: Boolean
+    private val pinEnd: Boolean,
+    private val wrapAbove: Boolean = false,
+    private val alignBottom: Boolean = false
 ) : ViewGroup(context) {
 
     /** Перенесён ли второй ребёнок по последнему замеру. */
@@ -59,19 +65,23 @@ internal class PersonalizationWrapRow(
             return
         }
         if (isWrapped) {
-            first.layout(0, 0, first.measuredWidth, first.measuredHeight)
-            val top = first.measuredHeight + verticalGap
+            val firstTop = if (wrapAbove) second.measuredHeight + verticalGap else 0
+            first.layout(0, firstTop, first.measuredWidth, firstTop + first.measuredHeight)
+            val top = if (wrapAbove) 0 else first.measuredHeight + verticalGap
             val left = if (pinEnd) width - second.measuredWidth else 0
             second.layout(left, top, left + second.measuredWidth, top + second.measuredHeight)
             return
         }
         val lineHeight = maxOf(first.measuredHeight, second.measuredHeight)
-        val firstTop = (lineHeight - first.measuredHeight) / 2
+        val firstTop = inLine(lineHeight, first.measuredHeight)
         first.layout(0, firstTop, first.measuredWidth, firstTop + first.measuredHeight)
         val left = if (pinEnd) width - second.measuredWidth else first.measuredWidth + horizontalGap
-        val secondTop = (lineHeight - second.measuredHeight) / 2
+        val secondTop = inLine(lineHeight, second.measuredHeight)
         second.layout(left, secondTop, left + second.measuredWidth, secondTop + second.measuredHeight)
     }
+
+    private fun inLine(lineHeight: Int, height: Int): Int =
+        if (alignBottom) lineHeight - height else (lineHeight - height) / 2
 
     private fun shownChildren(): List<View> =
         (0 until childCount).map { getChildAt(it) }.filter { it.visibility != View.GONE }
