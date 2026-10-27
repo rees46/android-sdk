@@ -56,6 +56,50 @@ class CategoryManagerImplTest {
     }
 
     @Test
+    fun getCategory_sendsPriceRangeSortingAndFacets() {
+        val paramsSlot = slot<JSONObject>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), capture(paramsSlot), any())
+        } just Runs
+
+        impl.getCategory(
+            category = "tehnika-dlja-kuhni",
+            page = 3,
+            brands = "Ardesto,AENO",
+            filters = mapOf("Цвет" to listOf("Белый", "Чёрный")),
+            priceMin = 1000.0,
+            priceMax = 2000.5,
+            sortBy = "price",
+            sortDir = "asc",
+            onSuccess = {}
+        )
+
+        val body = paramsSlot.captured
+        assertEquals(3, body.getInt("page"))
+        assertEquals("Ardesto,AENO", body.getString("brands"))
+        assertEquals("1000", body.getString("price_min"))
+        assertEquals("2000.5", body.getString("price_max"))
+        assertEquals("price", body.getString("sort_by"))
+        assertEquals("asc", body.getString("sort_dir"))
+        val facets = JSONObject(body.getString("filters")).getJSONArray("Цвет")
+        assertEquals(listOf("Белый", "Чёрный"), List(facets.length()) { facets.getString(it) })
+    }
+
+    @Test
+    fun getCategory_withoutPriceAndSorting_sendsTheSameAsBefore() {
+        val paramsSlot = slot<JSONObject>()
+        every {
+            sendNetworkMethodUseCase.getAsync(any(), capture(paramsSlot), any())
+        } just Runs
+
+        impl.getCategory(category = "tehnika-dlja-kuhni", limit = 20, sortBy = null, onSuccess = {})
+
+        val body = paramsSlot.captured
+        assertEquals(1, body.length())
+        assertEquals(20, body.getInt("limit"))
+    }
+
+    @Test
     fun getCategory_omitsOptionalParams_whenNull() {
         val paramsSlot = slot<JSONObject>()
         every {
