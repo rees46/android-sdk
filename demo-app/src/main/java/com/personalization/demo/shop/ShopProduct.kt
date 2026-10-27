@@ -16,7 +16,8 @@ import com.personalization.ui.components.PersonalizationProductImage
 import com.personalization.ui.widgets.PersonalizationRecommenderBlock
 
 /**
- * A product page: `getProductInfo(id)` — image, brand, name, price with the old one and the discount
+ * A product page under the shop's search field ([ShopSearchBar]; its open panel puts the page out of
+ * the way): `getProductInfo(id)` — image, brand, name, price with the old one and the discount
  * (by the card rules, see [toCard]) and "Add to cart". Opening it tracks the product view. Under it —
  * recommender blocks for this product: similar, bought with it and popular, each titled by the server
  * and hidden while it has no products. While the product loads — the kit's loader; a failed load —
@@ -57,6 +58,9 @@ internal class ShopProduct(
     }
     private val details = LinearLayout(context)
     private val status = ShopStatus(context)
+    private val page = LinearLayout(context)
+    private val content = LinearLayout(context)
+    private val search = ShopSearchBar(shop, page) { searching -> content.isVisible = !searching }
     private var request = 0
 
     override val view: View = ScrollView(context).apply {
@@ -67,12 +71,12 @@ internal class ShopProduct(
     init {
         val gap = context.spacing(SdkR.dimen.personalization_spacing_xl)
         val small = context.spacing(SdkR.dimen.personalization_spacing_md)
-        val page = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(gap, gap, gap, gap)
-        }
-        page.addView(context.backTitle(null) { shop.close() }, matchWidth())
-        page.addView(status, matchWidth())
+        page.orientation = LinearLayout.VERTICAL
+        page.setPadding(gap, gap, gap, gap)
+        page.addView(search.field, matchWidth())
+        content.orientation = LinearLayout.VERTICAL
+        content.addView(context.backTitle(null) { shop.close() }, matchWidth())
+        content.addView(status, matchWidth())
 
         details.orientation = LinearLayout.VERTICAL
         details.isVisible = false
@@ -90,12 +94,15 @@ internal class ShopProduct(
         for (code in listOf(SIMILAR_BLOCK_CODE, ALSO_BOUGHT_BLOCK_CODE, SHOP_BLOCK_CODE)) {
             details.addView(productBlock(code), matchWidth(top = context.spacing(SdkR.dimen.personalization_spacing_xl4)))
         }
-        page.addView(details, matchWidth())
+        content.addView(details, matchWidth())
+        page.addView(content, matchWidth(top = small))
         (view as ScrollView).addView(page, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         if (trackView) shop.sdk.tracking.productView(route.id)
         load()
     }
+
+    override fun onBack(): Boolean = search.onBack()
 
     private fun load() {
         val seq = ++request
