@@ -24,8 +24,12 @@ import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationTitle
 import java.math.BigDecimal
 
-/** Recommender block of the demo shop (c1140c…) that has products: home carousel and "Similar products". */
+/** Recommender block of the demo shop (c1140c…) that has products: "Популярные" on home and on a product. */
 internal const val SHOP_BLOCK_CODE = "e6249bb15043644bf25b135006149962"
+
+/** Product page blocks driven by the product (`item`): "Похожие" and "С этим товаром также покупают". */
+internal const val SIMILAR_BLOCK_CODE = "007b87897f244b2a2a123567b3242a4b"
+internal const val ALSO_BOUGHT_BLOCK_CODE = "fa6e8cd83434273dd8d47293329e00dd"
 
 internal const val ADD_TO_CART_TEXT = "Add to cart"
 internal const val ERROR_TEXT = "Something went wrong. Check your connection and try again."

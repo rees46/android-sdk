@@ -18,8 +18,9 @@ import com.personalization.ui.widgets.PersonalizationRecommenderBlock
 /**
  * A product page: `getProductInfo(id)` — image, brand, name, price with the old one and the discount
  * (by the card rules, see [toCard]) and "Add to cart". Opening it tracks the product view. Under it —
- * the recommender block for this product, "Similar products", shown with the product. While the
- * product loads — the kit's loader; a failed load — text and Retry.
+ * recommender blocks for this product: similar, bought with it and popular, each titled by the server
+ * and hidden while it has no products. While the product loads — the kit's loader; a failed load —
+ * text and Retry.
  */
 internal class ShopProduct(
     private val shop: DemoShop,
@@ -86,7 +87,9 @@ internal class ShopProduct(
             addView(discount, wrap(start = small))
         }, matchWidth(top = gap))
         details.addView(addToCart, matchWidth(top = gap))
-        details.addView(similar(), matchWidth(top = context.spacing(SdkR.dimen.personalization_spacing_xl4)))
+        for (code in listOf(SIMILAR_BLOCK_CODE, ALSO_BOUGHT_BLOCK_CODE, SHOP_BLOCK_CODE)) {
+            details.addView(productBlock(code), matchWidth(top = context.spacing(SdkR.dimen.personalization_spacing_xl4)))
+        }
         page.addView(details, matchWidth())
         (view as ScrollView).addView(page, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
@@ -120,12 +123,11 @@ internal class ShopProduct(
         details.isVisible = true
     }
 
-    /** The shop's recommender block for this product; it stays hidden until it has products. */
-    private fun similar(): View = PersonalizationRecommenderBlock(context).apply {
+    /** A recommender block for this product, titled by the server; hidden until it has products. */
+    private fun productBlock(blockCode: String): View = PersonalizationRecommenderBlock(context).apply {
         shopId = shop.shopId
         itemId = route.id
-        code = SHOP_BLOCK_CODE
-        title = "Similar products"
+        code = blockCode
         actionText = ADD_TO_CART_TEXT
         onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
         onProductAction = { product -> shop.addToCart(this, product.id) }
