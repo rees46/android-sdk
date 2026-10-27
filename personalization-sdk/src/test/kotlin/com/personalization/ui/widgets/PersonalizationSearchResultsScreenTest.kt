@@ -10,6 +10,7 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.product.Product
+import com.personalization.api.responses.search.SearchFilter
 import com.personalization.api.responses.search.SearchFullResponse
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationEmptyState
@@ -256,6 +257,36 @@ class PersonalizationSearchResultsScreenTest {
         assertEquals(listOf(1, 2), pages)
         assertEquals(screen.retryText, screen.catalog.loadMoreText)
     }
+
+    @Test
+    fun `the filters screen shows the facets with most products, ten by default`() {
+        screen.query = "samsung"
+        idle()
+        val answer = response(total = 40, page = 0)
+        every { answer.filters } returns (1..12).associate { index ->
+            "f$index" to SearchFilter(count = index * 10, values = mapOf("a" to 1, "b" to 2))
+        } + ("merchant" to SearchFilter(count = 999, values = mapOf("Shop" to 40)))
+        every { answer.brands } returns emptyList()
+        every { answer.industrialFilters } returns null
+        answers.last()(answer)
+
+        screen.openFilters()
+
+        assertEquals((12 downTo 3).map { "facet:f$it" }, facetSections())
+
+        screen.maxFacets = null
+        screen.openFilters()
+
+        assertEquals((12 downTo 1).map { "facet:f$it" }, facetSections())
+
+        screen.facets = linkedSetOf("f1", "merchant")
+        screen.openFilters()
+
+        assertEquals(listOf("facet:f1", "facet:merchant"), facetSections())
+    }
+
+    private fun facetSections(): List<String> =
+        screen.filters.sections.map { it.id }.filter { it.startsWith("facet:") }
 
     private fun retryButton(): PersonalizationButton =
         descendants<PersonalizationButton>(screen).single { it.text == screen.retryText }

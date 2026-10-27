@@ -83,6 +83,34 @@ internal fun parseFacets(json: JsonObject?): Map<String, SearchFilter> {
 private fun JsonElement?.intOrZero(): Int =
     if (this != null && isJsonPrimitive && asJsonPrimitive.isNumber) asInt else 0
 
+/**
+ * Какие произвольные фасеты показать на экране фильтров и в каком порядке.
+ *
+ * Явный список хоста [wanted] главнее: его фасеты в его порядке. Иначе — фасеты больше чем
+ * с одним значением по числу товаров с ними (`count`), по убыванию, первые [max]
+ * (`null` или 0 — все): у категории их сотни, приоритета в ответе нет. Фасет с отмеченными
+ * значениями виден всегда, чтобы их можно было снять, — на своём месте, если он есть в
+ * ответе, иначе в конце.
+ */
+internal fun visibleFacets(
+    available: Map<String, SearchFilter>,
+    checked: Map<String, Set<String>>,
+    wanted: Set<String>?,
+    max: Int?
+): List<String> {
+    val applied = checked.filterValues { it.isNotEmpty() }.keys
+    val shown = if (wanted != null) {
+        wanted.filter { it in available || it in applied }
+    } else {
+        // Сортировка устойчивая: при равном числе товаров — порядок ответа.
+        val byCount = available.entries.sortedByDescending { it.value.count }
+        val ranked = byCount.filter { valuesOf(it.value).size > 1 }.map { it.key }
+        val top = (if (max == null || max <= 0) ranked else ranked.take(max)).toSet()
+        byCount.map { it.key }.filter { it in top || it in applied }
+    }
+    return shown + applied.filter { it !in shown }
+}
+
 /** Значения фасета; Gson оставляет null вместо пустого. */
 internal fun valuesOf(facet: SearchFilter): Map<String, Int> {
     val values: Map<String, Int>? = facet.values

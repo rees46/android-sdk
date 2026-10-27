@@ -192,7 +192,7 @@ class PersonalizationCategoryScreenTest {
         screen.openFilters()
 
         val ids = screen.filters.sections.map { it.id }
-        val expectedFacets = (1..12).map { "facet:f$it" }
+        val expectedFacets = (12 downTo 3).map { "facet:f$it" }
         assertEquals(listOf("price", "brands") + expectedFacets, ids)
         val price = screen.filters.sections.first() as PersonalizationFilters.Section.Range
         assertEquals("200", price.fromPlaceholder)

@@ -39,9 +39,10 @@ import java.util.Locale
  * резолвится при показе через [Rees46.awaitInstance], явный — через [attach].
  *
  * Фасеты строятся из ответа: диапазон цены (`price_range`), бренды, цвета и размеры
- * (`industrial_filters`) и произвольные фасеты магазина (`filters`), из которых
- * показываются только те, где больше одного значения. Применённые значения идут тегами
- * в заголовок и параметрами в следующий запрос. Заголовок секции произвольного фасета — его имя через [facetTitle].
+ * (`industrial_filters`) и произвольные фасеты магазина (`filters`). Из произвольных
+ * показываются те, где больше одного значения, по числу товаров с ними, первые [maxFacets];
+ * явный список [facets] главнее. Применённые значения идут тегами в заголовок и параметрами
+ * в следующий запрос. Заголовок секции произвольного фасета — его имя через [facetTitle].
  *
  * Сортировки: кнопка в заголовке отдаёт [onSortClick] хосту (пикер в макете не нарисован),
  * выбранное хост кладёт в [sortBy] / [sortDir]. Нажатие на карточку отдаёт товар хосту через
@@ -118,8 +119,17 @@ abstract class PersonalizationListingScreen internal constructor(
             title.showSortButton = value
         }
 
-    /** Какие фасеты из `filters` показывать; `null` — все с более чем одним значением. */
+    /**
+     * Какие фасеты из `filters` показывать, в этом порядке; `null` — до [maxFacets] фасетов
+     * с более чем одним значением, по числу товаров с ними.
+     */
     var facets: Set<String>? = null
+
+    /**
+     * Сколько произвольных фасетов показывать без явного [facets]: у категории их бывают сотни.
+     * `null` или 0 — все.
+     */
+    var maxFacets: Int? = DEFAULT_MAX_FACETS
 
     /** Подпись кнопки на карточке; `null` — без кнопки. */
     var productActionText: CharSequence? = null
@@ -563,14 +573,11 @@ abstract class PersonalizationListingScreen internal constructor(
                 showMoreText = showMoreText, showLessText = showLessText
             )
         }
-        val wanted = facets
-        source?.filters.orEmpty().forEach { (name, facet) ->
-            val values = valuesOf(facet).keys
-            val checked = applied.facets[name].orEmpty()
-            val visible = if (wanted != null) name in wanted else values.size > 1
-            if (!visible && checked.isEmpty()) return@forEach
+        val available = source?.filters.orEmpty()
+        visibleFacets(available, applied.facets, facets, maxFacets).forEach { name ->
+            val values = available[name]?.let { valuesOf(it).keys }.orEmpty()
             sections += PersonalizationFilters.Section.Options(
-                id = SECTION_FACET + name, title = facetTitle(name), options = options(values, checked),
+                id = SECTION_FACET + name, title = facetTitle(name), options = options(values, applied.facets[name].orEmpty()),
                 showMoreText = showMoreText, showLessText = showLessText
             )
         }
@@ -609,6 +616,7 @@ abstract class PersonalizationListingScreen internal constructor(
     private companion object {
         const val DEFAULT_ERROR_TEXT = "Something went wrong. Check your connection and try again."
         const val DEFAULT_RETRY_TEXT = "Retry"
+        const val DEFAULT_MAX_FACETS = 10
 
         const val SECTION_PRICE = "price"
         const val SECTION_BRANDS = "brands"
