@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -57,6 +58,26 @@ class PersonalizationProductCardTest {
         assertEquals(card.measuredHeight, bottomIn(card, buttonOf(card)))
     }
 
+    @Test
+    fun `price and button share the bottom line of a wide list card`() {
+        val card = listCard(PersonalizationProductImage.Aspect.SQUARE, full = false).apply { discount = "-15%" }
+
+        layOut(card)
+
+        assertFalse(bottomRowOf(card).isWrapped)
+    }
+
+    @Test
+    fun `a narrow list card moves the button under the price instead of squeezing the badge`() {
+        val card = listCard(PersonalizationProductImage.Aspect.SQUARE, full = false).apply { discount = "-15%" }
+
+        layOut(card, width = 160)
+
+        assertTrue(bottomRowOf(card).isWrapped)
+        assertEquals(1, badgeOf(card).maxLines)
+        assertTrue(topIn(card, buttonOf(card)) > topIn(card, badgeOf(card)))
+    }
+
     private fun listCard(aspect: PersonalizationProductImage.Aspect, full: Boolean) =
         PersonalizationProductCard(context).apply {
             type = PersonalizationProductCard.Type.LIST
@@ -71,22 +92,24 @@ class PersonalizationProductCardTest {
         }
 
     /** Measured the way the kit's lists measure a row: exact width, height by content. */
-    private fun layOut(card: View) {
+    private fun layOut(card: View, width: Int = 1080) {
         card.measure(
-            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
         card.layout(0, 0, card.measuredWidth, card.measuredHeight)
     }
 
-    private fun bottomIn(root: View, view: View): Int {
+    private fun bottomIn(root: View, view: View): Int = topIn(root, view) + view.height
+
+    private fun topIn(root: View, view: View): Int {
         var top = 0
         var current: View = view
         while (current !== root) {
             top += current.top
             current = current.parent as View
         }
-        return top + view.height
+        return top
     }
 
     private fun all(root: View): List<View> = when (root) {
@@ -96,4 +119,6 @@ class PersonalizationProductCardTest {
 
     private fun imageOf(card: View) = all(card).filterIsInstance<PersonalizationProductImage>().single()
     private fun buttonOf(card: View) = all(card).filterIsInstance<PersonalizationButton>().single()
+    private fun badgeOf(card: View) = all(card).filterIsInstance<PersonalizationBadge>().single { it.visibility == View.VISIBLE }
+    private fun bottomRowOf(card: View) = buttonOf(card).parent as PersonalizationWrapRow
 }

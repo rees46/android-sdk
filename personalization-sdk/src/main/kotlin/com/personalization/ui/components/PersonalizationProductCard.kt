@@ -263,7 +263,7 @@ class PersonalizationProductCard @JvmOverloads constructor(
 
     /**
      * List: картинка шириной 120 слева, справа колонка — название с рейтингом сверху,
-     * цена с кнопкой снизу. Высота строки — большее из картинки и текста, как на iOS:
+     * цена с кнопкой снизу (не влезают в строку — кнопка под ценой). Высота строки — большее из картинки и текста, как на iOS:
      * колонка тянется до картинки (цена с кнопкой уходят вниз), а низкая картинка 4:3
      * её не сжимает — картинка тогда стоит сверху.
      */
@@ -281,22 +281,25 @@ class PersonalizationProductCard @JvmOverloads constructor(
         // Вью переиспользуются между раскладками и приносят с собой прежние LayoutParams
         // (у кнопки из колонки — match_parent), поэтому параметры здесь задаются явно.
         val wrap = { LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT) }
+        val md = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+        // Цена, бейдж и кнопка в узкой колонке (360 dp, крупный шрифт) в строку не влезают:
+        // тогда бейдж встаёт под цену, а кнопка — под блок цены в правый нижний угол.
+        val priceLine = PersonalizationWrapRow(
+            context,
+            horizontalGap = md,
+            verticalGap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm),
+            pinEnd = false
+        ).apply {
+            addView(priceView, wrap())
+            addView(priceBadge, wrap())
+        }
         val priceBlock = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(priceView, wrap())
-                addView(priceBadge, wrap().apply {
-                    marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
-                })
-            })
+            addView(priceLine, wrap())
             addView(oldPriceView, wrap())
         }
-        val bottom = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(priceBlock, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val bottom = PersonalizationWrapRow(context, horizontalGap = md, verticalGap = md, pinEnd = true).apply {
+            addView(priceBlock, wrap())
             addView(button, wrap())
         }
         // Колонка по содержимому, но не ниже картинки; лишнюю высоту забирает верх, и цена
