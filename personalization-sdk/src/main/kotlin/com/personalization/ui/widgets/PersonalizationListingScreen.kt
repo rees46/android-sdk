@@ -4,11 +4,9 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.view.isVisible
-import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.Cancellable
 import com.personalization.R
@@ -245,7 +243,6 @@ abstract class PersonalizationListingScreen internal constructor(
             scheduleReload()
         }
 
-    private val filtersScroll = NestedScrollView(context)
     private var sdk: SDK? = null
     private var instanceHandle: Cancellable? = null
     private var loaded: List<Product> = emptyList()
@@ -326,11 +323,10 @@ abstract class PersonalizationListingScreen internal constructor(
             closeFilters()
             applied = fromSections(filters.sections)
         }
-        filtersScroll.isFillViewport = true
-        filtersScroll.setBackgroundColor(background)
-        filtersScroll.isVisible = false
-        filtersScroll.addView(filters, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        addView(filtersScroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Экран фильтров сам держит заголовок и кнопки на месте и прокручивает только секции.
+        filters.setBackgroundColor(background)
+        filters.isVisible = false
+        addView(filters, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         applyLoadMore()
     }
@@ -379,19 +375,19 @@ abstract class PersonalizationListingScreen internal constructor(
     }
 
     val isFiltersOpen: Boolean
-        get() = filtersScroll.isVisible
+        get() = filters.isVisible
 
     fun openFilters() {
         filters.text = filtersTitle
         filters.resetText = resetText
         filters.applyText = applyText
         filters.setSections(buildSections())
-        filtersScroll.scrollTo(0, 0)
-        filtersScroll.isVisible = true
+        filters.scrollToTop()
+        filters.isVisible = true
     }
 
     fun closeFilters() {
-        filtersScroll.isVisible = false
+        filters.isVisible = false
     }
 
     /** Первая страница заново — сразу, отменяя перезапрос, запланированный свойствами. */
