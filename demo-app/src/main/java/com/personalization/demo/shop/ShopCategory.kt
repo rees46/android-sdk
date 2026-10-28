@@ -29,6 +29,7 @@ internal class ShopCategory(
         productActionText = ADD_TO_CART_TEXT
         onBack = { shop.close() }
         onSortClick = { pickSort(context, this) }
+        useShopFacetTitles()
         onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
         onProductAction = { product -> shop.addToCart(this, product.id, product.price) }
         categoryId = route.id

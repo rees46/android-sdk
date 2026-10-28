@@ -82,6 +82,31 @@ internal fun Product.toCard(actionText: CharSequence? = ADD_TO_CART_TEXT): Perso
 private fun plainNumber(value: Double): String =
     if (value.isFinite()) BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() else value.toString()
 
+/**
+ * Facet titles of the demo shop's feed, by the facet's name in the answer; the rest keep the kit's
+ * default. Values of `stickers` already carry their own title, the kit shows it.
+ */
+private val SHOP_FACET_TITLES = mapOf(
+    "stickers" to "Стикеры",
+    "stickers_liquid" to "Стикеры",
+    "product_type" to "Тип товара"
+)
+
+/** Value titles of the demo shop's feed: facet → value → title. */
+private val SHOP_FACET_VALUE_TITLES = mapOf(
+    "product_type" to mapOf("regular" to "Обычный", "digital" to "Цифровой", "mto" to "Под заказ")
+)
+
+/**
+ * The integrator's setting for its own feed: the kit knows only the format of the answer, so names
+ * of facets and values that read poorly are titled here.
+ */
+internal fun PersonalizationListingScreen.useShopFacetTitles() {
+    val kitTitle = facetTitle
+    facetTitle = { name -> SHOP_FACET_TITLES[name] ?: kitTitle(name) }
+    facetValueTitle = { facet, value -> SHOP_FACET_VALUE_TITLES[facet]?.get(value) }
+}
+
 /** A sort of the shop's picker: the label and what goes to the screen's `sortBy` / `sortDir`. */
 private class ShopSort(val label: String, val by: String?, val dir: String?)
 

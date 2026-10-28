@@ -91,6 +91,7 @@ internal class ShopSearch(private val shop: DemoShop, route: ShopRoute.Search) :
         shopId = shop.shopId
         productActionText = ADD_TO_CART_TEXT
         onSortClick = { pickSort(context, this) }
+        useShopFacetTitles()
         onBack = { shop.close() }
         onProductClick = { product -> shop.open(ShopRoute.Product(product.id)) }
         onProductAction = { product -> shop.addToCart(this, product.id, product.price) }
