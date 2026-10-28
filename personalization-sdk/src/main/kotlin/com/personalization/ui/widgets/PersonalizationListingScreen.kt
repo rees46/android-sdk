@@ -3,6 +3,7 @@ package com.personalization.ui.widgets
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -41,6 +42,13 @@ import java.util.Locale
  * показываются те, где больше одного значения, по числу товаров с ними, первые [maxFacets];
  * явный список [facets] главнее. Применённые значения идут тегами в заголовок и параметрами
  * в следующий запрос. Заголовок секции произвольного фасета — его имя через [facetTitle].
+ *
+ * Значение в фильтрах подписано числом товаров с ним из ответа, «Белый (172)»
+ * ([showValueCounts]). Значение произвольного фасета подписывает хост через
+ * [facetValueTitle]; без его подписи — `title`, если значение — JSON-объект с ним
+ * (`{"slug": …, "title": "Суперцена"}`), иначе само значение. В запрос всегда уходит
+ * исходное значение. Теги применённых фильтров — с той же подписью, без числа. Кит
+ * опирается только на формат ответа: правил по именам фасетов и языку в нём нет.
  *
  * Сортировки: кнопка в заголовке отдаёт [onSortClick] хосту (пикер в макете не нарисован),
  * выбранное хост кладёт в [sortBy] / [sortDir]. Нажатие на карточку отдаёт товар хосту через
@@ -222,6 +230,15 @@ abstract class PersonalizationListingScreen internal constructor(
     var facetTitle: (String) -> CharSequence = { name ->
         name.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     }
+
+    /**
+     * Подпись значения произвольного фасета по имени фасета и значению в ответе. `null` или
+     * пустая — подпись по умолчанию: `title` значения-JSON, иначе само значение.
+     */
+    var facetValueTitle: (facet: String, value: String) -> CharSequence? = { _, _ -> null }
+
+    /** Число товаров из ответа рядом со значением в фильтрах: «Белый (172)». */
+    var showValueCounts: Boolean = true
 
     /** Значения фильтров, ушедшие в запрос. */
     data class Applied(
@@ -515,7 +532,7 @@ abstract class PersonalizationListingScreen internal constructor(
         }
         applied.facets.forEach { (name, values) ->
             values.forEach { value ->
-                tags += PersonalizationSearchResultsTitle.Filter(value) {
+                tags += PersonalizationSearchResultsTitle.Filter(valueTitle(name, value)) {
                     applied = applied.copy(facets = applied.facets + (name to (values - value)))
                 }
             }
@@ -535,8 +552,28 @@ abstract class PersonalizationListingScreen internal constructor(
 
     // --- Фасеты ⇄ секции экрана фильтров -----------------------------------------------------------
 
-    private fun options(values: Collection<String>, checked: Set<String>): List<PersonalizationFilters.Option> =
-        (values + checked).distinct().map { PersonalizationFilters.Option(id = it, label = it, checked = it in checked) }
+    /** Подпись значения произвольного фасета: хоста, иначе `title` значения-JSON, иначе само значение. */
+    private fun valueTitle(facet: String, value: String): CharSequence =
+        facetValueTitle(facet, value)?.takeIf { it.isNotBlank() } ?: jsonTitle(value) ?: value
+
+    /**
+     * Значения ответа с числом товаров и отмеченные (их может не быть в ответе — тогда без числа).
+     * id варианта — исходное значение: оно и уходит в запрос.
+     */
+    private fun options(
+        counts: Map<String, Int>,
+        checked: Set<String>,
+        title: (String) -> CharSequence = { it }
+    ): List<PersonalizationFilters.Option> =
+        (counts.keys + checked).distinct().map { value ->
+            val count = counts[value]?.takeIf { showValueCounts }
+            val label = title(value)
+            PersonalizationFilters.Option(
+                id = value,
+                label = if (count == null) label else TextUtils.concat(label, " ($count)"),
+                checked = value in checked
+            )
+        }
 
     private fun buildSections(): List<PersonalizationFilters.Section> {
         val source = facetSource?.facets
@@ -573,9 +610,10 @@ abstract class PersonalizationListingScreen internal constructor(
         }
         val available = source?.filters.orEmpty()
         visibleFacets(available, applied.facets, facets, maxFacets).forEach { name ->
-            val values = available[name]?.let { valuesOf(it).keys }.orEmpty()
+            val values = available[name]?.let { valuesOf(it) }.orEmpty()
             sections += PersonalizationFilters.Section.Options(
-                id = SECTION_FACET + name, title = facetTitle(name), options = options(values, applied.facets[name].orEmpty()),
+                id = SECTION_FACET + name, title = facetTitle(name),
+                options = options(values, applied.facets[name].orEmpty()) { value -> valueTitle(name, value) },
                 showMoreText = showMoreText, showLessText = showLessText
             )
         }

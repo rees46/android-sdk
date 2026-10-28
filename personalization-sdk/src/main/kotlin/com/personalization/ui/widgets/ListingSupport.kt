@@ -2,6 +2,7 @@ package com.personalization.ui.widgets
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.personalization.api.responses.category.CategoryResponse
 import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.search.Brand
@@ -24,12 +25,15 @@ internal class ListingPage(
     val facets: ListingFacets by lazy(LazyThreadSafetyMode.NONE, readFacets)
 }
 
-/** Фасеты выдачи: диапазон цены, бренды, цвета и размеры, произвольные фасеты магазина. */
+/**
+ * Фасеты выдачи: диапазон цены, бренды, цвета и размеры, произвольные фасеты магазина.
+ * Бренды, цвета и размеры — значение → число товаров с ним, в порядке ответа.
+ */
 internal class ListingFacets(
     val priceRange: PriceRange?,
-    val brands: List<String>,
-    val colors: List<String>,
-    val sizes: List<String>,
+    val brands: Map<String, Int>,
+    val colors: Map<String, Int>,
+    val sizes: Map<String, Int>,
     val filters: Map<String, SearchFilter>
 )
 
@@ -41,9 +45,9 @@ internal fun SearchFullResponse.toListingPage(): ListingPage {
         val range: PriceRange? = priceRange
         ListingFacets(
             priceRange = range,
-            brands = brandList.orEmpty().mapNotNull { it.name },
-            colors = industrialFilters?.colors.orEmpty().map { it.color },
-            sizes = industrialFilters?.fashionSizes.orEmpty().map { it.size },
+            brands = counts(brandList.orEmpty()) { it.name to it.count },
+            colors = counts(industrialFilters?.colors.orEmpty()) { it.color to it.count },
+            sizes = counts(industrialFilters?.fashionSizes.orEmpty()) { it.size to it.count },
             filters = filters.orEmpty()
         )
     }
@@ -56,12 +60,22 @@ internal fun CategoryResponse.toListingPage(): ListingPage {
         val brandList: List<Brand>? = brands
         ListingFacets(
             priceRange = priceRange,
-            brands = brandList.orEmpty().mapNotNull { it.name },
-            colors = emptyList(),
-            sizes = emptyList(),
+            brands = counts(brandList.orEmpty()) { it.name to it.count },
+            colors = emptyMap(),
+            sizes = emptyMap(),
             filters = parseFacets(filters)
         )
     }
+}
+
+/** Значение → число товаров; значения без имени (Gson оставляет null) пропускаются. */
+private fun <T> counts(items: List<T>, read: (T) -> Pair<String?, Int>): Map<String, Int> {
+    val result = LinkedHashMap<String, Int>()
+    items.forEach { item ->
+        val (value, count) = read(item)
+        if (value != null && value !in result) result[value] = count
+    }
+    return result
 }
 
 /**
@@ -120,3 +134,18 @@ internal fun valuesOf(facet: SearchFilter): Map<String, Int> {
 /** Цена, введённая в фильтре, числом: «1 000» и «99,5» тоже; не число — `null`. */
 internal fun priceNumber(text: String?): Double? =
     text?.filterNot { it.isWhitespace() }?.replace(',', '.')?.toDoubleOrNull()
+
+/**
+ * Подпись значения фасета из самого значения: магазины кладут в значение JSON-объект вроде
+ * `{"slug": "super_price", "title": "Суперцена", …}`, и тогда подпись — его `title`. Только по
+ * формату: строка начинается с `{`, это JSON-объект, в нём непустая строка `title`. Иначе —
+ * `null`, и значение показывается как есть. В запрос всё равно уходит исходное значение.
+ */
+internal fun jsonTitle(value: String): String? {
+    val text = value.trim()
+    if (!text.startsWith("{")) return null
+    val json = runCatching { JsonParser.parseString(text) }.getOrNull()
+        ?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+    val title = json.get("title")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString } ?: return null
+    return title.asString.trim().takeIf { it.isNotEmpty() }
+}

@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import androidx.test.core.app.ApplicationProvider
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.personalization.SDK
 import com.personalization.api.managers.CategoryManager
@@ -14,8 +15,10 @@ import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.search.Brand
 import com.personalization.api.responses.search.PriceRange
 import com.personalization.ui.components.PersonalizationButton
+import com.personalization.ui.components.PersonalizationCheckboxWithLabel
 import com.personalization.ui.components.PersonalizationEmptyState
 import com.personalization.ui.components.PersonalizationFilters
+import com.personalization.ui.components.PersonalizationTag
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -254,6 +257,94 @@ class PersonalizationCategoryScreenTest {
 
         assertEquals("No products in this category yet.", screen.catalog.emptyText)
         assertTrue(screen.products.isEmpty())
+    }
+
+    @Test
+    fun `a JSON value with a title shows the title, and the request keeps the value`() {
+        screen.categoryId = "tehnika-dlja-kuhni"
+        idle()
+        answers.last()(response(total = 40, page = 0).copy(filters = facetsJson("stickers", stickers)))
+
+        screen.openFilters()
+
+        val options = facetOptions("stickers")
+        assertEquals(
+            listOf("Суперцена (12)", "$BROKEN (3)", "$NO_TITLE (2)", "$NUMBER_TITLE (1)", "$EMPTY_TITLE (1)", "plain (4)"),
+            options.map { it.label.toString() }
+        )
+        assertEquals(stickers.map { it.first }, options.map { it.id })
+
+        descendants<PersonalizationCheckboxWithLabel>(screen).single { it.text.toString() == "Суперцена (12)" }.performClick()
+        descendants<PersonalizationButton>(screen).single { it.text == screen.applyText }.performClick()
+        idle()
+
+        assertEquals(mapOf("stickers" to listOf(SUPER_PRICE)), calls.last().filters)
+        assertEquals(listOf("Суперцена"), tags())
+    }
+
+    @Test
+    fun `the host title of a value wins over the JSON title, an empty one does not`() {
+        screen.facetValueTitle = { facet, value ->
+            when {
+                facet != "stickers" -> "wrong facet"
+                value == SUPER_PRICE -> "Super price"
+                value == "plain" -> " "
+                else -> null
+            }
+        }
+        screen.categoryId = "tehnika-dlja-kuhni"
+        screen.applied = PersonalizationListingScreen.Applied(facets = mapOf("stickers" to setOf(SUPER_PRICE)))
+        idle()
+        answers.last()(response(total = 40, page = 0).copy(filters = facetsJson("stickers", stickers)))
+
+        screen.openFilters()
+
+        val labels = facetOptions("stickers").map { it.label.toString() }
+        assertEquals("Super price (12)", labels[0])
+        assertEquals("$NO_TITLE (2)", labels[2])
+        assertEquals("plain (4)", labels[5])
+        assertEquals(listOf("Super price"), tags())
+    }
+
+    @Test
+    fun `brand values carry the product count, a checked one missing from the answer goes without`() {
+        screen.categoryId = "tehnika-dlja-kuhni"
+        screen.applied = PersonalizationListingScreen.Applied(brands = setOf("Gone"))
+        idle()
+        answers.last()(
+            response(total = 40, page = 0).copy(brands = listOf(Brand(count = 11, name = "AEL"), Brand(count = 20, name = "AENO")))
+        )
+
+        screen.openFilters()
+
+        val brands = screen.filters.sections.single { it.id == "brands" } as PersonalizationFilters.Section.Options
+        assertEquals(listOf("AEL (11)", "AENO (20)", "Gone"), brands.options.map { it.label.toString() })
+        assertEquals(listOf("Gone"), tags())
+    }
+
+    private fun facetOptions(name: String): List<PersonalizationFilters.Option> =
+        (screen.filters.sections.single { it.id == "facet:$name" } as PersonalizationFilters.Section.Options).options
+
+    private fun tags(): List<String> = descendants<PersonalizationTag>(screen.title).map { it.text.toString() }
+
+    private fun facetsJson(name: String, values: List<Pair<String, Int>>): JsonObject = JsonObject().apply {
+        add(name, JsonObject().apply {
+            addProperty("count", values.sumOf { it.second })
+            add("values", JsonObject().apply { values.forEach { (value, count) -> addProperty(value, count) } })
+        })
+    }
+
+    private val stickers = listOf(
+        SUPER_PRICE to 12, BROKEN to 3, NO_TITLE to 2, NUMBER_TITLE to 1, EMPTY_TITLE to 1, "plain" to 4
+    )
+
+    private companion object {
+        const val SUPER_PRICE =
+            """{"slug": "super_price", "title": "Суперцена", "text_color": "#ffffff", "background_color": "#f48012", "priority": 1}"""
+        const val BROKEN = """{"title": "Суперцена""""
+        const val NO_TITLE = """{"slug": "new"}"""
+        const val NUMBER_TITLE = """{"title": 5}"""
+        const val EMPTY_TITLE = """{"title": "  "}"""
     }
 
     private fun retryButton(): PersonalizationButton =

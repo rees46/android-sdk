@@ -11,10 +11,15 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.product.Product
+import com.personalization.api.responses.search.Brand
+import com.personalization.api.responses.search.ColorFilter
+import com.personalization.api.responses.search.IndustrialFilters
 import com.personalization.api.responses.search.SearchFilter
 import com.personalization.api.responses.search.SearchFullResponse
+import com.personalization.api.responses.search.SizeFilter
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationEmptyState
+import com.personalization.ui.components.PersonalizationFilters
 import com.personalization.ui.components.PersonalizationProductCard
 import io.mockk.Runs
 import io.mockk.every
@@ -304,6 +309,39 @@ class PersonalizationSearchResultsScreenTest {
 
         assertEquals(listOf("facet:f1", "facet:merchant"), facetSections())
     }
+
+    @Test
+    fun `filter values carry the product count unless the host turns it off`() {
+        screen.query = "jacket"
+        idle()
+        val answer = response(total = 40, page = 0)
+        every { answer.brands } returns listOf(Brand(count = 7, name = "Acme"))
+        every { answer.industrialFilters } returns IndustrialFilters(
+            colors = listOf(ColorFilter(color = "Red", count = 3)),
+            fashionSizes = listOf(SizeFilter(size = "M", count = 5))
+        )
+        every { answer.filters } returns mapOf("material" to SearchFilter(count = 9, values = mapOf("Wool" to 4, "Silk" to 5)))
+        answers.last()(answer)
+
+        screen.openFilters()
+
+        assertEquals(listOf("Acme (7)"), labels("brands"))
+        assertEquals(listOf("Red (3)"), labels("colors"))
+        assertEquals(listOf("M (5)"), labels("sizes"))
+        assertEquals(listOf("Wool (4)", "Silk (5)"), labels("facet:material"))
+
+        screen.showValueCounts = false
+        screen.openFilters()
+
+        assertEquals(listOf("Acme"), labels("brands"))
+        assertEquals(listOf("Red"), labels("colors"))
+        assertEquals(listOf("M"), labels("sizes"))
+        assertEquals(listOf("Wool", "Silk"), labels("facet:material"))
+    }
+
+    private fun labels(section: String): List<String> =
+        (screen.filters.sections.single { it.id == section } as PersonalizationFilters.Section.Options)
+            .options.map { it.label.toString() }
 
     private fun facetSections(): List<String> =
         screen.filters.sections.map { it.id }.filter { it.startsWith("facet:") }

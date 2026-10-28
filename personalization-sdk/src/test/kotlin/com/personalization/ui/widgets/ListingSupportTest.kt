@@ -6,7 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-/** Which facets the filters screen shows, and the category's raw `filters` read as facets. */
+/** Which facets the filters screen shows, the category's raw `filters` read as facets, value titles. */
 class ListingSupportTest {
 
     private fun facet(count: Int, values: Int = 2) =
@@ -91,6 +91,28 @@ class ListingSupportTest {
         assertEquals(0, facets.getValue("odd").count)
         assertEquals(mapOf("a" to 0, "b" to 2), facets.getValue("odd").values)
         assertEquals(emptyMap<String, SearchFilter>(), parseFacets(null))
+    }
+
+    @Test
+    fun `a value that is a JSON object with a title reads as that title`() {
+        assertEquals(
+            "Суперцена",
+            jsonTitle("""{"slug": "super_price", "title": "Суперцена", "text_color": "#ffffff", "priority": 1}""")
+        )
+        assertEquals("Суперцена", jsonTitle("""  {"title": " Суперцена "}  """))
+    }
+
+    @Test
+    fun `anything else has no title`() {
+        assertNull(jsonTitle("Суперцена"))
+        assertNull(jsonTitle("""{"title": "Суперцена""""))
+        assertNull(jsonTitle("""{"title": "A"} tail"""))
+        assertNull(jsonTitle("""{"slug": "new"}"""))
+        assertNull(jsonTitle("""{"title": 5}"""))
+        assertNull(jsonTitle("""{"title": {"ru": "Суперцена"}}"""))
+        assertNull(jsonTitle("""{"title": "   "}"""))
+        assertNull(jsonTitle("""["title"]"""))
+        assertNull(jsonTitle(""))
     }
 
     @Test
