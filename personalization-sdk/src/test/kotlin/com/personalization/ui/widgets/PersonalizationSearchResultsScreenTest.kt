@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.SDK
 import com.personalization.api.managers.SearchManager
@@ -80,6 +81,25 @@ class PersonalizationSearchResultsScreenTest {
         answers.last()(response(total = 0))
 
         assertEquals(screen.emptyText, screen.catalog.emptyText)
+    }
+
+    @Test
+    fun `the found count stays hidden until the first page of each request answers`() {
+        screen.query = "jacket"
+        idle()
+
+        assertFalse(foundShown())
+
+        answers.last()(response(total = 40, page = 0))
+        assertTrue(foundShown())
+        assertTrue(descendants<TextView>(screen).any { it.text.toString() == "40" })
+
+        screen.sortBy = "price"
+        idle()
+        assertFalse(foundShown())
+
+        failures.last()(500, "server error")
+        assertFalse(foundShown())
     }
 
     @Test
@@ -292,6 +312,13 @@ class PersonalizationSearchResultsScreenTest {
         descendants<PersonalizationButton>(screen).single { it.text == screen.retryText }
 
     private inline fun <reified T : View> descendants(root: View): List<T> = collect(root, T::class.java)
+
+    /** The "Found N products" words, not the filter and sort buttons next to them. */
+    private fun foundShown(): Boolean {
+        layOut(screen)
+        val prefix = descendants<TextView>(screen).single { it.text.toString() == screen.foundPrefix.toString() }
+        return (prefix.parent as View).visibility == View.VISIBLE
+    }
 
     private fun <T : View> collect(root: View, type: Class<T>): List<T> = when {
         type.isInstance(root) -> listOf(type.cast(root)!!)

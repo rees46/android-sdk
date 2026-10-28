@@ -474,7 +474,9 @@ abstract class PersonalizationListingScreen internal constructor(
 
     private fun renderProducts() {
         catalog.products = loaded.map { it.toPersonalizationProduct(productActionText) }
-        title.setResults(foundPrefix, total, foundSuffix)
+        // Пока первая страница текущего запроса не ответила (загрузка, новые фильтры или
+        // сортировка, ошибка), число неизвестно: «Найдено 0» на лоадере вводило в заблуждение.
+        title.setResults(foundPrefix, if (answered) total else null, foundSuffix)
         if (loaded.isEmpty()) catalog.setCount(null, 0, countSeparator, 0)
         else catalog.setCount(countPrefix, loaded.size, countSeparator, total)
         applyLoadMore()
