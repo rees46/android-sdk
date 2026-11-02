@@ -80,17 +80,21 @@ fun PersonalizationStoriesWidget(
     retryText: CharSequence? = null,
     closeLabel: CharSequence? = null,
     soundOnLabel: CharSequence? = null,
-    soundOffLabel: CharSequence? = null
+    soundOffLabel: CharSequence? = null,
+    shareLabel: CharSequence? = null,
+    apiV3Domain: String? = null,
+    shareUrlTransform: ((String) -> String)? = null
 ) {
     val currentOnError = rememberUpdatedState(onError)
-    // Код, магазин и SDK задают, какой блок грузить, — их смена пересоздаёт вьюху.
-    key(code, shopId, sdk) {
+    // Код, магазин, SDK и хост v3 задают, какой блок грузить, — их смена пересоздаёт вьюху.
+    key(code, shopId, sdk, apiV3Domain) {
         AndroidView(
             modifier = modifier,
             factory = { context ->
                 PersonalizationStories(context).apply {
                     this.code = code
                     this.shopId = shopId
+                    this.apiV3Domain = apiV3Domain
                     this.onError = { errorCode, message -> currentOnError.value?.invoke(errorCode, message) }
                     sdk?.let(::attach)
                 }
@@ -99,6 +103,7 @@ fun PersonalizationStoriesWidget(
                 val defaults = StoriesTexts.defaults(view.context)
                 view.onClickListener = onClickListener
                 view.imageLoader = imageLoader
+                view.shareUrlTransform = shareUrlTransform
                 view.promoCaption = promoCaption ?: defaults.promoCaption
                 view.promoCopiedText = promoCopiedText ?: defaults.promoCopiedText
                 view.productButtonText = productButtonText ?: defaults.productButtonText
@@ -108,6 +113,7 @@ fun PersonalizationStoriesWidget(
                 view.closeLabel = closeLabel ?: defaults.closeLabel
                 view.soundOnLabel = soundOnLabel ?: defaults.soundOnLabel
                 view.soundOffLabel = soundOffLabel ?: defaults.soundOffLabel
+                view.shareLabel = shareLabel ?: defaults.shareLabel
                 controller?.view = view
             },
             onRelease = { view -> if (controller?.view === view) controller.view = null }

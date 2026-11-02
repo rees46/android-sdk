@@ -23,6 +23,9 @@ class Slide(json: JSONObject) : Serializable {
      * so Stories V2 reads this one to apply its own default.
      */
     internal val adminDurationSeconds: Long = json.optLong("duration", 0L)
+
+    /** Stories V2, API v3 only: the slide's own "Share" link. Not part of equals: V1 ignores it. */
+    internal val shareUrl: String = if (json.isNull("share_url")) "" else json.optString("share_url", "")
     private val elements: MutableList<Element> = ArrayList()
     var isPrepared: Boolean = false
 

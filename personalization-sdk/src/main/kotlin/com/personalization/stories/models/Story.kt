@@ -10,6 +10,13 @@ class Story(json: JSONObject) {
     var isViewed: Boolean = json.optBoolean("viewed", false)
     val isPinned: Boolean = json.optBoolean("pinned", false)
     var startPosition: Int = json.optInt("start_position", 0)
+
+    /**
+     * Stories V2, API v3 only: sharing is off when the campaign says `shareable: false`, and the
+     * campaign link (product campaigns have no slide links). Not part of equals: V1 ignores them.
+     */
+    internal val isShareable: Boolean = json.optBoolean("shareable", true)
+    internal val shareUrl: String = if (json.isNull("share_url")) "" else json.optString("share_url", "")
     private val slides: MutableList<Slide> = ArrayList()
 
     init {

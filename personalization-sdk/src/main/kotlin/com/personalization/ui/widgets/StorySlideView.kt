@@ -59,6 +59,9 @@ internal interface StorySlideHost {
     fun onSoundToggle()
     fun onRetry(view: StorySlideView)
     fun onClose()
+
+    /** «Поделиться» ссылкой [url] показанного слайда. */
+    fun onShare(url: String)
 }
 
 /**
@@ -76,7 +79,9 @@ internal class StorySlideView(
     val slideIndex: Int,
     val slide: Slide,
     slideCount: Int,
-    private val host: StorySlideHost
+    private val host: StorySlideHost,
+    /** Ссылка «Поделиться» слайда (API v3); `null` — кнопки нет. */
+    val shareUrl: String? = null
 ) : FrameLayout(if (StoriesMapping.isMedia(slide)) StorySupport.darkContext(baseContext) else baseContext) {
 
     enum class ImageState { LOADING, READY, FAILED }
@@ -129,6 +134,8 @@ internal class StorySlideView(
         column.orientation = LinearLayout.VERTICAL
         navigation.closeContentDescription = host.texts.closeLabel
         navigation.onClose = { host.onClose() }
+        navigation.shareContentDescription = host.texts.shareLabel
+        navigation.onShare = shareUrl?.let { url -> { host.onShare(url) } }
         navigation.progress.count = slideCount
         navigation.progress.current = slideIndex
         // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
@@ -321,12 +328,13 @@ internal class StorySlideView(
     }
 
     /**
-     * При открытой шторке тап мимо неё только закрывает её (B5). Крестик не в счёт: он
-     * закрывает просмотр всегда, и при открытой шторке тоже (F2).
+     * При открытой шторке тап мимо неё только закрывает её (B5). Крестик и «Поделиться» не в
+     * счёт: они работают всегда, и при открытой шторке тоже (F2).
      */
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN && host.sheetOpen &&
-            !inside(usedHost, event) && !inside(navigation.closeButton, event)
+            !inside(usedHost, event) && !inside(navigation.closeButton, event) &&
+            !inside(navigation.shareButton, event)
         ) {
             sheetTapPending = true
             return true
@@ -348,7 +356,7 @@ internal class StorySlideView(
     }
 
     private fun inside(view: View?, event: MotionEvent): Boolean {
-        view ?: return false
+        if (view == null || view.visibility != View.VISIBLE) return false
         val location = IntArray(2)
         view.getLocationOnScreen(location)
         return event.rawX >= location[0] && event.rawX <= location[0] + view.width &&

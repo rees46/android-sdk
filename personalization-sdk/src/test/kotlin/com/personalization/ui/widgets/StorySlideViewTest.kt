@@ -45,6 +45,25 @@ class StorySlideViewTest {
     }
 
     @Test
+    fun `share sits left of the cross only with a link and gets the touch over an open sheet`() {
+        assertEquals(View.GONE, laidOut(slideWithProducts()).navigation.shareButton.visibility)
+
+        host.sheetOpen = true
+        val view = laidOut(slideWithProducts(), shareUrl = "https://shop.test/?r46_slide=1")
+        val share = view.navigation.shareButton
+        val close = view.navigation.closeButton
+        assertEquals(View.VISIBLE, share.visibility)
+        assertEquals("Share", share.contentDescription)
+        assertEquals(close.width, share.width)
+        assertEquals(close.left - share.right, (8 * activity.resources.displayMetrics.density).toInt())
+        assertEquals(close.alpha, share.alpha)
+        assertFalse(view.onInterceptTouchEvent(down(pointIn(share))))
+
+        share.performClick()
+        assertEquals(listOf("https://shop.test/?r46_slide=1"), host.shared)
+    }
+
+    @Test
     fun `a touch elsewhere outside the open sheet only closes the sheet`() {
         host.sheetOpen = true
         val view = laidOut(slideWithProducts())
@@ -116,8 +135,8 @@ class StorySlideViewTest {
     )
 
     /** On screen: an unattached view has no location, and the slide hit-tests by location. */
-    private fun laidOut(slide: Slide): StorySlideView =
-        StorySlideView(activity, 0, 0, slide, 1, host).also { view ->
+    private fun laidOut(slide: Slide, shareUrl: String? = null): StorySlideView =
+        StorySlideView(activity, 0, 0, slide, 1, host, shareUrl).also { view ->
             activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             shadowOf(Looper.getMainLooper()).idle()
             assertTrue(view.isAttachedToWindow && view.width > 0)
@@ -169,7 +188,7 @@ class StorySlideViewTest {
     }
 
     private class FakeHost : StorySlideHost {
-        override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off")
+        override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off", "Share")
         override val muted = true
         override var sheetOpen = false
         override val insets: Insets = Insets.NONE
@@ -208,5 +227,10 @@ class StorySlideViewTest {
         override fun onSoundToggle() = Unit
         override fun onRetry(view: StorySlideView) = Unit
         override fun onClose() = Unit
+        val shared = mutableListOf<String>()
+
+        override fun onShare(url: String) {
+            shared += url
+        }
     }
 }

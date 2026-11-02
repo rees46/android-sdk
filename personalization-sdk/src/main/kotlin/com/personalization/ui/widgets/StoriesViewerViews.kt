@@ -26,7 +26,8 @@ internal data class StoriesTexts(
     val retryText: CharSequence,
     val closeLabel: CharSequence,
     val soundOnLabel: CharSequence,
-    val soundOffLabel: CharSequence
+    val soundOffLabel: CharSequence,
+    val shareLabel: CharSequence
 ) {
     companion object {
         /** Тексты по умолчанию — из ресурсов SDK (английские, с переводом в `values-ru`). */
@@ -39,7 +40,8 @@ internal data class StoriesTexts(
             retryText = context.getString(R.string.personalization_stories_retry),
             closeLabel = context.getString(R.string.personalization_stories_close),
             soundOnLabel = context.getString(R.string.personalization_stories_sound_on),
-            soundOffLabel = context.getString(R.string.personalization_stories_sound_off)
+            soundOffLabel = context.getString(R.string.personalization_stories_sound_off),
+            shareLabel = context.getString(R.string.personalization_stories_share)
         )
     }
 }
