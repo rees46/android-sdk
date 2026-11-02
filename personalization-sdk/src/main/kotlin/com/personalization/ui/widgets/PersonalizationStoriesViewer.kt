@@ -38,6 +38,7 @@ import com.personalization.SDK
 import com.personalization.stories.models.Story
 import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.widgets.StoriesViewerState.Pause
+import java.lang.ref.WeakReference
 
 /**
  * Полноэкранный просмотр сторис (V2) — на компонентах кита.
@@ -52,6 +53,9 @@ import com.personalization.ui.widgets.StoriesViewerState.Pause
  *
  * Ссылки и товары — через [onClickListener] с контрактом старых сторис: `true` — SDK
  * открывает сам, `false` — хост обработал. Перед переходом просмотр закрывается.
+ *
+ * Слайд со ссылкой — с кнопкой «Поделиться», только на API v3 ([apiV3Domain]): системное окно с
+ * одной ссылкой, слайд стоит, пока окно открыто.
  *
  * Модели — те же, что у старого `StoriesView`: V2 его не трогает.
  */
@@ -84,6 +88,15 @@ class PersonalizationStoriesViewer(
     /** Клики по ссылкам и товарам — контракт старых сторис ([OnClickListener]). */
     var onClickListener: OnClickListener? = null
 
+    /** Ссылка слайда → то, что уходит в окно «Поделиться»; `null` — как есть. Событие `share` то же. */
+    var shareUrlTransform: ((String) -> String)? = null
+
+    /** Хост API v3, с которого пришли сторис: события идут туда же. `null` — старый `track/stories`. */
+    internal var apiV3Domain: String? = PersonalizationStories.v3Domain()
+
+    /** Слайд стартовой сторис в обход «первого непросмотренного» — для ссылки «Поделиться». */
+    internal var startSlide: Int? = null
+
     var promoCaption: CharSequence
     var promoCopiedText: CharSequence
     var productButtonText: CharSequence
@@ -93,6 +106,7 @@ class PersonalizationStoriesViewer(
     var closeLabel: CharSequence
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
+    var shareLabel: CharSequence
 
     init {
         val defaults = StoriesTexts.defaults(context)
@@ -105,6 +119,7 @@ class PersonalizationStoriesViewer(
         closeLabel = defaults.closeLabel
         soundOnLabel = defaults.soundOnLabel
         soundOffLabel = defaults.soundOffLabel
+        shareLabel = defaults.shareLabel
     }
 
     private lateinit var state: StoriesViewerState
@@ -116,6 +131,7 @@ class PersonalizationStoriesViewer(
     private val frameClock = StoryFrameClock(::onFrame)
     private val readyTimer = StoryTimer(handler) { onReadyTimeout() }
     private val videoRetryTimer = StoryTimer(handler) { currentSlideView()?.let(::retry) }
+    private val shareTimer = StoryTimer(handler) { endShare() }
     private var player: ExoPlayer? = null
     private var playerSlide: StorySlideView? = null
     private var audioFocus: StoriesAudioFocus? = null
@@ -129,6 +145,10 @@ class PersonalizationStoriesViewer(
     private var hostPaused = false
     private var dismissDragging = false
     private var pagerDragging = false
+
+    /** Окно «Поделиться» запущено; [shareLeft] — фокус уже уходил к нему. */
+    private var sharing = false
+    private var shareLeft = false
 
     /** Поставить просмотр на паузу из кода хоста (B8). */
     fun pause() = setHostPaused(true)
@@ -170,18 +190,20 @@ class PersonalizationStoriesViewer(
         closeLabel = texts.closeLabel
         soundOnLabel = texts.soundOnLabel
         soundOffLabel = texts.soundOffLabel
+        shareLabel = texts.shareLabel
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         texts = StoriesTexts(
             promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-            retryText, closeLabel, soundOnLabel, soundOffLabel
+            retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
         )
         val seen = StoriesSeenStore.forSdk(hostContext, sdk, shopId)
-        state = StoriesViewerState(stories.map(::shape), seen, startIndex)
+        state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide)
         state.setPaused(Pause.HOST, hostPaused)
         created = true
+        OpenStoriesViewers.add(this)
         setupWindow()
 
         root = StoryDismissLayout(hostContext).apply {
@@ -278,6 +300,15 @@ class PersonalizationStoriesViewer(
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         windowFocused = hasFocus
+        if (sharing) {
+            // Окно «Поделиться» закрыли — фокус вернулся просмотру.
+            if (!hasFocus) {
+                shareLeft = true
+                shareTimer.cancel()
+            } else if (shareLeft) {
+                endShare()
+            }
+        }
         setBackground()
     }
 
@@ -301,6 +332,7 @@ class PersonalizationStoriesViewer(
     override fun dismiss() {
         if (created && !dismissed) {
             dismissed = true
+            OpenStoriesViewers.remove(this)
             frameClock.stop()
             handler.removeCallbacksAndMessages(null)
             state.leave()
@@ -499,6 +531,8 @@ class PersonalizationStoriesViewer(
         override fun onRetry(view: StorySlideView) = retry(view)
 
         override fun onClose() = dismiss()
+
+        override fun onShare(url: String) = share(url)
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS
@@ -520,15 +554,67 @@ class PersonalizationStoriesViewer(
         }
     }
 
-    /** `view` и `click` с кодом блока; id не целые положительные — не трекаются (A6). */
+    /**
+     * «Поделиться»: слайд встаёт на свою паузу, событие `share` уходит сразу, потом системное
+     * окно с одной ссылкой. Пауза снимается, когда фокус вернулся просмотру.
+     */
+    private fun share(url: String) {
+        if (!created || dismissed || sharing) return
+        state.setPaused(Pause.SHARE, true)
+        sync()
+        track("share")
+        val shared = shareUrlTransform?.let { transform ->
+            runCatching { transform(url) }.getOrElse {
+                SDK.error("PersonalizationStoriesViewer: shareUrlTransform failed, sharing $url", it)
+                url
+            }
+        } ?: url
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(android.content.Intent.EXTRA_TEXT, shared)
+        val chooser = android.content.Intent.createChooser(send, texts.shareLabel)
+        val activity = hostContext.findActivity()
+        if (activity == null) chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            (activity ?: hostContext).startActivity(chooser)
+        } catch (throwable: RuntimeException) {
+            SDK.error("PersonalizationStoriesViewer: cannot share $url", throwable)
+            endShare()
+            return
+        }
+        sharing = true
+        shareLeft = false
+        // Окно так и не забрало фокус — слайд не должен стоять вечно.
+        shareTimer.start(SHARE_FOCUS_MS)
+    }
+
+    private fun endShare() {
+        sharing = false
+        shareLeft = false
+        shareTimer.cancel()
+        if (!created || dismissed) return
+        state.setPaused(Pause.SHARE, false)
+        sync()
+    }
+
+    /**
+     * Событие с кодом блока. Старый `track/stories`: id не целые положительные не трекаются
+     * (A6). API v3 принимает и виртуальные слайды товарных кампаний (`39_0`), как веб-SDK.
+     */
     private fun track(event: String) {
         if (!created) return
         val blockCode = code ?: return
         val story = stories.getOrNull(state.storyIndex) ?: return
         if (state.slideIndex !in 0 until story.slidesCount) return
         val slide = story.getSlide(state.slideIndex)
+        val sdk = sdk ?: return
+        val domain = apiV3Domain
+        if (domain != null) {
+            if (story.id > 0 && slide.id.isNotEmpty()) StoriesApiV3.track(sdk, domain, blockCode, event, story.id, slide.id)
+            return
+        }
         if (!StoriesMapping.isTrackable(story.id, slide.id)) return
-        runCatching { sdk?.storiesManager?.trackStory(event, blockCode, story.id, slide.id) }
+        runCatching { sdk.storiesManager.trackStory(event, blockCode, story.id, slide.id) }
     }
 
     /** Картинка компонента: у GIF только первый кадр (G6). */
@@ -852,7 +938,10 @@ class PersonalizationStoriesViewer(
             if (!force && current != null && current.slideIndex == index && !current.mediaStarted) return
             if (current != null && current === playerSlide) stopMedia()
             removeAllViews()
-            val view = StorySlideView(context, storyIndex, index, story.getSlide(index), story.slidesCount, slideHost)
+            val slide = story.getSlide(index)
+            // «Поделиться» — только на API v3, как в веб-SDK: событие `share` есть только там.
+            val shareUrl = if (apiV3Domain != null) StoriesShare.slideShareUrl(story, slide) else null
+            val view = StorySlideView(context, storyIndex, index, slide, story.slidesCount, slideHost, shareUrl)
             slideView = view
             addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         }
@@ -864,5 +953,32 @@ class PersonalizationStoriesViewer(
 
         const val READY_TIMEOUT_MS = 10_000L
         const val VIDEO_RETRY_MS = 15_000L
+
+        /** Сколько ждать, что окно «Поделиться» заберёт фокус. */
+        const val SHARE_FOCUS_MS = 3_000L
+    }
+}
+
+/**
+ * Открытые просмотры V2 — из ленты, `show` и ссылки «Поделиться»: просмотр по ссылке закрывает
+ * их перед показом своего. Только главный поток.
+ */
+@InternalPersonalizationUiApi
+internal object OpenStoriesViewers {
+    private val viewers = ArrayList<WeakReference<PersonalizationStoriesViewer>>()
+
+    fun add(viewer: PersonalizationStoriesViewer) {
+        viewers.removeAll { it.get() == null || it.get() === viewer }
+        viewers.add(WeakReference(viewer))
+    }
+
+    fun remove(viewer: PersonalizationStoriesViewer) {
+        viewers.removeAll { it.get() == null || it.get() === viewer }
+    }
+
+    fun dismissAll() {
+        val open = viewers.mapNotNull { it.get() }
+        viewers.clear()
+        open.forEach { it.dismiss() }
     }
 }

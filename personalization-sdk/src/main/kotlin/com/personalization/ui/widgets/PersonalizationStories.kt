@@ -28,6 +28,9 @@ import com.personalization.ui.components.PersonalizationStoriesBar
  * Пока блок грузится — скелетон. Пустой блок, ошибка загрузки, пустой [code],
  * неоднозначный магазин или 15 с без ответа прячут виджет и зовут [onError].
  * Управление из кода — [open], [openStory], [pause], [resume]; без ленты — [show].
+ *
+ * С [apiV3Domain] (своим или глобальным из companion) блок, события и кнопка «Поделиться» —
+ * на API v3; ссылку «Поделиться» открывает [handleLink].
  */
 @InternalPersonalizationUiApi
 class PersonalizationStories @JvmOverloads constructor(
@@ -45,8 +48,23 @@ class PersonalizationStories @JvmOverloads constructor(
     /** Магазин; `null` — единственный зарегистрированный. Менять до показа. */
     var shopId: String? = null
 
+    /**
+     * Хост API v3 этого виджета, без схемы (`app.rees46.ru`): блок, события и «Поделиться» —
+     * на v3. `null` — глобальный [Companion.apiV3Domain], а без него старое API. Соседние
+     * виджеты друг на друга не влияют. Менять до показа или вызвать [reload].
+     */
+    @get:JvmName("getWidgetApiV3Domain")
+    @set:JvmName("setWidgetApiV3Domain")
+    var apiV3Domain: String? = null
+
     /** Загрузчик картинок; `null` — Glide из SDK. */
     var imageLoader: ((ImageView, String) -> Unit)? = null
+
+    /**
+     * Ссылка слайда → то, что уходит в окно «Поделиться» (например, своя схема приложения).
+     * `null` — ссылка как есть. Событие `share` не меняется.
+     */
+    var shareUrlTransform: ((String) -> String)? = null
 
     /** Клики по ссылкам и товарам — контракт старых сторис ([com.personalization.OnClickListener]). */
     var onClickListener: com.personalization.OnClickListener? = null
@@ -63,6 +81,7 @@ class PersonalizationStories @JvmOverloads constructor(
     var closeLabel: CharSequence
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
+    var shareLabel: CharSequence
 
     /** Загруженные сторис — в порядке сервера, без пустых. */
     var stories: List<Story> = emptyList()
@@ -73,6 +92,12 @@ class PersonalizationStories @JvmOverloads constructor(
     private var viewer: PersonalizationStoriesViewer? = null
     private var requestSeq = 0
     private var pendingOpen: (() -> Unit)? = null
+
+    /** Хост API v3, с которого пришли [stories]; `null` — старая лента. */
+    private var storiesDomain: String? = null
+
+    /** Показ кампании по ссылке «Поделиться» ([handleLink]) вместо блока. */
+    private var sharedLink: SharedLink? = null
     private val giveUp = Runnable { fail(StoriesLoader.ERROR_CODE, "stories: no response in ${LOAD_TIMEOUT_MS / 1000} s") }
 
     init {
@@ -86,6 +111,7 @@ class PersonalizationStories @JvmOverloads constructor(
         closeLabel = defaults.closeLabel
         soundOnLabel = defaults.soundOnLabel
         soundOffLabel = defaults.soundOffLabel
+        shareLabel = defaults.shareLabel
         attrs?.let {
             val array = context.obtainStyledAttributes(it, R.styleable.PersonalizationStories)
             code = array.getString(R.styleable.PersonalizationStories_code)
@@ -120,19 +146,23 @@ class PersonalizationStories @JvmOverloads constructor(
             bar.showSkeleton()
         }
         startGiveUp()
-        StoriesLoader.load(
-            sdk,
-            blockCode,
-            onLoaded = { loaded ->
-                if (seq == requestSeq) {
-                    removeCallbacks(giveUp)
-                    stories = loaded
-                    render()
-                    pendingOpen?.also { pendingOpen = null }?.invoke()
-                }
-            },
-            onFailed = { code, message -> if (seq == requestSeq) fail(code, message) }
-        )
+        val shared = sharedLink
+        val domain = shared?.domain ?: v3Domain(apiV3Domain)
+        val onLoaded = { loaded: List<Story> ->
+            if (seq == requestSeq) {
+                removeCallbacks(giveUp)
+                stories = loaded
+                storiesDomain = domain
+                render()
+                pendingOpen?.also { pendingOpen = null }?.invoke()
+            }
+        }
+        val onFailed = { code: Int, message: String? -> if (seq == requestSeq) fail(code, message) }
+        if (shared != null) {
+            StoriesApiV3.story(sdk, shared.domain, shared.link, onLoaded, onFailed)
+        } else {
+            StoriesLoader.load(sdk, blockCode, domain, onLoaded, onFailed)
+        }
     }
 
     /**
@@ -229,7 +259,7 @@ class PersonalizationStories @JvmOverloads constructor(
 
     private fun texts() = StoriesTexts(
         promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-        retryText, closeLabel, soundOnLabel, soundOffLabel
+        retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
     )
 
     private fun newViewer(context: Context, stories: List<Story>, index: Int) =
@@ -238,7 +268,9 @@ class PersonalizationStories @JvmOverloads constructor(
             viewer.sdk = sdk
             viewer.shopId = shopId
             viewer.imageLoader = imageLoader
+            viewer.shareUrlTransform = shareUrlTransform
             viewer.onClickListener = this@PersonalizationStories.onClickListener
+            viewer.apiV3Domain = storiesDomain
             viewer.applyTexts(texts())
         }
 
@@ -247,13 +279,29 @@ class PersonalizationStories @JvmOverloads constructor(
         internal const val LOAD_TIMEOUT_MS = 15_000L
 
         /**
+         * Хост API v3 по умолчанию, без схемы, как `Rees46Config.apiDomain`, например
+         * `app.rees46.ru`: для виджетов, [show] и [handleLink] без своего `apiV3Domain`. Задан —
+         * их запросы (лента, кампания по ссылке, события) идут на `https://{apiV3Domain}`, а у
+         * слайдов со ссылкой появляется «Поделиться». `null` — старые `stories/{code}` и
+         * `track/stories`. Задавать до показа сторис.
+         */
+        @JvmStatic
+        @Volatile
+        var apiV3Domain: String? = null
+
+        /** Хост v3 экземпляра, без него — глобальный; пустой — нет. */
+        internal fun v3Domain(own: String? = null): String? =
+            own?.trim()?.takeIf { it.isNotEmpty() } ?: apiV3Domain?.trim()?.takeIf { it.isNotEmpty() }
+
+        /**
          * Показать сторис блока [code] без ленты (B8): загрузить блок и открыть просмотр
          * со сторис [startStoryId] (нет такой — с первой). SDK — [sdk], иначе инстанс
          * магазина [shopId]. Тексты `null` — по умолчанию из ресурсов.
          *
          * Пустой блок, ошибка загрузки, магазин не найден или 15 с без ответа — [onError],
          * и показ на этом заканчивается. Просмотр закрыли — [onClose] (F12; на RN и Flutter
-         * так завершаются Promise и Future). Возвращает отмену ещё не открытого показа.
+         * так завершаются Promise и Future). [apiV3Domain] — как у виджета, `null` — глобальный;
+         * [shareUrlTransform] — как у виджета. Возвращает отмену ещё не открытого показа.
          */
         @JvmStatic
         @JvmOverloads
@@ -275,31 +323,143 @@ class PersonalizationStories @JvmOverloads constructor(
             retryText: CharSequence? = null,
             closeLabel: CharSequence? = null,
             soundOnLabel: CharSequence? = null,
-            soundOffLabel: CharSequence? = null
+            soundOffLabel: CharSequence? = null,
+            shareLabel: CharSequence? = null,
+            apiV3Domain: String? = null,
+            shareUrlTransform: ((String) -> String)? = null
         ): Cancellable {
-            val widget = PersonalizationStories(context).also { widget ->
-                widget.code = code
-                widget.shopId = shopId
-                widget.onClickListener = onClickListener
-                widget.onError = onError
-                widget.imageLoader = imageLoader
-                promoCaption?.let { widget.promoCaption = it }
-                promoCopiedText?.let { widget.promoCopiedText = it }
-                productButtonText?.let { widget.productButtonText = it }
-                showProductsText?.let { widget.showProductsText = it }
-                hideProductsText?.let { widget.hideProductsText = it }
-                retryText?.let { widget.retryText = it }
-                closeLabel?.let { widget.closeLabel = it }
-                soundOnLabel?.let { widget.soundOnLabel = it }
-                soundOffLabel?.let { widget.soundOffLabel = it }
-            }
+            val texts = hostTexts(
+                context, promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
+                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+            )
+            val widget = detached(context, code, shopId, onClickListener, onError, imageLoader, texts)
+            widget.apiV3Domain = apiV3Domain
+            widget.shareUrlTransform = shareUrlTransform
             return widget.showDetached(sdk, startStoryId, onClose)
         }
+
+        /**
+         * Открыть кампанию по ссылке «Поделиться»
+         * `https://<сайт>/<путь>?r46_stories=<code>&r46_story=<id>[&r46_slide=<id>]` (другие
+         * параметры не мешают). Параметры — как у [show], без `code` и `startStoryId`.
+         *
+         * `false` — это не ссылка сторис или нет хоста v3 ([apiV3Domain], без него глобальный
+         * [Companion.apiV3Domain]): ничего не происходит.
+         * `true` — дальше асинхронно, как [show]: дождаться SDK, загрузить кампанию, открыть
+         * просмотр с её слайда из ссылки (`start_position` ответа), закрыв другой открытый
+         * просмотр V2, и отправить `shared_open`. Ошибка, 404, пусто, таймаут — [onError], ничего
+         * не показано. Та же ссылка, пока грузится или её просмотр открыт, — игнорируется.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun handleLink(
+            context: Context,
+            url: String,
+            sdk: SDK? = null,
+            shopId: String? = null,
+            onClickListener: com.personalization.OnClickListener? = null,
+            onError: ((code: Int, message: String?) -> Unit)? = null,
+            onClose: (() -> Unit)? = null,
+            imageLoader: ((ImageView, String) -> Unit)? = null,
+            promoCaption: CharSequence? = null,
+            promoCopiedText: CharSequence? = null,
+            productButtonText: CharSequence? = null,
+            showProductsText: CharSequence? = null,
+            hideProductsText: CharSequence? = null,
+            retryText: CharSequence? = null,
+            closeLabel: CharSequence? = null,
+            soundOnLabel: CharSequence? = null,
+            soundOffLabel: CharSequence? = null,
+            shareLabel: CharSequence? = null,
+            apiV3Domain: String? = null,
+            shareUrlTransform: ((String) -> String)? = null
+        ): Boolean {
+            val domain = v3Domain(apiV3Domain) ?: return false
+            val link = StoriesShare.parseLink(url) ?: return false
+            if (link == SharedLinks.current) return true
+            SharedLinks.pending?.cancel()
+            SharedLinks.current = link
+            val texts = hostTexts(
+                context, promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
+                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+            )
+            val failed: (Int, String?) -> Unit = { code, message ->
+                SharedLinks.finish(link)
+                onError?.invoke(code, message)
+            }
+            val widget = detached(context, link.code, shopId, onClickListener, failed, imageLoader, texts)
+            widget.sharedLink = SharedLink(link, domain)
+            widget.apiV3Domain = domain
+            widget.shareUrlTransform = shareUrlTransform
+            // Отмена уже открытого показа ничего не делает — её можно держать и после показа.
+            val pending = widget.showDetached(sdk, null) {
+                SharedLinks.finish(link)
+                onClose?.invoke()
+            }
+            if (SharedLinks.current == link) SharedLinks.pending = pending
+            return true
+        }
+
+        /** Тексты хоста; `null` — по умолчанию из ресурсов. */
+        private fun hostTexts(
+            context: Context,
+            promoCaption: CharSequence?,
+            promoCopiedText: CharSequence?,
+            productButtonText: CharSequence?,
+            showProductsText: CharSequence?,
+            hideProductsText: CharSequence?,
+            retryText: CharSequence?,
+            closeLabel: CharSequence?,
+            soundOnLabel: CharSequence?,
+            soundOffLabel: CharSequence?,
+            shareLabel: CharSequence?
+        ): StoriesTexts {
+            val defaults = StoriesTexts.defaults(context)
+            return StoriesTexts(
+                promoCaption ?: defaults.promoCaption, promoCopiedText ?: defaults.promoCopiedText,
+                productButtonText ?: defaults.productButtonText, showProductsText ?: defaults.showProductsText,
+                hideProductsText ?: defaults.hideProductsText, retryText ?: defaults.retryText,
+                closeLabel ?: defaults.closeLabel, soundOnLabel ?: defaults.soundOnLabel,
+                soundOffLabel ?: defaults.soundOffLabel, shareLabel ?: defaults.shareLabel
+            )
+        }
+
+        private fun detached(
+            context: Context,
+            code: String,
+            shopId: String?,
+            onClickListener: com.personalization.OnClickListener?,
+            onError: ((code: Int, message: String?) -> Unit)?,
+            imageLoader: ((ImageView, String) -> Unit)?,
+            texts: StoriesTexts
+        ) = PersonalizationStories(context).also { widget ->
+            widget.code = code
+            widget.shopId = shopId
+            widget.onClickListener = onClickListener
+            widget.onError = onError
+            widget.imageLoader = imageLoader
+            widget.applyTexts(texts)
+        }
+    }
+
+    private fun applyTexts(texts: StoriesTexts) {
+        promoCaption = texts.promoCaption
+        promoCopiedText = texts.promoCopiedText
+        productButtonText = texts.productButtonText
+        showProductsText = texts.showProductsText
+        hideProductsText = texts.hideProductsText
+        retryText = texts.retryText
+        closeLabel = texts.closeLabel
+        soundOnLabel = texts.soundOnLabel
+        soundOffLabel = texts.soundOffLabel
+        shareLabel = texts.shareLabel
     }
 
     /**
      * Показ без ленты: виджет не на экране, поэтому SDK и таймаут ведутся вручную,
-     * а просмотр открывается, как только блок пришёл.
+     * а просмотр открывается, как только блок пришёл. Кампания по ссылке ([sharedLink])
+     * открывается с первой сторис и слайда `start_position` в обход A4, закрыв другие
+     * просмотры V2, и шлёт `shared_open` один раз.
      */
     private fun showDetached(explicitSdk: SDK?, startStoryId: Int?, onClose: (() -> Unit)?): Cancellable {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -310,11 +470,20 @@ class PersonalizationStories @JvmOverloads constructor(
                 onError?.invoke(StoriesLoader.ERROR_CODE, "PersonalizationStories.show: block $code is empty")
                 return@open
             }
-            val index = startStoryId?.let { id -> stories.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
-            newViewer(context, stories, index).apply {
-                setOnDismissListener { onClose?.invoke() }
-                show()
+            val shared = sharedLink
+            val index = if (shared != null) 0 else startStoryId?.let { id -> stories.indexOfFirst { it.id == id } }?.takeIf { it >= 0 } ?: 0
+            val viewer = newViewer(context, stories, index)
+            viewer.setOnDismissListener { onClose?.invoke() }
+            if (shared == null) {
+                viewer.show()
+                return@open
             }
+            val story = stories[0]
+            val slide = story.startPosition.takeIf { it in 0 until story.slidesCount } ?: 0
+            viewer.startSlide = slide
+            OpenStoriesViewers.dismissAll()
+            viewer.show()
+            sdk?.let { StoriesApiV3.track(it, shared.domain, shared.link.code, "shared_open", story.id, story.getSlide(slide).id) }
         }
         val previousError = onError
         onError = { code, message ->
@@ -338,5 +507,20 @@ class PersonalizationStories @JvmOverloads constructor(
             instanceHandle?.cancel()
             instanceHandle = null
         }
+    }
+}
+
+/** Кампания по ссылке «Поделиться» и хост API v3, на котором её искать. */
+private class SharedLink(val link: StoriesShare.Link, val domain: String)
+
+/** Ссылка, которая грузится или чей просмотр открыт: повтор той же — игнор. Главный поток. */
+private object SharedLinks {
+    var current: StoriesShare.Link? = null
+    var pending: Cancellable? = null
+
+    fun finish(link: StoriesShare.Link) {
+        if (current != link) return
+        current = null
+        pending = null
     }
 }

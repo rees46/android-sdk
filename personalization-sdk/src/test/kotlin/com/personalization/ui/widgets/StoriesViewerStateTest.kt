@@ -271,6 +271,36 @@ class StoriesViewerStateTest {
         assertEquals(Move.None, state.tick(1000))
     }
 
+    @Test
+    fun `a shared link opens its slide past the first unseen rule, a missing slide opens the first`() {
+        seen.markSeen(1, "1_0")
+        assertEquals(1, state(story(1, slides = 4, startPosition = 2)).slideIndex)
+
+        assertEquals(2, StoriesViewerState(listOf(story(1, slides = 4, startPosition = 2)), seen, 0, startSlide = 2).slideIndex)
+        assertEquals(0, StoriesViewerState(listOf(story(1, slides = 4)), seen, 0, startSlide = 9).slideIndex)
+        // Other stories still open by the rule.
+        val state = StoriesViewerState(listOf(story(2, slides = 3), story(1, slides = 4)), seen, 0, startSlide = 2)
+        assertEquals(2, state.slideIndex)
+        assertEquals(1, state.startSlideOf(1))
+    }
+
+    @Test
+    fun `the share sheet pauses the clock and the video, closing it lets the slide go on`() {
+        val state = entered(story(1, slides = 2))
+        state.mediaReady()
+        state.tick(1000)
+
+        state.setPaused(Pause.SHARE, true)
+        assertFalse(state.isRunning)
+        assertFalse(state.playerShouldPlay)
+        assertEquals(Move.None, state.tick(StoriesMapping.DEFAULT_DURATION_MS))
+
+        state.setPaused(Pause.SHARE, false)
+        assertTrue(state.isRunning)
+        state.tick(1000)
+        assertEquals(2000, state.elapsedMs)
+    }
+
     private fun state(vararg stories: StoryShape, start: Int = 0) = StoriesViewerState(stories.toList(), seen, start)
 
     private fun entered(vararg stories: StoryShape, start: Int = 0) =

@@ -12,7 +12,9 @@ package com.personalization.ui.widgets
 internal class StoriesViewerState(
     private val stories: List<StoryShape>,
     private val seen: SeenSlides,
-    startStory: Int = 0
+    startStory: Int = 0,
+    /** Слайд стартовой сторис в обход A4 — `start_position` кампании по ссылке «Поделиться». */
+    startSlide: Int? = null
 ) {
 
     /** Сторис глазами просмотра. */
@@ -45,6 +47,9 @@ internal class StoriesViewerState(
 
         /** Пауза хоста — `pause()` виджета (B8). */
         HOST,
+
+        /** Открыто системное окно «Поделиться». */
+        SHARE,
 
         /** Медиа ещё не готово или видео подгружается (C4, C5). */
         LOADING,
@@ -113,7 +118,9 @@ internal class StoriesViewerState(
         private set
 
     init {
-        slideIndex = startSlideOf(storyIndex)
+        // Слайда с таким номером нет — с первого, как в веб-SDK.
+        val forced = startSlide?.let { index -> if (story?.slides?.indices?.contains(index) == true) index else 0 }
+        slideIndex = forced ?: startSlideOf(storyIndex)
         resetSlide()
     }
 
