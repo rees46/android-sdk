@@ -235,12 +235,36 @@ class MainActivity : AppCompatActivity() {
         showLastCrashIfAny()
         // App may have been opened by tapping a push — report the click to the SDK.
         handleNotificationClick(intent)
+        // Or by a stories link; a recreated activity (rotation, theme) must not open it again.
+        if (savedInstanceState == null) handleStoriesLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationClick(intent)
+        handleStoriesLink(intent)
+    }
+
+    /**
+     * A stories link opened the demo — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest):
+     * any host and path, only `r46_stories` matters. The campaign opens through
+     * PersonalizationStories.handleLink on API v3, over whatever tab is shown.
+     */
+    private fun handleStoriesLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val url = intent.dataString ?: return
+        if (!url.contains("r46_stories=")) return
+        val opened = openStoriesLink(
+            context = this,
+            url = url,
+            shopId = BuildConfig.SHOP_ID,
+            onError = { message ->
+                Log.w("StoriesLink", "$url: $message")
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            }
+        )
+        if (!opened) Toast.makeText(this, "Not a stories link: $url", Toast.LENGTH_LONG).show()
     }
 
     /**
