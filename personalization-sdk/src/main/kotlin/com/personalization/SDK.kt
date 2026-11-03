@@ -1177,7 +1177,7 @@ open class SDK {
         private const val SET_PROFILE_FIELD = "profile/set"
         private const val SEGMENT_ID_FIELD = "segment_id"
         private const val SEGMENT_EMAIL_FIELD = "email"
-        private const val SEGMENT_PHONE_FIELD = "email"
+        private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
         private const val SEARCH_FIELD = "search"
