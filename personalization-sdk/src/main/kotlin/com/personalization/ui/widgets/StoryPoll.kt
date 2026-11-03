@@ -5,6 +5,7 @@ import com.personalization.SDK
 import com.personalization.ui.InternalPersonalizationUiApi
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.Serializable
 
 /**
  * Опрос на слайде — элемент `poll` ленты API v3: мини-опрос (выбор одного, нескольких, текст)
@@ -13,6 +14,9 @@ import org.json.JSONObject
  * Разбор терпимый: числа бывают строками (`"40"`, `"120"`), необязательные поля — `null`
  * или нет вовсе (лента v3 выкидывает `null` до моделей). Неизвестный вид — не опрос:
  * [parse] отдаёт `null`, слайд показывается без него.
+ *
+ * Сериализуется вместе со [com.personalization.stories.models.Slide]: хост может передать слайд
+ * с опросом через `Intent` / `Bundle`.
  */
 @InternalPersonalizationUiApi
 internal class StoryPoll(
@@ -39,7 +43,7 @@ internal class StoryPoll(
     val answer: StoriesPollAnswer?,
     val results: StoriesPollResults?,
     val labels: Labels
-) {
+) : Serializable {
 
     enum class Type(val scaleKind: String?) {
         SINGLE_CHOICE(null), MULTIPLE_CHOICE(null), TEXT(null), NPS("nps"), CSAT("csat"), CES("ces");
@@ -47,13 +51,17 @@ internal class StoryPoll(
         val isScale: Boolean get() = scaleKind != null
     }
 
-    data class Option(val id: Int, val label: String)
+    data class Option(val id: Int, val label: String) : Serializable
 
     /** Полоса шкалы: текст [success] — под оценкой из `from..to`. */
-    data class Band(val from: Double, val to: Double, val success: String?)
+    data class Band(val from: Double, val to: Double, val success: String?) : Serializable
 
     /** Тексты сервера (`labels` элемента): непустые важнее текстов хоста. */
-    data class Labels(val reanswer: String? = null, val error: String? = null, val submit: String? = null)
+    data class Labels(
+        val reanswer: String? = null,
+        val error: String? = null,
+        val submit: String? = null
+    ) : Serializable
 
     /** Шкала: значения по порядку. */
     val scale: List<Int> get() = type.scaleKind?.let { scaleRange(type, rateMin, rateMax) }.orEmpty()

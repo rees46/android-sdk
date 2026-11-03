@@ -30,7 +30,7 @@ class Slide(json: JSONObject) : Serializable {
 
     /**
      * Stories V2, API v3 only: polls of the slide (`poll` elements). Kept apart from [getElements],
-     * so V1 never sees them; not part of equals.
+     * so V1 never sees them; not part of equals. Serialized with the slide; no polls — an empty list.
      */
     internal val polls: List<StoryPoll> = StoryPoll.parseAll(json.optJSONArray("elements"))
     private val elements: MutableList<Element> = ArrayList()

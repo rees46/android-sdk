@@ -1,6 +1,7 @@
 package com.personalization.ui.widgets
 
 import com.personalization.ui.InternalPersonalizationUiApi
+import java.io.Serializable
 
 /**
  * Транспорт опросов на слайдах сторис V2 (API v3): как ответ уходит на сервер.
@@ -54,7 +55,7 @@ data class StoriesPollAnswer(
     val text: String? = null,
     val rate: Double? = null,
     val id: Long? = null
-) {
+) : Serializable {
     /** Ответ есть: непустые варианты, непустой текст или любая оценка — как `hasAnswer` веб-SDK. */
     val isAnswered: Boolean
         get() = !optionIds.isNullOrEmpty() || !text.isNullOrEmpty() || rate != null
@@ -62,9 +63,9 @@ data class StoriesPollAnswer(
 
 /** Итоги мини-опроса: всего ответов и процент каждого варианта. */
 @InternalPersonalizationUiApi
-data class StoriesPollResults(val total: Int, val options: List<Option>) {
+data class StoriesPollResults(val total: Int, val options: List<Option>) : Serializable {
 
-    data class Option(val id: Int, val percent: Double)
+    data class Option(val id: Int, val percent: Double) : Serializable
 
     /** Процент варианта для полоски: целый, 0…100; варианта нет в итогах — 0. */
     fun percentOf(optionId: Int): Int {

@@ -16,6 +16,10 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 
 /** The `poll` element: parsing of the shared feed fixture, scales, bands, texts, request bodies. */
 @RunWith(RobolectricTestRunner::class)
@@ -339,5 +343,16 @@ class StoryPollTest {
         assertEquals(mapOf("channel" to "test", "category" to "test", "rate" to 9), StoryPollBodies.review(poll(3), 9))
         assertEquals(mapOf("channel" to "stories", "campaign" to "demo_csat", "rate" to 1), StoryPollBodies.review(poll(4), 1))
         assertEquals(mapOf("channel" to "stories", "campaign" to "demo_ces", "rate" to 7), StoryPollBodies.review(poll(5), 7))
+    }
+
+    @Test
+    fun `a slide with a poll survives java serialization, a slide without one too`() {
+        slides.forEach { slide ->
+            val bytes = ByteArrayOutputStream().also { out -> ObjectOutputStream(out).use { it.writeObject(slide) } }
+            val copy = ObjectInputStream(ByteArrayInputStream(bytes.toByteArray())).use { it.readObject() } as Slide
+            assertEquals(slide.polls.map { it.type to it.code }, copy.polls.map { it.type to it.code })
+            assertEquals(slide.polls.map { it.answer to it.results }, copy.polls.map { it.answer to it.results })
+        }
+        assertTrue(slides[6].polls.single().answer!!.isAnswered)
     }
 }
