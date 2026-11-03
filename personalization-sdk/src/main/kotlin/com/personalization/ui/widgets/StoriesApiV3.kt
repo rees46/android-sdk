@@ -168,6 +168,9 @@ internal object StoriesApiV3 {
     /** POST с JSON-телом — события и опросы; зовётся не на главном потоке. */
     fun post(url: String, body: JSONObject): Response = call("POST", url, body.toString())
 
+    /** GET — для других клиентов API v3 (попапы); зовётся не на главном потоке. */
+    fun get(url: String): Response = call("GET", url, null)
+
     /** Запрос с логом, как у сети SDK: строка в logcat и в `networkLogger`. */
     private fun call(method: String, url: String, body: String?): Response {
         val started = System.currentTimeMillis()

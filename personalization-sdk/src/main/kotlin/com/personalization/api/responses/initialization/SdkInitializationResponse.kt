@@ -18,5 +18,7 @@ data class SdkInitializationResponse(
     val popupDto: PopupDto?,
     val search: Search?,
     val webPushSettings: WebPushSettings?,
-    val recone: Boolean
+    val recone: Boolean,
+    /** The shop has popups v3 for this channel (`popups_v3` of `/init`). */
+    val popupsV3: Boolean = false
 )

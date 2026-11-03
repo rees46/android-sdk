@@ -2,6 +2,7 @@ package com.personalization.features.trackEvent.impl
 
 import android.util.Log
 import com.personalization.SDK
+import com.personalization.SdkRegistry
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
@@ -40,6 +41,7 @@ internal class TrackEventManagerImpl @Inject constructor(
         listener: OnApiCallbackListener?
     ) {
         params.put(EVENT_PARAMETER, event.value)
+        if (event == TrackEvent.PURCHASE) popups()?.onPurchase()
         val lastRecommendedBy = getRecommendedByUseCase()
         if (lastRecommendedBy != null) {
             params.put(lastRecommendedBy)
@@ -79,6 +81,7 @@ internal class TrackEventManagerImpl @Inject constructor(
             return
         }
         val body = jsonResult.getOrNull()!!
+        popups()?.onPurchase()
         if (request.recommendedBy == null) {
             val lastRecommendedBy = getRecommendedByUseCase()
             if (lastRecommendedBy != null) {
@@ -124,6 +127,7 @@ internal class TrackEventManagerImpl @Inject constructor(
             return
         }
 
+        popups()?.onTrackEvent(event)
         val params = Params()
         params.put(EVENT_PARAMETER, event)
         if (time != null) {
@@ -172,6 +176,7 @@ internal class TrackEventManagerImpl @Inject constructor(
         value: Int?,
         listener: OnApiCallbackListener?
     ) {
+        popups()?.onTrackEvent(event)
         val params = Params()
         params.put(EVENT_PARAMETER, event)
         if (email != null) {
@@ -254,6 +259,13 @@ internal class TrackEventManagerImpl @Inject constructor(
             json,
             internalListener
         )
+    }
+
+    /** Popups v3 of this shop, if the host has them: custom events trigger them, a purchase refreshes the list. */
+    private fun popups() = try {
+        SdkRegistry.byShopId(getUserSettingsValueUseCase.getShopId())?.popupsV3
+    } catch (e: Exception) {
+        null
     }
 
     private fun handlePopup(response: JSONObject) {

@@ -36,4 +36,5 @@ object SdkInitializationParams {
     const val PARAM_CMS = "cms"
     const val PARAM_SNIPPETS = "snippets"
     const val PARAM_RECONE = "recone"
+    const val PARAM_POPUPS_V3 = "popups_v3"
 }

@@ -34,6 +34,7 @@ import com.personalization.sdk.data.models.dto.popUp.DialogDataDto
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.sdk.data.models.dto.popUp.Position
 import com.personalization.ui.click.NotificationClickListener
+import com.personalization.ui.popups.PopupV3Slots
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 
@@ -68,6 +69,12 @@ class InAppNotificationManagerImpl @Inject constructor(
     }
 
     private fun present(popupDto: PopupDto) {
+        // One modal at a time, shared with popups v3: while one of theirs is open, this one waits.
+        if (PopupV3Slots.isModalOpen) {
+            PopupV3Slots.whenModalClosed { handler.post { present(popupDto) } }
+            return
+        }
+
         // Check if popup was shown in the last 60 seconds
         val shownTime = popupShownFlags[popupDto.id]
         if (shownTime != null) {
