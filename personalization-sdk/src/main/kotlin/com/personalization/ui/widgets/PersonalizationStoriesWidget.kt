@@ -83,7 +83,11 @@ fun PersonalizationStoriesWidget(
     soundOffLabel: CharSequence? = null,
     shareLabel: CharSequence? = null,
     apiV3Domain: String? = null,
-    shareUrlTransform: ((String) -> String)? = null
+    shareUrlTransform: ((String) -> String)? = null,
+    pollReanswerText: CharSequence? = null,
+    pollErrorText: CharSequence? = null,
+    pollSubmitText: CharSequence? = null,
+    pollsTransport: StoriesPollsTransport? = null
 ) {
     val currentOnError = rememberUpdatedState(onError)
     // Код, магазин, SDK и хост v3 задают, какой блок грузить, — их смена пересоздаёт вьюху.
@@ -104,6 +108,7 @@ fun PersonalizationStoriesWidget(
                 view.onClickListener = onClickListener
                 view.imageLoader = imageLoader
                 view.shareUrlTransform = shareUrlTransform
+                view.pollsTransport = pollsTransport
                 view.promoCaption = promoCaption ?: defaults.promoCaption
                 view.promoCopiedText = promoCopiedText ?: defaults.promoCopiedText
                 view.productButtonText = productButtonText ?: defaults.productButtonText
@@ -114,6 +119,9 @@ fun PersonalizationStoriesWidget(
                 view.soundOnLabel = soundOnLabel ?: defaults.soundOnLabel
                 view.soundOffLabel = soundOffLabel ?: defaults.soundOffLabel
                 view.shareLabel = shareLabel ?: defaults.shareLabel
+                view.pollReanswerText = pollReanswerText ?: defaults.pollReanswerText
+                view.pollErrorText = pollErrorText ?: defaults.pollErrorText
+                view.pollSubmitText = pollSubmitText ?: defaults.pollSubmitText
                 controller?.view = view
             },
             onRelease = { view -> if (controller?.view === view) controller.view = null }

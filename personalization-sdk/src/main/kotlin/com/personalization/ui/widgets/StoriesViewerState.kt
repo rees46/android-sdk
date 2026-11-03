@@ -51,6 +51,9 @@ internal class StoriesViewerState(
         /** Открыто системное окно «Поделиться». */
         SHARE,
 
+        /** Опрос: карточку держат, пишут в поле или ждут ответа. Снимается со сменой слайда. */
+        POLL,
+
         /** Медиа ещё не готово или видео подгружается (C4, C5). */
         LOADING,
 
@@ -328,6 +331,8 @@ internal class StoriesViewerState(
         sheetOpen = false
         pauses.remove(Pause.SHEET)
         pauses.remove(Pause.ERROR)
+        // Карточка опроса ушла вместе со слайдом — её пауза не должна залипнуть.
+        pauses.remove(Pause.POLL)
         pauses.add(Pause.LOADING)
         resetClock()
     }

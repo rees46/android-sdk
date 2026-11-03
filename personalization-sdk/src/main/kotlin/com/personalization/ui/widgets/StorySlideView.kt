@@ -21,6 +21,7 @@ import com.personalization.Product
 import com.personalization.R
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryNavigation
@@ -62,6 +63,12 @@ internal interface StorySlideHost {
 
     /** «Поделиться» ссылкой [url] показанного слайда. */
     fun onShare(url: String)
+
+    /** Опросы (API v3 или свой транспорт); `null` — элементы `poll` не рисуются. */
+    val polls: StoryPollsContext? get() = null
+
+    /** Опрос слайда [view] держит его: карточку трогают, пишут в поле или ждут ответа. */
+    fun onPollHold(view: StorySlideView, hold: Boolean) = Unit
 }
 
 /**
@@ -73,6 +80,7 @@ internal interface StorySlideHost {
  */
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @SuppressLint("ViewConstructor")
+@InternalPersonalizationUiApi
 internal class StorySlideView(
     baseContext: Context,
     val storyIndex: Int,
@@ -81,7 +89,9 @@ internal class StorySlideView(
     slideCount: Int,
     private val host: StorySlideHost,
     /** Ссылка «Поделиться» слайда (API v3); `null` — кнопки нет. */
-    val shareUrl: String? = null
+    val shareUrl: String? = null,
+    /** Id сторис — для ответов на опросы. */
+    private val storyId: Int = 0
 ) : FrameLayout(if (StoriesMapping.isMedia(slide)) StorySupport.darkContext(baseContext) else baseContext) {
 
     enum class ImageState { LOADING, READY, FAILED }
@@ -120,6 +130,9 @@ internal class StorySlideView(
     private var usedProducts: PersonalizationStoryUsedProducts? = null
     private var usedHost: View? = null
     private var sheetTapPending = false
+    private var pollLayer: StoryPollLayer? = null
+    private val pollHolds = HashSet<StoryPollController>()
+    private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
 
     init {
@@ -245,7 +258,7 @@ internal class StorySlideView(
         } else {
             StoryTextBlocks.build(context, slide, host)
         }
-        column.addView(middle, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        column.addView(withPolls(middle), columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
@@ -254,6 +267,43 @@ internal class StorySlideView(
 
         val products = StoriesMapping.products(slide)?.let { element -> element to element.getProducts() }
         if (products != null || isVideo) addUsedProducts(products?.first, products?.second.orEmpty())
+    }
+
+    /**
+     * Опросы — поверх середины слайда, и на товарном тоже: между шапкой и кнопками. Без
+     * транспорта (не API v3) их нет.
+     */
+    private fun withPolls(middle: View): View {
+        val polls = host.polls ?: return middle
+        if (slide.polls.isEmpty()) return middle
+        val layer = StoryPollLayer(context)
+        slide.polls.forEach { poll ->
+            lateinit var controller: StoryPollController
+            controller = StoryPollController(poll, storyId, slide.id, polls.shopId, polls.transport, polls.texts, onHold = { hold ->
+                val before = pollHolds.isNotEmpty()
+                if (hold) pollHolds.add(controller) else pollHolds.remove(controller)
+                if (before != pollHolds.isNotEmpty()) host.onPollHold(this, pollHolds.isNotEmpty())
+            })
+            layer.add(StoryPollView(context, controller))
+        }
+        pollLayer = layer
+        return FrameLayout(context).apply {
+            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            addView(layer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+    }
+
+    /** Карточки опросов слайда. */
+    val pollCards: List<StoryPollView> get() = pollLayer?.cards.orEmpty()
+
+    /** Клавиатура окна: [bottom] — сколько она закрывает снизу. Слайд не сжимается — поднимается карточка. */
+    fun applyIme(bottom: Int) {
+        pollLayer?.setIme(bottom)
+    }
+
+    /** Убрать клавиатуру опроса — сворачивание, закрытие просмотра. */
+    fun hidePollKeyboard() {
+        pollLayer?.hideKeyboard()
     }
 
     private fun addButton(title: CharSequence, onClick: () -> Unit) {
@@ -332,6 +382,15 @@ internal class StorySlideView(
      * счёт: они работают всегда, и при открытой шторке тоже (F2).
      */
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        // Клавиатура опроса открыта: тап мимо карточки только прячет её, слайд не листается.
+        val typing = pollLayer?.focusedCard
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && typing != null && !inside(typing, event) &&
+            !inside(navigation.closeButton, event) && !inside(navigation.shareButton, event)
+        ) {
+            keyboardTapPending = true
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return true
+        }
         if (event.actionMasked == MotionEvent.ACTION_DOWN && host.sheetOpen &&
             !inside(usedHost, event) && !inside(navigation.closeButton, event) &&
             !inside(navigation.shareButton, event)
@@ -344,6 +403,16 @@ internal class StorySlideView(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (keyboardTapPending) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_UP -> {
+                    keyboardTapPending = false
+                    pollLayer?.hideKeyboard()
+                }
+                MotionEvent.ACTION_CANCEL -> keyboardTapPending = false
+            }
+            return true
+        }
         if (!sheetTapPending) return super.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_UP -> {

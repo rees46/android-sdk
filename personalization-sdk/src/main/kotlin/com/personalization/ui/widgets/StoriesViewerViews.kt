@@ -27,8 +27,15 @@ internal data class StoriesTexts(
     val closeLabel: CharSequence,
     val soundOnLabel: CharSequence,
     val soundOffLabel: CharSequence,
-    val shareLabel: CharSequence
+    val shareLabel: CharSequence,
+    /** Опросы: ссылка «ответить заново», ошибка отправки, кнопка без `submit_label`. */
+    val pollReanswerText: CharSequence = PollTexts.DEFAULT_REANSWER,
+    val pollErrorText: CharSequence = PollTexts.DEFAULT_ERROR,
+    val pollSubmitText: CharSequence = PollTexts.DEFAULT_SUBMIT
 ) {
+    /** Тексты карточки опроса от хоста; `labels` опроса их перекрывают. */
+    val pollTexts: PollTexts get() = PollTexts(pollReanswerText, pollErrorText, pollSubmitText)
+
     companion object {
         /** Тексты по умолчанию — из ресурсов SDK (английские, с переводом в `values-ru`). */
         fun defaults(context: Context) = StoriesTexts(
@@ -41,7 +48,10 @@ internal data class StoriesTexts(
             closeLabel = context.getString(R.string.personalization_stories_close),
             soundOnLabel = context.getString(R.string.personalization_stories_sound_on),
             soundOffLabel = context.getString(R.string.personalization_stories_sound_off),
-            shareLabel = context.getString(R.string.personalization_stories_share)
+            shareLabel = context.getString(R.string.personalization_stories_share),
+            pollReanswerText = context.getString(R.string.personalization_stories_poll_reanswer),
+            pollErrorText = context.getString(R.string.personalization_stories_poll_error),
+            pollSubmitText = context.getString(R.string.personalization_stories_poll_submit)
         )
     }
 }

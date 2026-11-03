@@ -64,11 +64,22 @@ internal object StoriesApiV3 {
      * до моделей: иначе `optString` отдал бы строку `"null"`.
      */
     fun parse(body: String): List<Story> {
-        val json = JSONObject(body)
+        val json = envelope(body)
         val status = json.optString("status")
         require(status == "success") { "status $status" }
         val payload = json.optJSONObject("payload") ?: throw IllegalArgumentException("no payload")
         return StoriesLoader.parse(withoutNulls(payload) as JSONObject)
+    }
+
+    /**
+     * Ответ API v3 `{"status", "message", "payload"}`. Не JSON или `status` `fail|error` —
+     * исключение с `message` сервера: так ошибку видят лента и опросы.
+     */
+    fun envelope(body: String): JSONObject {
+        val json = JSONObject(body)
+        val status = json.optString("status")
+        require(status != "fail" && status != "error") { json.optString("message").ifEmpty { "status $status" } }
+        return json
     }
 
     fun withoutNulls(value: Any?): Any? = when (value) {
@@ -97,8 +108,8 @@ internal object StoriesApiV3 {
     fun track(sdk: SDK, domain: String, code: String, event: String, storyId: Int, slideId: String) {
         runCatching { sdk.storiesManager.setTrackingSourceUseCase(StoriesManager.STORIES_SOURCE_TYPE, code) }
         whenDid(sdk) {
-            val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId).toString()
-            val response = call("POST", eventsUrl(domain, code), body)
+            val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId)
+            val response = post(eventsUrl(domain, code), body)
             if (response.code !in 200..299) SDK.error("stories v3: $event failed: ${response.code} ${response.body}")
         }
     }
@@ -131,7 +142,7 @@ internal object StoriesApiV3 {
      * закончиться между проверкой и постановкой в очередь — тогда задача стартует сама; дважды
      * она не выполнится.
      */
-    private fun whenDid(sdk: SDK, task: () -> Unit) {
+    fun whenDid(sdk: SDK, task: () -> Unit) {
         val once = AtomicBoolean(false)
         val run = Runnable {
             if (!once.compareAndSet(false, true)) return@Runnable
@@ -152,7 +163,10 @@ internal object StoriesApiV3 {
         runner(run)
     }
 
-    private fun shopId(sdk: SDK): String = sdk.getUserSettingsValueUseCase.getShopId()
+    fun shopId(sdk: SDK): String = sdk.getUserSettingsValueUseCase.getShopId()
+
+    /** POST с JSON-телом — события и опросы; зовётся не на главном потоке. */
+    fun post(url: String, body: JSONObject): Response = call("POST", url, body.toString())
 
     /** Запрос с логом, как у сети SDK: строка в logcat и в `networkLogger`. */
     private fun call(method: String, url: String, body: String?): Response {
@@ -190,7 +204,8 @@ internal object StoriesApiV3 {
         }
     }
 
-    private fun segment(value: String): String = query(value).replace("+", "%20")
+    /** Часть пути: пробел — `%20`, не `+`. */
+    fun segment(value: String): String = query(value).replace("+", "%20")
 
     private fun query(value: String): String = URLEncoder.encode(value, "UTF-8")
 

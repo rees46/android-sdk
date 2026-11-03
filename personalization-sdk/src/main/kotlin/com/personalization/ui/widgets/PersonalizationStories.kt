@@ -30,7 +30,8 @@ import com.personalization.ui.components.PersonalizationStoriesBar
  * Управление из кода — [open], [openStory], [pause], [resume]; без ленты — [show].
  *
  * С [apiV3Domain] (своим или глобальным из companion) блок, события и кнопка «Поделиться» —
- * на API v3; ссылку «Поделиться» открывает [handleLink].
+ * на API v3; ссылку «Поделиться» открывает [handleLink]. Там же рисуются опросы слайдов; ответы
+ * уходят на тот же хост, а [pollsTransport] их подменяет.
  */
 @InternalPersonalizationUiApi
 class PersonalizationStories @JvmOverloads constructor(
@@ -66,6 +67,12 @@ class PersonalizationStories @JvmOverloads constructor(
      */
     var shareUrlTransform: ((String) -> String)? = null
 
+    /**
+     * Куда уходят ответы на опросы слайдов. `null` — HTTP на хост API v3 блока (без него опросов
+     * нет). Свой — для тестов и офлайн-демо; на старом API опросов нет и с ним.
+     */
+    var pollsTransport: StoriesPollsTransport? = null
+
     /** Клики по ссылкам и товарам — контракт старых сторис ([com.personalization.OnClickListener]). */
     var onClickListener: com.personalization.OnClickListener? = null
 
@@ -82,6 +89,9 @@ class PersonalizationStories @JvmOverloads constructor(
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
     var shareLabel: CharSequence
+    var pollReanswerText: CharSequence
+    var pollErrorText: CharSequence
+    var pollSubmitText: CharSequence
 
     /** Загруженные сторис — в порядке сервера, без пустых. */
     var stories: List<Story> = emptyList()
@@ -112,6 +122,9 @@ class PersonalizationStories @JvmOverloads constructor(
         soundOnLabel = defaults.soundOnLabel
         soundOffLabel = defaults.soundOffLabel
         shareLabel = defaults.shareLabel
+        pollReanswerText = defaults.pollReanswerText
+        pollErrorText = defaults.pollErrorText
+        pollSubmitText = defaults.pollSubmitText
         attrs?.let {
             val array = context.obtainStyledAttributes(it, R.styleable.PersonalizationStories)
             code = array.getString(R.styleable.PersonalizationStories_code)
@@ -259,7 +272,8 @@ class PersonalizationStories @JvmOverloads constructor(
 
     private fun texts() = StoriesTexts(
         promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-        retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+        retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel,
+        pollReanswerText, pollErrorText, pollSubmitText
     )
 
     private fun newViewer(context: Context, stories: List<Story>, index: Int) =
@@ -271,6 +285,7 @@ class PersonalizationStories @JvmOverloads constructor(
             viewer.shareUrlTransform = shareUrlTransform
             viewer.onClickListener = this@PersonalizationStories.onClickListener
             viewer.apiV3Domain = storiesDomain
+            viewer.pollsTransport = pollsTransport.takeIf { storiesDomain != null }
             viewer.applyTexts(texts())
         }
 
@@ -301,7 +316,8 @@ class PersonalizationStories @JvmOverloads constructor(
          * Пустой блок, ошибка загрузки, магазин не найден или 15 с без ответа — [onError],
          * и показ на этом заканчивается. Просмотр закрыли — [onClose] (F12; на RN и Flutter
          * так завершаются Promise и Future). [apiV3Domain] — как у виджета, `null` — глобальный;
-         * [shareUrlTransform] — как у виджета. Возвращает отмену ещё не открытого показа.
+         * [shareUrlTransform], тексты опросов и [pollsTransport] — как у виджета. Возвращает отмену
+         * ещё не открытого показа.
          */
         @JvmStatic
         @JvmOverloads
@@ -326,15 +342,21 @@ class PersonalizationStories @JvmOverloads constructor(
             soundOffLabel: CharSequence? = null,
             shareLabel: CharSequence? = null,
             apiV3Domain: String? = null,
-            shareUrlTransform: ((String) -> String)? = null
+            shareUrlTransform: ((String) -> String)? = null,
+            pollReanswerText: CharSequence? = null,
+            pollErrorText: CharSequence? = null,
+            pollSubmitText: CharSequence? = null,
+            pollsTransport: StoriesPollsTransport? = null
         ): Cancellable {
             val texts = hostTexts(
                 context, promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel,
+                pollReanswerText, pollErrorText, pollSubmitText
             )
             val widget = detached(context, code, shopId, onClickListener, onError, imageLoader, texts)
             widget.apiV3Domain = apiV3Domain
             widget.shareUrlTransform = shareUrlTransform
+            widget.pollsTransport = pollsTransport
             return widget.showDetached(sdk, startStoryId, onClose)
         }
 
@@ -372,7 +394,11 @@ class PersonalizationStories @JvmOverloads constructor(
             soundOffLabel: CharSequence? = null,
             shareLabel: CharSequence? = null,
             apiV3Domain: String? = null,
-            shareUrlTransform: ((String) -> String)? = null
+            shareUrlTransform: ((String) -> String)? = null,
+            pollReanswerText: CharSequence? = null,
+            pollErrorText: CharSequence? = null,
+            pollSubmitText: CharSequence? = null,
+            pollsTransport: StoriesPollsTransport? = null
         ): Boolean {
             val domain = v3Domain(apiV3Domain) ?: return false
             val link = StoriesShare.parseLink(url) ?: return false
@@ -381,7 +407,8 @@ class PersonalizationStories @JvmOverloads constructor(
             SharedLinks.current = link
             val texts = hostTexts(
                 context, promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+                retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel,
+                pollReanswerText, pollErrorText, pollSubmitText
             )
             val failed: (Int, String?) -> Unit = { code, message ->
                 SharedLinks.finish(link)
@@ -391,6 +418,7 @@ class PersonalizationStories @JvmOverloads constructor(
             widget.sharedLink = SharedLink(link, domain)
             widget.apiV3Domain = domain
             widget.shareUrlTransform = shareUrlTransform
+            widget.pollsTransport = pollsTransport
             // Отмена уже открытого показа ничего не делает — её можно держать и после показа.
             val pending = widget.showDetached(sdk, null) {
                 SharedLinks.finish(link)
@@ -412,7 +440,10 @@ class PersonalizationStories @JvmOverloads constructor(
             closeLabel: CharSequence?,
             soundOnLabel: CharSequence?,
             soundOffLabel: CharSequence?,
-            shareLabel: CharSequence?
+            shareLabel: CharSequence?,
+            pollReanswerText: CharSequence?,
+            pollErrorText: CharSequence?,
+            pollSubmitText: CharSequence?
         ): StoriesTexts {
             val defaults = StoriesTexts.defaults(context)
             return StoriesTexts(
@@ -420,7 +451,9 @@ class PersonalizationStories @JvmOverloads constructor(
                 productButtonText ?: defaults.productButtonText, showProductsText ?: defaults.showProductsText,
                 hideProductsText ?: defaults.hideProductsText, retryText ?: defaults.retryText,
                 closeLabel ?: defaults.closeLabel, soundOnLabel ?: defaults.soundOnLabel,
-                soundOffLabel ?: defaults.soundOffLabel, shareLabel ?: defaults.shareLabel
+                soundOffLabel ?: defaults.soundOffLabel, shareLabel ?: defaults.shareLabel,
+                pollReanswerText ?: defaults.pollReanswerText, pollErrorText ?: defaults.pollErrorText,
+                pollSubmitText ?: defaults.pollSubmitText
             )
         }
 
@@ -453,6 +486,9 @@ class PersonalizationStories @JvmOverloads constructor(
         soundOnLabel = texts.soundOnLabel
         soundOffLabel = texts.soundOffLabel
         shareLabel = texts.shareLabel
+        pollReanswerText = texts.pollReanswerText
+        pollErrorText = texts.pollErrorText
+        pollSubmitText = texts.pollSubmitText
     }
 
     /**

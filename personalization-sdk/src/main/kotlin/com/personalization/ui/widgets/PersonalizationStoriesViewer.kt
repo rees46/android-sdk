@@ -57,6 +57,9 @@ import java.lang.ref.WeakReference
  * Слайд со ссылкой — с кнопкой «Поделиться», только на API v3 ([apiV3Domain]): системное окно с
  * одной ссылкой, слайд стоит, пока окно открыто.
  *
+ * Опросы слайда (элементы `poll`) — только на API v3 или со своим [pollsTransport]: карточка
+ * поверх середины слайда; пока её трогают, пишут в поле или ждут ответа, слайд стоит.
+ *
  * Модели — те же, что у старого `StoriesView`: V2 его не трогает.
  */
 @InternalPersonalizationUiApi
@@ -97,6 +100,12 @@ class PersonalizationStoriesViewer(
     /** Слайд стартовой сторис в обход «первого непросмотренного» — для ссылки «Поделиться». */
     internal var startSlide: Int? = null
 
+    /**
+     * Куда уходят ответы на опросы. `null` — HTTP на хост API v3 сторис; без него опросы не
+     * рисуются. Свой — для тестов и офлайн-демо: с ним опросы рисуются и без API v3.
+     */
+    var pollsTransport: StoriesPollsTransport? = null
+
     var promoCaption: CharSequence
     var promoCopiedText: CharSequence
     var productButtonText: CharSequence
@@ -107,6 +116,9 @@ class PersonalizationStoriesViewer(
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
     var shareLabel: CharSequence
+    var pollReanswerText: CharSequence
+    var pollErrorText: CharSequence
+    var pollSubmitText: CharSequence
 
     init {
         val defaults = StoriesTexts.defaults(context)
@@ -120,6 +132,9 @@ class PersonalizationStoriesViewer(
         soundOnLabel = defaults.soundOnLabel
         soundOffLabel = defaults.soundOffLabel
         shareLabel = defaults.shareLabel
+        pollReanswerText = defaults.pollReanswerText
+        pollErrorText = defaults.pollErrorText
+        pollSubmitText = defaults.pollSubmitText
     }
 
     private lateinit var state: StoriesViewerState
@@ -137,6 +152,8 @@ class PersonalizationStoriesViewer(
     private var audioFocus: StoriesAudioFocus? = null
     private val sound = StoriesSound()
     private var insets: Insets = Insets.NONE
+    private var imeBottom = 0
+    private var pollsContext: StoryPollsContext? = null
     private var hostLifecycle: Lifecycle? = null
     private var created = false
     private var dismissed = false
@@ -191,14 +208,19 @@ class PersonalizationStoriesViewer(
         soundOnLabel = texts.soundOnLabel
         soundOffLabel = texts.soundOffLabel
         shareLabel = texts.shareLabel
+        pollReanswerText = texts.pollReanswerText
+        pollErrorText = texts.pollErrorText
+        pollSubmitText = texts.pollSubmitText
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         texts = StoriesTexts(
             promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
-            retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel
+            retryText, closeLabel, soundOnLabel, soundOffLabel, shareLabel,
+            pollReanswerText, pollErrorText, pollSubmitText
         )
+        pollsContext = pollsContext()
         val seen = StoriesSeenStore.forSdk(hostContext, sdk, shopId)
         state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide)
         state.setPaused(Pause.HOST, hostPaused)
@@ -222,7 +244,12 @@ class PersonalizationStoriesViewer(
         root.addView(pager, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, windowInsets ->
             insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            pages.values.forEach { it.slideView?.applyInsets(insets) }
+            // Клавиатура опроса слайд не сжимает: её высота уходит только карточке.
+            imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            pages.values.forEach {
+                it.slideView?.applyInsets(insets)
+                it.slideView?.applyIme(imeBottom)
+            }
             WindowInsetsCompat.CONSUMED
         }
         setContentView(root)
@@ -245,6 +272,9 @@ class PersonalizationStoriesViewer(
         window.setBackgroundDrawable(ColorDrawable(Color.BLACK))
         window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Клавиатура не сдвигает окно: высоту отдают IME-инсеты, карточка опроса поднимается сама.
+        @Suppress("DEPRECATION")
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             window.statusBarColor = Color.TRANSPARENT
             window.navigationBarColor = Color.TRANSPARENT
@@ -290,6 +320,8 @@ class PersonalizationStoriesViewer(
         hostStopped = stopped
         if (!created) return
         val background = hostStopped || !windowFocused
+        // Свернули приложение — клавиатуры опроса после возврата нет.
+        if (hostStopped) currentSlideView()?.hidePollKeyboard()
         state.setPaused(Pause.BACKGROUND, background)
         // Ожидание готовности и автоповтор видео в фоне стоят и потом идут с остатка (F5).
         readyTimer.freeze(background)
@@ -331,6 +363,7 @@ class PersonalizationStoriesViewer(
 
     override fun dismiss() {
         if (created && !dismissed) {
+            currentSlideView()?.hidePollKeyboard()
             dismissed = true
             OpenStoriesViewers.remove(this)
             frameClock.stop()
@@ -533,6 +566,25 @@ class PersonalizationStoriesViewer(
         override fun onClose() = dismiss()
 
         override fun onShare(url: String) = share(url)
+
+        override val polls: StoryPollsContext? get() = pollsContext
+
+        override fun onPollHold(view: StorySlideView, hold: Boolean) {
+            if (!created || dismissed || view !== currentSlideView()) return
+            state.setPaused(Pause.POLL, hold)
+            sync()
+        }
+    }
+
+    /**
+     * Опросы: свой транспорт, иначе HTTP на хост API v3 сторис с SDK. Ключ хранилища ответов —
+     * магазин SDK, без него — [shopId]. Пустой текст хоста — умолчание SDK.
+     */
+    private fun pollsContext(): StoryPollsContext? {
+        val sdk = sdk
+        val transport = pollsTransport ?: apiV3Domain?.let { domain -> sdk?.let { StoriesPollsApi(it, domain) } } ?: return null
+        val shop = sdk?.let { runCatching { StoriesApiV3.shopId(it) }.getOrNull() } ?: shopId
+        return StoryPollsContext(transport, shop.orEmpty(), texts.pollTexts.or(StoriesTexts.defaults(hostContext).pollTexts))
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS
@@ -941,9 +993,11 @@ class PersonalizationStoriesViewer(
             val slide = story.getSlide(index)
             // «Поделиться» — только на API v3, как в веб-SDK: событие `share` есть только там.
             val shareUrl = if (apiV3Domain != null) StoriesShare.slideShareUrl(story, slide) else null
-            val view = StorySlideView(context, storyIndex, index, slide, story.slidesCount, slideHost, shareUrl)
+            val view = StorySlideView(context, storyIndex, index, slide, story.slidesCount, slideHost, shareUrl, story.id)
             slideView = view
             addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            // Текущий слайд построен заново — у новой карточки опроса паузы нет.
+            if (created && storyIndex == state.storyIndex && state.setPaused(Pause.POLL, false)) sync()
         }
     }
 
