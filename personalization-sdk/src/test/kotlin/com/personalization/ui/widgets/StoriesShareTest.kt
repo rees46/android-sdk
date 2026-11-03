@@ -61,8 +61,30 @@ class StoriesShareTest {
     fun `prefers the slide link and falls back to the campaign link`() {
         val story = story("""{"id":5,"shareable":true,"share_url":"https://shop.test/?r46_story=5","slides":[]}""")
         assertEquals("https://shop.test/?r46_slide=1", StoriesShare.slideShareUrl(story, slide("""{"id":1,"share_url":"https://shop.test/?r46_slide=1"}""")))
-        assertEquals("https://shop.test/?r46_story=5", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0"}""")))
-        assertEquals("https://shop.test/?r46_story=5", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0","share_url":null}""")))
+        assertEquals("https://shop.test/?r46_story=5&r46_slide=5_0", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0"}""")))
+        assertEquals("https://shop.test/?r46_story=5&r46_slide=5_0", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0","share_url":null}""")))
+    }
+
+    @Test
+    fun `the campaign link carries the slide id in r46_slide, the rest of the address stays as is`() {
+        fun link(campaign: String, slideId: String = "37") = StoriesShare.campaignSlideUrl(campaign, slideId)
+        assertEquals("https://shop.test/promo?r46_slide=37", link("https://shop.test/promo"))
+        assertEquals("https://shop.test/?r46_story=5&r46_slide=39_2", link("https://shop.test/?r46_story=5", "39_2"))
+        assertEquals("https://shop.test/?r46_slide=37", link("https://shop.test/?"))
+        assertEquals(
+            "https://shop.test/p/?utm_source=a%20b&q=x+y&r46_slide=37#top",
+            link("https://shop.test/p/?utm_source=a%20b&q=x+y#top")
+        )
+        assertEquals("https://shop.test/p?r46_slide=37#/catalog?page=2", link("https://shop.test/p#/catalog?page=2"))
+        // Already there, even empty — as is.
+        assertEquals("https://shop.test/?r46_slide=36&x=1", link("https://shop.test/?r46_slide=36&x=1"))
+        assertEquals("https://shop.test/?r46_slide=", link("https://shop.test/?r46_slide="))
+        // Not a slide id of a link — as is.
+        listOf("", "abc", "1_23456", "12345678901", "-1", "1_", "1_2_3").forEach { id ->
+            assertEquals(id, "https://shop.test/?r46_story=5", link("https://shop.test/?r46_story=5", id))
+        }
+        // The link opens that very slide.
+        assertEquals("39_2", StoriesShare.parseLink(link("https://shop.test/?r46_stories=main&r46_story=39", "39_2"))?.slideId)
     }
 
     @Test
@@ -72,7 +94,7 @@ class StoriesShareTest {
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5}"""), slide("""{"id":1}""")))
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"javascript:alert(1)"}"""), slide("""{"id":1}""")))
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5,"share_url":null}"""), slide("""{"id":1}""")))
-        assertEquals("HTTP://shop.test/", StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"HTTP://shop.test/"}"""), slide("""{"id":1}""")))
+        assertEquals("HTTP://shop.test/?r46_slide=1", StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"HTTP://shop.test/"}"""), slide("""{"id":1}""")))
     }
 
     // --- API v3 ---------------------------------------------------------------------------------
@@ -95,7 +117,7 @@ class StoriesShareTest {
         assertEquals("", product.preview)
         assertEquals("", product.shareUrl)
         assertEquals(1, product.getElements().size)
-        assertEquals("https://shop.test/?r46_story=39", StoriesShare.slideShareUrl(stories[0], product))
+        assertEquals("https://shop.test/?r46_story=39&r46_slide=39_0", StoriesShare.slideShareUrl(stories[0], product))
         assertTrue(stories[0].isShareable)
         assertEquals("36", stories[1].getSlide(0).id)
         assertEquals("https://shop.test/?r46_slide=37", stories[1].getSlide(1).shareUrl)

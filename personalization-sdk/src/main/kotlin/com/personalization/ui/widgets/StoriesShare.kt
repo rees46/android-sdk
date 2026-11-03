@@ -33,16 +33,40 @@ internal object StoriesShare {
     }
 
     /**
-     * Ссылка показанного слайда: своя у слайда, иначе кампании (у товарных слайдов своей нет).
-     * Кампания с `shareable: false` и ссылки не http(s) — без кнопки.
+     * Ссылка показанного слайда: своя у слайда, иначе кампании с id слайда в `r46_slide`. У
+     * слайдов товарных кампаний (`39_2`) своих ссылок нет, и без id слайда ссылка открыла бы
+     * кампанию с начала, а не с того слайда, которым поделились. Кампания с `shareable: false`
+     * и ссылки не http(s) — без кнопки.
      */
     fun slideShareUrl(story: Story, slide: Slide): String? =
-        slideShareUrl(story.isShareable, story.shareUrl, slide.shareUrl)
+        slideShareUrl(story.isShareable, story.shareUrl, slide.shareUrl, slide.id)
 
-    fun slideShareUrl(shareable: Boolean, storyUrl: String, slideUrl: String): String? {
+    fun slideShareUrl(shareable: Boolean, storyUrl: String, slideUrl: String, slideId: String): String? {
         if (!shareable) return null
-        val url = slideUrl.ifEmpty { storyUrl }
+        val url = when {
+            slideUrl.isNotEmpty() -> slideUrl
+            storyUrl.isNotEmpty() -> campaignSlideUrl(storyUrl, slideId)
+            else -> return null
+        }
         return url.takeIf { LINK_SCHEME.containsMatchIn(it) }
+    }
+
+    /**
+     * Ссылка кампании с `r46_slide=<slideId>` в конце запроса, перед `#`. Уже есть `r46_slide`
+     * или id не годится для ссылки — как есть. Остальной адрес не перекодируется.
+     */
+    fun campaignSlideUrl(campaign: String, slideId: String): String {
+        if (!SLIDE_ID.matches(slideId)) return campaign
+        val hash = campaign.indexOf('#').takeIf { it >= 0 } ?: campaign.length
+        val address = campaign.substring(0, hash)
+        val question = address.indexOf('?')
+        if (question >= 0 && PARAM_SLIDE in params(address.substring(question + 1))) return campaign
+        val separator = when {
+            question < 0 -> "?"
+            address.endsWith("?") || address.endsWith("&") -> ""
+            else -> "&"
+        }
+        return "$address$separator$PARAM_SLIDE=$slideId${campaign.substring(hash)}"
     }
 
     /** Параметры запроса ссылки, как `URLSearchParams`: `+` — пробел, битый escape — без раскодирования. */
@@ -50,8 +74,13 @@ internal object StoriesShare {
         val start = url.indexOf('?')
         if (start < 0) return emptyMap()
         val end = url.indexOf('#', start).takeIf { it >= 0 } ?: url.length
+        return params(url.substring(start + 1, end))
+    }
+
+    /** Пары `ключ=значение` запроса без `?`; повтор ключа — первый. */
+    private fun params(query: String): Map<String, String> {
         val result = LinkedHashMap<String, String>()
-        url.substring(start + 1, end).split('&').forEach { pair ->
+        query.split('&').forEach { pair ->
             if (pair.isEmpty()) return@forEach
             val separator = pair.indexOf('=')
             val key = decode(if (separator < 0) pair else pair.substring(0, separator))

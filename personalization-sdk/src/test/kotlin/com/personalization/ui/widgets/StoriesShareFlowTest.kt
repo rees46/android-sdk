@@ -84,6 +84,28 @@ class StoriesShareFlowTest {
     }
 
     @Test
+    fun `the slide of the link wins over start_position, product slides too, an unknown one falls back`() {
+        fun opened(url: String): Pair<Int, List<String>> {
+            requests.clear()
+            assertTrue(handle(url))
+            val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
+            val result = navigation(viewer).progress.current to events().filter { it.startsWith("shared_open:") }
+            viewer.dismiss()
+            idle()
+            return result
+        }
+
+        assertEquals(0 to listOf("shared_open:36"), opened("https://demo.test/?r46_stories=main&r46_story=40&r46_slide=36"))
+        assertEquals(1 to listOf("shared_open:37"), opened("https://demo.test/?r46_stories=main&r46_story=40&r46_slide=99"))
+        assertEquals(1 to listOf("shared_open:37"), opened("https://demo.test/?r46_stories=main&r46_story=40"))
+
+        // Slides of a product campaign are unknown to the server: start_position stays 0. A ready
+        // product slide runs its clock here, so the viewer is read right after it opens.
+        answer = { StoriesApiV3.Response(200, PRODUCT_CAMPAIGN) }
+        assertEquals(1 to listOf("shared_open:39_1"), opened("https://demo.test/?r46_stories=main&r46_story=39&r46_slide=39_1"))
+    }
+
+    @Test
     fun `the same link while its viewer is open is ignored, another link replaces the viewer`() {
         handle(LINK)
         val first = ShadowDialog.getLatestDialog()
@@ -254,6 +276,13 @@ class StoriesShareFlowTest {
             "share_url":"https://shop.test/?r46_story=40","shareable":true,"start_position":1,"slides":[
             {"id":36,"type":"image","background":"https://cdn.test/a.jpg","share_url":"https://shop.test/?r46_slide=36","elements":[]},
             {"id":37,"type":"image","background":"https://cdn.test/b.jpg","share_url":"https://shop.test/?r46_slide=37","elements":[]}]}]}}"""
+
+        const val PRODUCT_CAMPAIGN = """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"Products",
+            "share_url":"https://shop.test/?r46_story=39","shareable":true,"start_position":0,"slides":[
+            {"id":"39_0","type":"","background":null,"preview":null,
+             "elements":[{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽"}}]},
+            {"id":"39_1","type":"","background":null,"preview":null,
+             "elements":[{"type":"product","item":{"id":"p2","name":"Boots","price_formatted":"200 ₽"}}]}]}]}}"""
 
         const val PRODUCTS = """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"Products",
             "share_url":"https://shop.test/?r46_story=39","slides":[{"id":"39_0","type":"","background":null,"preview":null,

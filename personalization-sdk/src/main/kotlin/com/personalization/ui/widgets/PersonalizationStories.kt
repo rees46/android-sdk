@@ -368,8 +368,9 @@ class PersonalizationStories @JvmOverloads constructor(
          * `false` — это не ссылка сторис или нет хоста v3 ([apiV3Domain], без него глобальный
          * [Companion.apiV3Domain]): ничего не происходит.
          * `true` — дальше асинхронно, как [show]: дождаться SDK, загрузить кампанию, открыть
-         * просмотр с её слайда из ссылки (`start_position` ответа), закрыв другой открытый
-         * просмотр V2, и отправить `shared_open`. Ошибка, 404, пусто, таймаут — [onError], ничего
+         * просмотр со слайда ссылки (`r46_slide`, если он есть в первой сторис ответа, иначе
+         * `start_position` ответа), закрыв другой открытый просмотр V2, и отправить `shared_open`
+         * с этим слайдом. Ошибка, 404, пусто, таймаут — [onError], ничего
          * не показано. Та же ссылка, пока грузится или её просмотр открыт, — игнорируется.
          */
         @JvmStatic
@@ -494,8 +495,8 @@ class PersonalizationStories @JvmOverloads constructor(
     /**
      * Показ без ленты: виджет не на экране, поэтому SDK и таймаут ведутся вручную,
      * а просмотр открывается, как только блок пришёл. Кампания по ссылке ([sharedLink])
-     * открывается с первой сторис и слайда `start_position` в обход A4, закрыв другие
-     * просмотры V2, и шлёт `shared_open` один раз.
+     * открывается с первой сторис и слайда ссылки в обход A4, закрыв другие просмотры V2, и
+     * шлёт `shared_open` один раз.
      */
     private fun showDetached(explicitSdk: SDK?, startStoryId: Int?, onClose: (() -> Unit)?): Cancellable {
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -515,7 +516,10 @@ class PersonalizationStories @JvmOverloads constructor(
                 return@open
             }
             val story = stories[0]
-            val slide = story.startPosition.takeIf { it in 0 until story.slidesCount } ?: 0
+            // Слайд ссылки, если он есть в ответе: `start_position` сервер ставит только по своим
+            // слайдам, виртуальные слайды товарных кампаний (`39_2`) он не знает.
+            val linked = shared.link.slideId?.let { id -> (0 until story.slidesCount).firstOrNull { story.getSlide(it).id == id } }
+            val slide = linked ?: story.startPosition.takeIf { it in 0 until story.slidesCount } ?: 0
             viewer.startSlide = slide
             OpenStoriesViewers.dismissAll()
             viewer.show()
