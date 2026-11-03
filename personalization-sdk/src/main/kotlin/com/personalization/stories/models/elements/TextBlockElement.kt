@@ -1,5 +1,6 @@
 package com.personalization.stories.models.elements
 
+import com.personalization.ui.widgets.StorySlidePlacement
 import java.util.Objects
 import org.json.JSONObject
 
@@ -8,6 +9,12 @@ class TextBlockElement(json: JSONObject) : Element {
     val isItalic: Boolean = json.optBoolean("italic", false)
     val textInput: String = json.optString("text_input", "")
     val yOffset: Int = json.optInt("y_offset", 0)
+
+    /**
+     * Stories V2: `y_offset` read as the poll reads it — a number or a number string, 0…100;
+     * `null` and not a number — `null`. Not part of equals: V1 uses [yOffset].
+     */
+    internal val offset: Float? = StorySlidePlacement.offset(json.opt("y_offset"))
     val fontType: String = json.optString("font_type", "")
     val fontSize: Int = json.optInt("font_size", DEFAULT_FONT_SIZE)
     val textAlign: String = json.optString("text_align", "")

@@ -339,9 +339,9 @@ internal class PollFlowRow(context: Context, private val gap: Int) : ViewGroup(c
 
 /**
  * Слой опросов слайда — над серединой между шапкой и кнопками (или «товарами»). Карточка не шире
- * 420 по центру; верх — на `y_offset` процентов всей высоты слайда, как `top` в вебе (не середины,
- * как у текстовых блоков), затем сдвиг, чтобы карточка целиком влезла в слой; не влезает и так —
- * прокручивается внутри себя. Пока в поле фокус и открыта клавиатура,
+ * 420 по центру; верх — по [StorySlidePlacement], как у текстовых блоков: `y_offset` процентов всей
+ * высоты слайда, как `top` в вебе, затем сдвиг, чтобы карточка целиком влезла в слой; не влезает и
+ * так — прокручивается внутри себя. Пока в поле фокус и открыта клавиатура,
  * карточка поднимается над ней (+16), но не выше слоя: места мало — она ниже и прокручивается
  * внутри, поле в фокусе остаётся видно. Слайд под ней не сжимается.
  */
@@ -395,26 +395,13 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         val width = right - left
         val height = bottom - top
-        val (layerTop, slideHeight) = slideFrame()
+        val (layerTop, slideHeight) = StorySlidePlacement.frame(this)
         cards.forEach { card ->
-            val wanted = slideHeight * (card.controller.poll.yOffset ?: 0f) / 100f - layerTop
-            val y = wanted.coerceAtMost((height - card.measuredHeight).toFloat()).coerceAtLeast(0f).roundToInt()
+            val y = StorySlidePlacement.top(card.controller.poll.yOffset, slideHeight, layerTop, height, card.measuredHeight)
             val x = (width - card.measuredWidth) / 2
             card.layout(x, y, x + card.measuredWidth, y + card.measuredHeight)
         }
         updateLift()
-    }
-
-    /** Верх слоя в слайде и высота слайда; слой не на слайде — он сам. */
-    private fun slideFrame(): Pair<Int, Int> {
-        var offset = 0
-        var view: View = this
-        while (true) {
-            val parent = view.parent as? View ?: return 0 to height
-            offset += view.top
-            if (parent is StorySlideView) return offset to parent.height
-            view = parent
-        }
     }
 
     /** Подъём карточки с полем в фокусе: низ — над клавиатурой, верх — не выше окна. */

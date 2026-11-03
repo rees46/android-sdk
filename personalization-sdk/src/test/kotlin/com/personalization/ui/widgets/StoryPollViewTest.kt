@@ -16,6 +16,7 @@ import com.personalization.Fixtures
 import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.ui.components.PersonalizationStoryTextBlock
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -253,6 +254,23 @@ class StoryPollViewTest {
     }
 
     private fun windowTop(view: View): Int = IntArray(2).also(view::getLocationInWindow)[1]
+
+    @Test
+    fun `a text block and a poll with one y_offset stand at one height`() {
+        fun slide(offset: String) = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"text_block","text_input":"Text","y_offset":$offset},
+            {"type":"poll","poll_type":"mini_poll","y_offset":$offset,
+             "poll":{"code":"s","kind":"single_choice","options":[{"id":1,"label":"A"}]}}]}""")))
+        listOf("null", "5", "50").forEach { offset ->
+            val view = slide(offset)
+            val block = all(view).filterIsInstance<PersonalizationStoryTextBlock>().single()
+            assertEquals("y_offset $offset", windowTop(view.pollCards.single()), windowTop(block))
+        }
+        // 95: both stand on the bottom of the area.
+        val view = slide("95")
+        val block = all(view).filterIsInstance<PersonalizationStoryTextBlock>().single()
+        assertEquals(view.pollCards.single().bottomOnScreen(), block.bottomOnScreen())
+    }
 
     @Test
     fun `a product slide draws the poll too`() {

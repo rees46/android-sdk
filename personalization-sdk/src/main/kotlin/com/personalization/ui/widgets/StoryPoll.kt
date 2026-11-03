@@ -106,7 +106,7 @@ internal class StoryPoll(
                 type = type,
                 pollType = pollType,
                 code = code,
-                yOffset = number(json.value("y_offset"))?.toFloat()?.coerceIn(0f, 100f),
+                yOffset = StorySlidePlacement.offset(json.value("y_offset")),
                 allowReanswer = bool(json.value("allow_reanswer")),
                 question = poll.text("question"),
                 placeholder = poll.text("placeholder"),
