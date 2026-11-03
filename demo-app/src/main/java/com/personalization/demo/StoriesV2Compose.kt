@@ -1,8 +1,10 @@
 package com.personalization.demo
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +76,8 @@ internal fun openStoriesLink(
 /**
  * A stories link opened the app — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest): any
  * host and path, only `r46_stories` matters. The campaign opens over whatever [activity] shows.
+ * A link to the demo site that is not a stories link (a popup's "Learn more", say) goes on to the
+ * browser.
  */
 internal fun openStoriesLinkIntent(
     activity: Activity,
@@ -83,7 +87,10 @@ internal fun openStoriesLinkIntent(
 ) {
     if (intent?.action != Intent.ACTION_VIEW) return
     val url = intent.dataString ?: return
-    if (!url.contains("r46_stories=")) return
+    if (!url.contains("r46_stories=")) {
+        if (intent.data?.scheme?.lowercase() in setOf("http", "https")) openInBrowser(activity, url)
+        return
+    }
     val opened = openStoriesLink(
         context = activity,
         url = url,
@@ -95,6 +102,21 @@ internal fun openStoriesLinkIntent(
         onClickListener = onClickListener
     )
     if (!opened) Toast.makeText(activity, "Not a stories link: $url", Toast.LENGTH_LONG).show()
+}
+
+/**
+ * Opens [url] in the default browser. A plain ACTION_VIEW would come back here: the demo takes the
+ * links of its own site.
+ */
+private fun openInBrowser(activity: Activity, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        selector = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER)
+    }
+    try {
+        activity.startActivity(intent)
+    } catch (exception: ActivityNotFoundException) {
+        Toast.makeText(activity, "No browser to open $url", Toast.LENGTH_LONG).show()
+    }
 }
 
 /**

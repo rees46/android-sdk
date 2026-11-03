@@ -50,6 +50,8 @@ class DemoApplication : MultiDexApplication() {
                 context = applicationContext,
                 config = Rees46Config(shopId = BuildConfig.SHOP_ID),
             )
+            // Popups v3 of the demo shop: shown on their triggers over whatever screen is open.
+            sdk.enablePopupsV3()
             // Second shop for the Multi-instance tab: registered but not initialized here. It comes
             // to life lazily the first time that tab resolves it (getInstance / a StoriesWidget with
             // its shopId) — demonstrating per-shop lazy materialization alongside the eager default.

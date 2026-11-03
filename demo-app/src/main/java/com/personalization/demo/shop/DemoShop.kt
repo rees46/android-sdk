@@ -36,7 +36,13 @@ internal class DemoShop(
     val storiesCode: String,
     container: FrameLayout
 ) {
-    private val navigator = ShopNavigator(container, ::screen)
+    private val navigator = ShopNavigator(container, ::screen) { route -> onScreen?.invoke(route.screen) }
+
+    /** Code of the shop screen on top, for popups v3. */
+    val currentScreen: String get() = navigator.top.screen
+
+    /** The shop screen on top changed — its code goes to `sdk.popups.screenOpened`. */
+    var onScreen: ((String) -> Unit)? = null
 
     /** Shows the saved stack, or Home. */
     fun start(state: Bundle?) = navigator.restore(state)

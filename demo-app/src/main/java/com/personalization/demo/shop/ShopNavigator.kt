@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.personalization.demo.DemoScreens
 
 /** A screen of the shop: where it is in the stack, and what it shows. */
 internal sealed class ShopRoute {
@@ -11,6 +12,15 @@ internal sealed class ShopRoute {
     data class Category(val id: String, val name: String) : ShopRoute()
     data class Product(val id: String) : ShopRoute()
     data class Search(val query: String) : ShopRoute()
+
+    /** Code of the screen for popups v3 (`sdk.popups.screenOpened`). */
+    val screen: String
+        get() = when (this) {
+            Home -> DemoScreens.HOME
+            is Category -> DemoScreens.CATEGORY
+            is Product -> DemoScreens.PRODUCT
+            is Search -> DemoScreens.SEARCH
+        }
 
     /** Three strings per route, so the stack fits a plain string list in the saved state. */
     fun fields(): List<String> = when (this) {
@@ -51,13 +61,20 @@ internal interface ShopScreen {
  */
 internal class ShopNavigator(
     private val container: FrameLayout,
-    private val build: (route: ShopRoute, restored: Boolean) -> ShopScreen
+    private val build: (route: ShopRoute, restored: Boolean) -> ShopScreen,
+    /** The screen on top changed: a new one opened, or back uncovered the one under it. */
+    private val onTop: (ShopRoute) -> Unit = {}
 ) {
     private class Entry(val route: ShopRoute, val screen: ShopScreen)
 
     private val stack = mutableListOf<Entry>()
 
     fun push(route: ShopRoute, restored: Boolean = false) {
+        add(route, restored)
+        onTop(route)
+    }
+
+    private fun add(route: ShopRoute, restored: Boolean) {
         stack.lastOrNull()?.screen?.view?.visibility = View.GONE
         val screen = build(route, restored)
         stack += Entry(route, screen)
@@ -67,12 +84,16 @@ internal class ShopNavigator(
         )
     }
 
+    /** The route on top. */
+    val top: ShopRoute get() = stack.lastOrNull()?.route ?: ShopRoute.Home
+
     /** Back from a screen's own button: the screen under it comes back. */
     fun pop(): Boolean {
         if (stack.size < 2) return false
         val top = stack.removeAt(stack.lastIndex)
         container.removeView(top.screen.view)
         stack.last().screen.view.visibility = View.VISIBLE
+        onTop(stack.last().route)
         return true
     }
 
@@ -90,7 +111,8 @@ internal class ShopNavigator(
             .mapNotNull(ShopRoute::of)
             .takeIf { it.firstOrNull() == ShopRoute.Home }
             ?: listOf(ShopRoute.Home)
-        routes.forEach { push(it, restored = state != null) }
+        routes.forEach { add(it, restored = state != null) }
+        onTop(top)
     }
 
     private companion object {

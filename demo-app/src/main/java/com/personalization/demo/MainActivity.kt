@@ -45,6 +45,7 @@ import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
 import com.personalization.demo.shop.DemoShop
+import com.personalization.demo.shop.ShopRoute
 import com.personalization.sdk.data.models.dto.popUp.Components
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
@@ -1131,6 +1132,7 @@ class MainActivity : AppCompatActivity() {
                 if (item.itemId == R.id.tabMultiInstance) View.VISIBLE else View.GONE
             shopContent.visibility = if (item.itemId == R.id.tabShop) View.VISIBLE else View.GONE
             shopBack.isEnabled = item.itemId == R.id.tabShop
+            sdk.popups.screenOpened(screenOf(item.itemId))
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible
@@ -1158,8 +1160,31 @@ class MainActivity : AppCompatActivity() {
             storiesCode = getString(R.string.shop_stories_code),
             container = findViewById<FrameLayout>(R.id.shopContent)
         )
+        // Popups v3: the shop's screens report their codes while its tab is shown; a product of a
+        // popup's recommendations opens in the shop tab.
+        shop.onScreen = { screen -> if (selectedTabId == R.id.tabShop) sdk.popups.screenOpened(screen) }
+        sdk.popups.productHandler = { product ->
+            findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = R.id.tabShop
+            shop.open(ShopRoute.Product(product.id))
+            true
+        }
         shop.start(state)
         onBackPressedDispatcher.addCallback(this, shopBack)
+    }
+
+    /** Code of a tab for popups v3; the shop tab reports the shop screen on top. */
+    private fun screenOf(tabId: Int): String = when (tabId) {
+        R.id.tabUiKit -> DemoScreens.UI_KIT
+        R.id.tabLegacyUi -> DemoScreens.LEGACY_UI
+        R.id.tabMultiInstance -> DemoScreens.MULTI_INSTANCE
+        R.id.tabShop -> shop.currentScreen
+        else -> DemoScreens.HOME
+    }
+
+    override fun onDestroy() {
+        // The handler holds this activity's shop; a recreated activity sets its own.
+        sdk.popups.productHandler = null
+        super.onDestroy()
     }
 
     private fun appendLegacyStoriesLog(target: TextView, message: String) {

@@ -43,6 +43,13 @@ class ShopActivity : AppCompatActivity() {
             storiesCode = getString(R.string.shop_stories_code),
             container = container
         )
+        // Popups v3: every screen of the shop reports its code; a product of a popup's recommendations
+        // opens here, in the shop.
+        shop.onScreen = { screen -> shop.sdk.popups.screenOpened(screen) }
+        shop.sdk.popups.productHandler = { product ->
+            shop.open(ShopRoute.Product(product.id))
+            true
+        }
         shop.start(savedInstanceState?.getBundle(STATE_SHOP))
         onBackPressedDispatcher.addCallback(this, shopBack)
         // A recreated activity (rotation, theme) must not handle its push or link again.
@@ -61,6 +68,12 @@ class ShopActivity : AppCompatActivity() {
             ?.takeIf { it.getString("NOTIFICATION_TYPE") != null || it.getString("NOTIFICATION_ID") != null }
             ?.let { shop.sdk.notificationClicked(it) }
         openStoriesLinkIntent(this, intent, BuildConfig.SHOP_ID, shop.storiesClicks)
+    }
+
+    override fun onDestroy() {
+        // The handler holds this activity's shop; a recreated activity sets its own.
+        shop.sdk.popups.productHandler = null
+        super.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
