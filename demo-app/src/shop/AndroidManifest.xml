@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Shop only" build of the demo (build type `shop`): the launcher is ShopActivity, and it takes the
+  stories links. The full demo activity stays in the APK, but is neither on the launcher nor a link
+  target.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            tools:node="replace" />
+
+        <!-- singleTask: a link that comes while the shop is open goes to onNewIntent. -->
+        <activity
+            android:name=".shop.ShopActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Stories links with the demo scheme, any host and path, as in the full demo. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rees46" />
+            </intent-filter>
+            <!-- Share links of the demo site, no autoVerify: "Open supported links" in the app settings. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="demo.rees46.ru"
+                    android:scheme="https" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

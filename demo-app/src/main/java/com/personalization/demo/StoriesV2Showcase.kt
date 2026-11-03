@@ -56,7 +56,7 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
                 shareUrlTransform = ::demoShareUrl
             }
         }
-        StoriesV2LinkExhibit(shopId = shopId)
+        StoriesV2LinkExhibit(storiesCode = storiesCode, shopId = shopId)
         StoriesV2ComposeExhibit(storiesCode = storiesCode, shopId = shopId)
         Exhibit(
             "Stories V2 — sample block: GIF slide (8 s dial over a 5 s duration), product with the promo " +

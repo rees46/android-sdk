@@ -267,26 +267,8 @@ class MainActivity : AppCompatActivity() {
         handleStoriesLink(intent)
     }
 
-    /**
-     * A stories link opened the demo — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest):
-     * any host and path, only `r46_stories` matters. The campaign opens through
-     * PersonalizationStories.handleLink on API v3, over whatever tab is shown.
-     */
-    private fun handleStoriesLink(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
-        val url = intent.dataString ?: return
-        if (!url.contains("r46_stories=")) return
-        val opened = openStoriesLink(
-            context = this,
-            url = url,
-            shopId = BuildConfig.SHOP_ID,
-            onError = { message ->
-                Log.w("StoriesLink", "$url: $message")
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-            }
-        )
-        if (!opened) Toast.makeText(this, "Not a stories link: $url", Toast.LENGTH_LONG).show()
-    }
+    /** A stories link opened the demo: its campaign opens over whatever tab is shown. */
+    private fun handleStoriesLink(intent: Intent?) = openStoriesLinkIntent(this, intent, BuildConfig.SHOP_ID)
 
     /**
      * Safety net for a known Jetpack Compose bug: on some OEM devices (notably Huawei/EMUI) a stray
@@ -1173,7 +1155,7 @@ class MainActivity : AppCompatActivity() {
             context = this,
             sdk = sdk,
             shopId = BuildConfig.SHOP_ID,
-            storiesCode = getString(R.string.stories_code),
+            storiesCode = getString(R.string.shop_stories_code),
             container = findViewById<FrameLayout>(R.id.shopContent)
         )
         shop.start(state)

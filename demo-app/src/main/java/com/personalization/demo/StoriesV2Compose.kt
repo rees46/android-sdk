@@ -1,6 +1,9 @@
 package com.personalization.demo
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,6 +45,10 @@ internal const val DEMO_LINK_SCHEME = "rees46"
 internal fun demoShareUrl(url: String): String =
     url.replaceFirst(Regex("^https?://", RegexOption.IGNORE_CASE), "$DEMO_LINK_SCHEME://")
 
+/** A link to a slide of the demo shop's block, for the "Sample link" button. */
+internal fun sampleStoriesLink(storiesCode: String): String =
+    "$DEMO_LINK_SCHEME://demo.rees46.ru/?r46_stories=$storiesCode&r46_story=40&r46_slide=37"
+
 /**
  * Opens a stories link (`r46_stories` / `r46_story` / `r46_slide`, any scheme, host and path) with
  * PersonalizationStories.handleLink on API v3. `false` — not a stories link.
@@ -51,12 +58,13 @@ internal fun openStoriesLink(
     url: String,
     shopId: String,
     onError: (String) -> Unit,
-    onClose: () -> Unit = {}
+    onClose: () -> Unit = {},
+    onClickListener: OnClickListener = DemoStoriesClicks(context)
 ): Boolean = PersonalizationStories.handleLink(
     context = context,
     url = url,
     shopId = shopId,
-    onClickListener = DemoStoriesClicks(context),
+    onClickListener = onClickListener,
     onError = { code, message -> onError("handleLink() onError $code: $message") },
     onClose = onClose,
     apiV3Domain = STORIES_API_V3_DOMAIN,
@@ -64,11 +72,38 @@ internal fun openStoriesLink(
 )
 
 /**
+ * A stories link opened the app — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest): any
+ * host and path, only `r46_stories` matters. The campaign opens over whatever [activity] shows.
+ */
+internal fun openStoriesLinkIntent(
+    activity: Activity,
+    intent: Intent?,
+    shopId: String,
+    onClickListener: OnClickListener = DemoStoriesClicks(activity)
+) {
+    if (intent?.action != Intent.ACTION_VIEW) return
+    val url = intent.dataString ?: return
+    if (!url.contains("r46_stories=")) return
+    val opened = openStoriesLink(
+        context = activity,
+        url = url,
+        shopId = shopId,
+        onError = { message ->
+            Log.w("StoriesLink", "$url: $message")
+            Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
+        },
+        onClickListener = onClickListener
+    )
+    if (!opened) Toast.makeText(activity, "Not a stories link: $url", Toast.LENGTH_LONG).show()
+}
+
+/**
  * A "Share" link of a slide opened with PersonalizationStories.handleLink() on API v3 — paste it from
- * the share sheet of the "Stories V2 with Sharing" block.
+ * the share sheet of the "Stories V2 with Sharing" block. The field starts empty; "Sample link" puts a
+ * link to the demo shop's block into it.
  */
 @Composable
-internal fun StoriesV2LinkExhibit(shopId: String) {
+internal fun StoriesV2LinkExhibit(storiesCode: String, shopId: String) {
     val context = LocalContext.current
     var link by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Errors of handleLink() and the viewer closing appear here") }
@@ -101,6 +136,7 @@ internal fun StoriesV2LinkExhibit(shopId: String) {
                 status = if (handled) "handleLink(): opening the campaign…" else "handleLink(): not a stories link"
             }) { Text("Open") }
         }
+        OutlinedButton(onClick = { link = sampleStoriesLink(storiesCode) }) { Text("Sample link") }
         Text(text = status, style = MaterialTheme.typography.caption)
     }
 }

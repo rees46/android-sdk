@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
+import com.personalization.OnClickListener
+import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.tracking.TrackingItem
@@ -50,6 +52,19 @@ internal class DemoShop(
 
     /** System back; `false` — the shop is at Home with nothing open. */
     fun back(): Boolean = navigator.back()
+
+    /**
+     * Clicks of the shop's stories, also of a campaign opened by a link: links stay with the SDK (it
+     * opens them itself); a product opens its page here — `false`, the host handled it, the viewer closes.
+     */
+    val storiesClicks: OnClickListener = object : OnClickListener {
+        override fun onClick(url: String): Boolean = true
+
+        override fun onClick(product: Product): Boolean {
+            open(ShopRoute.Product(product.id))
+            return false
+        }
+    }
 
     /** The cart of the demo: the `cart` event and a toast, no cart screen. */
     fun addToCart(anchor: View, itemId: String, price: Double? = null) {

@@ -6,10 +6,10 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.core.view.isVisible
-import com.personalization.OnClickListener
-import com.personalization.Product
 import com.personalization.R as SdkR
 import com.personalization.api.responses.search.Category
+import com.personalization.demo.STORIES_API_V3_DOMAIN
+import com.personalization.demo.demoShareUrl
 import com.personalization.ui.components.PersonalizationSuggestionRow
 import com.personalization.ui.components.PersonalizationTitle
 import com.personalization.ui.widgets.PersonalizationRecommenderBlock
@@ -56,20 +56,17 @@ internal class ShopHome(private val shop: DemoShop) : ShopScreen {
 
     override fun onBack(): Boolean = search.onBack()
 
-    /** The stories block the demo uses everywhere; a product tapped in a story opens its page here. */
+    /**
+     * The stories block the demo uses everywhere, on API v3 with "Share": the shared link carries the
+     * demo scheme, so it opens the demo (see the stories links of the manifest). A product tapped in a
+     * story opens its page here.
+     */
     private fun stories(): View = PersonalizationStories(context).apply {
         shopId = shop.shopId
         code = shop.storiesCode
-        onClickListener = object : OnClickListener {
-            // Links stay with the SDK: it opens them itself.
-            override fun onClick(url: String): Boolean = true
-
-            // `false` — the host handled it: the viewer closes and the shop opens the product.
-            override fun onClick(product: Product): Boolean {
-                shop.open(ShopRoute.Product(product.id))
-                return false
-            }
-        }
+        apiV3Domain = STORIES_API_V3_DOMAIN
+        shareUrlTransform = ::demoShareUrl
+        onClickListener = shop.storiesClicks
     }
 
     private fun recommenderBlock(): View = PersonalizationRecommenderBlock(context).apply {
