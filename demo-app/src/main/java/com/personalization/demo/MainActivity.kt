@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat
 import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
@@ -46,6 +47,9 @@ import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
 import com.personalization.demo.shop.DemoShop
 import com.personalization.demo.shop.ShopRoute
+import com.personalization.demo.shop.isNight
+import com.personalization.ui.PersonalizationTheme
+import com.personalization.R as SdkR
 import com.personalization.sdk.data.models.dto.popUp.Components
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
@@ -64,6 +68,10 @@ class MainActivity : AppCompatActivity() {
 
     /** The "Shop" tab, see [DemoShop]. */
     private lateinit var shop: DemoShop
+
+    /** Status bar of the theme, given back when a tab other than the shop is shown. */
+    private var themeStatusBarColor = 0
+    private var themeLightStatusBar = false
 
     /**
      * System back walks the shop's own stack while its tab is shown; at the shop's Home it falls
@@ -151,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         selectedTabId = savedInstanceState?.getInt(STATE_SELECTED_TAB, R.id.tabApi) ?: R.id.tabApi
         setContentView(R.layout.activity_main)
+        setupSystemBars()
 
         // Initialize Firebase if not already initialized
         try {
@@ -1132,6 +1141,7 @@ class MainActivity : AppCompatActivity() {
                 if (item.itemId == R.id.tabMultiInstance) View.VISIBLE else View.GONE
             shopContent.visibility = if (item.itemId == R.id.tabShop) View.VISIBLE else View.GONE
             shopBack.isEnabled = item.itemId == R.id.tabShop
+            applyShopChrome()
             sdk.popups.screenOpened(screenOf(item.itemId))
             true
         }
@@ -1161,8 +1171,13 @@ class MainActivity : AppCompatActivity() {
             container = findViewById<FrameLayout>(R.id.shopContent)
         )
         // Popups v3: the shop's screens report their codes while its tab is shown; a product of a
-        // popup's recommendations opens in the shop tab.
-        shop.onScreen = { screen -> if (selectedTabId == R.id.tabShop) sdk.popups.screenOpened(screen) }
+        // popup's recommendations opens in the shop tab. The status bar follows the shop's screen.
+        shop.onScreen = { screen ->
+            if (selectedTabId == R.id.tabShop) {
+                sdk.popups.screenOpened(screen)
+                applyShopChrome()
+            }
+        }
         sdk.popups.productHandler = { product ->
             findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = R.id.tabShop
             shop.open(ShopRoute.Product(product.id))
@@ -1170,6 +1185,44 @@ class MainActivity : AppCompatActivity() {
         }
         shop.start(state)
         onBackPressedDispatcher.addCallback(this, shopBack)
+    }
+
+    /**
+     * The theme's status bar is kept for the other tabs. The navigation bar takes the surface of the
+     * bottom tabs (the kit's card), with icons for it, on every tab.
+     */
+    private fun setupSystemBars() {
+        themeStatusBarColor = window.statusBarColor
+        themeLightStatusBar = WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars
+        // Dark icons on a light navigation bar exist from API 27.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            window.navigationBarColor = PersonalizationTheme.color(this, SdkR.color.personalization_background_card)
+            WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = !isNight
+        }
+    }
+
+    /**
+     * The shop draws its own top: while its tab is shown there is no action bar, and the status bar takes
+     * the colour of the shop screen under it, with icons for that surface. The other tabs keep the theme's
+     * action bar and status bar.
+     */
+    private fun applyShopChrome() {
+        val bars = WindowCompat.getInsetsController(window, window.decorView)
+        // Dark icons on a light status bar exist from API 23; below it the theme's bar stays.
+        val ownStatusBar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+        if (selectedTabId == R.id.tabShop) {
+            supportActionBar?.hide()
+            if (ownStatusBar) {
+                window.statusBarColor = shop.topColor
+                bars.isAppearanceLightStatusBars = !isNight
+            }
+        } else {
+            supportActionBar?.show()
+            if (ownStatusBar) {
+                window.statusBarColor = themeStatusBarColor
+                bars.isAppearanceLightStatusBars = themeLightStatusBar
+            }
+        }
     }
 
     /** Code of a tab for popups v3; the shop tab reports the shop screen on top. */

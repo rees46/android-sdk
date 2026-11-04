@@ -6,13 +6,14 @@ import android.view.inputmethod.InputMethodManager
 import com.personalization.ui.widgets.PersonalizationInstantSearchField
 
 /**
- * The shop's instant search field, the same on Home, Category and Product.
+ * The shop's instant search field, behind the search button of Home.
  *
- * The field brings its own panel — recent searches, suggestions, categories, products. Here it opens
- * only while the field has the focus, with the rest of the screen out of the way ([onSearching]), as in
- * a store app; "Cancel" or system back closes it. Submitting a phrase opens the results, a product its
- * page, a category its page. The panel is switched with the field's own show* flags, and an empty query
- * makes it redraw.
+ * The field brings its own panel — recent searches, suggestions, categories, products. It shows only in
+ * the search mode: [start] (the button) brings it up with the focus and the keyboard, the panel under
+ * it and the rest of the screen out of the way ([onSearching]), as in a store app; "Cancel" or system
+ * back takes it away again with the keyboard. Submitting a phrase opens the results, a product its page,
+ * a category its page — and the screen under them is back in its normal mode. The panel is switched with
+ * the field's own show* flags, and an empty query makes it redraw.
  *
  * [focusHolder] — a container above the field that holds the focus at rest: a focused field is an open
  * panel, so the field must not get the focus by itself when the screen shows up.
@@ -27,6 +28,9 @@ internal class ShopSearchBar(
     val field = PersonalizationInstantSearchField(context)
 
     private var searching = false
+
+    private val keyboard: InputMethodManager?
+        get() = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
 
     init {
         focusHolder.isFocusableInTouchMode = true
@@ -58,7 +62,16 @@ internal class ShopSearchBar(
         }
     }
 
-    /** System back: closes an open panel. `false` — there was none. */
+    /** The search button: the search mode, the field focused and the keyboard up. */
+    fun start() {
+        open()
+        val input = field.view.input.editText
+        input.requestFocus()
+        // The field has just become visible: the keyboard comes once it is laid out.
+        input.post { keyboard?.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT) }
+    }
+
+    /** System back: leaves the search mode. `false` — the screen was not in it. */
     fun onBack(): Boolean {
         if (!searching) return false
         close()
@@ -77,8 +90,7 @@ internal class ShopSearchBar(
         searching = false
         showPanel(false)
         val input = field.view.input.editText
-        (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
-            ?.hideSoftInputFromWindow(input.windowToken, 0)
+        keyboard?.hideSoftInputFromWindow(input.windowToken, 0)
         focusHolder.requestFocus()
         onSearching(false)
     }

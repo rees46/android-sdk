@@ -20,6 +20,15 @@ internal object DemoScreens {
 }
 
 /**
+ * Popups of the demo shop that its Home shows by hand, from the popup button of the header (`popups.show`,
+ * no trigger, screens or frequency): id → the title of the menu item. A new popup is one more line.
+ */
+internal val DEMO_POPUPS: Map<Int, String> = linkedMapOf(
+    181 to "#181 Banner · top",
+    182 to "#182 Modal · center"
+)
+
+/**
  * Popups v3 on for the demo shop. They sleep until the host turns them on; the demo also asks not to
  * wait for the `popups_v3` flag of `/init`, so they work whatever the shop's setting. The engine
  * decisions go to the SDK log (debug).

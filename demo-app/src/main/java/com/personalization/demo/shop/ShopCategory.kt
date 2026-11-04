@@ -1,29 +1,23 @@
 package com.personalization.demo.shop
 
-import android.content.Context
 import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import androidx.core.view.isVisible
+import android.widget.FrameLayout
 import com.personalization.R as SdkR
 import com.personalization.ui.widgets.PersonalizationCategoryScreen
+import com.personalization.ui.widgets.PersonalizationListingScreen
 
 /**
- * A category: the shop's search field on top ([ShopSearchBar]), under it the kit's category screen.
- * The screen runs `getCategory` itself — pages, filters, sorting, the empty state and errors with
- * Retry — and tracks the category view once. Its title is the category name, back goes down the
- * shop's stack, sorting is the shop's picker ([pickSort]), "Add to cart" tracks the cart and shows
- * the toast.
+ * A category: the kit's category screen as it is. The screen runs `getCategory` itself — pages,
+ * filters, sorting, the empty state and errors with Retry — and tracks the category view once. Its
+ * title is the category name, its back arrow goes down the shop's stack, sorting is the shop's sheet
+ * ([pickSort]), "Add to cart" tracks the cart and shows the toast. Search is on Home.
  */
 internal class ShopCategory(
     private val shop: DemoShop,
     route: ShopRoute.Category
 ) : ShopScreen {
 
-    private val context: Context = shop.context
-    private val root = LinearLayout(context)
-    private val screen = PersonalizationCategoryScreen(context).apply {
+    private val screen = PersonalizationCategoryScreen(shop.context).apply {
         shopId = shop.shopId
         titleText = route.name
         productActionText = ADD_TO_CART_TEXT
@@ -34,28 +28,26 @@ internal class ShopCategory(
         onProductAction = { product -> shop.addToCart(this, product.id, product.price) }
         categoryId = route.id
     }
-    private val search = ShopSearchBar(shop, root) { searching -> screen.isVisible = !searching }
 
-    override val view: View = root
+    override val view: View = listingFrame(screen)
 
-    init {
-        val gap = context.spacing(SdkR.dimen.personalization_spacing_xl)
-        root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(context.pageBackground())
-        // The open panel is taller than the field: with the screen hidden it scrolls in what is left.
-        val bar = ScrollView(context).apply {
-            setPadding(gap, gap, gap, 0)
-            clipToPadding = false
-            addView(search.field, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
-        root.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        root.addView(screen, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-    }
+    override fun onBack(): Boolean = screen.closeOpenFilters()
+}
 
-    override fun onBack(): Boolean {
-        if (search.onBack()) return true
-        if (!screen.isFiltersOpen) return false
-        screen.closeFilters()
-        return true
-    }
+/**
+ * A listing screen of the kit (category, search results) in the shop: under the status bar with the
+ * shop's top gap of 8, clear of the navigation bar.
+ */
+internal fun listingFrame(screen: PersonalizationListingScreen): View = FrameLayout(screen.context).apply {
+    setBackgroundColor(context.pageBackground())
+    addView(screen, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+    val top = context.spacing(SdkR.dimen.personalization_spacing_md)
+    onSystemBars { barTop, barBottom -> setPadding(0, barTop + top, 0, barBottom) }
+}
+
+/** System back on a listing: closes its open filters. `false` — there were none. */
+internal fun PersonalizationListingScreen.closeOpenFilters(): Boolean {
+    if (!isFiltersOpen) return false
+    closeFilters()
+    return true
 }

@@ -13,11 +13,14 @@
             android:exported="false"
             tools:node="replace" />
 
-        <!-- singleTask: a link that comes while the shop is open goes to onNewIntent. -->
+        <!-- singleTask: a link that comes while the shop is open goes to onNewIntent. Edge to edge
+             without an action bar; adjustResize so the keyboard comes to the screens as an inset. -->
         <activity
             android:name=".shop.ShopActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.PersonalizationDemo.Shop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

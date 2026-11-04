@@ -6,10 +6,12 @@ import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
 import com.personalization.OnClickListener
+import com.personalization.R as SdkR
 import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.tracking.TrackingItem
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationToast
 import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
 import org.json.JSONObject
@@ -17,14 +19,15 @@ import org.json.JSONObject
 /**
  * "Shop" tab — a small shop put together from the UI kit and the public SDK methods, the way a host
  * app would build one. It is the live integration example of the kit:
- * - Home ([ShopHome]) — the instant search field, the stories bar, a recommender block and the
- *   shop's top-level categories;
+ * - Home ([ShopHome]) — search behind a button, the stories bar, a recommender block and the shop's
+ *   top-level categories;
  * - Category ([ShopCategory]) — the kit's category screen: `getCategory` with filters and sorting;
  * - Product ([ShopProduct]) — `getProductInfo`, the view tracked, similar products under it;
  * - Search ([ShopSearch]) — the kit's search results screen.
  *
- * Home, Category and Product carry the same instant search field on top ([ShopSearchBar]); Search and
- * Category sort with the shop's picker ([pickSort]).
+ * Home has the instant search field behind its search button ([ShopSearchBar]); Search and Category sort
+ * with the shop's sheet ([pickSort]). There is no app bar over the shop: every screen starts under the
+ * status bar.
  *
  * There is no cart screen: "Add to cart" anywhere tracks the event and shows the kit's toast.
  * Attribution of the recommender block is set by the block itself before it hands over a product.
@@ -58,6 +61,12 @@ internal class DemoShop(
 
     /** System back; `false` — the shop is at Home with nothing open. */
     fun back(): Boolean = navigator.back()
+
+    /** Colour of the top edge of the screen on top: the status bar over the shop takes it. */
+    val topColor: Int
+        get() = PersonalizationTheme.color(
+            context, navigator.topScreen?.topSurface ?: SdkR.color.personalization_background_generic
+        )
 
     /**
      * Clicks of the shop's stories, also of a campaign opened by a link: links stay with the SDK (it
@@ -102,9 +111,9 @@ internal class DemoShop(
 }
 
 /**
- * Search results for a submitted phrase. The screen runs the search, its paging and filters itself and
- * tracks `search`; a tap remembers the `full_search` source and opens the product page. Sorting is the
- * shop's picker.
+ * Search results for a submitted phrase: the kit's screen as it is. The screen runs the search, its
+ * paging and filters itself and tracks `search`; a tap remembers the `full_search` source and opens the
+ * product page. Sorting is the shop's sheet.
  */
 internal class ShopSearch(private val shop: DemoShop, route: ShopRoute.Search) : ShopScreen {
 
@@ -119,11 +128,7 @@ internal class ShopSearch(private val shop: DemoShop, route: ShopRoute.Search) :
         query = route.query
     }
 
-    override val view: View = screen
+    override val view: View = listingFrame(screen)
 
-    override fun onBack(): Boolean {
-        if (!screen.isFiltersOpen) return false
-        screen.closeFilters()
-        return true
-    }
+    override fun onBack(): Boolean = screen.closeOpenFilters()
 }

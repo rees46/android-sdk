@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.personalization.R as SdkR
 import com.personalization.demo.DemoScreens
 
 /** A screen of the shop: where it is in the stack, and what it shows. */
@@ -49,6 +50,9 @@ internal sealed class ShopRoute {
 internal interface ShopScreen {
     val view: View
 
+    /** Kit colour token of the screen's top edge, the one under the status bar. */
+    val topSurface: Int get() = SdkR.color.personalization_background_generic
+
     /** System back inside the screen — closing an open panel. `false` — the screen itself goes. */
     fun onBack(): Boolean = false
 }
@@ -86,6 +90,9 @@ internal class ShopNavigator(
 
     /** The route on top. */
     val top: ShopRoute get() = stack.lastOrNull()?.route ?: ShopRoute.Home
+
+    /** The screen on top; `null` before the stack is built. */
+    val topScreen: ShopScreen? get() = stack.lastOrNull()?.screen
 
     /** Back from a screen's own button: the screen under it comes back. */
     fun pop(): Boolean {
