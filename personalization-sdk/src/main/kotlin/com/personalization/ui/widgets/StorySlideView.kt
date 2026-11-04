@@ -134,6 +134,7 @@ internal class StorySlideView(
     private val pollHolds = HashSet<StoryPollController>()
     private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
+    private val pollInset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
 
     init {
         setBackgroundColor(
@@ -258,7 +259,14 @@ internal class StorySlideView(
         } else {
             StoryTextBlocks.build(context, slide, host)
         }
-        column.addView(withPolls(middle), columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        val area = withPolls(middle)
+        column.addView(area, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply {
+            // Карточки опросов — в 12 от краёв слайда, середина под ними — как была, в 16.
+            if (area !== middle) {
+                marginStart = pollInset
+                marginEnd = pollInset
+            }
+        })
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
@@ -288,7 +296,10 @@ internal class StorySlideView(
         }
         pollLayer = layer
         return FrameLayout(context).apply {
-            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
+                marginStart = padding - pollInset
+                marginEnd = padding - pollInset
+            })
             addView(layer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         }
     }

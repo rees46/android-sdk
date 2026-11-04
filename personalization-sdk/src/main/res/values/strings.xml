@@ -40,5 +40,12 @@
     <string name="personalization_stories_poll_reanswer">Answer again</string>
     <string name="personalization_stories_poll_error">Failed to send the answer. Please try again</string>
     <string name="personalization_stories_poll_submit">Send</string>
+    <string name="personalization_stories_poll_results">Results</string>
+    <string name="personalization_stories_poll_thanks">Thanks!</string>
+    <string name="personalization_stories_poll_vote_counted">Vote counted</string>
+    <plurals name="personalization_stories_poll_votes">
+        <item quantity="one">%s vote</item>
+        <item quantity="other">%s votes</item>
+    </plurals>
 
 </resources>

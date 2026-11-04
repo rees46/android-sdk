@@ -1,6 +1,7 @@
 package com.personalization.ui.widgets
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
@@ -64,12 +65,15 @@ class StoryPollViewTest {
         assertEquals("Что вам больше нравится?", texts(card).first())
         val rows = rows(card)
         assertEquals(listOf("Кроссовки", "Ботинки", "Сандалии"), rows.map { it.label.text.toString() })
+        assertEquals(listOf("A", "B", "C"), rows.map { it.badge.letter })
+        assertTrue("no results header in the form", "Results" !in texts(card))
 
         rows[1].performClick()
         idle()
         assertEquals(listOf("answer demo_single {option_ids=[2], story_id=9001, slide_id=900}"), transport.calls)
         assertEquals(PollStyle.SENDING_ALPHA, card.alpha)
         assertTrue(rows[1].selectedState)
+        assertTrue("the letter of the chosen gives way to a check", rows[1].badge.checked)
         assertTrue(rows.none { it.isEnabled })
 
         transport.succeed(StoriesPollAnswer(optionIds = listOf(2)), StoriesPollResults(10, listOf(StoriesPollResults.Option(2, 70.0))))
@@ -78,7 +82,9 @@ class StoryPollViewTest {
         val answered = rows(card)
         assertEquals(listOf("0%", "70%", "0%"), answered.map { it.percentText.toString() })
         assertTrue(answered[1].selectedState)
-        assertTrue(texts(card).contains("Спасибо за ответ!"))
+        assertEquals(listOf(false, true, false), answered.map { it.badge.checked })
+        // Results header, the question, the own thanks of the poll instead of the default pair and the votes.
+        assertEquals(listOf("Results", "Что вам больше нравится?", "Спасибо за ответ!", "10 votes"), texts(card).take(4))
         // allow_reanswer: the link with the label of the element.
         assertTrue(texts(card).contains("Ответить заново"))
     }
@@ -97,15 +103,28 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `chips toggle and the submit button sends`() {
+    fun `multiple choice rows toggle and the submit button sends`() {
         val card = laidOut(feed[1]).pollCards.single()
         val submit = card.first { it is TextView && it.text == "Отправить ответ" } as TextView
         assertFalse(submit.isEnabled)
-        (card.first { it is TextView && it.text == "Спорт" } as TextView).performClick()
-        (card.first { it is TextView && it.text == "Обувь" } as TextView).performClick()
+        val rows = rows(card)
+        assertEquals(listOf("A", "B", "C", "D", "E"), rows.map { it.badge.letter })
+        rows[3].performClick()
+        rows[0].performClick()
+        rows[1].performClick()
+        rows[1].performClick()
+        assertEquals(listOf(true, false, false, true, false), rows.map { it.selectedState })
+        assertEquals(listOf(true, false, false, true, false), rows.map { it.badge.checked })
         assertTrue(submit.isEnabled)
         submit.performClick()
         assertEquals(listOf("answer demo_multi {option_ids=[1, 4], story_id=9001, slide_id=901}"), transport.calls)
+
+        transport.succeed(null, StoriesPollResults(1248, listOf(StoriesPollResults.Option(1, 52.4), StoriesPollResults.Option(4, 31.0))))
+        idle()
+        val answered = rows(card)
+        assertEquals(listOf(true, false, false, true, false), answered.map { it.selectedState })
+        assertEquals(listOf("52%", "0%", "0%", "31%", "0%"), answered.map { it.percentText.toString() })
+        assertTrue(texts(card).containsAll(listOf("Results", "Спасибо!", "1,248 votes")))
     }
 
     @Test
@@ -123,7 +142,9 @@ class StoryPollViewTest {
         transport.succeed(null, null)
         idle()
         assertNull(card.input)
-        assertTrue(texts(card).containsAll(listOf("✓", "Спасибо за отзыв!", "Быстрее")))
+        assertTrue(texts(card).containsAll(listOf("Спасибо за отзыв!", "Быстрее")))
+        assertTrue(all(card).filterIsInstance<PollBadge>().single().checked)
+        assertTrue("no results header for the text", "Results" !in texts(card))
     }
 
     @Test
@@ -189,7 +210,8 @@ class StoryPollViewTest {
              "answer":{"option_ids":[2]},"results":{"total":3}}]}""")))
         val card = view.pollCards.single()
         assertEquals(0, card.top)
-        assertEquals(listOf("Q"), texts(card))
+        // No thanks_text — the default pair; no results.options — no total, no votes on the right.
+        assertEquals(listOf("Results", "Q", "Thanks! Vote counted"), texts(card))
         assertEquals(listOf(false, true), rows(card).map { it.selectedState })
         assertTrue("no percents without results.options", rows(card).all { it.percentText == null })
 
@@ -246,6 +268,10 @@ class StoryPollViewTest {
         val expected = (view.height * 0.6f - layerTop).coerceIn(0f, (layer.height - card.height).toFloat())
         assertTrue("${card.top} vs $expected", Math.abs(card.top - expected) <= 1)
         assertEquals((layer.width - card.width) / 2, card.left)
+        // 12 from the edges of the slide, the text blocks under it keep 16.
+        val inset = (12 * view.resources.displayMetrics.density).toInt()
+        assertEquals(inset, windowLeft(card) - windowLeft(view))
+        assertEquals(inset, (windowLeft(view) + view.width) - (windowLeft(card) + card.width))
         // y_offset 5 is under the header — the card moves down to the middle.
         assertEquals(0, laidOut(feed[5]).pollCards.single().top)
         // y_offset 90 — the card stays inside the layer.
@@ -254,6 +280,8 @@ class StoryPollViewTest {
     }
 
     private fun windowTop(view: View): Int = IntArray(2).also(view::getLocationInWindow)[1]
+
+    private fun windowLeft(view: View): Int = IntArray(2).also(view::getLocationInWindow)[0]
 
     @Test
     fun `a text block and a poll with one y_offset stand at one height`() {
@@ -353,6 +381,75 @@ class StoryPollViewTest {
         view.applyIme(0)
         idle()
         assertEquals(full, card.height)
+    }
+
+    @Test
+    fun `the number of votes is declined in English`() {
+        val resources = activity.resources
+        assertNull(PollUi.votes(resources, 0))
+        assertEquals(listOf("1 vote", "2 votes", "5 votes", "21 votes", "1,248 votes"), listOf(1, 2, 5, 21, 1248).map { PollUi.votes(resources, it) })
+    }
+
+    @Test
+    @Config(qualifiers = "ru")
+    fun `the number of votes is declined in Russian`() {
+        val resources = Robolectric.buildActivity(Activity::class.java).setup().get().resources
+        assertNull(PollUi.votes(resources, -1))
+        val votes = listOf(1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 111, 1248).map { PollUi.votes(resources, it)!!.replace('\u00A0', ' ').replace('\u202F', ' ') }
+        assertEquals(
+            listOf("1 голос", "2 голоса", "4 голоса", "5 голосов", "11 голосов", "12 голосов", "14 голосов", "21 голос", "22 голоса", "25 голосов", "101 голос", "111 голосов", "1 248 голосов"),
+            votes
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ru")
+    fun `the texts of the results are in Russian`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val view = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"poll","poll_type":"mini_poll","poll":{"code":"s","kind":"single_choice","question":"Q",
+             "options":[{"id":1,"label":"A"}]},"answer":{"option_ids":[1]},"results":{"total":3,"options":[{"id":1,"percent":100}]}}]}""")), 1, host, null, 9001)
+        activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        idle()
+        assertEquals(listOf("Результаты", "Q", "Спасибо! Голос учтён", "3 голоса"), texts(view.pollCards.single()))
+    }
+
+    @Test
+    fun `option letters, the text on a fill is the more contrasting of white and dark`() {
+        assertEquals(listOf("A", "B", "Z", "AA", "AZ", "BA"), listOf(0, 1, 25, 26, 51, 52).map(PollUi::letter))
+        val dark = 0xFF000000.toInt()
+        assertEquals("dark on the green accent", dark, PollUi.onFill(activity, PollStyle.ACCENT))
+        assertEquals("white on a deep fill", Color.WHITE, PollUi.onFill(activity, 0xFF15803D.toInt()))
+        // The pale colors of the scale bands — a dark digit.
+        listOf(0, 3, 6, 7, 9).forEach { value ->
+            assertEquals("NPS $value", dark, PollUi.onFill(activity, StoryPoll.scaleColor(StoryPoll.Type.NPS, value, 0, 10)))
+        }
+    }
+
+    @Test
+    fun `the chosen row is filled only in the form, in the results it keeps the plain surface`() {
+        val card = laidOut(feed[1]).pollCards.single()
+        assertEquals(PollStyle.SURFACE, rows(card)[0].surface)
+        rows(card)[0].performClick()
+        assertEquals(selectedFill(), rows(card)[0].surface)
+        (card.first { it is TextView && it.text == "Отправить ответ" } as TextView).performClick()
+        transport.succeed(null, StoriesPollResults(2, listOf(StoriesPollResults.Option(1, 50.0))))
+        idle()
+        val chosen = rows(card)[0]
+        assertTrue(chosen.selectedState)
+        assertEquals(PollStyle.SURFACE, chosen.surface)
+    }
+
+    private fun selectedFill(): Int = (PollStyle.ACCENT and 0x00FFFFFF) or (Math.round(PollStyle.ACCENT_FILL_ALPHA * 255) shl 24)
+
+    @Test
+    fun `the chosen digit of a scale stands on the color of its band`() {
+        val card = laidOut(feed[4]).pollCards.single()
+        val row = card.first { it is PollScaleRow } as PollScaleRow
+        row.cell(2)!!.performClick()
+        assertTrue(row.cell(2)!!.isSelected)
+        assertEquals("a dark digit on the pale band", row.cell(1)!!.currentTextColor, row.cell(2)!!.currentTextColor)
+        assertEquals(listOf("review csat {channel=stories, campaign=demo_csat, rate=2}"), transport.calls)
     }
 
     private fun View.bottomOnScreen(): Int = IntArray(2).also(::getLocationInWindow)[1] + height

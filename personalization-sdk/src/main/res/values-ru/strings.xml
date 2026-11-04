@@ -28,5 +28,14 @@
     <string name="personalization_stories_poll_reanswer">Ответить заново</string>
     <string name="personalization_stories_poll_error">Не удалось отправить ответ. Попробуйте еще раз</string>
     <string name="personalization_stories_poll_submit">Отправить</string>
+    <string name="personalization_stories_poll_results">Результаты</string>
+    <string name="personalization_stories_poll_thanks">Спасибо!</string>
+    <string name="personalization_stories_poll_vote_counted">Голос учтён</string>
+    <plurals name="personalization_stories_poll_votes">
+        <item quantity="one">%s голос</item>
+        <item quantity="few">%s голоса</item>
+        <item quantity="many">%s голосов</item>
+        <item quantity="other">%s голоса</item>
+    </plurals>
 
 </resources>

@@ -4,7 +4,9 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
@@ -15,7 +17,11 @@ import android.os.Build
 import android.text.InputFilter
 import android.text.Spannable
 import android.text.Spanned
+import android.text.TextPaint
+import android.text.TextUtils
+import android.text.style.MetricAffectingSpan
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
@@ -25,13 +31,20 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.ToggleButton
+import androidx.annotation.ColorRes
+import androidx.annotation.DimenRes
 import androidx.appcompat.view.ContextThemeWrapper
+import androidx.core.graphics.ColorUtils
+import androidx.core.os.ConfigurationCompat
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
 import com.personalization.ui.PersonalizationTheme
+import java.text.NumberFormat
+import java.util.Locale
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** Общее для частей карточки опроса. */
@@ -47,17 +60,48 @@ internal object PollUi {
             if (stroke != null) setStroke(strokeWidth.roundToInt().coerceAtLeast(1), stroke)
         }
 
-    /** Кегль, начертание кита, цвет и интерлиньяж в долях кегля, как `line-height` в вебе. */
-    fun style(view: TextView, unit: Int, size: Float, weight: PollWeight, color: Int, lineHeight: Float = PollStyle.LINE_HEIGHT) {
-        view.setTextSize(unit, size)
-        view.typeface = when (weight) {
-            PollWeight.REGULAR -> PersonalizationTheme.typeface(view.context, false)
-            PollWeight.SEMIBOLD -> PersonalizationTheme.typeface(view.context, true)
-            PollWeight.BOLD -> Typeface.create(PersonalizationTheme.typeface(view.context, false), Typeface.BOLD)
-        }
+    /** Кегль и интерлиньяж — токены кита ([size], [lineHeight]), начертание кита и цвет. */
+    fun style(view: TextView, @DimenRes size: Int, @DimenRes lineHeight: Int, weight: PollWeight, color: Int) {
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, view.resources.getDimension(size))
+        view.typeface = PersonalizationTheme.typeface(view.context, weight == PollWeight.SEMIBOLD)
         view.setTextColor(color)
         view.includeFontPadding = false
-        TextViewCompat.setLineHeight(view, (view.textSize * lineHeight).roundToInt())
+        TextViewCompat.setLineHeight(view, view.resources.getDimensionPixelSize(lineHeight))
+    }
+
+    /** Цвет токена кита — с подменой темой хоста. */
+    fun color(context: Context, @ColorRes token: Int): Int = PersonalizationTheme.color(context, token)
+
+    /** [color] с прозрачностью [alpha] (0…1). */
+    fun alpha(color: Int, alpha: Float): Int = ColorUtils.setAlphaComponent(color, (alpha * 255).roundToInt())
+
+    /**
+     * Текст и значок на заливке [fill] — кнопка, галочка, выбранная цифра шкалы: белый или
+     * тёмный (`text_dark_primary`), что контрастнее.
+     */
+    fun onFill(context: Context, fill: Int): Int {
+        val dark = color(context, R.color.personalization_text_dark_primary)
+        val opaque = ColorUtils.setAlphaComponent(fill, 255)
+        return if (ColorUtils.calculateContrast(Color.WHITE, opaque) > ColorUtils.calculateContrast(dark, opaque)) Color.WHITE else dark
+    }
+
+    /** Буква варианта по его номеру: A…Z, дальше AA, AB… */
+    fun letter(index: Int): String {
+        val letters = StringBuilder()
+        var number = index + 1
+        while (number > 0) {
+            letters.append('A' + (number - 1) % 26)
+            number = (number - 1) / 26
+        }
+        return letters.reverse().toString()
+    }
+
+    /** Число голосов со склонением и разрядами по языку ресурсов: «1 248 голосов»; нет голосов — `null`. */
+    fun votes(resources: Resources, total: Int): String? {
+        if (total <= 0) return null
+        val locale = ConfigurationCompat.getLocales(resources.configuration).get(0) ?: Locale.getDefault()
+        val number = NumberFormat.getIntegerInstance(locale).format(total.toLong())
+        return resources.getQuantityString(R.plurals.personalization_stories_poll_votes, total, number)
     }
 
     /**
@@ -88,22 +132,94 @@ internal object PollUi {
     }
 }
 
-/**
- * Вариант ответа: подпись в начале, процент в конце, под ними полоска итогов — от начала
- * строки (в RTL справа), растёт от нуля. Выбранный — с зелёной рамкой и полоской.
- */
-internal class PollOptionRow(context: Context) : LinearLayout(context) {
+/** Начертание кита для части текста: `TypefaceSpan(Typeface)` есть только с API 28. */
+internal class PollTypefaceSpan(private val typeface: Typeface?) : MetricAffectingSpan() {
 
+    override fun updateDrawState(paint: TextPaint) = apply(paint)
+
+    override fun updateMeasureState(paint: TextPaint) = apply(paint)
+
+    private fun apply(paint: TextPaint) {
+        if (typeface != null) paint.typeface = typeface
+    }
+}
+
+/**
+ * Квадрат буквы варианта: светлая подложка и буква; отмеченный — заливка акцента и галочка
+ * вместо буквы. Рисуется сам: для чтеца он — часть строки, не текст.
+ */
+@SuppressLint("ViewConstructor")
+internal class PollBadge(context: Context, val letter: String) : View(context) {
+
+    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_lg)
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private val check = Path()
+    private val checkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = PollUi.dp(this@PollBadge, PollStyle.CHECK_STROKE_DP)
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        color = PollUi.onFill(context, PollStyle.ACCENT)
+    }
+    private val letterPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = resources.getDimension(R.dimen.personalization_font_size_sm)
+        typeface = PersonalizationTheme.typeface(context, true)
+        color = PollUi.color(context, R.color.personalization_text_secondary)
+        textAlign = Paint.Align.CENTER
+    }
+
+    var checked = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    init {
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        rect.set(0f, 0f, w, h)
+        fill.color = if (checked) PollStyle.ACCENT else PollStyle.LIGHT
+        canvas.drawRoundRect(rect, radius, radius, fill)
+        if (checked) {
+            check.reset()
+            check.moveTo(w * 0.3f, h * 0.52f)
+            check.lineTo(w * 0.44f, h * 0.66f)
+            check.lineTo(w * 0.71f, h * 0.37f)
+            canvas.drawPath(check, checkPaint)
+        } else {
+            val baseline = h / 2 - (letterPaint.descent() + letterPaint.ascent()) / 2
+            canvas.drawText(letter, w / 2, baseline, letterPaint)
+        }
+    }
+}
+
+/**
+ * Вариант ответа: квадрат буквы, подпись (до двух строк), в итогах ([result]) — процент в конце
+ * и полоса доли от начала строки (в RTL справа), которая растёт от нуля и обрезана скруглением
+ * строки. Отмеченный — рамка акцента и галочка в квадрате; в форме строка ещё и залита
+ * акцентом, в итогах подложка обычная, а полоса — акцентом.
+ */
+@SuppressLint("ViewConstructor")
+internal class PollOptionRow(context: Context, letter: String, private val result: Boolean) : LinearLayout(context) {
+
+    val badge = PollBadge(context, letter)
     val label = TextView(context)
     private val percent = TextView(context)
-    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_xl2)
-    private val border = PollUi.dp(this, PollStyle.BORDER_DP)
+    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_xl5)
+    private val border = PollUi.dp(this, PollStyle.SELECTED_BORDER_DP)
+    private val selectedFill = PollUi.alpha(PollStyle.ACCENT, PollStyle.ACCENT_FILL_ALPHA)
+    private val selectedBar = PollUi.alpha(PollStyle.ACCENT, PollStyle.ACCENT_BAR_ALPHA)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
     private val rect = RectF()
     private var animator: ValueAnimator? = null
 
-    /** Заполнение полоски, 0…1. */
+    /** Заполнение полосы доли, 0…1. */
     var fraction = 0f
         set(value) {
             field = value
@@ -114,26 +230,34 @@ internal class PollOptionRow(context: Context) : LinearLayout(context) {
         set(value) {
             field = value
             isSelected = value
+            badge.checked = value
             invalidate()
         }
 
     init {
         orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
         setWillNotDraw(false)
+        minimumHeight = PollUi.dp(this, PollStyle.OPTION_MIN_HEIGHT_DP.toFloat()).roundToInt()
         val horizontal = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
-        val vertical = PollUi.dp(this, PollStyle.OPTION_PADDING_V_DP.toFloat()).roundToInt()
+        val vertical = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
         setPadding(horizontal, vertical, horizontal, vertical)
-        PollUi.style(label, TypedValue.COMPLEX_UNIT_SP, PollStyle.TEXT_SP, PollWeight.SEMIBOLD, PollStyle.TEXT)
-        PollUi.style(percent, TypedValue.COMPLEX_UNIT_SP, PollStyle.TEXT_SP, PollWeight.SEMIBOLD, PollStyle.TEXT)
+        val primary = PollUi.color(context, R.color.personalization_text_primary)
+        PollUi.style(label, R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.REGULAR, primary)
+        label.maxLines = PollStyle.OPTION_MAX_LINES
+        label.ellipsize = TextUtils.TruncateAt.END
+        PollUi.style(percent, R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.SEMIBOLD, primary)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) percent.fontFeatureSettings = "tnum"
         percent.visibility = View.GONE
-        addView(label, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val size = PollUi.dp(this, PollStyle.BADGE_DP.toFloat()).roundToInt()
+        addView(badge, LayoutParams(size, size))
+        addView(label, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = horizontal })
         addView(percent, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+            marginStart = horizontal
         })
     }
 
-    /** Итог варианта: процент и полоска, которая растёт от нуля. Процент — число, не перевод. */
+    /** Итог варианта: процент и полоса, которая растёт от нуля. Процент — число, не перевод. */
     @SuppressLint("SetTextI18n")
     fun showPercent(value: Int) {
         percent.text = "$value%"
@@ -150,23 +274,27 @@ internal class PollOptionRow(context: Context) : LinearLayout(context) {
 
     val percentText: CharSequence? get() = percent.text.takeIf { percent.visibility == View.VISIBLE }
 
+    /** Подложка строки: акцентом — только у отмеченного в форме. */
+    val surface: Int get() = if (selectedState && !result) selectedFill else PollStyle.SURFACE
+
     override fun onDetachedFromWindow() {
         animator?.end()
         super.onDetachedFromWindow()
     }
 
     override fun onDraw(canvas: Canvas) {
-        val half = border / 2
-        rect.set(half, half, width - half, height - half)
+        // Рамка отмеченного — внутри строки: путь сдвинут на полтолщины.
+        val inset = if (selectedState) border / 2 else 0f
+        rect.set(inset, inset, width - inset, height - inset)
         path.reset()
-        path.addRoundRect(rect, radius, radius, Path.Direction.CW)
+        path.addRoundRect(rect, radius - inset, radius - inset, Path.Direction.CW)
         paint.style = Paint.Style.FILL
-        paint.color = PollStyle.SURFACE
+        paint.color = surface
         canvas.drawPath(path, paint)
         if (fraction > 0f) {
             canvas.save()
             canvas.clipPath(path)
-            paint.color = if (selectedState) PollStyle.FILL_SELECTED else PollStyle.FILL
+            paint.color = if (selectedState) selectedBar else PollStyle.BAR
             val fill = width * fraction
             if (layoutDirection == View.LAYOUT_DIRECTION_RTL) {
                 canvas.drawRect(width - fill, 0f, width.toFloat(), height.toFloat(), paint)
@@ -175,38 +303,40 @@ internal class PollOptionRow(context: Context) : LinearLayout(context) {
             }
             canvas.restore()
         }
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = border
-        paint.color = if (selectedState) PollStyle.ACCENT else PollStyle.LINE
-        canvas.drawPath(path, paint)
+        if (selectedState) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = border
+            paint.color = PollStyle.ACCENT
+            canvas.drawPath(path, paint)
+        }
         super.onDraw(canvas)
     }
 }
 
 /**
- * Шкала: ячейки поровну в ряд (в RTL — справа налево). Выбранная — с обводкой поверх соседей;
- * в ответе ([muted]) остальные приглушены.
+ * Шкала — дорожка-капсула, цифры поровну (в RTL справа налево). Выбранная — капсула на всю
+ * высоту дорожки цветом своей полосы ([fillOf]), цифра на ней белая или тёмная, что контрастнее;
+ * в ответе ([muted]) остальные цифры приглушены.
  */
 @SuppressLint("ViewConstructor")
 internal class PollScaleRow(
     context: Context,
-    private val gap: Int,
-    private val ring: Float,
-    private val offset: Float,
-    private val muted: Boolean
+    private val muted: Boolean,
+    private val fillOf: (Int) -> Int
 ) : LinearLayout(context) {
 
-    private val cells = LinkedHashMap<Int, View>()
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val cells = LinkedHashMap<Int, TextView>()
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
-    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_md)
+    private val textColor = PollUi.color(context, R.color.personalization_text_primary)
 
-    /** Выбранная оценка; дробная не выделяет ни одной ячейки, как в веб-SDK. */
+    /** Выбранная оценка; дробная не выделяет ни одной цифры, как в веб-SDK. */
     var selectedValue: Double? = null
         set(value) {
             field = value
             cells.forEach { (rate, cell) ->
                 cell.isSelected = rate.toDouble() == value
+                cell.setTextColor(if (cell.isSelected) PollUi.onFill(context, fillOf(rate)) else textColor)
                 if (muted) cell.alpha = if (cell.isSelected) 1f else PollStyle.MUTED_ALPHA
             }
             invalidate()
@@ -214,32 +344,32 @@ internal class PollScaleRow(
 
     init {
         orientation = HORIZONTAL
-        // Обводка выходит за ячейку — и за ряд.
-        clipChildren = false
         setWillNotDraw(false)
+        val inset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm)
+        setPadding(inset, 0, inset, 0)
+        background = PollUi.rounded(PollStyle.SURFACE, PersonalizationTheme.radius(context, R.dimen.personalization_radius_rounded))
     }
 
     val values: List<Int> get() = cells.keys.toList()
 
-    fun cell(value: Int): View? = cells[value]
+    fun cell(value: Int): TextView? = cells[value]
 
-    fun addCell(value: Int, cell: View) {
-        val params = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        if (childCount > 0) params.marginStart = gap
+    fun addCell(value: Int, cell: TextView) {
         cells[value] = cell
-        addView(cell, params)
+        addView(cell, LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
     }
 
     fun setCellsEnabled(enabled: Boolean) = cells.values.forEach { it.isEnabled = enabled }
 
     override fun dispatchDraw(canvas: Canvas) {
+        // Капсула выбранной — под цифрой.
+        cells.entries.firstOrNull { it.key.toDouble() == selectedValue }?.let { (rate, cell) ->
+            rect.set(cell.left.toFloat(), 0f, cell.right.toFloat(), height.toFloat())
+            val radius = min(rect.width(), rect.height()) / 2
+            paint.color = fillOf(rate)
+            canvas.drawRoundRect(rect, radius, radius, paint)
+        }
         super.dispatchDraw(canvas)
-        val cell = cells.entries.firstOrNull { it.key.toDouble() == selectedValue }?.value ?: return
-        val inset = offset + ring / 2
-        rect.set(cell.left - inset, cell.top - inset, cell.right + inset, cell.bottom + inset)
-        paint.strokeWidth = ring
-        paint.color = PollStyle.TEXT
-        canvas.drawRoundRect(rect, radius + inset, radius + inset, paint)
     }
 }
 
@@ -283,57 +413,6 @@ internal class PollTextField(context: Context, private val limit: Int?) : EditTe
         override fun filter(source: CharSequence, start: Int, end: Int, dest: Spanned, dstart: Int, dend: Int): CharSequence? =
             if (source is Spannable && BaseInputConnection.getComposingSpanStart(source) >= 0) null
             else length.filter(source, start, end, dest, dstart, dend)
-    }
-}
-
-/** Чипы с переносом строк, строки по центру; в RTL порядок справа налево. */
-@SuppressLint("ViewConstructor")
-internal class PollFlowRow(context: Context, private val gap: Int) : ViewGroup(context) {
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val maxWidth = MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
-        val childSpec = MeasureSpec.makeMeasureSpec(maxWidth.coerceAtLeast(0), MeasureSpec.AT_MOST)
-        val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
-        shown().forEach { it.measure(childSpec, unspecified) }
-        val height = lines(maxWidth).sumOf { line -> line.maxOf { it.measuredHeight } } + gap * (lines(maxWidth).size - 1).coerceAtLeast(0)
-        setMeasuredDimension(
-            resolveSize(MeasureSpec.getSize(widthMeasureSpec), widthMeasureSpec),
-            resolveSize(height + paddingTop + paddingBottom, heightMeasureSpec)
-        )
-    }
-
-    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        val maxWidth = r - l - paddingLeft - paddingRight
-        val rtl = layoutDirection == View.LAYOUT_DIRECTION_RTL
-        var y = paddingTop
-        lines(maxWidth).forEach { line ->
-            val lineWidth = line.sumOf { it.measuredWidth } + gap * (line.size - 1)
-            var x = paddingLeft + (maxWidth - lineWidth) / 2
-            val ordered = if (rtl) line.asReversed() else line
-            ordered.forEach { child ->
-                child.layout(x, y, x + child.measuredWidth, y + child.measuredHeight)
-                x += child.measuredWidth + gap
-            }
-            y += line.maxOf { it.measuredHeight } + gap
-        }
-    }
-
-    private fun shown(): List<View> = (0 until childCount).map(::getChildAt).filter { it.visibility != View.GONE }
-
-    private fun lines(maxWidth: Int): List<List<View>> {
-        val result = ArrayList<MutableList<View>>()
-        var lineWidth = 0
-        shown().forEach { child ->
-            val line = result.lastOrNull()
-            if (line == null || lineWidth + gap + child.measuredWidth > maxWidth) {
-                result += mutableListOf(child)
-                lineWidth = child.measuredWidth
-            } else {
-                line += child
-                lineWidth += gap + child.measuredWidth
-            }
-        }
-        return result
     }
 }
 

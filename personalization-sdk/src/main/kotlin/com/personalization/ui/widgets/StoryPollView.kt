@@ -7,83 +7,86 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.Editable
 import android.text.InputType
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.TextUtils
 import android.text.TextWatcher
+import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.annotation.DimenRes
 import androidx.core.view.ViewCompat
+import androidx.core.widget.TextViewCompat
 import com.personalization.R
 import com.personalization.ui.PersonalizationTheme
 import kotlin.math.roundToInt
 
 /**
- * Значения карточки опроса — из стилей веб-SDK (`styles.ts`) один в один: макета нет, карточка
- * светлая и на тёмной теме, как в вебе. Где у кита есть токен с тем же значением, берётся токен
- * (радиусы, отступы 8/12/16, кегль 12); остальное — здесь, чтобы поменять разом.
+ * Значения карточки опроса — по макету заказчика. Отступы, радиусы и кегли — токены кита
+ * (берутся по месту); здесь — цвета и размеры, которых в ките нет. Карточка светлая и на тёмной
+ * теме. Матовая — белый 88 % без размытия: размыть то, что под карточкой, на Android можно
+ * только копией слайда на каждый кадр.
  */
 internal object PollStyle {
-    const val CARD = 0xFFFFFFFF.toInt()
-    const val TEXT = 0xFF0B1410.toInt()
-    const val LINE = 0xFFE1E8E4.toInt()
-    const val SURFACE = 0xFFF4F7F5.toInt()
-    const val FILL = 0xFFD9F99D.toInt()
-    const val FILL_SELECTED = 0xFF86EFAC.toInt()
+    /** Подложка карточки — белый 88 %, граница — белый 50 %. */
+    const val CARD = 0xE0FFFFFF.toInt()
+    const val CARD_BORDER = 0x80FFFFFF.toInt()
+
+    /** Цвет выбора и успеха опроса: отмеченный вариант, точка итогов, кнопка, шкала без полос. */
     const val ACCENT = 0xFF22C55E.toInt()
-    const val DARK = 0xFF0F3D2A.toInt()
-    const val BUTTON_TEXT = 0xFF06210F.toInt()
-    const val MUTED = 0xFF8A9A90.toInt()
-    const val DONE_TEXT = 0xFF5B6B62.toInt()
+    const val ACCENT_FILL_ALPHA = 0.2f
+    const val ACCENT_BAR_ALPHA = 0.25f
+
+    /** Строка варианта, дорожка шкалы, неактивная кнопка — чёрный 6 %. */
+    const val SURFACE = 0x0F000000
+
+    /** Полоса доли варианта — чёрный 8 %. */
+    const val BAR = 0x14000000
+
+    /** Квадрат буквы и поле — белый 85 %. */
+    const val LIGHT = 0xD9FFFFFF.toInt()
     const val ERROR = 0xFFDC2626.toInt()
 
     const val MAX_WIDTH_DP = 420
-    const val PADDING_DP = 14
-    const val GAP_DP = 10
-    const val ELEVATION_DP = 12f
-    const val BORDER_DP = 1.5f
-    const val OPTION_PADDING_V_DP = 10
-    const val CHIP_GAP_DP = 6
-    const val CHIP_PADDING_V_DP = 7
-    const val CHIP_PADDING_H_DP = 11
-    const val BUTTON_PADDING_DP = 11
-    const val INPUT_HEIGHT_DP = 72
-    const val INPUT_PADDING_DP = 10
-    const val COUNTER_SHIFT_DP = -6
-    const val SCALE_GAP_DP = 3
-    const val SCALE_PADDING_V_DP = 8
-    const val SCALE_RING_DP = 2f
-    const val SCALE_RING_OFFSET_DP = 1f
-    const val DONE_GAP_DP = 6
-    const val DONE_ICON_DP = 38
+    const val BORDER_DP = 1f
+    const val SELECTED_BORDER_DP = 1.5f
+    const val OPTION_MIN_HEIGHT_DP = 56
+    const val OPTION_MAX_LINES = 2
+    const val BADGE_DP = 32
+    const val CHECK_STROKE_DP = 2f
+    const val DOT_DP = 6
+    const val TRACK_HEIGHT_DP = 52
+    const val FIELD_MIN_HEIGHT_DP = 52
+    const val FIELD_MAX_LINES = 4
+    const val BUTTON_HEIGHT_DP = 52
 
-    const val QUESTION_SP = 15f
-    const val TEXT_SP = 13f
-    const val SCALE_SP = 11.5f
-    const val COUNTER_SP = 10.5f
-    const val DONE_ICON_SP = 18f
+    /** Разрядка «Результатов», em. */
+    const val CAPS_SPACING = 0.08f
 
-    const val LINE_HEIGHT = 1.3f
-    const val QUESTION_LINE_HEIGHT = 1.25f
     const val SENDING_ALPHA = 0.85f
     const val MUTED_ALPHA = 0.55f
     const val BAR_MS = 600L
 }
 
-/** Шрифт кита: обычный, полужирный (600 и 500 — ближайшее начертание кита) и жирный (700+). */
-internal enum class PollWeight { REGULAR, SEMIBOLD, BOLD }
+/** Начертание кита: обычное и полужирное (600 — ближайшее начертание кита, 500). */
+internal enum class PollWeight { REGULAR, SEMIBOLD }
 
 /**
  * Карточка опроса на слайде. Рисует состояние [StoryPollController]: форму или отвеченное,
- * выключенность при отправке, ошибку. Касание, начатое на карточке, слайду не достаётся: ни
- * тапы-листания, ни удержание просмотра, ни свайпы пейджера и закрытия; пока палец на
- * карточке, слайд стоит. Высота — сколько влезает, остальное прокручивается внутри.
+ * выключенность при отправке, ошибку. Весь текст — по левому краю. Касание, начатое на
+ * карточке, слайду не достаётся: ни тапы-листания, ни удержание просмотра, ни свайпы пейджера
+ * и закрытия; пока палец на карточке, слайд стоит. Высота — сколько влезает, остальное
+ * прокручивается внутри.
  */
 @SuppressLint("ViewConstructor")
 internal class StoryPollView(base: Context, val controller: StoryPollController) : FrameLayout(PollUi.lightContext(base)) {
@@ -92,21 +95,21 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
     private val content = LinearLayout(context)
     private val error = TextView(context)
     private val options = ArrayList<Pair<Int, PollOptionRow>>()
-    private val chips = ArrayList<Pair<Int, TextView>>()
     private var scale: PollScaleRow? = null
     private var submit: TextView? = null
     private var counter: TextView? = null
     private var reanswer: TextView? = null
     private var builtFor = -1
     private var errorShown = false
+    private val primary = PollUi.color(context, R.color.personalization_text_primary)
+    private val secondary = PollUi.color(context, R.color.personalization_text_secondary)
 
     /** Поле текстового опроса; `null` — его нет. */
     var input: PollTextField? = null
         private set
 
     init {
-        background = PollUi.rounded(PollStyle.CARD, radius(R.dimen.personalization_radius_xl5))
-        ViewCompat.setElevation(this, dp(PollStyle.ELEVATION_DP))
+        background = PollUi.rounded(PollStyle.CARD, radius(R.dimen.personalization_radius_xl6), PollStyle.CARD_BORDER, dp(PollStyle.BORDER_DP))
         // Фокус уходит на карточку, когда поле его теряет, — а не обратно в поле.
         isFocusableInTouchMode = true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) defaultFocusHighlightEnabled = false
@@ -114,13 +117,12 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
         scroll.overScrollMode = View.OVER_SCROLL_NEVER
         content.orientation = LinearLayout.VERTICAL
         content.clipChildren = false
-        val padding = dp(PollStyle.PADDING_DP)
+        val padding = space(R.dimen.personalization_spacing_xl2)
         content.setPadding(padding, padding, padding, padding)
         scroll.addView(content, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
-        PollUi.style(error, TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.personalization_font_size_xs), PollWeight.REGULAR, PollStyle.ERROR)
-        error.gravity = Gravity.CENTER
+        PollUi.style(error, R.dimen.personalization_font_size_xs, R.dimen.personalization_line_height_xs, PollWeight.REGULAR, PollStyle.ERROR)
         ViewCompat.setAccessibilityLiveRegion(error, ViewCompat.ACCESSIBILITY_LIVE_REGION_POLITE)
 
         controller.onChange = ::update
@@ -177,57 +179,63 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
         if (input != null) hideKeyboard()
         content.removeAllViews()
         options.clear()
-        chips.clear()
         scale = null
         submit = null
         counter = null
         reanswer = null
         input = null
         val poll = controller.poll
-        poll.question?.let { add(text(it, PollStyle.QUESTION_SP, PollWeight.BOLD, center = true, lineHeight = PollStyle.QUESTION_LINE_HEIGHT)) }
-        if (controller.answered) buildAnswered(poll) else buildForm(poll)
+        val choice = poll.type == StoryPoll.Type.SINGLE_CHOICE || poll.type == StoryPoll.Type.MULTIPLE_CHOICE
+        if (controller.answered && choice) add(resultsHeader())
+        poll.question?.let { add(question(it), top = space(R.dimen.personalization_spacing_lg)) }
+        val gap = space(if (poll.question != null) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg)
+        if (controller.answered) buildAnswered(poll, gap) else buildForm(poll, gap)
         if (controller.answered && poll.allowReanswer) {
-            add(reanswerLink(), width = ViewGroup.LayoutParams.WRAP_CONTENT, gravity = Gravity.CENTER_HORIZONTAL)
+            add(reanswerLink(), width = ViewGroup.LayoutParams.WRAP_CONTENT, top = space(R.dimen.personalization_spacing_md))
         }
         error.text = ""
         error.visibility = View.GONE
         errorShown = false
-        add(error)
+        add(error, top = space(R.dimen.personalization_spacing_lg))
         controller.setFocused(inputFocused)
     }
 
-    private fun buildForm(poll: StoryPoll) {
+    /** Форма; [gap] — от вопроса до содержимого. */
+    private fun buildForm(poll: StoryPoll, gap: Int) {
         when (poll.type) {
-            StoryPoll.Type.SINGLE_CHOICE -> add(optionList(poll, interactive = true))
+            StoryPoll.Type.SINGLE_CHOICE -> add(optionList(poll, interactive = true), top = gap)
             StoryPoll.Type.MULTIPLE_CHOICE -> {
-                add(chipFlow(poll))
-                add(submitButton(poll))
+                add(optionList(poll, interactive = true), top = gap)
+                add(submitButton(poll), height = dp(PollStyle.BUTTON_HEIGHT_DP), top = space(R.dimen.personalization_spacing_xl))
             }
             StoryPoll.Type.TEXT -> {
-                add(inputField(poll), height = dp(PollStyle.INPUT_HEIGHT_DP))
+                add(inputField(poll), top = gap)
                 if (poll.maxLength != null) {
-                    val view = text("", PollStyle.COUNTER_SP, PollWeight.REGULAR, color = PollStyle.MUTED)
+                    val view = text("", R.dimen.personalization_font_size_xs, R.dimen.personalization_line_height_xs, PollWeight.REGULAR, secondary)
                     view.gravity = Gravity.END
                     tabular(view)
                     counter = view
-                    add(view, top = dp(PollStyle.GAP_DP + PollStyle.COUNTER_SHIFT_DP))
+                    add(view, top = space(R.dimen.personalization_spacing_md))
                 }
-                add(submitButton(poll))
+                add(submitButton(poll), height = dp(PollStyle.BUTTON_HEIGHT_DP), top = space(R.dimen.personalization_spacing_lg))
             }
-            else -> add(scaleRow(poll, interactive = true))
+            else -> add(scaleRow(poll, interactive = true), height = dp(PollStyle.TRACK_HEIGHT_DP), top = gap)
         }
     }
 
-    private fun buildAnswered(poll: StoryPoll) {
+    /** Отвеченное; [gap] — от вопроса до содержимого. */
+    private fun buildAnswered(poll: StoryPoll, gap: Int) {
         when (poll.type) {
             StoryPoll.Type.SINGLE_CHOICE, StoryPoll.Type.MULTIPLE_CHOICE -> {
-                add(optionList(poll, interactive = false))
-                thanks(poll.thanksText)
+                add(optionList(poll, interactive = false), top = gap)
+                add(footer(poll), top = space(R.dimen.personalization_spacing_xl))
             }
-            StoryPoll.Type.TEXT -> add(doneBlock(poll))
+            StoryPoll.Type.TEXT -> add(doneBlock(poll), top = gap)
             else -> {
-                add(scaleRow(poll, interactive = false))
-                thanks(poll.bandText(controller.answer?.rate))
+                add(scaleRow(poll, interactive = false), height = dp(PollStyle.TRACK_HEIGHT_DP), top = gap)
+                poll.bandText(controller.answer?.rate)?.let { band ->
+                    add(text(band, R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, PollWeight.REGULAR, primary), top = space(R.dimen.personalization_spacing_xl))
+                }
             }
         }
     }
@@ -242,10 +250,6 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
                 row.selectedState = id in controller.selected
                 row.isEnabled = !sending
             }
-        }
-        chips.forEach { (id, chip) ->
-            chipStyle(chip, id in controller.selected)
-            chip.isEnabled = !sending
         }
         scale?.let { row ->
             row.selectedValue = if (answered) controller.answer?.rate else controller.pressedRate
@@ -288,19 +292,47 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
 
     // --- Части карточки ---------------------------------------------------------------------
 
-    /** Варианты: в форме — кнопки, в ответе — с выделением ответа и полосками итогов. */
+    /** Шапка итогов опроса с выбором: точка акцента и «РЕЗУЛЬТАТЫ» прописными с разрядкой. */
+    private fun resultsHeader(): View {
+        val row = LinearLayout(context)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.gravity = Gravity.CENTER_VERTICAL
+        val dot = View(context)
+        dot.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(PollStyle.ACCENT)
+        }
+        val size = dp(PollStyle.DOT_DP)
+        row.addView(dot, LinearLayout.LayoutParams(size, size))
+        val label = text(resources.getString(R.string.personalization_stories_poll_results), R.dimen.personalization_font_size_xs, R.dimen.personalization_line_height_xs, PollWeight.SEMIBOLD, secondary)
+        label.setAllCaps(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) label.letterSpacing = PollStyle.CAPS_SPACING
+        row.addView(label, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = space(R.dimen.personalization_spacing_md)
+        })
+        return row
+    }
+
+    private fun question(value: String): TextView =
+        text(value, R.dimen.personalization_font_size_lg, R.dimen.personalization_line_height_base, PollWeight.SEMIBOLD, primary)
+
+    /**
+     * Варианты: строки с буквами A, B, C… В форме — кнопки (у выбора нескольких —
+     * переключатели), в ответе — с отметкой ответа и полосами итогов.
+     */
     private fun optionList(poll: StoryPoll, interactive: Boolean): View {
         val list = LinearLayout(context)
         list.orientation = LinearLayout.VERTICAL
         val chosen = controller.answer?.optionIds.orEmpty()
         val results = controller.results
-        val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+        val multiple = poll.type == StoryPoll.Type.MULTIPLE_CHOICE
+        val gap = space(R.dimen.personalization_spacing_md)
         poll.options.forEachIndexed { index, option ->
-            val row = PollOptionRow(context)
+            val row = PollOptionRow(context, PollUi.letter(index), result = !interactive)
             row.label.text = option.label
             if (interactive) {
-                row.setOnClickListener { controller.choose(option.id) }
-                PollUi.buttonRole(row)
+                row.setOnClickListener { if (multiple) controller.toggle(option.id) else controller.choose(option.id) }
+                PollUi.buttonRole(row, checkable = multiple)
                 options += option.id to row
             } else {
                 row.selectedState = option.id in chosen
@@ -313,23 +345,42 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
         return list
     }
 
-    private fun chipFlow(poll: StoryPoll): View {
-        val flow = PollFlowRow(context, dp(PollStyle.CHIP_GAP_DP))
-        poll.options.forEach { option ->
-            val chip = text(option.label, 0f, PollWeight.SEMIBOLD, size = resources.getDimension(R.dimen.personalization_font_size_xs))
-            chip.setPadding(dp(PollStyle.CHIP_PADDING_H_DP), dp(PollStyle.CHIP_PADDING_V_DP), dp(PollStyle.CHIP_PADDING_H_DP), dp(PollStyle.CHIP_PADDING_V_DP))
-            chip.setOnClickListener { controller.toggle(option.id) }
-            PollUi.buttonRole(chip, checkable = true)
-            chips += option.id to chip
-            flow.addView(chip)
+    /**
+     * Подвал итогов: «Спасибо! Голос учтён» или свой текст благодарности опроса, справа — число
+     * голосов (`results.total`); голосов нет — справа пусто.
+     */
+    private fun footer(poll: StoryPoll): View {
+        val row = LinearLayout(context)
+        row.orientation = LinearLayout.HORIZONTAL
+        val thanks = poll.thanksText?.let { text(it, R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, PollWeight.SEMIBOLD, primary) }
+            ?: text(thanksPair(), R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, PollWeight.REGULAR, secondary)
+        row.addView(thanks, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        PollUi.votes(resources, controller.results?.total ?: 0)?.let { votes ->
+            val view = text(votes, R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, PollWeight.REGULAR, secondary)
+            tabular(view)
+            row.addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = space(R.dimen.personalization_spacing_lg)
+            })
         }
-        return flow
+        return row
+    }
+
+    /** «Спасибо!» полужирным основного цвета, « Голос учтён» — вторичным. */
+    private fun thanksPair(): CharSequence {
+        val thanks = resources.getString(R.string.personalization_stories_poll_thanks)
+        val text = SpannableStringBuilder(thanks).append(' ').append(resources.getString(R.string.personalization_stories_poll_vote_counted))
+        text.setSpan(PollTypefaceSpan(PersonalizationTheme.typeface(context, true)), 0, thanks.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(ForegroundColorSpan(primary), 0, thanks.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return text
     }
 
     private fun submitButton(poll: StoryPoll): View {
-        val button = text(poll.submitLabel ?: controller.texts.submit, PollStyle.TEXT_SP, PollWeight.BOLD, center = true)
-        val padding = dp(PollStyle.BUTTON_PADDING_DP)
-        button.setPadding(padding, padding, padding, padding)
+        val button = text(poll.submitLabel ?: controller.texts.submit, R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.SEMIBOLD, secondary)
+        button.gravity = Gravity.CENTER
+        button.maxLines = 1
+        button.ellipsize = TextUtils.TruncateAt.END
+        val padding = space(R.dimen.personalization_spacing_lg)
+        button.setPadding(padding, 0, padding, 0)
         button.setOnClickListener { controller.submit() }
         PollUi.buttonRole(button)
         submit = button
@@ -339,15 +390,18 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
     /** Многострочное поле — своё: в ките поле ввода однострочное. */
     private fun inputField(poll: StoryPoll): View {
         val field = PollTextField(context, poll.maxLength)
-        field.background = PollUi.rounded(PollStyle.SURFACE, radius(R.dimen.personalization_radius_xl2), PollStyle.LINE, dp(PollStyle.BORDER_DP))
-        val padding = dp(PollStyle.INPUT_PADDING_DP)
+        field.background = PollUi.rounded(PollStyle.LIGHT, radius(R.dimen.personalization_radius_xl4))
+        val padding = space(R.dimen.personalization_spacing_xl)
         field.setPadding(padding, padding, padding, padding)
-        PollUi.style(field, TypedValue.COMPLEX_UNIT_SP, PollStyle.TEXT_SP, PollWeight.SEMIBOLD, PollStyle.TEXT)
-        field.setHintTextColor(PollStyle.MUTED)
+        PollUi.style(field, R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.REGULAR, primary)
+        field.setHintTextColor(PollUi.color(context, R.color.personalization_text_hint))
         field.hint = poll.placeholder
         field.gravity = Gravity.TOP or Gravity.START
         field.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-        field.imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        field.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        // Растёт до нескольких строк, дальше прокручивается внутри.
+        field.minHeight = dp(PollStyle.FIELD_MIN_HEIGHT_DP)
+        field.maxLines = PollStyle.FIELD_MAX_LINES
         field.isVerticalScrollBarEnabled = true
         field.setText(controller.text)
         field.addTextChangedListener(object : TextWatcher {
@@ -362,14 +416,18 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
 
     private fun scaleRow(poll: StoryPoll, interactive: Boolean): View {
         val values = poll.scale
-        val row = PollScaleRow(context, dp(PollStyle.SCALE_GAP_DP), dp(PollStyle.SCALE_RING_DP), dp(PollStyle.SCALE_RING_OFFSET_DP), muted = !interactive)
         val min = values.firstOrNull() ?: 0
         val max = values.lastOrNull() ?: 0
+        val row = PollScaleRow(context, muted = !interactive) { value -> StoryPoll.scaleColor(poll.type, value, min, max) }
+        val size = resources.getDimensionPixelSize(R.dimen.personalization_font_size_base)
+        val smallest = resources.getDimensionPixelSize(R.dimen.personalization_font_size_xs)
         values.forEach { value ->
-            val cell = text(value.toString(), PollStyle.SCALE_SP, PollWeight.BOLD, center = true)
+            val cell = text(value.toString(), R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.SEMIBOLD, primary)
+            cell.gravity = Gravity.CENTER
+            cell.maxLines = 1
             tabular(cell)
-            cell.background = PollUi.rounded(StoryPoll.scaleColor(poll.type, value, min, max), radius(R.dimen.personalization_radius_md))
-            cell.setPadding(0, dp(PollStyle.SCALE_PADDING_V_DP), 0, dp(PollStyle.SCALE_PADDING_V_DP))
+            // До 21 цифры в ряд: на узкой дорожке двузначные мельчают, а не обрезаются.
+            TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(cell, smallest, size, 1, TypedValue.COMPLEX_UNIT_PX)
             if (interactive) {
                 cell.setOnClickListener { controller.rate(value) }
                 PollUi.buttonRole(cell)
@@ -380,95 +438,71 @@ internal class StoryPollView(base: Context, val controller: StoryPollController)
         return row
     }
 
-    /** Текст отправлен: галочка, спасибо и сам ответ. */
+    /** Текст отправлен: галочка и спасибо в строку, под ними — сам ответ. */
     private fun doneBlock(poll: StoryPoll): View {
         val block = LinearLayout(context)
         block.orientation = LinearLayout.VERTICAL
-        block.gravity = Gravity.CENTER_HORIZONTAL
-        val gap = dp(PollStyle.DONE_GAP_DP)
-        val icon = text("✓", PollStyle.DONE_ICON_SP, PollWeight.BOLD, center = true, color = PollStyle.DARK)
-        icon.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(PollStyle.FILL)
-        }
-        icon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        val size = dp(PollStyle.DONE_ICON_DP)
-        block.addView(icon, LinearLayout.LayoutParams(size, size))
+        val head = LinearLayout(context)
+        head.orientation = LinearLayout.HORIZONTAL
+        head.gravity = Gravity.CENTER_VERTICAL
+        val badge = PollBadge(context, "")
+        badge.checked = true
+        val size = dp(PollStyle.BADGE_DP)
+        head.addView(badge, LinearLayout.LayoutParams(size, size))
         poll.thanksText?.let { thanks ->
-            block.addView(text(thanks, PollStyle.TEXT_SP, PollWeight.SEMIBOLD, center = true), doneParams(gap))
+            val view = text(thanks, R.dimen.personalization_font_size_base, R.dimen.personalization_line_height_base, PollWeight.SEMIBOLD, primary)
+            head.addView(view, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = space(R.dimen.personalization_spacing_lg)
+            })
         }
+        block.addView(head, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         controller.answer?.text?.takeIf { it.isNotEmpty() }?.let { answer ->
-            block.addView(text(answer, PollStyle.SCALE_SP, PollWeight.REGULAR, center = true, color = PollStyle.DONE_TEXT), doneParams(gap))
+            val view = text(answer, R.dimen.personalization_font_size_sm, R.dimen.personalization_line_height_sm, PollWeight.REGULAR, secondary)
+            block.addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = space(R.dimen.personalization_spacing_lg)
+            })
         }
         return block
     }
 
-    private fun doneParams(gap: Int) =
-        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = gap }
-
-    private fun thanks(value: String?) {
-        if (value.isNullOrEmpty()) return
-        add(text(value, PollStyle.TEXT_SP, PollWeight.SEMIBOLD, center = true))
-    }
-
     private fun reanswerLink(): View {
-        val link = text(controller.texts.reanswer, 0f, PollWeight.SEMIBOLD, color = PollStyle.DARK, size = resources.getDimension(R.dimen.personalization_font_size_xs))
+        val link = text(controller.texts.reanswer, R.dimen.personalization_font_size_xs, R.dimen.personalization_line_height_xs, PollWeight.SEMIBOLD, primary)
         link.paintFlags = link.paintFlags or Paint.UNDERLINE_TEXT_FLAG
-        val vertical = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xs)
-        val horizontal = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm)
-        link.setPadding(horizontal, vertical, horizontal, vertical)
+        val vertical = space(R.dimen.personalization_spacing_sm)
+        link.setPadding(0, vertical, space(R.dimen.personalization_spacing_md), vertical)
         link.setOnClickListener { controller.reanswer() }
         PollUi.buttonRole(link)
         reanswer = link
         return link
     }
 
-    private fun chipStyle(chip: TextView, selected: Boolean) {
-        val fill = if (selected) PollStyle.DARK else PollStyle.SURFACE
-        val line = if (selected) PollStyle.DARK else PollStyle.LINE
-        chip.background = PollUi.rounded(fill, radius(R.dimen.personalization_radius_rounded), line, dp(PollStyle.BORDER_DP))
-        chip.setTextColor(if (selected) PollStyle.FILL else PollStyle.TEXT)
-        chip.isSelected = selected
-    }
-
+    /** Основная — заливка акцента, текст по контрасту с ней; неактивная — чёрный 6 % и вторичный текст. */
     private fun buttonStyle(button: TextView) {
         val enabled = button.isEnabled
-        button.background = PollUi.rounded(if (enabled) PollStyle.ACCENT else PollStyle.LINE, radius(R.dimen.personalization_radius_button_lg))
-        button.setTextColor(if (enabled) PollStyle.BUTTON_TEXT else PollStyle.MUTED)
+        button.background = PollUi.rounded(if (enabled) PollStyle.ACCENT else PollStyle.SURFACE, radius(R.dimen.personalization_radius_xl4))
+        button.setTextColor(if (enabled) PollUi.onFill(context, PollStyle.ACCENT) else secondary)
     }
 
-    /** Строка карточки: отступ 10 от предыдущей. */
-    private fun add(view: View, width: Int = ViewGroup.LayoutParams.MATCH_PARENT, height: Int = ViewGroup.LayoutParams.WRAP_CONTENT, gravity: Int = Gravity.NO_GRAVITY, top: Int? = null) {
+    /** Строка карточки: [top] — отступ от предыдущей. */
+    private fun add(view: View, width: Int = ViewGroup.LayoutParams.MATCH_PARENT, height: Int = ViewGroup.LayoutParams.WRAP_CONTENT, top: Int = 0) {
         val params = LinearLayout.LayoutParams(width, height)
-        if (content.childCount > 0) params.topMargin = top ?: dp(PollStyle.GAP_DP)
-        params.gravity = gravity
+        if (content.childCount > 0) params.topMargin = top
         content.addView(view, params)
     }
 
-    /** Текст карточки; [size] в пикселях — кегль токена кита вместо [sizeSp]. */
-    private fun text(
-        value: CharSequence,
-        sizeSp: Float,
-        weight: PollWeight,
-        center: Boolean = false,
-        color: Int = PollStyle.TEXT,
-        lineHeight: Float = PollStyle.LINE_HEIGHT,
-        size: Float? = null
-    ): TextView {
+    /** Текст карточки: кегль и интерлиньяж — токены кита, по левому краю. */
+    private fun text(value: CharSequence, @DimenRes size: Int, @DimenRes lineHeight: Int, weight: PollWeight, color: Int): TextView {
         val view = TextView(context)
         view.text = value
-        if (size != null) {
-            PollUi.style(view, TypedValue.COMPLEX_UNIT_PX, size, weight, color, lineHeight)
-        } else {
-            PollUi.style(view, TypedValue.COMPLEX_UNIT_SP, sizeSp, weight, color, lineHeight)
-        }
-        if (center) view.gravity = Gravity.CENTER
+        PollUi.style(view, size, lineHeight, weight, color)
         return view
     }
 
     private fun tabular(view: TextView) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) view.fontFeatureSettings = "tnum"
     }
+
+    private fun space(@DimenRes token: Int): Int = resources.getDimensionPixelSize(token)
 
     private fun dp(value: Int): Int = PollUi.dp(this, value.toFloat()).roundToInt()
 
