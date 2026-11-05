@@ -1,17 +1,22 @@
 package com.personalization.ui.popups
 
 import android.app.Activity
+import android.content.Context
+import android.content.res.Configuration
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.personalization.Fixtures
+import com.personalization.R
 import com.personalization.popups.PopupV3
 import com.personalization.popups.PopupV3Design
 import com.personalization.popups.PopupV3Specs
 import com.personalization.popups.PopupV3Texts
 import com.personalization.popups.PopupsV3List
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationCheckbox
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.widgets.PersonalizationRecommenderBlock
@@ -20,6 +25,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -199,6 +205,114 @@ class PopupV3RenderTest {
         assertEquals(listOf("subscribe demo+android@rees46.test"), actions.calls)
         val success = inline.find(TextView::class.java).first { it.text.toString() == "Готово!" }
         assertEquals(View.VISIBLE, (success.parent as View).visibility)
+    }
+
+    private fun assertConsentColors(element: View, checked: Int, checkmark: Int, unchecked: Int, border: Int) {
+        val checkbox = element.find(PersonalizationCheckbox::class.java).single()
+        assertEquals("checked", checked, checkbox.checkedColor)
+        assertEquals("checkmark", checkmark, checkbox.checkmarkColor)
+        assertEquals("unchecked", unchecked, checkbox.uncheckedColor)
+        assertEquals("border", border, checkbox.uncheckedBorderColor)
+        // Размер — как у чекбокса кита: 20dp.
+        assertEquals(20, checkbox.width)
+    }
+
+    @Test
+    fun `the consent checkbox takes the colors of its form, the defaults included`() {
+        val emails = render(popup("element-email-collector.json").design)
+        // Поле и кнопка из дизайна; фон поля #ffffff — не значение по умолчанию.
+        assertConsentColors(emails.byTag("el-email-inline")!!, 0xFF2563EB.toInt(), 0xFFFFFFFF.toInt(), 0xFFFFFFFF.toInt(), 0xFFCBD5E1.toInt())
+        // Стиль пуст — значения поля и кнопки по умолчанию, а не токены кита.
+        assertConsentColors(emails.byTag("el-email-bare")!!, 0xFF2563EB.toInt(), 0xFFFFFFFF.toInt(), 0xFFF8FAFC.toInt(), 0xFFCBD5E1.toInt())
+
+        val forms = render(popup("element-form.json").design)
+        assertConsentColors(forms.byTag("el-form")!!, 0xFF2563EB.toInt(), 0xFFFFFFFF.toInt(), 0xFFF8FAFC.toInt(), 0xFFCBD5E1.toInt())
+    }
+
+    @Test
+    @Config(qualifiers = "night")
+    fun `the consent checkbox takes the colors set in the design, in the dark theme too`() {
+        fun designed(name: String, id: String, style: Map<String, String>): PopupV3Design {
+            val json = JSONObject(Fixtures.read("popups-v3/$name"))
+            val elements = json.getJSONObject("design").getJSONArray("elements")
+            val element = (0 until elements.length()).map { elements.getJSONObject(it) }.single { it.getString("id") == id }
+            style.forEach { (key, value) -> element.getJSONObject("style").put(key, value) }
+            return (PopupV3.parse(json) as PopupV3.Parsed.Ok).popup.design
+        }
+
+        val email = render(designed("element-email-collector.json", "el-email-stacked-legacy", mapOf(
+            "buttonBgColor" to "#16a34a",
+            "buttonTextColor" to "#111827",
+            "emailInputBg" to "#fef3c7",
+            "emailInputBorderColor" to "#d97706"
+        )))
+        assertConsentColors(email.byTag("el-email-stacked-legacy")!!, 0xFF16A34A.toInt(), 0xFF111827.toInt(), 0xFFFEF3C7.toInt(), 0xFFD97706.toInt())
+
+        val form = render(designed("element-form.json", "el-form", mapOf(
+            "buttonBgColor" to "#7c3aed",
+            "buttonTextColor" to "#fde68a",
+            "formInputBg" to "#ecfeff",
+            "formInputBorderColor" to "#0891b2"
+        )))
+        assertConsentColors(form.byTag("el-form")!!, 0xFF7C3AED.toInt(), 0xFFFDE68A.toInt(), 0xFFECFEFF.toInt(), 0xFF0891B2.toInt())
+    }
+
+    private fun night(context: Context): Boolean =
+        context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+
+    private fun kitText(view: View): Int = PersonalizationTheme.color(view.context, R.color.personalization_text_primary)
+
+    /** Модалка 182 в своём корне — с фоном рамки из дизайна или [frame]. */
+    private fun modal182(frame: String? = null): PopupV3RootView {
+        val json = JSONObject(Fixtures.read("popups-v3/live-list-181-182.json"))
+        val design = json.getJSONObject("payload").getJSONArray("popups").getJSONObject(1).getJSONObject("design")
+        frame?.let { design.getJSONObject("frameStyle").put("bgColor", it) }
+        val modal = PopupsV3List.parse(json.toString()).popups[1]
+        return PopupV3RootView(activity, modal, modal.design, emptyMap(), state, actions, null, blocking = true) {}
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun `kit components in a white popup take the light theme while the system is dark`() {
+        assertTrue(night(activity))
+        val block = modal182().find(PersonalizationRecommenderBlock::class.java).single()
+        assertFalse(night(block.context))
+        assertEquals(0xFF000000.toInt(), kitText(block))
+        // Без попапа кит по-прежнему следует системе.
+        assertEquals(0xFFFFFFFF.toInt(), kitText(PersonalizationRecommenderBlock(activity)))
+    }
+
+    @Test
+    fun `kit components on a dark background take the dark theme while the system is light`() {
+        assertFalse(night(activity))
+        val block = modal182(frame = "#111827").find(PersonalizationRecommenderBlock::class.java).single()
+        assertTrue(night(block.context))
+        assertEquals(0xFFFFFFFF.toInt(), kitText(block))
+        // Белый попап в светлой системе — контекст активити как есть.
+        assertSame(activity, modal182().find(PersonalizationRecommenderBlock::class.java).single().context)
+        assertEquals(0xFF000000.toInt(), kitText(PersonalizationRecommenderBlock(activity)))
+    }
+
+    @Test
+    fun `the background under an element is its own, else the frame's, else white`() {
+        val dark = 0xFF111827.toInt()
+        assertEquals(dark, PopupV3KitTheme.background(dark, Color.WHITE))
+        assertEquals(dark, PopupV3KitTheme.background(Color.TRANSPARENT, dark))
+        assertEquals(Color.WHITE, PopupV3KitTheme.background(Color.TRANSPARENT, Color.TRANSPARENT))
+        // Полупрозрачный ложится на то, что под ним.
+        assertEquals(0xFF7F7F7F.toInt(), PopupV3KitTheme.background(0x80000000.toInt(), Color.WHITE))
+        assertTrue(PopupV3KitTheme.night(activity, dark))
+        assertFalse(PopupV3KitTheme.night(activity, Color.WHITE))
+        assertFalse(PopupV3KitTheme.night(activity, 0xFFFEF3C7.toInt()))
+
+        // Свой тёмный фон элемента — тёмная тема кита на белой рамке.
+        val json = JSONObject(Fixtures.read("popups-v3/element-text.json"))
+        val elements = json.getJSONObject("design").getJSONArray("elements")
+        (0 until elements.length()).map { elements.getJSONObject(it) }.single { it.getString("id") == "el-text-full" }
+            .getJSONObject("style").put("bgColor", "#111827")
+        val element = (PopupV3.parse(json) as PopupV3.Parsed.Ok).popup.design.elements.single { it.id == "el-text-full" }
+        assertTrue(night(ctx().kit(element)))
+        assertSame(activity, ctx().kit(popup("element-text.json").design.elements.single { it.id == "el-text-full" }))
     }
 
     @Test

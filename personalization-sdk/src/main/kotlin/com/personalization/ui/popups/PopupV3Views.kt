@@ -2,7 +2,9 @@ package com.personalization.ui.popups
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -23,11 +25,16 @@ import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.graphics.ColorUtils
 import androidx.core.widget.TextViewCompat
+import com.personalization.R
 import com.personalization.popups.PopupMarkup
 import com.personalization.popups.PopupV3Specs
 import com.personalization.popups.PopupV3Variables
+import com.personalization.ui.InternalPersonalizationUiApi
+import com.personalization.ui.PersonalizationTheme
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -180,6 +187,48 @@ internal fun View.popupClipRound(radiusPx: Float) {
             }
         }
         clipToOutline = true
+    }
+}
+
+/**
+ * Тема компонентов кита внутри попапа: попап рисуется цветами дизайна, и кит в нём берёт
+ * светлую или тёмную тему по фону попапа под элементом, а не по теме системы. Из двух тем
+ * берётся та, чей `text_primary` контрастнее с фоном (WCAG): на белом — светлая в любой теме
+ * системы. Окна поверх приложения (тост) остаются по теме приложения.
+ */
+@OptIn(InternalPersonalizationUiApi::class)
+internal object PopupV3KitTheme {
+
+    /**
+     * Фон под элементом: свой фон элемента, если он не прозрачный, иначе фон рамки, иначе
+     * белый — как рамка по умолчанию. Полупрозрачный ложится на то, что под ним.
+     */
+    fun background(element: Int, frame: Int): Int =
+        ColorUtils.compositeColors(element, ColorUtils.compositeColors(frame, Color.WHITE))
+
+    /** Тёмная тема кита читается на [background] лучше светлой. */
+    fun night(base: Context, background: Int): Boolean {
+        val opaque = ColorUtils.setAlphaComponent(background, 255)
+        val light = PersonalizationTheme.color(context(base, night = false), R.color.personalization_text_primary)
+        val dark = PersonalizationTheme.color(context(base, night = true), R.color.personalization_text_primary)
+        return ColorUtils.calculateContrast(dark, opaque) > ColorUtils.calculateContrast(light, opaque)
+    }
+
+    /** Контекст для кита на [background]. */
+    fun context(base: Context, background: Int): Context = context(base, night(base, background))
+
+    /**
+     * [base] со светлыми или тёмными ресурсами (`uiMode`), тема хоста та же — его токены
+     * остаются; уже такой — он сам.
+     */
+    fun context(base: Context, night: Boolean): Context {
+        val mode = if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+        val current = base.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        if (current == mode) return base
+        val configuration = Configuration(base.resources.configuration).apply {
+            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or mode
+        }
+        return ContextThemeWrapper(base, base.theme).apply { applyOverrideConfiguration(configuration) }
     }
 }
 

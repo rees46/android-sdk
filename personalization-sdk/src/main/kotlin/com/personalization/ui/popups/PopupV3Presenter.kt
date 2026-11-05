@@ -388,7 +388,8 @@ internal class PopupV3RootView(
             actions = actions,
             sdk = sdk,
             screenWidthPx = metrics.widthPixels,
-            screenHeightPx = metrics.heightPixels
+            screenHeightPx = metrics.heightPixels,
+            frameBackground = probe.background
         )
         frame = PopupV3FrameView(context, swipeEdge = when {
             popup.layout != PopupV3.Layout.BANNER -> 0

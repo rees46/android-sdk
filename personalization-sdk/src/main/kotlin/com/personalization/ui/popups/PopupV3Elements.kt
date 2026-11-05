@@ -3,6 +3,7 @@ package com.personalization.ui.popups
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.content.Context
+import android.graphics.Color
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
 import android.text.Editable
@@ -83,12 +84,18 @@ internal class PopupV3RenderContext(
     val sdk: SDK?,
     val screenWidthPx: Int,
     val screenHeightPx: Int,
+    /** Фон рамки из дизайна. */
+    val frameBackground: Int = Color.WHITE,
     val log: (String) -> Unit = SDK::debug
 ) {
     fun dp(value: Double): Int = context.popupDp(value)
     fun dpF(value: Double): Float = context.popupDpF(value)
     fun spans(text: String?): CharSequence = PopupV3Text.spans(text, variables)
     fun runtime(text: String?): String? = text?.let { PopupV3Variables.applyRuntime(it, variables) }
+
+    /** Контекст для компонентов кита в [element]: тема кита — по фону попапа под ним ([PopupV3KitTheme]). */
+    fun kit(element: PopupV3Element): Context =
+        PopupV3KitTheme.context(context, PopupV3KitTheme.background(PopupV3Specs.box(element).background, frameBackground))
 }
 
 /**
@@ -319,8 +326,25 @@ internal object PopupV3Renderer {
         visibility = View.GONE
     }
 
-    private fun consentRow(ctx: PopupV3RenderContext, label: String, family: String?, color: Int, checked: Boolean, onChange: (Boolean) -> Unit): View {
+    /**
+     * Согласие: чекбокс кита в цветах формы — отмеченный как кнопка, пустой как поле, —
+     * чтобы он не зависел от темы системы, как и весь попап.
+     */
+    private fun consentRow(
+        ctx: PopupV3RenderContext,
+        label: String,
+        family: String?,
+        color: Int,
+        input: PopupV3Specs.Input,
+        button: PopupV3Specs.FormButton,
+        checked: Boolean,
+        onChange: (Boolean) -> Unit
+    ): View {
         val checkbox = PersonalizationCheckbox(ctx.context).apply {
+            checkedColor = button.background
+            checkmarkColor = button.textColor
+            uncheckedColor = input.background
+            uncheckedBorderColor = input.borderColor
             checkState = if (checked) PersonalizationCheckbox.CheckState.CHECKED else PersonalizationCheckbox.CheckState.UNCHECKED
             onCheckedChange = { onChange(it == PersonalizationCheckbox.CheckState.CHECKED) }
         }
@@ -331,7 +355,7 @@ internal object PopupV3Renderer {
         }
         return LinearLayout(ctx.context).apply {
             orientation = LinearLayout.HORIZONTAL
-            addView(checkbox, LinearLayout.LayoutParams(ctx.dp(18.0), ctx.dp(18.0)))
+            addView(checkbox, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             addView(text, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = ctx.dp(8.0) })
         }
     }
@@ -420,7 +444,7 @@ internal object PopupV3Renderer {
         }
         val status = statusView(ctx, family)
         form.addView(row, matchWidth())
-        form.addView(consentRow(ctx, spec.consentLabel, family, box.textColor, state.get<Boolean>(element, "consent") == true) {
+        form.addView(consentRow(ctx, spec.consentLabel, family, box.textColor, spec.input, spec.button, state.get<Boolean>(element, "consent") == true) {
             state[element, "consent"] = it
         }, matchWidth())
         form.addView(status, matchWidth())
@@ -521,7 +545,7 @@ internal object PopupV3Renderer {
             form.addView(column, matchWidth())
         }
         spec.consentLabel?.let { label ->
-            form.addView(consentRow(ctx, label, family, box.textColor, state.get<Boolean>(element, "consent") == true) {
+            form.addView(consentRow(ctx, label, family, box.textColor, spec.input, spec.button, state.get<Boolean>(element, "consent") == true) {
                 state[element, "consent"] = it
             }, matchWidth())
         }
@@ -791,12 +815,15 @@ internal object PopupV3Renderer {
         return column
     }
 
-    /** Лента рекомендаций кита по коду блока; до ответа — место 40, клик — источник `dynamic`. */
+    /**
+     * Лента рекомендаций кита по коду блока; до ответа — место 40, клик — источник `dynamic`.
+     * Тема кита — по фону попапа, а не системы.
+     */
     private fun recommendation(element: PopupV3Element, ctx: PopupV3RenderContext): View? {
         val code = PopupV3Specs.recommenderCode(element) ?: return null
         return FrameLayout(ctx.context).apply {
             minimumHeight = ctx.dp(40.0)
-            val block = PersonalizationRecommenderBlock(ctx.context).apply {
+            val block = PersonalizationRecommenderBlock(ctx.kit(element)).apply {
                 layout = PersonalizationProductsBlock.Layout.CAROUSEL
                 this.code = code
                 onProductClick = { product -> ctx.actions.product(product) }
