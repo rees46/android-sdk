@@ -25,7 +25,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Stories links with the demo scheme, any host and path, as in the full demo. -->
+            <!-- Stories links with the demo scheme, any host and path, and the game link, as in the full demo. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -25,7 +25,8 @@ internal object DemoScreens {
  */
 internal val DEMO_POPUPS: Map<Int, String> = linkedMapOf(
     181 to "#181 Banner · top",
-    182 to "#182 Modal · center"
+    182 to "#182 Modal · center",
+    185 to "#185 Fullscreen"
 )
 
 /**

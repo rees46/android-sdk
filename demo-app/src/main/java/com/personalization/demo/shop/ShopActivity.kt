@@ -12,7 +12,8 @@ import androidx.core.view.updateLayoutParams
 import com.personalization.Rees46
 import com.personalization.demo.BuildConfig
 import com.personalization.demo.R
-import com.personalization.demo.openStoriesLinkIntent
+import com.personalization.demo.openGameLink
+import com.personalization.demo.openLinkIntent
 
 /**
  * The "shop only" demo — the launcher activity of the `shop` build type (see `src/shop/AndroidManifest.xml`):
@@ -20,7 +21,8 @@ import com.personalization.demo.openStoriesLinkIntent
  * same shop instance [com.personalization.demo.DemoApplication] initializes for the full demo.
  *
  * Stories links (`rees46://…`, `https://demo.rees46.ru/…`) open their campaign over the shop, on a cold
- * start and while the shop is open; a product tapped in that campaign opens its page in the shop.
+ * start and while the shop is open; a product tapped in that campaign opens its page in the shop. The
+ * game link (`rees46://game`) opens the game over the shop, so does a popup's or a story's one.
  *
  * No action bar, edge to edge: the system bars are transparent, with icons for the light or dark theme,
  * and the shop's screens make room for them themselves. The status bar shows the surface of the screen
@@ -69,6 +71,9 @@ class ShopActivity : AppCompatActivity() {
             shop.open(ShopRoute.Product(product.id))
             true
         }
+        // A popup's game link opens the game over the shop, not through the system, and the popup closes,
+        // as after a product; the other links go on as before.
+        shop.sdk.popups.linkHandler = { url -> openGameLink(this, url) }
         shop.start(savedInstanceState?.getBundle(STATE_SHOP))
         onBackPressedDispatcher.addCallback(this, shopBack)
         // A recreated activity (rotation, theme) must not handle its push or link again.
@@ -81,17 +86,18 @@ class ShopActivity : AppCompatActivity() {
         handle(intent)
     }
 
-    /** A tapped push reports its click, as in the full demo; a stories link opens its campaign. */
+    /** A tapped push reports its click, as in the full demo; a stories link opens its campaign, the game link the game. */
     private fun handle(intent: Intent?) {
         intent?.extras
             ?.takeIf { it.getString("NOTIFICATION_TYPE") != null || it.getString("NOTIFICATION_ID") != null }
             ?.let { shop.sdk.notificationClicked(it) }
-        openStoriesLinkIntent(this, intent, BuildConfig.SHOP_ID, shop.storiesClicks)
+        openLinkIntent(this, intent, BuildConfig.SHOP_ID, shop.storiesClicks)
     }
 
     override fun onDestroy() {
-        // The handler holds this activity's shop; a recreated activity sets its own.
+        // The handlers hold this activity and its shop; a recreated activity sets its own.
         shop.sdk.popups.productHandler = null
+        shop.sdk.popups.linkHandler = null
         super.onDestroy()
     }
 

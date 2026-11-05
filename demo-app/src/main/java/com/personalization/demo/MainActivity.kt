@@ -266,19 +266,19 @@ class MainActivity : AppCompatActivity() {
         showLastCrashIfAny()
         // App may have been opened by tapping a push — report the click to the SDK.
         handleNotificationClick(intent)
-        // Or by a stories link; a recreated activity (rotation, theme) must not open it again.
-        if (savedInstanceState == null) handleStoriesLink(intent)
+        // Or by a stories or a game link; a recreated activity (rotation, theme) must not open it again.
+        if (savedInstanceState == null) handleLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationClick(intent)
-        handleStoriesLink(intent)
+        handleLink(intent)
     }
 
-    /** A stories link opened the demo: its campaign opens over whatever tab is shown. */
-    private fun handleStoriesLink(intent: Intent?) = openStoriesLinkIntent(this, intent, BuildConfig.SHOP_ID)
+    /** A stories link opened the demo: its campaign opens over whatever tab is shown; the game link, the game. */
+    private fun handleLink(intent: Intent?) = openLinkIntent(this, intent, BuildConfig.SHOP_ID)
 
     /**
      * Safety net for a known Jetpack Compose bug: on some OEM devices (notably Huawei/EMUI) a stray
@@ -1183,6 +1183,9 @@ class MainActivity : AppCompatActivity() {
             shop.open(ShopRoute.Product(product.id))
             true
         }
+        // A popup's game link opens the game over the demo, not through the system, and the popup closes,
+        // as after a product; the other links go on as before.
+        sdk.popups.linkHandler = { url -> openGameLink(this, url) }
         shop.start(state)
         onBackPressedDispatcher.addCallback(this, shopBack)
     }
@@ -1235,8 +1238,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        // The handler holds this activity's shop; a recreated activity sets its own.
+        // The handlers hold this activity and its shop; a recreated activity sets its own.
         sdk.popups.productHandler = null
+        sdk.popups.linkHandler = null
         super.onDestroy()
     }
 

@@ -37,7 +37,8 @@
             </intent-filter>
             <!-- Stories links with the demo scheme, any host and path:
                  rees46://stories?r46_stories=<code>&r46_story=<id>[&r46_slide=<id>] and the links the
-                 demo shares (rees46://demo.rees46.ru/?r46_stories=…). -->
+                 demo shares (rees46://demo.rees46.ru/?r46_stories=…); and the game link rees46://game
+                 (see DemoLink). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -58,6 +59,15 @@
         <activity
             android:name=".HttpLogActivity"
             android:exported="false" />
+        <!-- The mini-game the game link opens over the screen it comes to, in both builds. singleTop: one
+             more game link does not stack a second game. A rotation does not recreate it, so the web
+             page keeps its game. -->
+        <activity
+            android:name=".game.GameActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.PersonalizationDemo.Game" />
     </application>
 
 </manifest>

@@ -37,7 +37,10 @@ import com.personalization.ui.widgets.PersonalizationStoriesWidget
 /** API v3 host of the "Stories V2 with Sharing" block, of the stories link field and of deep links. */
 internal const val STORIES_API_V3_DOMAIN = "app.rees46.ru"
 
-/** The demo's own link scheme (see the intent filters of MainActivity in the manifest). */
+/**
+ * The demo's own link scheme (see the intent filters of MainActivity in the manifest): stories links
+ * and the game link.
+ */
 internal const val DEMO_LINK_SCHEME = "rees46"
 
 /**
@@ -74,12 +77,12 @@ internal fun openStoriesLink(
 )
 
 /**
- * A stories link opened the app — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest): any
- * host and path, only `r46_stories` matters. The campaign opens over whatever [activity] shows.
- * A link to the demo site that is not a stories link (a popup's "Learn more", say) goes on to the
- * browser.
+ * A link opened the app — `rees46://…` or `https://demo.rees46.ru/…` (see the manifest), told apart by
+ * [DemoLink]. A stories link (any host and path, only `r46_stories` matters) opens its campaign over
+ * whatever [activity] shows; the game link (`rees46://game`) opens the game over it. A link to the demo
+ * site that is neither (a popup's "Learn more", say) goes on to the browser.
  */
-internal fun openStoriesLinkIntent(
+internal fun openLinkIntent(
     activity: Activity,
     intent: Intent?,
     shopId: String,
@@ -87,9 +90,16 @@ internal fun openStoriesLinkIntent(
 ) {
     if (intent?.action != Intent.ACTION_VIEW) return
     val url = intent.dataString ?: return
-    if (!url.contains("r46_stories=")) {
-        if (intent.data?.scheme?.lowercase() in setOf("http", "https")) openInBrowser(activity, url)
-        return
+    when (DemoLink.of(url)) {
+        DemoLink.GAME -> {
+            openGameLink(activity, url)
+            return
+        }
+        DemoLink.OTHER -> {
+            if (intent.data?.scheme?.lowercase() in setOf("http", "https")) openInBrowser(activity, url)
+            return
+        }
+        DemoLink.STORIES -> Unit
     }
     val opened = openStoriesLink(
         context = activity,
@@ -207,10 +217,12 @@ internal fun StoriesV2ComposeExhibit(storiesCode: String, shopId: String) {
 
 /**
  * Logs every link and product the stories hand to the host and lets the SDK open it — the V1
- * OnClickListener contract: `true` means "SDK, open it", `false` means "the host handled it".
+ * OnClickListener contract: `true` means "SDK, open it", `false` means "the host handled it". The game
+ * link opens the game here, without the system.
  */
 internal class DemoStoriesClicks(private val context: Context) : OnClickListener {
     override fun onClick(url: String): Boolean {
+        if (openGameLink(context, url)) return false
         toast("Link: $url")
         return false
     }

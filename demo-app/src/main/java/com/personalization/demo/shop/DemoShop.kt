@@ -11,6 +11,7 @@ import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.tracking.TrackingItem
+import com.personalization.demo.openGameLink
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationToast
 import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
@@ -70,10 +71,11 @@ internal class DemoShop(
 
     /**
      * Clicks of the shop's stories, also of a campaign opened by a link: links stay with the SDK (it
-     * opens them itself); a product opens its page here — `false`, the host handled it, the viewer closes.
+     * opens them itself); the game link opens the game and a product its page here — `false`, the host
+     * handled it, the viewer closes.
      */
     val storiesClicks: OnClickListener = object : OnClickListener {
-        override fun onClick(url: String): Boolean = true
+        override fun onClick(url: String): Boolean = !openGameLink(context, url)
 
         override fun onClick(product: Product): Boolean {
             open(ShopRoute.Product(product.id))
