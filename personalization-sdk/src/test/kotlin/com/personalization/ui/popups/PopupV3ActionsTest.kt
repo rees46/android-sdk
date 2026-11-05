@@ -1,9 +1,12 @@
 package com.personalization.ui.popups
 
+import android.app.Activity
 import android.app.Application
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Looper
+import android.view.View
+import android.view.ViewGroup
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.Fixtures
 import com.personalization.SDK
@@ -27,6 +30,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -45,6 +49,7 @@ class PopupV3ActionsTest {
     private var navigated = 0
     private var handledProduct: PersonalizationProduct? = null
     private var productHandler: ((PersonalizationProduct) -> Boolean)? = { product -> handledProduct = product; product.id == "1" }
+    private var linkHandler: ((String) -> Boolean)? = { url -> links += url; url.startsWith("rees46demo://") }
     private lateinit var handler: PopupV3ActionHandler
     private val texts = PopupV3Texts(sendFailed = "Не удалось отправить")
     private val app: Context = ApplicationProvider.getApplicationContext<Application>()
@@ -65,7 +70,7 @@ class PopupV3ActionsTest {
             popupId = 9106,
             transport = transport,
             appHost = { "app.rees46.ru" },
-            linkHandler = { { url: String -> links += url; url.startsWith("rees46demo://") } },
+            linkHandler = { linkHandler },
             productHandler = { productHandler },
             texts = { texts },
             context = { app },
@@ -191,8 +196,75 @@ class PopupV3ActionsTest {
         handler.openLink("javascript:alert(1)")
         handler.openLink("  ")
         assertEquals(listOf("rees46demo://sale"), links)
+        assertEquals(1, navigated)
         handler.openLink("https://demo.rees46.ru/")
         assertEquals("https://demo.rees46.ru/", shadowOf(app as Application).nextStartedActivity.dataString)
+        assertEquals(1, navigated)
+        assertEquals(0, closed)
+    }
+
+    private fun render(fixture: String, variables: Map<String, String> = emptyMap()): View {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val popup = (PopupV3.parse(JSONObject(Fixtures.read("popups-v3/$fixture"))) as PopupV3.Parsed.Ok).popup
+        val ctx = PopupV3RenderContext(activity, texts, variables, PopupV3State(), handler, null, 390, 800)
+        return PopupV3Renderer.content(popup.design, ctx)
+    }
+
+    /** Нажатие на элемент: на коробку со ссылкой или на первое нажимаемое внутри неё (кнопка, плашка кода). */
+    private fun View.tap(id: String) {
+        findViewWithTag<View>(id).pressable()!!.performClick()
+    }
+
+    private fun View.pressable(): View? = when {
+        hasOnClickListeners() -> this
+        this is ViewGroup -> (0 until childCount).firstNotNullOfOrNull { getChildAt(it).pressable() }
+        else -> null
+    }
+
+    @Test
+    fun `a link the host opened closes the popup without close, after the click`() {
+        linkHandler = { url -> links += url; true }
+        render("element-button.json").tap("el-btn-link")
+        render("element-text.json").tap("el-text-full")
+        render("element-image.json").tap("el-img-auto")
+        render("element-promo-code.json", mapOf("promo_code" to "ABC123")).tap("el-promo-personal")
+        assertEquals(
+            listOf(
+                "rees46demo://sale?from=android",
+                "https://demo.rees46.ru/sale",
+                "https://demo.rees46.ru/product/141206",
+                "rees46demo://cart?promo=ABC123"
+            ),
+            links
+        )
+        assertEquals(List(4) { "click" }, events.map { it.second })
+        assertEquals(4, navigated)
+        assertEquals(0, closed)
+        assertNull(shadowOf(app as Application).nextStartedActivity)
+    }
+
+    @Test
+    fun `a link the host declined, or without a handler, goes to the system and the popup stays`() {
+        linkHandler = { url -> links += url; false }
+        render("element-button.json").tap("el-btn-link")
+        assertEquals(listOf("rees46demo://sale?from=android"), links)
+        assertEquals("rees46demo://sale?from=android", shadowOf(app as Application).nextStartedActivity.dataString)
+        linkHandler = null
+        render("element-text.json").tap("el-text-full")
+        assertEquals("https://demo.rees46.ru/sale", shadowOf(app as Application).nextStartedActivity.dataString)
+        assertEquals(listOf("click", "click"), events.map { it.second })
+        assertEquals(0, navigated)
+        assertEquals(0, closed)
+    }
+
+    @Test
+    fun `a failing link handler counts as declined`() {
+        linkHandler = { throw IllegalStateException("host bug") }
+        render("element-button.json").tap("el-btn-link")
+        assertEquals("rees46demo://sale?from=android", shadowOf(app as Application).nextStartedActivity.dataString)
+        assertEquals(listOf("click"), events.map { it.second })
+        assertEquals(0, navigated)
+        assertEquals(0, closed)
     }
 
     @Test
@@ -207,15 +279,17 @@ class PopupV3ActionsTest {
         handler.product(PersonalizationProduct(id = "1", name = "A", price = "1"))
         assertEquals(listOf(Triple(9106, "click", null as String?)), events)
         assertEquals(1, navigated)
+        // Не взял товар — его ссылку берёт обработчик ссылок, и попап тоже уходит.
         handler.product(PersonalizationProduct(id = "2", name = "B", price = "1", url = "rees46demo://p/2"))
-        assertEquals(1, navigated)
         assertEquals("rees46demo://p/2", links.last())
+        assertEquals(2, navigated)
         handler.close()
         assertEquals(1, closed)
     }
 
     @Test
     fun `a failing or missing product handler opens the deeplink, else the url, and the popup stays`() {
+        linkHandler = { url -> links += url; false }
         productHandler = { throw IllegalStateException("host bug") }
         handler.product(PersonalizationProduct(id = "1", name = "A", price = "1", url = "https://demo.rees46.ru/p/1", deeplink = "rees46demo://p/1"))
         assertEquals("rees46demo://p/1", links.last())

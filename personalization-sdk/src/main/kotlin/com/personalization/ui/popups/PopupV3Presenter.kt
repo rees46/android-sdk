@@ -704,7 +704,7 @@ internal class PopupV3ActionHandler(
     private val texts: () -> PopupV3Texts,
     private val context: () -> Context,
     private val onClose: () -> Unit,
-    /** Хост открыл товар у себя: попап уходит, как со страницы web при переходе, — без `close`. */
+    /** Хост открыл ссылку или товар у себя: попап уходит, как со страницы web при переходе, — без `close`. */
     private val onNavigate: () -> Unit = {}
 ) : PopupV3Actions {
 
@@ -715,6 +715,11 @@ internal class PopupV3ActionHandler(
 
     override fun click() = transport.event(popupId, EVENT_CLICK)
 
+    /**
+     * Ссылка попапа (кнопка, ссылка элемента, «применить» промокода, товар): сначала обработчик
+     * хоста — открыл сам, попап уходит без `close`, как после товара; нет обработчика, он вернул
+     * `false` или упал — системно (`ACTION_VIEW`), попап остаётся.
+     */
     override fun openLink(url: String?) {
         val link = PopupV3Links.safe(url) ?: return
         val handler = linkHandler()
@@ -725,7 +730,10 @@ internal class PopupV3ActionHandler(
                 SDK.error("popups v3: link handler failed on $link", throwable)
                 false
             }
-            if (handled) return
+            if (handled) {
+                onNavigate()
+                return
+            }
         }
         val host = context()
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
@@ -809,7 +817,7 @@ internal class PopupV3ActionHandler(
     /**
      * Тап по товару ленты: `click`, затем обработчик хоста — открыл сам, попап уходит без `close`;
      * нет обработчика, он вернул `false` или упал — ссылка товара (`deeplink`, иначе `url`)
-     * обычным путём ссылок, попап остаётся.
+     * обычным путём ссылок ([openLink]).
      */
     override fun product(product: PersonalizationProduct) {
         click()

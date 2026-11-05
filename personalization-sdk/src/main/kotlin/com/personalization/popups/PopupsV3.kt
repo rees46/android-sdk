@@ -51,8 +51,9 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
     var appHost: String = DEFAULT_APP_HOST
 
     /**
-     * Ссылки попапа (кнопки, элементы, «применить» промокода): `true` — хост открыл сам,
-     * `false` — SDK откроет системно (`ACTION_VIEW`).
+     * Ссылки попапа (кнопки, элементы, «применить» промокода, ссылка товара): `true` — хост
+     * открыл сам, попап закрывается без события `close`; `false` — SDK откроет системно
+     * (`ACTION_VIEW`), попап остаётся.
      */
     var linkHandler: ((url: String) -> Boolean)? = null
 
