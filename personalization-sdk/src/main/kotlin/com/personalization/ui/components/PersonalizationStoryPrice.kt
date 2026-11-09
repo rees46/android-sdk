@@ -17,7 +17,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -35,7 +34,6 @@ import com.personalization.ui.PersonalizationTheme
  *   (в задаче на странице Stories: «по умолчанию Copied») и зовёт [onPromoCopied];
  *   блок при нажатии чуть увеличивается — кадр Tap Zoom Effect.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryPrice @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

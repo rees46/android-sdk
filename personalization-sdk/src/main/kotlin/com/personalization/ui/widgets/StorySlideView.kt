@@ -21,7 +21,6 @@ import com.personalization.Product
 import com.personalization.R
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryNavigation
@@ -80,7 +79,6 @@ internal interface StorySlideHost {
  */
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @SuppressLint("ViewConstructor")
-@InternalPersonalizationUiApi
 internal class StorySlideView(
     baseContext: Context,
     val storyIndex: Int,

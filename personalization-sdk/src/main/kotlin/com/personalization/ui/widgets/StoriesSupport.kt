@@ -13,7 +13,6 @@ import com.personalization.stories.models.elements.ButtonElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationStoryCover
 import com.personalization.ui.components.PersonalizationStoryItem
@@ -26,7 +25,6 @@ import org.json.JSONObject
  * Перевод моделей сторис SDK (те же, что у старого `StoriesView`) в данные компонентов кита.
  * Отдельно от вьюх — чтобы проверялось тестами без экрана.
  */
-@InternalPersonalizationUiApi
 internal object StoriesMapping {
 
     /** Длительность слайда, когда админка её не задала или задала 0 (A7). */

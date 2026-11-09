@@ -12,7 +12,6 @@ import androidx.core.widget.NestedScrollView
 import androidx.core.widget.TextViewCompat
 import androidx.core.widget.doAfterTextChanged
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -30,7 +29,6 @@ import com.personalization.ui.PersonalizationTheme
  * Состояние чекбоксов и раскрытия секций живёт здесь; хост получает изменения
  * через [onOptionToggle] и [onRangeChanged] и на «Apply» читает [sections].
  */
-@InternalPersonalizationUiApi
 class PersonalizationFilters @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

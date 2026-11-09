@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.ImageViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -25,7 +24,6 @@ import com.personalization.ui.PersonalizationTheme
  * В начале строки — кнопка звука видео-слайда ([showSoundButton], [muted]):
  * в макете она живёт здесь же.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryUsedProducts @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

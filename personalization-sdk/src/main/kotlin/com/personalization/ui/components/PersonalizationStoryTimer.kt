@@ -12,7 +12,6 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -26,7 +25,6 @@ import com.personalization.ui.PersonalizationTheme
  *
  * В ответе сторис таймера нет — компонент для хоста: он задаёт [endTimeMillis].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryTimer @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -165,7 +163,6 @@ class PersonalizationStoryTimer @JvmOverloads constructor(
 }
 
 /** Остаток времени по единицам таймера. Отрицательный остаток — нули. */
-@InternalPersonalizationUiApi
 data class PersonalizationStoryTimerParts(
     val days: Long,
     val hours: Long,

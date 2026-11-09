@@ -14,7 +14,6 @@ import com.personalization.R
 import com.personalization.Rees46
 import com.personalization.SDK
 import com.personalization.api.responses.product.Product
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationCatalog
 import com.personalization.ui.components.PersonalizationFilters
@@ -59,7 +58,6 @@ import java.util.Locale
  * повторяет запрос. Не загрузилась следующая — кнопка «загрузить ещё» становится
  * кнопкой повтора этой страницы, и бесконечная прокрутка сама её больше не просит.
  */
-@InternalPersonalizationUiApi
 abstract class PersonalizationListingScreen internal constructor(
     context: Context,
     attrs: AttributeSet?,

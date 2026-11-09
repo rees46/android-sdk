@@ -2,7 +2,6 @@ package com.personalization.ui.widgets
 
 import android.graphics.Color
 import com.personalization.SDK
-import com.personalization.ui.InternalPersonalizationUiApi
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
@@ -18,7 +17,6 @@ import java.io.Serializable
  * Сериализуется вместе со [com.personalization.stories.models.Slide]: хост может передать слайд
  * с опросом через `Intent` / `Bundle`.
  */
-@InternalPersonalizationUiApi
 internal class StoryPoll(
     val type: Type,
     /** `poll_type` как пришёл — часть ключа хранилища ответов. */
@@ -291,7 +289,6 @@ internal data class PollTexts(val reanswer: CharSequence, val error: CharSequenc
 }
 
 /** Тела запросов опросов — без `shop_id`, `did`, `sid`: их добавляет транспорт. */
-@InternalPersonalizationUiApi
 internal object StoryPollBodies {
 
     /** Мини-опрос: варианты или текст, `story_id` — число, `slide_id` — всегда строка. */

@@ -2,8 +2,8 @@ package com.personalization.ui.widgets
 
 import android.os.Handler
 import android.os.Looper
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.SDK
-import com.personalization.ui.InternalPersonalizationUiApi
 import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
 import org.json.JSONObject
@@ -14,7 +14,7 @@ import org.json.JSONObject
  * без сеанса — пустая строка) и поля запроса; без cookies. Запрос, лог и разбор `{status, payload}` — общие
  * с [StoriesApiV3]; did ждётся там же, как у ленты. Не дождались за [DID_TIMEOUT_MS] — ошибка.
  */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 internal class StoriesPollsApi(private val sdk: SDK, private val domain: String) : StoriesPollsTransport {
 
     override fun answerMiniPoll(code: String, body: Map<String, Any>, callback: (StoriesPollsResult) -> Unit) =
@@ -99,7 +99,7 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
  * и [PersonalizationStories.handleLink]. Ключ — магазин, `poll_type` и код опроса. При сборке
  * карточки важнее ответа из ленты: лента может не успеть его узнать. На диск не пишется.
  */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 internal object StoryPollStore {
 
     data class Entry(val answer: StoriesPollAnswer?, val results: StoriesPollResults?)

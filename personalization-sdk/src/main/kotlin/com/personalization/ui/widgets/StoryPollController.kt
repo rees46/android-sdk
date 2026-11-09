@@ -1,6 +1,6 @@
 package com.personalization.ui.widgets
 
-import com.personalization.ui.InternalPersonalizationUiApi
+import com.personalization.InternalPersonalizationV3Api
 
 /**
  * Логика карточки опроса — как `createPoll` веб-SDK, без вьюх: их рисует [StoryPollView].
@@ -14,7 +14,7 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Слайд стоит, пока карточку держат, пишут в поле или ждут ответа: [onHold] зовётся при
  * смене `pressed || focused || sending`.
  */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 internal class StoryPollController(
     val poll: StoryPoll,
     private val storyId: Int,
@@ -268,5 +268,5 @@ internal class StoryPollController(
 }
 
 /** Что опросам слайда нужно от просмотра: транспорт, магазин (ключ хранилища) и тексты хоста. */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 internal class StoryPollsContext(val transport: StoriesPollsTransport, val shopId: String, val texts: PollTexts)

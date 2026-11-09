@@ -9,7 +9,6 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Горизонтальная лента карточек товара.
@@ -20,7 +19,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Собрана на RecyclerView, чтобы карточки переиспользовались; сами карточки —
  * [PersonalizationProductCard]. Картинки грузит хост через [imageLoader].
  */
-@InternalPersonalizationUiApi
 class PersonalizationProductsCarousel @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -107,7 +105,6 @@ internal class PersonalizationGapDecoration(
 }
 
 /** Общий адаптер трёх раскладок: тип карточки задаёт раскладка. */
-@OptIn(InternalPersonalizationUiApi::class)
 internal class PersonalizationProductsAdapter(
     private val type: PersonalizationProductCard.Type
 ) : RecyclerView.Adapter<PersonalizationProductsAdapter.Holder>() {

@@ -3,9 +3,9 @@ package com.personalization.popups
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.SDK
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.popups.PopupV3Presenter
 import com.personalization.ui.widgets.MainThread
@@ -19,9 +19,9 @@ import com.personalization.ui.widgets.MainThread
  * маркетолог пишет в `target_screens`; остальное движок делает сам: список, триггеры,
  * частоту, очередь, промокод, показ и события.
  *
- * Пока за шлюзом кита: API не публичный и может поменяться.
+ * За шлюзом v3 ([InternalPersonalizationV3Api]): API не публичный и может поменяться.
  */
-@InternalPersonalizationUiApi
+@InternalPersonalizationV3Api
 class PopupsV3 internal constructor(private val sdk: SDK) {
 
     /** Включить движок. Без этого попапы v3 не запрашиваются и не показываются. */

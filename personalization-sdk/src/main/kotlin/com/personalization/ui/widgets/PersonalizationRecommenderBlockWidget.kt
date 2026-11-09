@@ -7,7 +7,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.personalization.SDK
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationProductImage
 import com.personalization.ui.components.PersonalizationProductsBlock
@@ -16,7 +15,6 @@ import com.personalization.ui.components.PersonalizationProductsBlock
  * Управление блоком рекомендаций из Compose: то же, что [PersonalizationRecommenderBlock.reload].
  * Передаётся в [PersonalizationRecommenderBlockWidget]; без показанного блока ничего не делает.
  */
-@InternalPersonalizationUiApi
 class PersonalizationRecommenderBlockController {
 
     internal var view: PersonalizationRecommenderBlock? = null
@@ -39,7 +37,6 @@ class PersonalizationRecommenderBlockController {
  * PersonalizationRecommenderBlockWidget(code = "BLOCK_CODE", onProductClick = { open(it) })
  * ```
  */
-@InternalPersonalizationUiApi
 @Composable
 fun PersonalizationRecommenderBlockWidget(
     modifier: Modifier = Modifier,

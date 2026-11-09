@@ -1,6 +1,6 @@
 package com.personalization.ui.widgets
 
-import com.personalization.ui.InternalPersonalizationUiApi
+import com.personalization.InternalPersonalizationV3Api
 import java.io.Serializable
 
 /**
@@ -16,8 +16,10 @@ import java.io.Serializable
  * `channel`, `category` (NPS) или `campaign` (CSAT, CES) и `rate`.
  *
  * [callback] зовётся один раз, с любого потока: просмотр сам вернётся на главный.
+ *
+ * Опросы — часть v3: типы за шлюзом [InternalPersonalizationV3Api].
  */
-@InternalPersonalizationUiApi
+@InternalPersonalizationV3Api
 interface StoriesPollsTransport {
 
     /** `POST /api/v3/polls/mini_polls/{code}/answers`. */
@@ -28,7 +30,7 @@ interface StoriesPollsTransport {
 }
 
 /** Чем кончилась отправка ответа. */
-@InternalPersonalizationUiApi
+@InternalPersonalizationV3Api
 sealed class StoriesPollsResult {
 
     /**
@@ -49,7 +51,7 @@ sealed class StoriesPollsResult {
  * Ответ на опрос: варианты, текст или оценка шкалы. [rate] — число, как пришло: дробная оценка
  * из ленты тоже ответ, но ячейку шкалы не выделяет.
  */
-@InternalPersonalizationUiApi
+@InternalPersonalizationV3Api
 data class StoriesPollAnswer(
     val optionIds: List<Int>? = null,
     val text: String? = null,
@@ -62,7 +64,7 @@ data class StoriesPollAnswer(
 }
 
 /** Итоги мини-опроса: всего ответов и процент каждого варианта. */
-@InternalPersonalizationUiApi
+@InternalPersonalizationV3Api
 data class StoriesPollResults(val total: Int, val options: List<Option>) : Serializable {
 
     data class Option(val id: Int, val percent: Double) : Serializable

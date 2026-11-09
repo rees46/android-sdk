@@ -1,7 +1,5 @@
 package com.personalization.ui.components
 
-import com.personalization.ui.InternalPersonalizationUiApi
-
 /**
  * Данные товара для карточки и раскладок каталога.
  *
@@ -14,7 +12,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * чтобы перейти на товар: [deeplink] ведёт в приложение (`deeplink_android` из ответа),
  * [url] — на страницу товара на сайте.
  */
-@InternalPersonalizationUiApi
 data class PersonalizationProduct(
     val id: String,
     val name: CharSequence,

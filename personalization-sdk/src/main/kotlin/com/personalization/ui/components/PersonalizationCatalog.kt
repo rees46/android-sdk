@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Экран каталога: заголовок, плитка или список товаров, внизу лоадер, счётчик
@@ -41,7 +40,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * догрузилось. Внутри чужой вертикальной прокрутки (высота по содержимому) он
  * раскладывается целиком, как обычный блок.
  */
-@InternalPersonalizationUiApi
 class PersonalizationCatalog @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

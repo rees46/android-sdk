@@ -10,7 +10,6 @@ import android.view.View
 import androidx.annotation.ColorInt
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Чекбокс дизайн-системы, 20x20.
@@ -24,7 +23,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Цвета — токены кита; заданный цвет заменяет свой токен, кроме заливки
  * неактивного — она всегда из disabled-токенов кита. Геометрия от цветов не зависит.
  */
-@InternalPersonalizationUiApi
 class PersonalizationCheckbox @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

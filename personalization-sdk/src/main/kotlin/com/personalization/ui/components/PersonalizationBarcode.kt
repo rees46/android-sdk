@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Штрихкод Code 128.
@@ -22,7 +21,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  *
  * Строку, которую Code 128 не несёт (пустую, не ASCII), не рисует — размер нулевой.
  */
-@InternalPersonalizationUiApi
 class PersonalizationBarcode @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

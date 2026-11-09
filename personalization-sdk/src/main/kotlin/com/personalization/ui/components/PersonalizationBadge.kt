@@ -10,7 +10,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Бейдж дизайн-системы.
@@ -21,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * кегль берётся с одной ступени, интерлиньяж с другой (20/24, 16/20, 14/16).
  * Поэтому размеры заданы здесь явно, а не через стиль.
  */
-@InternalPersonalizationUiApi
 class PersonalizationBadge @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

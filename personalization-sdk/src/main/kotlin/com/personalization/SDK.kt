@@ -46,7 +46,6 @@ import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseC
 import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +57,7 @@ import org.json.JSONObject
 
 private const val GAID_KEY = "google_advertising_id"
 
-@OptIn(InternalPersonalizationUiApi::class)
+@OptIn(InternalPersonalizationV3Api::class)
 open class SDK {
 
     internal lateinit var context: Context
@@ -176,9 +175,11 @@ open class SDK {
 
     /**
      * Popups v3 — native rendering of the new popup builder's documents. Asleep until the host turns
-     * them on (`popups.enabled`) and `/init` reports `popups_v3`; see [PopupsV3].
+     * them on (`popups.enabled`) and `/init` reports `popups_v3`; see [PopupsV3]. Behind the v3 gate
+     * ([InternalPersonalizationV3Api]) and hidden from Java.
      */
-    @InternalPersonalizationUiApi
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
     val popups: PopupsV3
         get() = popupsV3 ?: synchronized(this) { popupsV3 ?: PopupsV3(this).also { popupsV3 = it } }
 

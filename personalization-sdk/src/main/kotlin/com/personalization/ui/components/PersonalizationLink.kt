@@ -6,7 +6,6 @@ import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -17,7 +16,6 @@ import com.personalization.ui.PersonalizationTheme
  * начертание 600, цвет Text/Link, без подложки и отступов. Нажатого состояния
  * в макете нет, поэтому ссылка только слегка гаснет под пальцем.
  */
-@InternalPersonalizationUiApi
 class PersonalizationLink @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

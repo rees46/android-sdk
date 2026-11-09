@@ -17,7 +17,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -50,7 +49,6 @@ import com.personalization.ui.PersonalizationTheme
  * Padding/Gap Full Screen (24), скругление модалки — радиус Modal, фон — Background/Card,
  * тень — Elevation 3.
  */
-@InternalPersonalizationUiApi
 class PersonalizationInAppPopup @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

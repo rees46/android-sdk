@@ -13,7 +13,6 @@ import com.personalization.Rees46
 import com.personalization.SDK
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.TrackingSourceType
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationProductImage
 import com.personalization.ui.components.PersonalizationProductsBlock
@@ -47,7 +46,6 @@ import com.personalization.ui.components.PersonalizationProductsBlock
  * [onProductAction]; у коллекции источник не ставится. Кнопка карточки есть, только когда
  * задан [actionText].
  */
-@InternalPersonalizationUiApi
 class PersonalizationRecommenderBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

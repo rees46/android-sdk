@@ -6,12 +6,11 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
 import com.personalization.Cancellable
-
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.R
 import com.personalization.Rees46
 import com.personalization.SDK
 import com.personalization.stories.models.Story
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationStoriesBar
 
 /**
@@ -28,12 +27,8 @@ import com.personalization.ui.components.PersonalizationStoriesBar
  * Пока блок грузится — скелетон. Пустой блок, ошибка загрузки, пустой [code],
  * неоднозначный магазин или 15 с без ответа прячут виджет и зовут [onError].
  * Управление из кода — [open], [openStory], [pause], [resume]; без ленты — [show].
- *
- * С [apiV3Domain] (своим или глобальным из companion) блок, события и кнопка «Поделиться» —
- * на API v3; ссылку «Поделиться» открывает [handleLink]. Там же рисуются опросы слайдов; ответы
- * уходят на тот же хост, а [pollsTransport] их подменяет.
  */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 class PersonalizationStories @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -49,29 +44,8 @@ class PersonalizationStories @JvmOverloads constructor(
     /** Магазин; `null` — единственный зарегистрированный. Менять до показа. */
     var shopId: String? = null
 
-    /**
-     * Хост API v3 этого виджета, без схемы (`app.rees46.ru`): блок, события и «Поделиться» —
-     * на v3. `null` — глобальный [Companion.apiV3Domain], а без него старое API. Соседние
-     * виджеты друг на друга не влияют. Менять до показа или вызвать [reload].
-     */
-    @get:JvmName("getWidgetApiV3Domain")
-    @set:JvmName("setWidgetApiV3Domain")
-    var apiV3Domain: String? = null
-
     /** Загрузчик картинок; `null` — Glide из SDK. */
     var imageLoader: ((ImageView, String) -> Unit)? = null
-
-    /**
-     * Ссылка слайда → то, что уходит в окно «Поделиться» (например, своя схема приложения).
-     * `null` — ссылка как есть. Событие `share` не меняется.
-     */
-    var shareUrlTransform: ((String) -> String)? = null
-
-    /**
-     * Куда уходят ответы на опросы слайдов. `null` — HTTP на хост API v3 блока (без него опросов
-     * нет). Свой — для тестов и офлайн-демо; на старом API опросов нет и с ним.
-     */
-    var pollsTransport: StoriesPollsTransport? = null
 
     /** Клики по ссылкам и товарам — контракт старых сторис ([com.personalization.OnClickListener]). */
     var onClickListener: com.personalization.OnClickListener? = null
@@ -88,9 +62,59 @@ class PersonalizationStories @JvmOverloads constructor(
     var closeLabel: CharSequence
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
+
+    // --- v3: за своим шлюзом ([InternalPersonalizationV3Api]) и скрыто от Java ----------------
+
+    /**
+     * Хост API v3 этого виджета, без схемы (`app.rees46.ru`): блок, события и «Поделиться» —
+     * на v3. `null` — глобальный [Companion.apiV3Domain], а без него старое API. Соседние
+     * виджеты друг на друга не влияют. Менять до показа или вызвать [reload]. Ссылку
+     * «Поделиться» открывает [handleLink]. На v3 рисуются и опросы слайдов: ответы уходят на тот
+     * же хост, а [pollsTransport] их подменяет.
+     */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
+    var apiV3Domain: String? = null
+
+    /**
+     * Ссылка слайда → то, что уходит в окно «Поделиться» (например, своя схема приложения).
+     * `null` — ссылка как есть. Событие `share` не меняется.
+     */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
+    var shareUrlTransform: ((String) -> String)? = null
+
+    /**
+     * Куда уходят ответы на опросы слайдов. `null` — HTTP на хост API v3 блока (без него опросов
+     * нет). Свой — для тестов и офлайн-демо; на старом API опросов нет и с ним.
+     */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
+    var pollsTransport: StoriesPollsTransport? = null
+
+    /** Кнопка «Поделиться» и заголовок системного окна. */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var shareLabel: CharSequence
+
+    /** Тексты карточки опроса: «ответить заново», ошибка отправки, кнопка без `submit_label`. */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollReanswerText: CharSequence
+
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollErrorText: CharSequence
+
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollSubmitText: CharSequence
 
     /** Загруженные сторис — в порядке сервера, без пустых. */
@@ -300,7 +324,9 @@ class PersonalizationStories @JvmOverloads constructor(
          * слайдов со ссылкой появляется «Поделиться». `null` — старые `stories/{code}` и
          * `track/stories`. Задавать до показа сторис.
          */
-        @JvmStatic
+        @InternalPersonalizationV3Api
+        @get:JvmSynthetic
+        @set:JvmSynthetic
         @Volatile
         var apiV3Domain: String? = null
 
@@ -315,12 +341,44 @@ class PersonalizationStories @JvmOverloads constructor(
          *
          * Пустой блок, ошибка загрузки, магазин не найден или 15 с без ответа — [onError],
          * и показ на этом заканчивается. Просмотр закрыли — [onClose] (F12; на RN и Flutter
-         * так завершаются Promise и Future). [apiV3Domain] — как у виджета, `null` — глобальный;
-         * [shareUrlTransform], тексты опросов и [pollsTransport] — как у виджета. Возвращает отмену
-         * ещё не открытого показа.
+         * так завершаются Promise и Future). Возвращает отмену ещё не открытого показа.
          */
         @JvmStatic
         @JvmOverloads
+        fun show(
+            context: Context,
+            code: String,
+            sdk: SDK? = null,
+            shopId: String? = null,
+            startStoryId: Int? = null,
+            onClickListener: com.personalization.OnClickListener? = null,
+            onError: ((code: Int, message: String?) -> Unit)? = null,
+            onClose: (() -> Unit)? = null,
+            imageLoader: ((ImageView, String) -> Unit)? = null,
+            promoCaption: CharSequence? = null,
+            promoCopiedText: CharSequence? = null,
+            productButtonText: CharSequence? = null,
+            showProductsText: CharSequence? = null,
+            hideProductsText: CharSequence? = null,
+            retryText: CharSequence? = null,
+            closeLabel: CharSequence? = null,
+            soundOnLabel: CharSequence? = null,
+            soundOffLabel: CharSequence? = null
+        ): Cancellable {
+            val texts = hostTexts(
+                context, promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText,
+                retryText, closeLabel, soundOnLabel, soundOffLabel
+            )
+            return detached(context, code, shopId, onClickListener, onError, imageLoader, texts)
+                .showDetached(sdk, startStoryId, onClose)
+        }
+
+        /**
+         * [show] на API v3 (за шлюзом v3): [apiV3Domain] — как у виджета, `null` — глобальный;
+         * [shareLabel], [shareUrlTransform], тексты опросов и [pollsTransport] — как у виджета.
+         */
+        @InternalPersonalizationV3Api
+        @JvmSynthetic
         fun show(
             context: Context,
             code: String,
@@ -372,9 +430,10 @@ class PersonalizationStories @JvmOverloads constructor(
          * `start_position` ответа), закрыв другой открытый просмотр V2, и отправить `shared_open`
          * с этим слайдом. Ошибка, 404, пусто, таймаут — [onError], ничего
          * не показано. Та же ссылка, пока грузится или её просмотр открыт, — игнорируется.
+         * За шлюзом v3.
          */
-        @JvmStatic
-        @JvmOverloads
+        @InternalPersonalizationV3Api
+        @JvmSynthetic
         fun handleLink(
             context: Context,
             url: String,
@@ -441,10 +500,10 @@ class PersonalizationStories @JvmOverloads constructor(
             closeLabel: CharSequence?,
             soundOnLabel: CharSequence?,
             soundOffLabel: CharSequence?,
-            shareLabel: CharSequence?,
-            pollReanswerText: CharSequence?,
-            pollErrorText: CharSequence?,
-            pollSubmitText: CharSequence?
+            shareLabel: CharSequence? = null,
+            pollReanswerText: CharSequence? = null,
+            pollErrorText: CharSequence? = null,
+            pollSubmitText: CharSequence? = null
         ): StoriesTexts {
             val defaults = StoriesTexts.defaults(context)
             return StoriesTexts(

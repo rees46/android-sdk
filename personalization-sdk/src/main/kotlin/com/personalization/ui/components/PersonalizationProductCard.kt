@@ -14,7 +14,6 @@ import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Карточка товара.
@@ -32,7 +31,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * [PersonalizationBadge] (скидка, вид danger), [PersonalizationButton].
  * Изображение хост грузит сам в `image.imageView`.
  */
-@InternalPersonalizationUiApi
 class PersonalizationProductCard @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

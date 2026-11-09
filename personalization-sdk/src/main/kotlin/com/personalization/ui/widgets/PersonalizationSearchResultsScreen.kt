@@ -7,7 +7,6 @@ import com.personalization.SDK
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.params.SearchParams
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Экран полной выдачи поиска с данными SDK: заголовок с числом найденного, плитка ⇄ список,
@@ -21,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Заголовок — сама фраза, пока хост не задал [titleText]. Каждый новый запрос трекается
  * событием `search`; нажатие на карточку запоминает источник `full_search`.
  */
-@InternalPersonalizationUiApi
 class PersonalizationSearchResultsScreen @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -7,7 +7,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Подпись-разделитель списка.
@@ -18,7 +17,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  *
  * Текст переводится в верхний регистр самим компонентом — так задано в макете.
  */
-@InternalPersonalizationUiApi
 class PersonalizationListLabel @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

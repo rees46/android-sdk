@@ -33,10 +33,10 @@ import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.CustomViewTarget
 import com.bumptech.glide.request.target.Target
 import com.bumptech.glide.request.transition.Transition
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.OnClickListener
 import com.personalization.SDK
 import com.personalization.stories.models.Story
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.widgets.StoriesViewerState.Pause
 import java.lang.ref.WeakReference
 
@@ -54,15 +54,9 @@ import java.lang.ref.WeakReference
  * Ссылки и товары — через [onClickListener] с контрактом старых сторис: `true` — SDK
  * открывает сам, `false` — хост обработал. Перед переходом просмотр закрывается.
  *
- * Слайд со ссылкой — с кнопкой «Поделиться», только на API v3 ([apiV3Domain]): системное окно с
- * одной ссылкой, слайд стоит, пока окно открыто.
- *
- * Опросы слайда (элементы `poll`) — только на API v3 или со своим [pollsTransport]: карточка
- * поверх середины слайда; пока её трогают, пишут в поле или ждут ответа, слайд стоит.
- *
  * Модели — те же, что у старого `StoriesView`: V2 его не трогает.
  */
-@InternalPersonalizationUiApi
+@OptIn(InternalPersonalizationV3Api::class)
 class PersonalizationStoriesViewer(
     context: Context,
     stories: List<Story>,
@@ -91,21 +85,6 @@ class PersonalizationStoriesViewer(
     /** Клики по ссылкам и товарам — контракт старых сторис ([OnClickListener]). */
     var onClickListener: OnClickListener? = null
 
-    /** Ссылка слайда → то, что уходит в окно «Поделиться»; `null` — как есть. Событие `share` то же. */
-    var shareUrlTransform: ((String) -> String)? = null
-
-    /** Хост API v3, с которого пришли сторис: события идут туда же. `null` — старый `track/stories`. */
-    internal var apiV3Domain: String? = PersonalizationStories.v3Domain()
-
-    /** Слайд стартовой сторис в обход «первого непросмотренного» — для ссылки «Поделиться». */
-    internal var startSlide: Int? = null
-
-    /**
-     * Куда уходят ответы на опросы. `null` — HTTP на хост API v3 сторис; без него опросы не
-     * рисуются. Свой — для тестов и офлайн-демо: с ним опросы рисуются и без API v3.
-     */
-    var pollsTransport: StoriesPollsTransport? = null
-
     var promoCaption: CharSequence
     var promoCopiedText: CharSequence
     var productButtonText: CharSequence
@@ -115,9 +94,56 @@ class PersonalizationStoriesViewer(
     var closeLabel: CharSequence
     var soundOnLabel: CharSequence
     var soundOffLabel: CharSequence
+
+    // --- v3: за своим шлюзом ([InternalPersonalizationV3Api]) и скрыто от Java ----------------
+
+    /**
+     * Хост API v3, с которого пришли сторис: события идут туда же. `null` — старый `track/stories`.
+     * Только на нём у слайда со ссылкой есть кнопка «Поделиться»: системное окно с одной ссылкой,
+     * слайд стоит, пока окно открыто.
+     */
+    internal var apiV3Domain: String? = PersonalizationStories.v3Domain()
+
+    /** Ссылка слайда → то, что уходит в окно «Поделиться»; `null` — как есть. Событие `share` то же. */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
+    var shareUrlTransform: ((String) -> String)? = null
+
+    /** Слайд стартовой сторис в обход «первого непросмотренного» — для ссылки «Поделиться». */
+    internal var startSlide: Int? = null
+
+    /**
+     * Куда уходят ответы на опросы слайда (элементы `poll`). `null` — HTTP на хост API v3 сторис;
+     * без него опросы не рисуются. Свой — для тестов и офлайн-демо: с ним опросы рисуются и без
+     * API v3. Карточка — поверх середины слайда; пока её трогают, пишут в поле или ждут ответа,
+     * слайд стоит.
+     */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
+    var pollsTransport: StoriesPollsTransport? = null
+
+    /** Кнопка «Поделиться» и заголовок системного окна. */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var shareLabel: CharSequence
+
+    /** Тексты карточки опроса: «ответить заново», ошибка отправки, кнопка без `submit_label`. */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollReanswerText: CharSequence
+
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollErrorText: CharSequence
+
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    @set:JvmSynthetic
     var pollSubmitText: CharSequence
 
     init {
@@ -1017,7 +1043,6 @@ class PersonalizationStoriesViewer(
  * Открытые просмотры V2 — из ленты, `show` и ссылки «Поделиться»: просмотр по ссылке закрывает
  * их перед показом своего. Только главный поток.
  */
-@InternalPersonalizationUiApi
 internal object OpenStoriesViewers {
     private val viewers = ArrayList<WeakReference<PersonalizationStoriesViewer>>()
 

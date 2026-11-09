@@ -10,7 +10,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Заголовок блока.
@@ -22,7 +21,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Filters (204:8340) — кнопка-крестик, Search results (167:3807) — кнопка «назад» и группа.
  * Поэтому края здесь — произвольные вью, а не фиксированные варианты.
  */
-@InternalPersonalizationUiApi
 class PersonalizationTitle @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

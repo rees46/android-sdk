@@ -33,7 +33,6 @@ import com.personalization.R
 import com.personalization.popups.PopupMarkup
 import com.personalization.popups.PopupV3Specs
 import com.personalization.popups.PopupV3Variables
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 import kotlin.math.abs
 import kotlin.math.max
@@ -196,7 +195,6 @@ internal fun View.popupClipRound(radiusPx: Float) {
  * берётся та, чей `text_primary` контрастнее с фоном (WCAG): на белом — светлая в любой теме
  * системы. Окна поверх приложения (тост) остаются по теме приложения.
  */
-@OptIn(InternalPersonalizationUiApi::class)
 internal object PopupV3KitTheme {
 
     /**

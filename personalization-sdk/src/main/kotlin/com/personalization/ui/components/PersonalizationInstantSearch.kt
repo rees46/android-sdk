@@ -10,7 +10,6 @@ import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -31,7 +30,6 @@ import com.personalization.ui.PersonalizationTheme
  * Разделитель в макете чёрный 4%, ближайший токен Line/Generic Subtle (5%).
  * Картинки хост грузит через [imageLoader].
  */
-@InternalPersonalizationUiApi
 class PersonalizationInstantSearch @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

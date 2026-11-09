@@ -6,7 +6,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Блок товаров: заголовок, товары, у карусели — точки. Товары даёт хост; сам блок ничего
@@ -21,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Собран из [PersonalizationTitle], [PersonalizationButton],
  * [PersonalizationProductsCarousel] / [PersonalizationProductsGrid], [PersonalizationDots].
  */
-@InternalPersonalizationUiApi
 class PersonalizationProductsBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

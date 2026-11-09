@@ -28,6 +28,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.FragmentActivity
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.R
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
@@ -46,7 +47,6 @@ import com.personalization.popups.PopupV3Texts
 import com.personalization.popups.PopupsV3
 import com.personalization.popups.PopupsV3Presenter
 import com.personalization.popups.PopupsV3Transport
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.widgets.MainThread
 import com.personalization.ui.widgets.StoriesPollsApi
@@ -82,7 +82,6 @@ internal fun popupTexts(context: Context): PopupV3Texts = with(context) {
  * Слоты попапов на процесс (все инстансы SDK): модалка одна — общая со старыми попапами,
  * баннер — по одному сверху и снизу.
  */
-@OptIn(InternalPersonalizationUiApi::class)
 internal object PopupV3Slots {
 
     private var modal: Any? = null
@@ -138,7 +137,7 @@ internal object PopupV3Slots {
  * с затемнением или блокировкой фона — своим окном ([PopupV3Dialog]); баннер без них —
  * вью поверх окна активити, касания вне него уходят в приложение.
  */
-@OptIn(InternalPersonalizationUiApi::class)
+@OptIn(InternalPersonalizationV3Api::class)
 internal class PopupV3Presenter(private val sdk: SDK, private val popups: PopupsV3) : PopupsV3Presenter {
 
     override fun canOpen(popup: PopupV3): String? = PopupV3Slots.reason(popup)
@@ -153,7 +152,7 @@ internal class PopupV3Presenter(private val sdk: SDK, private val popups: Popups
  * закрывается, попап снимается без события и встаёт на следующую активити с тем же
  * состоянием элементов.
  */
-@OptIn(InternalPersonalizationUiApi::class)
+@OptIn(InternalPersonalizationV3Api::class)
 internal class PopupV3Session(
     private val sdk: SDK,
     private val popups: PopupsV3,
@@ -332,7 +331,6 @@ internal class PopupV3Dialog(
  * `frameStyle` и breakpoints на текущей ширине экрана; её высота не больше доступной
  * (экран без безопасных зон, клавиатуры и полей макета), лишнее прокручивается внутри.
  */
-@OptIn(InternalPersonalizationUiApi::class)
 @SuppressLint("ViewConstructor")
 internal class PopupV3RootView(
     context: Context,
@@ -693,7 +691,7 @@ internal class PopupV3FrameView(
  * Действия элементов на устройстве: события попапа, ссылки (сначала обработчик хоста),
  * буфер, подписка и сегмент, профиль, отзыв опроса через API v3 опросов, клик по товару.
  */
-@OptIn(InternalPersonalizationUiApi::class)
+@OptIn(InternalPersonalizationV3Api::class)
 internal class PopupV3ActionHandler(
     private val sdk: SDK,
     private val popupId: Int,

@@ -19,7 +19,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -36,7 +35,6 @@ import com.personalization.ui.PersonalizationTheme
  *
  * Картинку кладёт хост в [imageView] — кит ничего не качает.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryCover @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -186,7 +184,6 @@ class PersonalizationStoryCover @JvmOverloads constructor(
  * подпись Regular 12/16 по центру цветом Text/Primary — до двух строк с многоточием
  * в конце, как у старых сторис. У скелетона вместо подписи — полоска 64×8 со скруглением 5.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryPreview @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -266,7 +263,6 @@ class PersonalizationStoryPreview @JvmOverloads constructor(
 }
 
 /** Сторис для ленты: всё, что нужно обложке и подписи. */
-@InternalPersonalizationUiApi
 data class PersonalizationStoryItem(
     val id: String,
     val title: CharSequence,
@@ -283,7 +279,6 @@ data class PersonalizationStoryItem(
  * Источник: Figma, Card/Story View=Stories Block (238:6890): превью с шагом 16,
  * отступы 16. Пока данных нет — [showSkeleton].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoriesBar @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

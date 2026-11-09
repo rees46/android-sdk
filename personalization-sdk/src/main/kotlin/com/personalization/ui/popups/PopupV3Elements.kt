@@ -34,7 +34,6 @@ import com.personalization.popups.PopupV3Links
 import com.personalization.popups.PopupV3Specs
 import com.personalization.popups.PopupV3Texts
 import com.personalization.popups.PopupV3Variables
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationCheckbox
 import com.personalization.ui.components.PersonalizationFlowLayout
 import com.personalization.ui.components.PersonalizationProduct
@@ -48,7 +47,6 @@ import java.util.Locale
  * опроса, клик по товару. Реализация — [PopupV3ActionHandler]; в тестах — подмена.
  * Колбэки отправок — на главном потоке: `null` — успех, иначе текст ошибки.
  */
-@OptIn(InternalPersonalizationUiApi::class)
 internal interface PopupV3Actions {
     fun close()
     fun click()
@@ -73,7 +71,6 @@ internal class PopupV3State {
 }
 
 /** Всё, что нужно рендеру одного попапа. */
-@OptIn(InternalPersonalizationUiApi::class)
 internal class PopupV3RenderContext(
     val context: Context,
     val texts: PopupV3Texts,
@@ -103,7 +100,6 @@ internal class PopupV3RenderContext(
  * (если его не отсеял разбор) пропускается с записью в лог; новый тип добавляется одной
  * регистрацией в [renderers].
  */
-@OptIn(InternalPersonalizationUiApi::class)
 internal object PopupV3Renderer {
 
     fun interface ElementRenderer {

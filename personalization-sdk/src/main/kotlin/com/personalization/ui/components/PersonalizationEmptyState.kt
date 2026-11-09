@@ -8,7 +8,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Пустое состояние дизайн-системы.
@@ -20,7 +19,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Текст не зашит: в макете стоит «No results for your request.», но строку
  * подставляет потребитель — локализация остаётся на его стороне.
  */
-@InternalPersonalizationUiApi
 class PersonalizationEmptyState @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

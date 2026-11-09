@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.AttributeSet
 import com.personalization.R
 import com.personalization.SDK
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Экран категории с данными SDK — сестра [PersonalizationSearchResultsScreen]: тот же
@@ -21,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * раз на категорию, а не на каждую страницу, фильтр, сортировку или повтор. Источник
  * перехода при нажатии на товар не ставится.
  */
-@InternalPersonalizationUiApi
 class PersonalizationCategoryScreen @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -12,7 +12,6 @@ import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.ImageViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -22,7 +21,6 @@ import com.personalization.ui.PersonalizationTheme
  * с шагом 2 и скруглением 1 делят ширину поровну. Пройденное — Text/Secondary,
  * дорожка — Line/Generic. Текущая полоска заполнена на [progress].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryProgress @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -105,7 +103,6 @@ class PersonalizationStoryProgress @JvmOverloads constructor(
  * Слева от крестика через 8 — «Поделиться» (иконка веб-SDK) в его стиле: та же коробка 32,
  * цвет и прозрачность, без фона. Видна, только пока задан [onShare].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryNavigation @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
