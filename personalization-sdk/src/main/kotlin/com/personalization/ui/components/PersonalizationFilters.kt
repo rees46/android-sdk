@@ -4,13 +4,14 @@ import android.content.Context
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
+import androidx.core.widget.NestedScrollView
 import androidx.core.widget.TextViewCompat
 import androidx.core.widget.doAfterTextChanged
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -28,7 +29,6 @@ import com.personalization.ui.PersonalizationTheme
  * Состояние чекбоксов и раскрытия секций живёт здесь; хост получает изменения
  * через [onOptionToggle] и [onRangeChanged] и на «Apply» читает [sections].
  */
-@InternalPersonalizationUiApi
 class PersonalizationFilters @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -68,6 +68,7 @@ class PersonalizationFilters @JvmOverloads constructor(
     private val title = PersonalizationTitle(context)
     private val closeButton = PersonalizationButton(context)
     private val sectionsColumn = LinearLayout(context)
+    private val sectionsScroll = NestedScrollView(context)
     private val resetButton = PersonalizationButton(context)
     private val applyButton = PersonalizationButton(context)
 
@@ -119,8 +120,15 @@ class PersonalizationFilters @JvmOverloads constructor(
         title.setTrailing(closeButton)
         addView(title, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
+        // Заголовок и кнопки закреплены, прокручиваются только секции: фасетов бывает десятки,
+        // и до «Apply» не надо листать весь список. Высоту, которую дал хост, секции забирают
+        // целиком; без заданной высоты (экран в общей прокрутке хоста) — по содержимому.
         sectionsColumn.orientation = VERTICAL
-        addView(sectionsColumn, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        sectionsColumn.setPadding(0, 0, 0, sectionGap)
+        sectionsScroll.isVerticalScrollBarEnabled = false
+        sectionsScroll.clipToPadding = false
+        sectionsScroll.addView(sectionsColumn, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(sectionsScroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         resetButton.size = PersonalizationButton.Size.MD
         resetButton.buttonView = PersonalizationButton.ButtonView.SECONDARY
@@ -132,7 +140,12 @@ class PersonalizationFilters @JvmOverloads constructor(
             orientation = HORIZONTAL
             addView(resetButton, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
             addView(applyButton, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = sectionGap })
-        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = sectionGap * 2 })
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = sectionGap })
+    }
+
+    /** Секции — к началу: экран фильтров открывается с первой секции, а не там, где его бросили. */
+    fun scrollToTop() {
+        sectionsScroll.scrollTo(0, 0)
     }
 
     fun setSections(items: List<Section>) {

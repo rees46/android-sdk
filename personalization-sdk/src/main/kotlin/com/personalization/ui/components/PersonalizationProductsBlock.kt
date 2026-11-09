@@ -6,10 +6,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
- * Блок рекомендаций: заголовок, товары, у карусели — точки.
+ * Блок товаров: заголовок, товары, у карусели — точки. Товары даёт хост; сам блок ничего
+ * не грузит. Блок, который сам грузит рекомендации или коллекцию, —
+ * [com.personalization.ui.widgets.PersonalizationRecommenderBlock], он собран на этом.
  *
  * Источник: Figma Mobile SDK UI Kit, секция Card — Recommender/Carousel (90:655),
  * Recommender/Grid (126:1944), Recommender/List (126:2551).
@@ -19,8 +20,7 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Собран из [PersonalizationTitle], [PersonalizationButton],
  * [PersonalizationProductsCarousel] / [PersonalizationProductsGrid], [PersonalizationDots].
  */
-@InternalPersonalizationUiApi
-class PersonalizationRecommenderBlock @JvmOverloads constructor(
+class PersonalizationProductsBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
@@ -40,10 +40,12 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             rebuild()
         }
 
+    /** Заголовок. Пустой и без кнопки «показать все» — блок без строки заголовка. */
     var text: CharSequence?
         get() = title.text
         set(value) {
             title.text = value
+            applyTitleRow()
         }
 
     /** Подпись кнопки «показать все» у карусели. `null` — без кнопки. */
@@ -51,13 +53,16 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
         set(value) {
             field = value
             showAllButton.text = value
-            title.setTrailing(if (value.isNullOrEmpty() || layout != Layout.CAROUSEL) null else showAllButton)
+            applyTitleRow()
         }
 
     var onShowAll: (() -> Unit)? = null
 
-    /** У карусели точки под лентой; выключаются, как в макете (showDots). */
-    var showDots: Boolean = true
+    /**
+     * Точки под каруселью (showDots в макете). По умолчанию выключены: лента прокручивается
+     * свободно, а не постранично, и точка на каждый товар индикатором не служит.
+     */
+    var showDots: Boolean = false
         set(value) {
             field = value
             dots.isVisible = value && layout == Layout.CAROUSEL
@@ -69,6 +74,14 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             carousel.products = value
             grid.products = value
             dots.count = value.size
+        }
+
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean = true
+        set(value) {
+            field = value
+            carousel.showRating = value
+            grid.showRating = value
         }
 
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)? = null
@@ -113,10 +126,7 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
 
     private fun rebuild() {
         removeAllViews()
-        val gap = resources.getDimensionPixelSize(
-            if (layout == Layout.CAROUSEL) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg
-        )
-        title.setTrailing(if (layout == Layout.CAROUSEL && !showAllText.isNullOrEmpty()) showAllButton else null)
+        val gap = gap()
         addView(title, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val list = when (layout) {
@@ -124,9 +134,31 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
             Layout.GRID -> grid.also { it.view = PersonalizationProductsGrid.View.GRID }
             Layout.LIST -> grid.also { it.view = PersonalizationProductsGrid.View.LIST }
         }
-        addView(list, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        addView(list, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         dots.isVisible = showDots && layout == Layout.CAROUSEL
         addView(dots, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = gap })
+        applyTitleRow()
     }
+
+    /**
+     * Строка заголовка есть, когда в ней что-то есть: текст или кнопка «показать все».
+     * Без неё лента встаёт наверх блока, без отступа под заголовок.
+     */
+    private fun applyTitleRow() {
+        val showAll = layout == Layout.CAROUSEL && !showAllText.isNullOrEmpty()
+        title.setTrailing(if (showAll) showAllButton else null)
+        title.isVisible = showAll || !title.text.isNullOrEmpty()
+        val list = getChildAt(1) ?: return
+        (list.layoutParams as LayoutParams).topMargin = if (title.isVisible) gap() else 0
+        list.requestLayout()
+    }
+
+    /** Есть ли строка заголовка — для тестов. */
+    internal val hasTitleRow: Boolean
+        get() = title.isVisible
+
+    private fun gap(): Int = resources.getDimensionPixelSize(
+        if (layout == Layout.CAROUSEL) R.dimen.personalization_spacing_xl else R.dimen.personalization_spacing_lg
+    )
 }

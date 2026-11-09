@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Попапы v3: тексты элементов, у которых поле в дизайне пустое. -->
+<resources>
+    <string name="personalization_popups_close">Закрыть</string>
+    <string name="personalization_popups_detail">Подробнее</string>
+    <string name="personalization_popups_image">Изображение</string>
+    <string name="personalization_popups_email">Email</string>
+    <string name="personalization_popups_subscribe">Подписаться</string>
+    <string name="personalization_popups_email_consent">Я согласен(на) получать рассылку</string>
+    <string name="personalization_popups_email_error">Введите корректный email и отметьте согласие</string>
+    <string name="personalization_popups_form_error">Заполните обязательные поля</string>
+    <string name="personalization_popups_send">Отправить</string>
+    <string name="personalization_popups_copy">Скопировать</string>
+    <string name="personalization_popups_copied">Скопировано</string>
+    <string name="personalization_popups_thanks">Спасибо!</string>
+    <string name="personalization_popups_gender_male">Мужской</string>
+    <string name="personalization_popups_gender_female">Женский</string>
+    <string name="personalization_popups_send_failed">Не удалось отправить. Попробуйте ещё раз</string>
+</resources>

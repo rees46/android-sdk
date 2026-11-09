@@ -11,6 +11,7 @@ import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_HAS_EMAIL
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_LAZY_LOAD
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUP
+import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUPS_V3
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_RECOMMENDATION
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_RECONE
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_SEANCE
@@ -38,7 +39,8 @@ object SdkInitializationMapper {
                 popupDto = this.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) },
                 search = null,
                 webPushSettings = null,
-                recone = this.optBoolean(PARAM_RECONE)
+                recone = this.optBoolean(PARAM_RECONE),
+                popupsV3 = this.optBoolean(PARAM_POPUPS_V3)
             )
         } catch (exception: Exception) {
             JsonResponseErrorHandler(TAG, null).logError(

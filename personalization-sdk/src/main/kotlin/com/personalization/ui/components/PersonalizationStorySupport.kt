@@ -20,7 +20,6 @@ import android.util.AttributeSet
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -71,7 +70,6 @@ internal object StorySupport {
  * Цена, как её отдаёт сервер (`"1 190 900 ₽"`), разбитая на сумму и валюту:
  * в макете валюта набрана мельче и обычным начертанием.
  */
-@InternalPersonalizationUiApi
 data class PersonalizationStoryAmount(val amount: String, val currency: String?) {
 
     companion object {

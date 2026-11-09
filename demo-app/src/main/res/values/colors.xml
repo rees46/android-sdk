@@ -10,9 +10,6 @@
     <color name="token_panel_background">#EEEEEE</color>
     <color name="hairline">#22000000</color>
 
-    <color name="bottom_nav_item_selected">#1A1A1A</color>
-    <color name="bottom_nav_item_unselected">#757575</color>
-
     <!-- HTTP-log status colors (light variants). Dark variants live in values-night/colors.xml so
          the log stays legible in dark mode. Read via ContextCompat in HttpLogActivity. -->
     <color name="log_status_success">#2E7D32</color>

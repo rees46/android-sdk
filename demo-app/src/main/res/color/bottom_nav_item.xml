@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Bridge theme resolves colorPrimary to a very light tint, which makes the checked tab
-     almost invisible on the light bar. Spell the two states out instead. -->
+<!-- Tabs in the kit's colours: the checked one in the brand colour, the rest secondary text. The
+     Bridge theme would resolve colorPrimary to a very light tint, so the two states are spelled out. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="@color/bottom_nav_item_selected" android:state_checked="true" />
-    <item android:color="@color/bottom_nav_item_unselected" />
+    <item android:color="@color/personalization_brand_primary" android:state_checked="true" />
+    <item android:color="@color/personalization_text_secondary" />
 </selector>

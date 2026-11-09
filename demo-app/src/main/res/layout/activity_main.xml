@@ -6,8 +6,8 @@
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
-    <!-- Three panes swapped by the bottom navigation: the SDK method demos, the same stories
-         block through the Compose wrapper, and through the classic XML view. -->
+    <!-- Panes swapped by the bottom navigation: the SDK method demos, the UI kit showcase, the
+         classic XML stories view, two shops side by side, and the demo shop. -->
     <FrameLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
@@ -351,16 +351,23 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone" />
+
+        <!-- The demo shop: its screens are views of the kit, stacked here by DemoShop. -->
+        <FrameLayout
+            android:id="@+id/shopContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- Bridge theme so the Material component resolves its attributes while the app itself
-         stays on the AppCompat theme. -->
+         stays on the AppCompat theme. The bar is on the kit's card surface. -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:theme="@style/Theme.MaterialComponents.DayNight.Bridge"
-        android:background="@color/token_panel_background"
+        android:background="@color/personalization_background_card"
         app:labelVisibilityMode="labeled"
         app:itemIconTint="@color/bottom_nav_item"
         app:itemTextColor="@color/bottom_nav_item"

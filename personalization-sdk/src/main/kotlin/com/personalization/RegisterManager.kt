@@ -32,6 +32,16 @@ class RegisterManager @Inject constructor(
 ) {
     private var autoSendPushToken: Boolean = false
 
+    /**
+     * Called once `/init` has answered and the did and session are in place, with `popups_v3` of
+     * the answer — popups v3 start from it. Also called with false when `/init` gave up for a
+     * device that already has a did, so a host that does without the flag still gets its popups.
+     */
+    internal var onInitFinished: ((popupsV3: Boolean) -> Unit)? = null
+
+    /** Extra query parameters of `/init` (popups v3 test mode). */
+    internal var extraInitParams: (() -> Map<String, String>)? = null
+
     private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
 
@@ -112,6 +122,7 @@ class RegisterManager @Inject constructor(
         return JSONObject().apply {
             put(PARAM_TZ, (TimeZone.getDefault().rawOffset / 3600000.0).toInt().toString())
             put(PARAM_STREAM, PARAM_ANDROID)
+            extraInitParams?.invoke()?.forEach { (key, value) -> put(key, value) }
         }
     }
 
@@ -123,21 +134,34 @@ class RegisterManager @Inject constructor(
 
         if (!errorHandler.validateResponse()) {
             return
-        } else {
-            val popUpData = response?.mapToSdkInitResponse()?.popupDto
-            if (popUpData != null) {
-                inAppNotificationManager.shopPopUp(popupDto = popUpData)
-            }
         }
+        val initResponse = response?.mapToSdkInitResponse()
+        val popUpData = initResponse?.popupDto
+        if (popUpData != null) {
+            inAppNotificationManager.shopPopUp(popupDto = popUpData)
+        }
+        val popupsV3 = initResponse?.popupsV3 == true
 
         // A known device is already set up from storage: its did and session stay as they are.
-        if (knownDevice) return
+        if (knownDevice) {
+            notifyInitFinished(popupsV3)
+            return
+        }
 
         val did = errorHandler.getRequiredField(fieldName = "did") ?: return
         val seance = errorHandler.getRequiredField(fieldName = "seance") ?: return
 
         updateUserSettingsValueUseCase.updateDid(did)
         initializeSdk(seance)
+        notifyInitFinished(popupsV3)
+    }
+
+    private fun notifyInitFinished(popupsV3: Boolean) {
+        try {
+            onInitFinished?.invoke(popupsV3)
+        } catch (e: Exception) {
+            SDK.error("Popups v3 failed to start: ${e.message}", e)
+        }
     }
 
     private fun handleInitError(code: Int, msg: String?, attempt: Int, knownDevice: Boolean) {
@@ -147,8 +171,11 @@ class RegisterManager @Inject constructor(
                     delay(RETRY_DELAY_MILLISECONDS * (attempt + 1))
                     sendInitRequestWithRetry(attempt + 1, knownDevice)
                 }
+            } else if (knownDevice) {
+                notifyInitFinished(popupsV3 = false)
             }
         } else {
+            if (knownDevice) notifyInitFinished(popupsV3 = false)
             BaseInfoError(
                 TAG,
                 message = "Init error: code: $code, message: $msg"

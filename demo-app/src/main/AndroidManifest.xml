@@ -25,17 +25,49 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/demo_notification_color" />
 
+        <!-- singleTask: a link that comes while the demo is open goes to onNewIntent of the same
+             activity instead of stacking a second one. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Stories links with the demo scheme, any host and path:
+                 rees46://stories?r46_stories=<code>&r46_story=<id>[&r46_slide=<id>] and the links the
+                 demo shares (rees46://demo.rees46.ru/?r46_stories=…); and the game link rees46://game
+                 (see DemoLink). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rees46" />
+            </intent-filter>
+            <!-- Share links of the demo site. No autoVerify (no assetlinks.json on the site): they open
+                 the demo once "Open supported links" is turned on in the app settings. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="demo.rees46.ru"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
         <activity
             android:name=".HttpLogActivity"
             android:exported="false" />
+        <!-- The mini-game the game link opens over the screen it comes to, in both builds. singleTop: one
+             more game link does not stack a second game. A rotation does not recreate it, so the web
+             page keeps its game. -->
+        <activity
+            android:name=".game.GameActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.PersonalizationDemo.Game" />
     </application>
 
 </manifest>

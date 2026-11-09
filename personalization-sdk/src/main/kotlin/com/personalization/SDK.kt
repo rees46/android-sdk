@@ -31,6 +31,7 @@ import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
+import com.personalization.popups.PopupsV3
 import com.personalization.push.PushTokenManager
 import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
@@ -56,6 +57,7 @@ import org.json.JSONObject
 
 private const val GAID_KEY = "google_advertising_id"
 
+@OptIn(InternalPersonalizationV3Api::class)
 open class SDK {
 
     internal lateinit var context: Context
@@ -160,6 +162,26 @@ open class SDK {
             field = value
             applyPopupPresentation()
         }
+
+    /** `popups_v3` of the last `/init` answer; null while `/init` has not answered. */
+    @Volatile
+    internal var popupsV3InitFlag: Boolean? = null
+        private set
+
+    /** Popups v3 of this instance, once the host has touched [popups]. */
+    @Volatile
+    internal var popupsV3: PopupsV3? = null
+        private set
+
+    /**
+     * Popups v3 — native rendering of the new popup builder's documents. Asleep until the host turns
+     * them on (`popups.enabled`) and `/init` reports `popups_v3`; see [PopupsV3]. Behind the v3 gate
+     * ([InternalPersonalizationV3Api]) and hidden from Java.
+     */
+    @InternalPersonalizationV3Api
+    @get:JvmSynthetic
+    val popups: PopupsV3
+        get() = popupsV3 ?: synchronized(this) { popupsV3 ?: PopupsV3(this).also { popupsV3 = it } }
 
     @Inject
     lateinit var initPreferencesUseCase: InitPreferencesUseCase
@@ -311,6 +333,15 @@ open class SDK {
 
         initNetworkUseCase(url = baseUrl)
 
+        // Popups v3 start from the /init answer; in their test mode /init counts test popups too.
+        registerManager.onInitFinished = { flag ->
+            popupsV3InitFlag = flag
+            popupsV3?.onInit(flag)
+        }
+        registerManager.extraInitParams = {
+            if (popupsV3?.testMode == true) mapOf(POPUPS_V3_TEST_MODE to "true") else emptyMap()
+        }
+
         registerManager.initialize(
             context = context,
             contentResolver = context.contentResolver,
@@ -329,11 +360,15 @@ open class SDK {
             CoroutineScope(Dispatchers.IO).launch {
                 val advertisingId = initializeAdvertisingIdUseCase.invoke()
 
-                profile(
-                    data = ProfileParams
+                // Not through profile(): the advertising id is not a change of the visitor that
+                // should make popups v3 ask for their list again.
+                sendNetworkMethodUseCase.postAsync(
+                    method = SET_PROFILE_FIELD,
+                    params = ProfileParams
                         .Builder()
                         .put(GAID_KEY, advertisingId)
-                        .build(),
+                        .build()
+                        .toJson(),
                     listener = object : OnApiCallbackListener() {
                         override fun onSuccess(response: JSONObject?) {
                             debug("Profile GAID sent successfully: $advertisingId")
@@ -426,7 +461,9 @@ open class SDK {
      * @param data profile data
      */
     fun profile(data: ProfileParams, listener: OnApiCallbackListener? = null) {
-        sendAsync(SET_PROFILE_FIELD, data.toJson(), listener)
+        val params = data.toJson()
+        sendAsync(SET_PROFILE_FIELD, params, listener)
+        popupsV3?.onContextChange(SET_PROFILE_FIELD, params.toString())
     }
 
     /**
@@ -1039,6 +1076,7 @@ open class SDK {
                 params.put(InternalParameter.TELEGRAM_ID.value, telegramId)
             }
             sendAsync(SUBSCRIPTION_MANAGE, params, listener)
+            popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -1103,6 +1141,7 @@ open class SDK {
                 params.put(SEGMENT_PHONE_FIELD, phone)
             }
             sendAsync("$SEGMENTS_FIELD/$method", params, listener)
+            popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
             Log.e(TAG, e.message, e)
         }
@@ -1177,7 +1216,7 @@ open class SDK {
         private const val SET_PROFILE_FIELD = "profile/set"
         private const val SEGMENT_ID_FIELD = "segment_id"
         private const val SEGMENT_EMAIL_FIELD = "email"
-        private const val SEGMENT_PHONE_FIELD = "email"
+        private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
         private const val SEARCH_FIELD = "search"
@@ -1186,6 +1225,7 @@ open class SDK {
         private const val TYPE_FIELD = "type"
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
+        private const val POPUPS_V3_TEST_MODE = "testmode"
 
         /**
          * The SDK that receives push callbacks (see [onMessage]): whichever SDK was last passed to

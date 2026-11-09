@@ -8,7 +8,6 @@ import android.view.View
 import android.widget.LinearLayout
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Точки-индикатор карусели.
@@ -17,7 +16,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * символы Dots (90:669) и Dot (90:685).
  * В макете нарисовано пять точек, число вынесено в API.
  */
-@InternalPersonalizationUiApi
 class PersonalizationDots @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

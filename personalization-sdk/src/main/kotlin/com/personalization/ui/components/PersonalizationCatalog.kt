@@ -8,11 +8,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Экран каталога: заголовок, плитка или список товаров, внизу лоадер, счётчик
@@ -29,13 +30,16 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * заголовок тот же, вместо плитки [PersonalizationEmptyState]. Показывается, когда
  * задан [emptyText] и товаров нет.
  *
+ * Ошибка загрузки в макете не нарисована: на её месте тот же [PersonalizationEmptyState]
+ * с текстом [errorText] и под ним кнопка повтора [retryText] в виде «загрузить ещё».
+ * Показывается вместо пустого состояния, когда задан [errorText] и товаров нет.
+ *
  * Весь каталог — одна лента [RecyclerView]: заголовок, карточки и нижние элементы —
  * её строки. Поэтому его не вкладывают в прокрутку, он прокручивается сам: карточки
  * создаются только под видимую часть и переиспользуются, сколько бы страниц ни
  * догрузилось. Внутри чужой вертикальной прокрутки (высота по содержимому) он
  * раскладывается целиком, как обычный блок.
  */
-@InternalPersonalizationUiApi
 class PersonalizationCatalog @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -46,6 +50,9 @@ class PersonalizationCatalog @JvmOverloads constructor(
     private val loader = PersonalizationLoader(context)
     private val count = PersonalizationCount(context)
     private val loadMoreButton = PersonalizationButton(context)
+    private val errorState = PersonalizationEmptyState(context)
+    private val retryButton = PersonalizationButton(context)
+    private val errorView = LinearLayout(context)
 
     private val header = SlotsAdapter()
     private var productsAdapter = PersonalizationProductsAdapter(PersonalizationProductCard.Type.GRID)
@@ -75,6 +82,25 @@ class PersonalizationCatalog @JvmOverloads constructor(
             applySlots()
         }
 
+    /** Текст ошибки загрузки. `null` — без ошибки; при товарах не показывается. */
+    var errorText: CharSequence? = null
+        set(value) {
+            field = value
+            errorState.text = value
+            applySlots()
+        }
+
+    /** Подпись кнопки повтора под ошибкой. `null` — без кнопки. */
+    var retryText: CharSequence? = null
+        set(value) {
+            field = value
+            retryButton.text = value
+            retryButton.isVisible = !value.isNullOrEmpty()
+        }
+
+    /** Нажатие на кнопку повтора под ошибкой. */
+    var onRetry: (() -> Unit)? = null
+
     var imageLoader: ((ImageView, PersonalizationProduct) -> Unit)?
         get() = productsAdapter.imageLoader
         set(value) {
@@ -99,6 +125,13 @@ class PersonalizationCatalog @JvmOverloads constructor(
         get() = productsAdapter.imageAspect
         set(value) {
             productsAdapter.imageAspect = value
+        }
+
+    /** Рисовать ли рейтинг на карточках; выключенный прячет его, даже если оценка есть. */
+    var showRating: Boolean
+        get() = productsAdapter.showRating
+        set(value) {
+            productsAdapter.showRating = value
         }
 
     /**
@@ -143,6 +176,22 @@ class PersonalizationCatalog @JvmOverloads constructor(
         loadMoreButton.iconStart = R.drawable.personalization_ic_arrow_rotate_cw
         loadMoreButton.setOnClickListener { onLoadMore?.invoke() }
 
+        // Текст ошибки — с отступом пустого состояния сверху, кнопка под ним, тот же отступ снизу.
+        errorState.setPadding(
+            errorState.paddingLeft, errorState.paddingTop, errorState.paddingRight,
+            resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
+        )
+        retryButton.size = PersonalizationButton.Size.MD
+        retryButton.buttonView = PersonalizationButton.ButtonView.SECONDARY
+        retryButton.iconStart = R.drawable.personalization_ic_arrow_rotate_cw
+        retryButton.isVisible = false
+        retryButton.setOnClickListener { onRetry?.invoke() }
+        errorView.orientation = LinearLayout.VERTICAL
+        errorView.gravity = Gravity.CENTER_HORIZONTAL
+        errorView.setPadding(0, 0, 0, errorState.paddingTop)
+        errorView.addView(errorState, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        errorView.addView(retryButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+
         applySlots()
     }
 
@@ -160,8 +209,11 @@ class PersonalizationCatalog @JvmOverloads constructor(
     }
 
     private fun applySlots() {
-        val empty = productsAdapter.items.isEmpty() && !emptyText.isNullOrEmpty()
+        val noProducts = productsAdapter.items.isEmpty()
+        val failed = noProducts && !errorText.isNullOrEmpty()
+        val empty = noProducts && !failed && !emptyText.isNullOrEmpty()
         footer.slots = buildList {
+            if (failed) add(Slot(TYPE_ERROR, errorView))
             if (empty) add(Slot(TYPE_EMPTY, emptyState))
             // Лоадер в макете — по центру строки; на всю ширину он бы прижал кольцо к левому краю.
             if (isLoading) add(Slot(TYPE_LOADER, loader, centered = true))
@@ -184,6 +236,7 @@ class PersonalizationCatalog @JvmOverloads constructor(
             it.onAction = previous.onAction
             it.onClick = previous.onClick
             it.imageAspect = previous.imageAspect
+            it.showRating = previous.showRating
         }
         concat.removeAdapter(previous)
         concat.addAdapter(1, productsAdapter)
@@ -277,5 +330,6 @@ class PersonalizationCatalog @JvmOverloads constructor(
         const val TYPE_LOADER = 3
         const val TYPE_COUNT = 4
         const val TYPE_LOAD_MORE = 5
+        const val TYPE_ERROR = 6
     }
 }

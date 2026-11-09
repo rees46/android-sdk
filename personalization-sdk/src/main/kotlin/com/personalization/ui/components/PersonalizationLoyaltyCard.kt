@@ -24,7 +24,6 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -47,7 +46,6 @@ import com.personalization.ui.PersonalizationTheme
  * фирменного синего цвета — для этого [cardColor] и [contentColor]. Рамка Line/Generic Subtle,
  * скругление 2XL, тень Elevation 3.
  */
-@InternalPersonalizationUiApi
 class PersonalizationLoyaltyCard @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

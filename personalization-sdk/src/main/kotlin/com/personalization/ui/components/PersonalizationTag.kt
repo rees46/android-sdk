@@ -13,7 +13,6 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Тег дизайн-системы.
@@ -21,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Источник: Figma Mobile SDK UI Kit, секция Tag (243:10993).
  * В макете только размер MD, поэтому размера в API нет.
  */
-@InternalPersonalizationUiApi
 class PersonalizationTag @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

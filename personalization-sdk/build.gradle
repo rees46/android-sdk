@@ -52,8 +52,13 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
-        // UI-кит дизайн-системы до релиза закрыт маркером opt-in; библиотека использует его сама.
-        freeCompilerArgs += ['-opt-in=com.personalization.ui.InternalPersonalizationUiApi']
+        // v3 (попапы нового конструктора, сторис на API v3) не публичный API и закрыт маркером
+        // opt-in; библиотека использует его сама.
+        freeCompilerArgs += ['-opt-in=com.personalization.InternalPersonalizationV3Api']
+        // Interface methods with a body become Java default methods, so a Java implementation of a
+        // public interface does not break when a method with a default body is added to it.
+        // "compatibility" keeps the DefaultImpls classes that Kotlin code compiled earlier calls.
+        freeCompilerArgs += ['-Xjvm-default=all-compatibility']
     }
 
     sourceSets {

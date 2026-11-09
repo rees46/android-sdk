@@ -1,5 +1,7 @@
 package com.personalization.sdk.data.models.params
 
+import com.personalization.InternalPersonalizationV3Api
+
 object SdkInitializationParams {
     const val TAG = "SdkInitializationMapper"
     const val PARAM_ID = "id"
@@ -36,4 +38,6 @@ object SdkInitializationParams {
     const val PARAM_CMS = "cms"
     const val PARAM_SNIPPETS = "snippets"
     const val PARAM_RECONE = "recone"
+    @InternalPersonalizationV3Api
+    const val PARAM_POPUPS_V3 = "popups_v3"
 }

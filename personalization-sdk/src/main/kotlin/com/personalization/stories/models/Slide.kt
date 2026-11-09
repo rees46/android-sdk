@@ -6,6 +6,7 @@ import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
+import com.personalization.ui.widgets.StoryPoll
 import java.io.Serializable
 import java.util.Objects
 import org.json.JSONObject
@@ -23,6 +24,15 @@ class Slide(json: JSONObject) : Serializable {
      * so Stories V2 reads this one to apply its own default.
      */
     internal val adminDurationSeconds: Long = json.optLong("duration", 0L)
+
+    /** Stories V2, API v3 only: the slide's own "Share" link. Not part of equals: V1 ignores it. */
+    internal val shareUrl: String = if (json.isNull("share_url")) "" else json.optString("share_url", "")
+
+    /**
+     * Stories V2, API v3 only: polls of the slide (`poll` elements). Kept apart from [getElements],
+     * so V1 never sees them; not part of equals. Serialized with the slide; no polls — an empty list.
+     */
+    internal val polls: List<StoryPoll> = StoryPoll.parseAll(json.optJSONArray("elements"))
     private val elements: MutableList<Element> = ArrayList()
     var isPrepared: Boolean = false
 

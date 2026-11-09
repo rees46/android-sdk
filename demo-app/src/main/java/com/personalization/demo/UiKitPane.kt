@@ -66,9 +66,9 @@ import com.personalization.ui.components.PersonalizationLoyaltyCard
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationProductCard
 import com.personalization.ui.components.PersonalizationProductImage
+import com.personalization.ui.components.PersonalizationProductsBlock
 import com.personalization.ui.components.PersonalizationProductsGrid
 import com.personalization.ui.components.PersonalizationRating
-import com.personalization.ui.components.PersonalizationRecommenderBlock
 import com.personalization.ui.components.PersonalizationSearchResultsTitle
 import com.personalization.ui.components.PersonalizationTag
 import com.personalization.ui.components.PersonalizationTitle
@@ -80,15 +80,17 @@ import com.personalization.ui.widgets.PersonalizationSearchResultsScreen
  * "UI Kit" tab — the design system, one exhibit per component.
  *
  * "Components" walks through the primitives in every size, view and state the design file defines;
- * "Blocks" shows the compositions built from them (product cards, recommender layouts, instant
- * search, the catalogue, the filters screen). "Search" runs the two data-bound search widgets against
- * the demo shop: the instant search field, and the results screen it opens on submit. "Stories" keeps
- * the stories block through the SDK's Compose wrapper, the counterpart of the "Legacy UI" tab.
- * "Stories V2" is the same block drawn by the kit (see [StoriesV2Showcase]).
+ * "Blocks" shows the compositions built from them (product cards, the products block in its three
+ * layouts, instant search, the catalogue, the filters screen) and the recommender block loading a
+ * real block of the demo shop (see [LiveRecommenderExhibit]). "Search" runs the two data-bound
+ * search widgets against the demo shop: the instant search field, and the results screen it opens
+ * on submit. "Stories" keeps the stories block through the SDK's Compose wrapper, the counterpart of
+ * the "Legacy UI" tab. "Stories V2" is the same block drawn by the kit (see [StoriesV2Showcase]).
  *
  * The kit is classic Views, so each exhibit is an [AndroidView] built from a small factory. Product
- * data is static: the kit does not fetch or format anything itself, and images are loaded by the
- * host — Glide here, through the components' `imageLoader` slot.
+ * data of the static exhibits is fixed: the presentational components do not fetch or format
+ * anything themselves, and images are loaded by the host — Glide here, through the components'
+ * `imageLoader` slot.
  */
 @Composable
 fun UiKitPane(storiesCode: String, shopId: String) {
@@ -114,7 +116,7 @@ fun UiKitPane(storiesCode: String, shopId: String) {
         }
         when (tab) {
             0 -> ComponentsShowcase()
-            1 -> BlocksShowcase()
+            1 -> BlocksShowcase(shopId = shopId)
             2 -> SearchShowcase(shopId = shopId)
             3 -> ComposeStoriesPane(code = storiesCode, shopId = shopId)
             else -> StoriesV2Showcase(storiesCode = storiesCode, shopId = shopId)
@@ -272,7 +274,7 @@ private fun ComponentsShowcase() {
 }
 
 @Composable
-private fun BlocksShowcase() {
+private fun BlocksShowcase(shopId: String) {
     Showcase {
         Exhibit("Product Card — carousel, grid, list") { ctx ->
             ctx.column(
@@ -303,15 +305,27 @@ private fun BlocksShowcase() {
                 }.toTypedArray()
             )
         }
-        Exhibit("Recommender Block — carousel") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.CAROUSEL, "Recommended for you", DemoProducts.all)
+        Exhibit("Products Block — carousel") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.CAROUSEL, "Recommended for you", DemoProducts.all)
         }
-        Exhibit("Recommender Block — grid") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.GRID, "Similar products", DemoProducts.all.take(4))
+        Exhibit("Products Block — grid") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.GRID, "Similar products", DemoProducts.all.take(4))
         }
-        Exhibit("Recommender Block — list") { ctx ->
-            ctx.recommender(PersonalizationRecommenderBlock.Layout.LIST, "Recently viewed", DemoProducts.all.take(3))
+        Exhibit("Products Block — list") { ctx ->
+            ctx.productsBlock(PersonalizationProductsBlock.Layout.LIST, "Recently viewed", DemoProducts.all.take(3))
         }
+        LiveRecommenderExhibit(
+            title = "Recommender Block — live from the demo shop, carousel, title from the answer",
+            shopId = shopId,
+            layout = PersonalizationProductsBlock.Layout.CAROUSEL
+        )
+        LiveRecommenderExhibit(
+            title = "Recommender Block — the same code as a grid, at most 4 products",
+            shopId = shopId,
+            layout = PersonalizationProductsBlock.Layout.GRID,
+            limit = 4
+        )
+        LiveRecommenderComposeExhibit(shopId = shopId)
         Exhibit("Instant Search — recent searches") { ctx -> ctx.instantSearch(typing = false, images = false) }
         Exhibit("Instant Search — typing, matches in bold") { ctx -> ctx.instantSearch(typing = true, images = false) }
         Exhibit("Instant Search — with images") { ctx -> ctx.instantSearch(typing = false, images = true) }
@@ -651,11 +665,11 @@ private fun Context.productCard(type: PersonalizationProductCard.Type, product: 
         Glide.with(image.imageView).load(product.imageUrl).into(image.imageView)
     }
 
-private fun Context.recommender(
-    layout: PersonalizationRecommenderBlock.Layout,
+private fun Context.productsBlock(
+    layout: PersonalizationProductsBlock.Layout,
     title: String,
     items: List<PersonalizationProduct>
-): PersonalizationRecommenderBlock = PersonalizationRecommenderBlock(this).apply {
+): PersonalizationProductsBlock = PersonalizationProductsBlock(this).apply {
     this.layout = layout
     text = title
     showAllText = "Show all"

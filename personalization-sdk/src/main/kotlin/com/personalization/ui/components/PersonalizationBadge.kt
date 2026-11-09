@@ -2,6 +2,7 @@ package com.personalization.ui.components
 
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
@@ -9,7 +10,6 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Бейдж дизайн-системы.
@@ -20,7 +20,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * кегль берётся с одной ступени, интерлиньяж с другой (20/24, 16/20, 14/16).
  * Поэтому размеры заданы здесь явно, а не через стиль.
  */
-@InternalPersonalizationUiApi
 class PersonalizationBadge @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -55,6 +54,9 @@ class PersonalizationBadge @JvmOverloads constructor(
         }
 
     init {
+        // Бейдж — плашка в одну строку: в тесноте подпись укорачивается, а не ломается по буквам.
+        maxLines = 1
+        ellipsize = TextUtils.TruncateAt.END
         applyStyle()
     }
 

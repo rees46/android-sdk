@@ -12,7 +12,6 @@ import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.widget.ImageViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -22,7 +21,6 @@ import com.personalization.ui.PersonalizationTheme
  * с шагом 2 и скруглением 1 делят ширину поровну. Пройденное — Text/Secondary,
  * дорожка — Line/Generic. Текущая полоска заполнена на [progress].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryProgress @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -101,8 +99,10 @@ class PersonalizationStoryProgress @JvmOverloads constructor(
  * Источник: Figma, Navigation/Story (10:863): колонка с шагом 12 — прогресс и строка
  * высотой 32 с крестиком справа (cross 32, глиф Text/Secondary, прозрачность 65%).
  * Аватар и заголовок в символе есть, но во всех экранах сторис скрыты.
+ *
+ * Слева от крестика через 8 — «Поделиться» (иконка веб-SDK) в его стиле: та же коробка 32,
+ * цвет и прозрачность, без фона. Видна, только пока задан [onShare].
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryNavigation @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -112,11 +112,22 @@ class PersonalizationStoryNavigation @JvmOverloads constructor(
     val progress = PersonalizationStoryProgress(context)
 
     private val close = AppCompatImageView(context)
+    private val share = AppCompatImageView(context)
 
     /** Крестик: слайд пропускает к нему касания и при открытой шторке товаров (F2). */
     internal val closeButton: View get() = close
 
+    /** «Поделиться»: касания проходят так же, как к крестику. */
+    internal val shareButton: View get() = share
+
     var onClose: (() -> Unit)? = null
+
+    /** Нажали «Поделиться»; `null` — кнопки нет. */
+    var onShare: (() -> Unit)? = null
+        set(value) {
+            field = value
+            share.visibility = if (value != null) View.VISIBLE else View.GONE
+        }
 
     var closeContentDescription: CharSequence? = "Close"
         set(value) {
@@ -124,26 +135,45 @@ class PersonalizationStoryNavigation @JvmOverloads constructor(
             close.contentDescription = value
         }
 
+    var shareContentDescription: CharSequence? = "Share"
+        set(value) {
+            field = value
+            share.contentDescription = value
+        }
+
     init {
         orientation = VERTICAL
         addView(progress, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val row = FrameLayout(context)
-        close.setImageResource(R.drawable.personalization_ic_cross)
-        ImageViewCompat.setImageTintList(
-            close,
-            PersonalizationTheme.colorStateList(context, R.color.personalization_text_secondary)
-        )
-        close.alpha = CLOSE_ALPHA
-        close.contentDescription = closeContentDescription
-        close.setOnClickListener { onClose?.invoke() }
+        glyph(close, R.drawable.personalization_ic_cross, closeContentDescription) { onClose?.invoke() }
+        glyph(share, R.drawable.personalization_ic_share, shareContentDescription) { onShare?.invoke() }
+        share.visibility = View.GONE
         row.addView(close, FrameLayout.LayoutParams(dp(CLOSE_DP), dp(CLOSE_DP), Gravity.END or Gravity.CENTER_VERTICAL))
+        row.addView(
+            share,
+            FrameLayout.LayoutParams(dp(CLOSE_DP), dp(CLOSE_DP), Gravity.END or Gravity.CENTER_VERTICAL).apply {
+                marginEnd = dp(CLOSE_DP) + resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+            }
+        )
         addView(
             row,
             LayoutParams(LayoutParams.MATCH_PARENT, dp(CLOSE_DP)).apply {
                 topMargin = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
             }
         )
+    }
+
+    /** Кнопка строки в стиле крестика: глиф Text/Secondary, прозрачность 65%, без фона. */
+    private fun glyph(view: AppCompatImageView, icon: Int, label: CharSequence?, onClick: () -> Unit) {
+        view.setImageResource(icon)
+        ImageViewCompat.setImageTintList(
+            view,
+            PersonalizationTheme.colorStateList(context, R.color.personalization_text_secondary)
+        )
+        view.alpha = CLOSE_ALPHA
+        view.contentDescription = label
+        view.setOnClickListener { onClick() }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

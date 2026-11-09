@@ -30,22 +30,35 @@ import org.json.JSONObject
 /**
  * "Stories V2" tab: the stories block drawn by the UI kit, next to the legacy one in "Stories".
  *
- * The first exhibit is the live block of the demo shop — it loads through the SDK like the legacy
- * StoriesView. The second opens a bundled sample block (`assets/uikit/stories_sample.json`) that has
- * every slide kind the kit draws — product with a discount, with a promo code, text blocks, used
+ * The first exhibit is the live block of the demo shop on the old API, like the legacy StoriesView.
+ * The second is the same block with `apiV3Domain` on the widget: it loads and tracks through API v3,
+ * and its slides have the "Share" button; a shared link opens in the field below it. Then the
+ * Compose wrapper, and a bundled sample block (`assets/uikit/stories_sample.json`) that has every
+ * slide kind the kit draws — product with a discount, with a promo code, text blocks, used
  * products — so the viewer can be checked without depending on what the shop's block holds today.
  * The rest are the building blocks one by one.
  */
 @Composable
 internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
     Showcase {
-        Exhibit("Stories V2 — live block of the demo shop") { ctx ->
+        Exhibit("Stories V2 — live block of the demo shop (old API)") { ctx ->
             PersonalizationStories(ctx).apply {
                 code = storiesCode
                 this.shopId = shopId
             }
         }
+        Exhibit("Stories V2 with Sharing — the same block on API v3 (apiV3Domain on the widget)") { ctx ->
+            PersonalizationStories(ctx).apply {
+                code = storiesCode
+                this.shopId = shopId
+                apiV3Domain = STORIES_API_V3_DOMAIN
+                // Shared links carry the demo scheme, so they open the demo app (see MainActivity).
+                shareUrlTransform = ::demoShareUrl
+            }
+        }
+        StoriesV2LinkExhibit(storiesCode = storiesCode, shopId = shopId)
         StoriesV2ComposeExhibit(storiesCode = storiesCode, shopId = shopId)
+        StoriesV2PollsExhibit()
         Exhibit(
             "Stories V2 — sample block: GIF slide (8 s dial over a 5 s duration), product with the promo " +
                 "code of its text block (SOUND10), fitted photo with " +
@@ -69,7 +82,7 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
             )
         }
         Exhibit("Stories Bar — loading") { ctx -> PersonalizationStoriesBar(ctx).apply { showSkeleton() } }
-        Exhibit("Story Navigation — slide 2 of 5, over a photo (dark tokens)") { ctx ->
+        Exhibit("Story Navigation — slide 2 of 5 with Share, over a photo (dark tokens)") { ctx ->
             val dark = ctx.darkContext()
             ctx.overPhoto(
                 "jacket.jpg",
@@ -78,6 +91,7 @@ internal fun StoriesV2Showcase(storiesCode: String, shopId: String) {
                     progress.current = 1
                     progress.progress = 0.5f
                     onClose = { ctx.toast("Close") }
+                    onShare = { ctx.toast("Share") }
                 },
                 heightDp = 96
             )

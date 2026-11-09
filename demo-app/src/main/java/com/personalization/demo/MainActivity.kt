@@ -14,13 +14,16 @@ import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.TextView
+import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.personalization.Params
@@ -42,6 +45,11 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
 import com.personalization.api.params.PurchasePredictParams
 import com.personalization.demo.BuildConfig
+import com.personalization.demo.shop.DemoShop
+import com.personalization.demo.shop.ShopRoute
+import com.personalization.demo.shop.isNight
+import com.personalization.ui.PersonalizationTheme
+import com.personalization.R as SdkR
 import com.personalization.sdk.data.models.dto.popUp.Components
 import org.json.JSONObject
 import com.personalization.sdk.data.models.dto.popUp.PopupActions
@@ -58,9 +66,30 @@ class MainActivity : AppCompatActivity() {
     /** Bottom tab currently shown, kept so it survives the activity being recreated. */
     private var selectedTabId = R.id.tabApi
 
+    /** The "Shop" tab, see [DemoShop]. */
+    private lateinit var shop: DemoShop
+
+    /** Status bar of the theme, given back when a tab other than the shop is shown. */
+    private var themeStatusBarColor = 0
+    private var themeLightStatusBar = false
+
+    /**
+     * System back walks the shop's own stack while its tab is shown; at the shop's Home it falls
+     * through to the system.
+     */
+    private val shopBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            if (shop.back()) return
+            isEnabled = false
+            onBackPressedDispatcher.onBackPressed()
+            isEnabled = selectedTabId == R.id.tabShop
+        }
+    }
+
     private companion object {
         const val MAX_LOGGED_STORIES_EVENTS = 20
         const val STATE_SELECTED_TAB = "selectedTabId"
+        const val STATE_SHOP = "shop"
     }
 
     private object DemoTrackingNamespaceConstants {
@@ -130,6 +159,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         selectedTabId = savedInstanceState?.getInt(STATE_SELECTED_TAB, R.id.tabApi) ?: R.id.tabApi
         setContentView(R.layout.activity_main)
+        setupSystemBars()
 
         // Initialize Firebase if not already initialized
         try {
@@ -147,6 +177,7 @@ class MainActivity : AppCompatActivity() {
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 
+        setupShop(savedInstanceState?.getBundle(STATE_SHOP))
         setupStoriesTabs()
 
         findViewById<Button>(R.id.btnHttpLog).setOnClickListener {
@@ -235,13 +266,19 @@ class MainActivity : AppCompatActivity() {
         showLastCrashIfAny()
         // App may have been opened by tapping a push — report the click to the SDK.
         handleNotificationClick(intent)
+        // Or by a stories or a game link; a recreated activity (rotation, theme) must not open it again.
+        if (savedInstanceState == null) handleLink(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleNotificationClick(intent)
+        handleLink(intent)
     }
+
+    /** A stories link opened the demo: its campaign opens over whatever tab is shown; the game link, the game. */
+    private fun handleLink(intent: Intent?) = openLinkIntent(this, intent, BuildConfig.SHOP_ID)
 
     /**
      * Safety net for a known Jetpack Compose bug: on some OEM devices (notably Huawei/EMUI) a stray
@@ -1039,7 +1076,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Wires the bottom navigation and both stories tabs.
+     * Wires the bottom navigation and both stories tabs; it also switches the "Shop" pane.
      *
      * "UI Kit" is the design-system showcase ([UiKitPane]); its "Stories" segment renders the block
      * with the SDK's Compose wrapper, "Legacy UI" with the XML view, so the two integration styles can
@@ -1051,6 +1088,7 @@ class MainActivity : AppCompatActivity() {
         val uiKitContent = findViewById<ComposeView>(R.id.uiKitContent)
         val legacyContent = findViewById<View>(R.id.legacyContent)
         val multiInstanceContent = findViewById<ComposeView>(R.id.multiInstanceContent)
+        val shopContent = findViewById<View>(R.id.shopContent)
         val storiesCode = getString(R.string.stories_code)
 
         // Legacy pane: the code comes from app:code in the layout and the view loads itself on
@@ -1101,6 +1139,10 @@ class MainActivity : AppCompatActivity() {
             legacyContent.visibility = if (item.itemId == R.id.tabLegacyUi) View.VISIBLE else View.GONE
             multiInstanceContent.visibility =
                 if (item.itemId == R.id.tabMultiInstance) View.VISIBLE else View.GONE
+            shopContent.visibility = if (item.itemId == R.id.tabShop) View.VISIBLE else View.GONE
+            shopBack.isEnabled = item.itemId == R.id.tabShop
+            applyShopChrome()
+            sdk.popups.screenOpened(screenOf(item.itemId))
             true
         }
         // Drive the initial pane through the same listener, so the checked item and the visible
@@ -1113,6 +1155,93 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(STATE_SELECTED_TAB, selectedTabId)
+        outState.putBundle(STATE_SHOP, shop.save())
+    }
+
+    /**
+     * "Shop" pane: the demo shop of shop A, built from the UI kit and the public SDK methods. Its
+     * stack of screens comes back after the activity is recreated.
+     */
+    private fun setupShop(state: Bundle?) {
+        shop = DemoShop(
+            context = this,
+            sdk = sdk,
+            shopId = BuildConfig.SHOP_ID,
+            storiesCode = getString(R.string.shop_stories_code),
+            container = findViewById<FrameLayout>(R.id.shopContent)
+        )
+        // Popups v3: the shop's screens report their codes while its tab is shown; a product of a
+        // popup's recommendations opens in the shop tab. The status bar follows the shop's screen.
+        shop.onScreen = { screen ->
+            if (selectedTabId == R.id.tabShop) {
+                sdk.popups.screenOpened(screen)
+                applyShopChrome()
+            }
+        }
+        sdk.popups.productHandler = { product ->
+            findViewById<BottomNavigationView>(R.id.bottomNav).selectedItemId = R.id.tabShop
+            shop.open(ShopRoute.Product(product.id))
+            true
+        }
+        // A popup's game link opens the game over the demo, not through the system, and the popup closes,
+        // as after a product; the other links go on as before.
+        sdk.popups.linkHandler = { url -> openGameLink(this, url) }
+        shop.start(state)
+        onBackPressedDispatcher.addCallback(this, shopBack)
+    }
+
+    /**
+     * The theme's status bar is kept for the other tabs. The navigation bar takes the surface of the
+     * bottom tabs (the kit's card), with icons for it, on every tab.
+     */
+    private fun setupSystemBars() {
+        themeStatusBarColor = window.statusBarColor
+        themeLightStatusBar = WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars
+        // Dark icons on a light navigation bar exist from API 27.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            window.navigationBarColor = PersonalizationTheme.color(this, SdkR.color.personalization_background_card)
+            WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = !isNight
+        }
+    }
+
+    /**
+     * The shop draws its own top: while its tab is shown there is no action bar, and the status bar takes
+     * the colour of the shop screen under it, with icons for that surface. The other tabs keep the theme's
+     * action bar and status bar.
+     */
+    private fun applyShopChrome() {
+        val bars = WindowCompat.getInsetsController(window, window.decorView)
+        // Dark icons on a light status bar exist from API 23; below it the theme's bar stays.
+        val ownStatusBar = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+        if (selectedTabId == R.id.tabShop) {
+            supportActionBar?.hide()
+            if (ownStatusBar) {
+                window.statusBarColor = shop.topColor
+                bars.isAppearanceLightStatusBars = !isNight
+            }
+        } else {
+            supportActionBar?.show()
+            if (ownStatusBar) {
+                window.statusBarColor = themeStatusBarColor
+                bars.isAppearanceLightStatusBars = themeLightStatusBar
+            }
+        }
+    }
+
+    /** Code of a tab for popups v3; the shop tab reports the shop screen on top. */
+    private fun screenOf(tabId: Int): String = when (tabId) {
+        R.id.tabUiKit -> DemoScreens.UI_KIT
+        R.id.tabLegacyUi -> DemoScreens.LEGACY_UI
+        R.id.tabMultiInstance -> DemoScreens.MULTI_INSTANCE
+        R.id.tabShop -> shop.currentScreen
+        else -> DemoScreens.HOME
+    }
+
+    override fun onDestroy() {
+        // The handlers hold this activity and its shop; a recreated activity sets its own.
+        sdk.popups.productHandler = null
+        sdk.popups.linkHandler = null
+        super.onDestroy()
     }
 
     private fun appendLegacyStoriesLog(target: TextView, message: String) {

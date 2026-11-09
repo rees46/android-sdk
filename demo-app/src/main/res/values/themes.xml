@@ -24,4 +24,40 @@
         <item name="android:textColorSecondary">@color/body_text_secondary</item>
     </style>
 
+    <!--
+      The mini-game (GameActivity): no action bar — the screen draws its own panel and goes edge to
+      edge, making room for the system bars itself.
+    -->
+    <style name="Theme.PersonalizationDemo.Game">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!--
+      The shop's sort sheet: a Material bottom sheet on the kit's modal surface, top corners of the
+      kit's modal radius, kept when the sheet is expanded. DayNight, so the sheet and its ripples
+      follow the demo's mode. A full-screen window, edge to edge once the code makes the navigation
+      bar transparent: the sheet runs under the bar, its content padded above it.
+    -->
+    <style name="ThemeOverlay.PersonalizationDemo.ShopSheet" parent="Theme.MaterialComponents.DayNight.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/Widget.PersonalizationDemo.ShopSheet</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="enableEdgeToEdge">true</item>
+    </style>
+
+    <style name="Widget.PersonalizationDemo.ShopSheet" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="backgroundTint">@color/personalization_background_modal</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.PersonalizationDemo.ShopSheet</item>
+        <item name="shouldRemoveExpandedCorners">false</item>
+        <item name="paddingBottomSystemWindowInsets">true</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.PersonalizationDemo.ShopSheet" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">@dimen/personalization_radius_modal</item>
+        <item name="cornerSizeTopRight">@dimen/personalization_radius_modal</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
 </resources>

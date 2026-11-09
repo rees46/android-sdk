@@ -13,7 +13,6 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Строка-аккордеон списка.
@@ -26,7 +25,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * в React Native и Flutter тот же компонент, наоборот, ничего не хранит
  * и ждёт перерисовки сверху.
  */
-@InternalPersonalizationUiApi
 class PersonalizationAccordion @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -10,7 +10,6 @@ import androidx.annotation.ColorInt
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -26,7 +25,6 @@ import com.personalization.ui.PersonalizationTheme
  * пресеты [Size] только стартовые значения. Без своего интерлиньяжа ([lineHeightSp] = `null`)
  * берётся высота строки ближайшего по кеглю пресета.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryTextBlock @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

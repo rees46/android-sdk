@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Popups v3: texts for elements whose field is empty in the design. -->
+<resources>
+    <string name="personalization_popups_close">Close</string>
+    <string name="personalization_popups_detail">Learn more</string>
+    <string name="personalization_popups_image">Image</string>
+    <string name="personalization_popups_email">Email</string>
+    <string name="personalization_popups_subscribe">Subscribe</string>
+    <string name="personalization_popups_email_consent">I agree to receive emails</string>
+    <string name="personalization_popups_email_error">Enter a valid email and accept the terms</string>
+    <string name="personalization_popups_form_error">Fill in the required fields</string>
+    <string name="personalization_popups_send">Send</string>
+    <string name="personalization_popups_copy">Copy</string>
+    <string name="personalization_popups_copied">Copied</string>
+    <string name="personalization_popups_thanks">Thank you!</string>
+    <string name="personalization_popups_gender_male">Male</string>
+    <string name="personalization_popups_gender_female">Female</string>
+    <string name="personalization_popups_send_failed">Could not send. Try again</string>
+</resources>

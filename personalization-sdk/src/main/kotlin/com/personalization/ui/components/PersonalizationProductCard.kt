@@ -8,12 +8,12 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.Space
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Карточка товара.
@@ -31,7 +31,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * [PersonalizationBadge] (скидка, вид danger), [PersonalizationButton].
  * Изображение хост грузит сам в `image.imageView`.
  */
-@InternalPersonalizationUiApi
 class PersonalizationProductCard @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -154,6 +153,13 @@ class PersonalizationProductCard @JvmOverloads constructor(
 
     var onAction: (() -> Unit)? = null
 
+    /**
+     * Высота самой высокой карточки списка при данной ширине: у колонок (карусель, плитка)
+     * карточка тянется до неё, а цена с кнопкой уходят к низу — соседи по ряду ровные, даже когда
+     * у одного старая цена перенеслась на свою строку. Задаёт адаптер кита; `null` — по содержимому.
+     */
+    internal var tallestFor: ((width: Int) -> Int)? = null
+
     /** Нажатие на карточку целиком (не на кнопку) — открыть товар. */
     var onClick: (() -> Unit)? = null
         set(value) {
@@ -188,11 +194,16 @@ class PersonalizationProductCard @JvmOverloads constructor(
         nameView.ellipsize = TextUtils.TruncateAt.END
         nameView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_primary))
 
+        // Цены не ломаются посреди числа: не влезают рядом — старая цена уходит на свою строку.
         priceView.includeFontPadding = false
+        priceView.maxLines = 1
+        priceView.ellipsize = TextUtils.TruncateAt.END
         priceView.typeface = PersonalizationTheme.typeface(context, emphasized = true)
         priceView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_primary))
 
         oldPriceView.includeFontPadding = false
+        oldPriceView.maxLines = 1
+        oldPriceView.ellipsize = TextUtils.TruncateAt.END
         oldPriceView.paintFlags = oldPriceView.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
         oldPriceView.setTextColor(PersonalizationTheme.color(context, R.color.personalization_text_hint))
         oldPriceView.isVisible = false
@@ -257,13 +268,16 @@ class PersonalizationProductCard @JvmOverloads constructor(
 
         addView(nameBlock(gapBetween = R.dimen.personalization_spacing_xs), topMargin(gap))
         addView(rating, topMargin(gap))
+        // Лишняя высота карточки (см. tallestFor) уходит сюда: цена с кнопкой прижаты к низу.
+        // Space, а не View: пустая View в wrap_content-колонке раздувается на всё место.
+        addView(Space(context), LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
         addView(priceRow(), topMargin(gap))
         addView(button, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { setMargins(0, gap, 0, 0) })
     }
 
     /**
      * List: картинка шириной 120 слева, справа колонка — название с рейтингом сверху,
-     * цена с кнопкой снизу. Высота строки — большее из картинки и текста, как на iOS:
+     * цена с кнопкой снизу (не влезают в строку — кнопка под ценой). Высота строки — большее из картинки и текста, как на iOS:
      * колонка тянется до картинки (цена с кнопкой уходят вниз), а низкая картинка 4:3
      * её не сжимает — картинка тогда стоит сверху.
      */
@@ -281,22 +295,25 @@ class PersonalizationProductCard @JvmOverloads constructor(
         // Вью переиспользуются между раскладками и приносят с собой прежние LayoutParams
         // (у кнопки из колонки — match_parent), поэтому параметры здесь задаются явно.
         val wrap = { LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT) }
+        val md = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+        // Цена, бейдж и кнопка в узкой колонке (360 dp, крупный шрифт) в строку не влезают:
+        // тогда бейдж встаёт под цену, а кнопка — под блок цены в правый нижний угол.
+        val priceLine = PersonalizationWrapRow(
+            context,
+            horizontalGap = md,
+            verticalGap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm),
+            pinEnd = false
+        ).apply {
+            addView(priceView, wrap())
+            addView(priceBadge, wrap())
+        }
         val priceBlock = LinearLayout(context).apply {
             orientation = VERTICAL
-            addView(LinearLayout(context).apply {
-                orientation = HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(priceView, wrap())
-                addView(priceBadge, wrap().apply {
-                    marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
-                })
-            })
+            addView(priceLine, wrap())
             addView(oldPriceView, wrap())
         }
-        val bottom = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(priceBlock, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val bottom = PersonalizationWrapRow(context, horizontalGap = md, verticalGap = md, pinEnd = true).apply {
+            addView(priceBlock, wrap())
             addView(button, wrap())
         }
         // Колонка по содержимому, но не ниже картинки; лишнюю высоту забирает верх, и цена
@@ -319,15 +336,35 @@ class PersonalizationProductCard @JvmOverloads constructor(
             addView(nameView, topMargin(resources.getDimensionPixelSize(gapBetween)))
         }
 
-    private fun priceRow(): LinearLayout =
-        LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.BOTTOM
+    /**
+     * Цена и старая цена рядом, по низу. В колонку не влезают (длинные цены в плитке) —
+     * старая цена встаёт мелкой строкой над ценой: цена и кнопка остаются на линии соседей.
+     */
+    private fun priceRow(): PersonalizationWrapRow =
+        PersonalizationWrapRow(
+            context,
+            horizontalGap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md),
+            verticalGap = 0,
+            pinEnd = false,
+            wrapAbove = true,
+            alignBottom = true
+        ).apply {
             addView(priceView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
-            addView(oldPriceView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-                marginStart = resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
-            })
+            addView(oldPriceView, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
         }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        if (type == Type.LIST || heightMode == MeasureSpec.EXACTLY) return
+        var tallest = tallestFor?.invoke(measuredWidth) ?: return
+        if (heightMode == MeasureSpec.AT_MOST) tallest = minOf(tallest, MeasureSpec.getSize(heightMeasureSpec))
+        if (tallest <= measuredHeight) return
+        super.onMeasure(
+            MeasureSpec.makeMeasureSpec(measuredWidth, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(tallest, MeasureSpec.EXACTLY)
+        )
+    }
 
     private fun topMargin(px: Int): LayoutParams =
         LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = px }

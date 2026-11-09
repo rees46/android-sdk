@@ -104,6 +104,9 @@ internal class ProductsManagerImpl @Inject constructor(
         const val GET_PRODUCT_INFO_REQUEST = "products/get"
         const val GET_PRODUCT_COUNTERS_REQUEST = "products/counters"
 
+        /** The answer came but could not be read as the expected model. */
+        const val PARSE_ERROR_CODE = ProductsParsing.PARSE_ERROR_CODE
+
         private const val ITEM_KEY = "item"
 
         private const val LIMIT_KEY = "limit"
@@ -113,6 +116,6 @@ internal class ProductsManagerImpl @Inject constructor(
         private const val MERCHANTS_KEY = "merchants"
         private const val CATEGORIES_KEY = "categories"
         private const val ITEM_ID_KEY = "item_id"
-        private const val FILTERS_KEY = ""
+        private const val FILTERS_KEY = "filters"
     }
 }

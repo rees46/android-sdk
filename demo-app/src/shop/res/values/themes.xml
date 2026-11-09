@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      "Shop only" demo (ShopActivity): no action bar — the shop draws its own top and goes edge to
+      edge, its screens making room for the system bars themselves.
+    -->
+    <style name="Theme.PersonalizationDemo.Shop">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+</resources>

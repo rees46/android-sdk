@@ -50,6 +50,8 @@ class DemoApplication : MultiDexApplication() {
                 context = applicationContext,
                 config = Rees46Config(shopId = BuildConfig.SHOP_ID),
             )
+            // Popups v3 of the demo shop: shown on their triggers over whatever screen is open.
+            sdk.enablePopupsV3()
             // Second shop for the Multi-instance tab: registered but not initialized here. It comes
             // to life lazily the first time that tab resolves it (getInstance / a StoriesWidget with
             // its shopId) — demonstrating per-shop lazy materialization alongside the eager default.
@@ -128,9 +130,13 @@ class DemoApplication : MultiDexApplication() {
             ?.notify((data.title.orEmpty() + data.body.orEmpty()).hashCode(), builder.build())
     }
 
-    /** Tapping opens MainActivity, carrying the push type/id so it can report the click to the SDK. */
+    /**
+     * Tapping opens the launcher activity — MainActivity, or ShopActivity in the "shop only" build —
+     * carrying the push type/id so it can report the click to the SDK.
+     */
     private fun buildContentIntent(data: NotificationData): PendingIntent {
-        val intent = Intent(this, MainActivity::class.java).apply {
+        val launcher = packageManager.getLaunchIntentForPackage(packageName)?.component
+        val intent = (if (launcher != null) Intent().setComponent(launcher) else Intent(this, MainActivity::class.java)).apply {
             putExtra("NOTIFICATION_TYPE", data.type)
             putExtra("NOTIFICATION_ID", data.id)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or

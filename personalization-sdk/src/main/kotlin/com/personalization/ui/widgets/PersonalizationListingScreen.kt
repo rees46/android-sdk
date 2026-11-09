@@ -1,0 +1,661 @@
+package com.personalization.ui.widgets
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.text.TextUtils
+import android.util.AttributeSet
+import android.widget.FrameLayout
+import android.widget.ImageView
+import androidx.core.view.isVisible
+import androidx.recyclerview.widget.RecyclerView
+import com.personalization.Cancellable
+import com.personalization.R
+import com.personalization.Rees46
+import com.personalization.SDK
+import com.personalization.api.responses.product.Product
+import com.personalization.ui.PersonalizationTheme
+import com.personalization.ui.components.PersonalizationCatalog
+import com.personalization.ui.components.PersonalizationFilters
+import com.personalization.ui.components.PersonalizationProductImage
+import com.personalization.ui.components.PersonalizationProductsGrid
+import com.personalization.ui.components.PersonalizationSearchResultsTitle
+import java.util.Locale
+
+/**
+ * Общая основа экранов выдачи с данными SDK — [PersonalizationSearchResultsScreen] (поиск)
+ * и [PersonalizationCategoryScreen] (категория): заголовок со счётчиком, плитка ⇄ список,
+ * теги применённых фильтров, счётчик, «загрузить ещё» или бесконечная прокрутка, пустое
+ * состояние, ошибка с повтором и экран фильтров. Наследник задаёт только источник: запрос
+ * страницы, трекинг и источник перехода при нажатии на товар.
+ *
+ * Визуальный слой — [PersonalizationSearchResultsTitle] в заголовке [PersonalizationCatalog];
+ * фильтры — [PersonalizationFilters] поверх выдачи внутри этого же виджета, так что экран
+ * занимает весь отведённый ему экран хоста.
+ *
+ * Инстанс SDK: [shopId] (атрибут `app:shop_id`) или единственный зарегистрированный;
+ * резолвится при показе через [Rees46.awaitInstance], явный — через [attach].
+ *
+ * Фасеты строятся из ответа: диапазон цены (`price_range`), бренды, цвета и размеры
+ * (`industrial_filters`) и произвольные фасеты магазина (`filters`). Из произвольных
+ * показываются те, где больше одного значения, по числу товаров с ними, первые [maxFacets];
+ * явный список [facets] главнее. Применённые значения идут тегами в заголовок и параметрами
+ * в следующий запрос. Заголовок секции произвольного фасета — его имя через [facetTitle].
+ *
+ * Значение в фильтрах подписано числом товаров с ним из ответа, «Белый (172)»
+ * ([showValueCounts]). Значение произвольного фасета подписывает хост через
+ * [facetValueTitle]; без его подписи — `title`, если значение — JSON-объект с ним
+ * (`{"slug": …, "title": "Суперцена"}`), иначе само значение. В запрос всегда уходит
+ * исходное значение. Теги применённых фильтров — с той же подписью, без числа. Кит
+ * опирается только на формат ответа: правил по именам фасетов и языку в нём нет.
+ *
+ * Сортировки: кнопка в заголовке отдаёт [onSortClick] хосту (пикер в макете не нарисован),
+ * выбранное хост кладёт в [sortBy] / [sortDir]. Нажатие на карточку отдаёт товар хосту через
+ * [onProductClick], кнопка карточки — через [onProductAction].
+ *
+ * Ошибка запроса уходит хосту в [onError] и видна на экране. Не загрузилась первая
+ * страница — вместо пустой выдачи текст [errorText] с кнопкой [retryText], которая
+ * повторяет запрос. Не загрузилась следующая — кнопка «загрузить ещё» становится
+ * кнопкой повтора этой страницы, и бесконечная прокрутка сама её больше не просит.
+ */
+abstract class PersonalizationListingScreen internal constructor(
+    context: Context,
+    attrs: AttributeSet?,
+    defStyleAttr: Int
+) : FrameLayout(context, attrs, defStyleAttr) {
+
+    /** Заголовок выдачи. */
+    val title = PersonalizationSearchResultsTitle(context)
+
+    /** Каталог с плиткой, счётчиком и «загрузить ещё». */
+    val catalog = PersonalizationCatalog(context)
+
+    /** Экран фильтров; показывается поверх выдачи. */
+    val filters = PersonalizationFilters(context)
+
+    /** Магазин; `null` — единственный зарегистрированный. Менять до показа. */
+    var shopId: String? = null
+
+    /** Заголовок экрана; `null` — то, что подставляет сам экран (у поиска — фраза). */
+    var titleText: CharSequence? = null
+        set(value) {
+            field = value
+            applyTitle()
+        }
+
+    var pageSize: Int = 20
+
+    /** `popular`, `price`, `discount`, `sales_rate`, `date`; `null` — релевантность. */
+    var sortBy: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            scheduleReload()
+        }
+
+    /** `asc` / `desc`. */
+    var sortDir: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            scheduleReload()
+        }
+
+    /** Список id локаций через запятую. */
+    var locations: String? = null
+
+    /** Бесконечная прокрутка вместо кнопки «загрузить ещё». */
+    var infiniteScroll: Boolean = false
+        set(value) {
+            field = value
+            applyLoadMore()
+        }
+
+    var showFilters: Boolean = true
+        set(value) {
+            field = value
+            title.showFiltersButton = value
+        }
+
+    var showSort: Boolean = true
+        set(value) {
+            field = value
+            title.showSortButton = value
+        }
+
+    /**
+     * Какие фасеты из `filters` показывать, в этом порядке; `null` — до [maxFacets] фасетов
+     * с более чем одним значением, по числу товаров с ними.
+     */
+    var facets: Set<String>? = null
+
+    /**
+     * Сколько произвольных фасетов показывать без явного [facets]: у категории их бывают сотни.
+     * `null` или 0 — все.
+     */
+    var maxFacets: Int? = DEFAULT_MAX_FACETS
+
+    /** Подпись кнопки на карточке; `null` — без кнопки. */
+    var productActionText: CharSequence? = null
+        set(value) {
+            field = value
+            renderProducts()
+        }
+
+    var view: PersonalizationProductsGrid.View
+        get() = catalog.view
+        set(value) {
+            catalog.view = value
+            title.selectedViewIndex = if (value == PersonalizationProductsGrid.View.GRID) 0 else 1
+        }
+
+    /**
+     * Рейтинг на карточках. Оценки в ответе API пока нет, поэтому по умолчанию выключен;
+     * включённый рисует её, когда она у товара есть.
+     */
+    var showRating: Boolean = false
+        set(value) {
+            field = value
+            catalog.showRating = value
+        }
+
+    var imageAspect: PersonalizationProductImage.Aspect
+        get() = catalog.imageAspect
+        set(value) {
+            catalog.imageAspect = value
+        }
+
+    /** Загрузчик картинок; `null` — Glide из SDK. */
+    var imageLoader: ((ImageView, String) -> Unit)? = null
+
+    var onBack: (() -> Unit)? = null
+    var onSortClick: (() -> Unit)? = null
+    var onProductClick: ((Product) -> Unit)? = null
+    var onProductAction: ((Product) -> Unit)? = null
+    var onError: ((code: Int, message: String?) -> Unit)? = null
+
+    /** Загруженные товары в порядке выдачи. */
+    val products: List<Product>
+        get() = loaded
+
+    // --- Тексты; локализация за хостом ------------------------------------------------------------
+
+    /** Строка счётчика в заголовке: «[foundPrefix] N [foundSuffix]»; обе `null` — строки нет. */
+    var foundPrefix: CharSequence? = "Found"
+    var foundSuffix: CharSequence? = "products"
+    var countPrefix: CharSequence? = "Showing"
+    var countSeparator: CharSequence = "of"
+    var loadMoreText: CharSequence? = "Load more"
+        set(value) {
+            field = value
+            applyLoadMore()
+        }
+    var emptyText: CharSequence? = "No results for your request."
+        set(value) {
+            field = value
+            applyEmpty()
+        }
+
+    /**
+     * Текст ошибки и подпись кнопки повтора. Без них из ошибки не выйти, поэтому `null`
+     * и пустая строка заменяются текстами по умолчанию.
+     */
+    var errorText: CharSequence? = DEFAULT_ERROR_TEXT
+        set(value) {
+            field = value?.takeIf { it.isNotEmpty() } ?: DEFAULT_ERROR_TEXT
+            applyEmpty()
+        }
+    var retryText: CharSequence? = DEFAULT_RETRY_TEXT
+        set(value) {
+            field = value?.takeIf { it.isNotEmpty() } ?: DEFAULT_RETRY_TEXT
+            catalog.retryText = field
+            applyLoadMore()
+        }
+
+    var filtersTitle: CharSequence? = "Filters"
+    var resetText: CharSequence? = "Reset"
+    var applyText: CharSequence? = "Apply"
+    var showMoreText: CharSequence? = "Show more"
+    var showLessText: CharSequence? = "Show less"
+    var priceTitle: CharSequence = "Price"
+    var fromLabel: CharSequence = "From"
+    var toLabel: CharSequence = "to"
+    var brandsTitle: CharSequence = "Brand"
+    var colorsTitle: CharSequence = "Color"
+    var sizesTitle: CharSequence = "Size"
+
+    /** Заголовок произвольного фасета по его имени в ответе. */
+    var facetTitle: (String) -> CharSequence = { name ->
+        name.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    }
+
+    /**
+     * Подпись значения произвольного фасета по имени фасета и значению в ответе. `null` или
+     * пустая — подпись по умолчанию: `title` значения-JSON, иначе само значение.
+     */
+    var facetValueTitle: (facet: String, value: String) -> CharSequence? = { _, _ -> null }
+
+    /** Число товаров из ответа рядом со значением в фильтрах: «Белый (172)». */
+    var showValueCounts: Boolean = true
+
+    /** Значения фильтров, ушедшие в запрос. */
+    data class Applied(
+        val brands: Set<String> = emptySet(),
+        val priceMin: String? = null,
+        val priceMax: String? = null,
+        val colors: Set<String> = emptySet(),
+        val sizes: Set<String> = emptySet(),
+        val facets: Map<String, Set<String>> = emptyMap()
+    ) {
+        val isEmpty: Boolean
+            get() = brands.isEmpty() && priceMin.isNullOrEmpty() && priceMax.isNullOrEmpty() &&
+                colors.isEmpty() && sizes.isEmpty() && facets.values.all { it.isEmpty() }
+    }
+
+    var applied: Applied = Applied()
+        set(value) {
+            field = value
+            scheduleReload()
+        }
+
+    private var sdk: SDK? = null
+    private var instanceHandle: Cancellable? = null
+    private var loaded: List<Product> = emptyList()
+    private var total = 0
+    private var page = 0
+    private var loading = false
+
+    // Упал запрос страницы page + 1: первой, если товаров нет, иначе следующей.
+    private var failed = false
+    private var facetSource: ListingPage? = null
+    private var requestSeq = 0
+
+    // Пришёл ли ответ на первую страницу текущего источника. Пустое состояние — только после
+    // него: до ответа товаров нет потому, что они ещё грузятся, а не потому, что их нет.
+    private var answered = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val scheduledReload = Runnable { reload() }
+
+    // --- Источник: что задаёт наследник ----------------------------------------------------------
+
+    /** Есть ли что запрашивать: непустая фраза, заданная категория. */
+    internal abstract val hasSource: Boolean
+
+    /** Заголовок, когда хост не задал [titleText]. */
+    internal open val fallbackTitle: CharSequence?
+        get() = null
+
+    /** Трекинг нового запроса первой страницы: не страниц, не повтора. */
+    internal abstract fun trackRequest(sdk: SDK)
+
+    /** Запрос страницы [page]; колбэки — с любого потока. */
+    internal abstract fun fetch(sdk: SDK, page: Int, onPage: (ListingPage) -> Unit, onError: (Int, String?) -> Unit)
+
+    /** Перед тем как отдать товар хосту: источник перехода для трекинга. */
+    internal open fun trackProductClick(sdk: SDK) = Unit
+
+    init {
+        val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
+        val background = PersonalizationTheme.color(context, R.color.personalization_background_generic)
+
+        catalog.setHeader(title)
+        catalog.showRating = showRating
+        catalog.setPadding(padding, padding, padding, padding)
+        catalog.imageLoader = { imageView, product -> loadImage(imageView, product.imageUrl) }
+        catalog.onProductClick = { card -> loaded.firstOrNull { it.id == card.id }?.let { productTapped(it) } }
+        catalog.onProductAction = { card -> loaded.firstOrNull { it.id == card.id }?.let { onProductAction?.invoke(it) } }
+        catalog.onLoadMore = { loadMore() }
+        catalog.retryText = retryText
+        catalog.onRetry = { retry() }
+        // Каталог прокручивается сам, а не во внешнем скролле: там его лента раскладывалась бы
+        // целиком, и каждая догруженная страница оставалась бы в памяти всеми карточками.
+        catalog.setBackgroundColor(background)
+        catalog.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                // Следующая страница — за полэкрана до конца ленты.
+                val left = recyclerView.computeVerticalScrollRange() -
+                    recyclerView.computeVerticalScrollOffset() - recyclerView.computeVerticalScrollExtent()
+                // После ошибки страницу повторяет только кнопка, иначе каждый жест слал бы запрос заново.
+                if (infiniteScroll && !failed && dy > 0 && left <= recyclerView.height / 2) loadMore()
+            }
+        })
+        addView(catalog, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        title.onBack = { onBack?.invoke() }
+        title.onViewChanged = { index ->
+            catalog.view = if (index == 0) PersonalizationProductsGrid.View.GRID else PersonalizationProductsGrid.View.LIST
+        }
+        title.onFilters = { openFilters() }
+        title.onSort = { onSortClick?.invoke() }
+
+        filters.setPadding(padding, padding, padding, padding)
+        filters.onClose = { closeFilters() }
+        filters.onReset = {
+            closeFilters()
+            applied = Applied()
+        }
+        filters.onApply = {
+            closeFilters()
+            applied = fromSections(filters.sections)
+        }
+        // Экран фильтров сам держит заголовок и кнопки на месте и прокручивает только секции.
+        filters.setBackgroundColor(background)
+        filters.isVisible = false
+        addView(filters, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+        applyLoadMore()
+    }
+
+    /** Явный инстанс вместо резолва по [shopId]. */
+    fun attach(sdk: SDK) {
+        instanceHandle?.cancel()
+        instanceHandle = null
+        this.sdk = sdk
+        reload()
+    }
+
+    /**
+     * Свойства, от которых зависит запрос, перезапрашивают на следующем проходе главного
+     * потока, а не сразу: хост, выставивший sortBy и sortDir подряд, получает один запрос
+     * и одно событие трекинга, а не два.
+     */
+    internal fun scheduleReload() {
+        handler.removeCallbacks(scheduledReload)
+        handler.post(scheduledReload)
+    }
+
+    internal fun applyTitle() {
+        title.text = titleText ?: fallbackTitle
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (sdk != null) return
+        instanceHandle = try {
+            Rees46.awaitInstance(shopId) { resolved -> MainThread.run { attach(resolved) } }
+        } catch (throwable: Throwable) {
+            SDK.error(
+                "${javaClass.simpleName}: cannot resolve an SDK for shopId=$shopId — " +
+                    "set app:shop_id to pick a shop when several are registered.",
+                throwable
+            )
+            null
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        instanceHandle?.cancel()
+        instanceHandle = null
+        super.onDetachedFromWindow()
+    }
+
+    val isFiltersOpen: Boolean
+        get() = filters.isVisible
+
+    fun openFilters() {
+        filters.text = filtersTitle
+        filters.resetText = resetText
+        filters.applyText = applyText
+        filters.setSections(buildSections())
+        filters.scrollToTop()
+        filters.isVisible = true
+    }
+
+    fun closeFilters() {
+        filters.isVisible = false
+    }
+
+    /** Первая страница заново — сразу, отменяя перезапрос, запланированный свойствами. */
+    fun reload() {
+        handler.removeCallbacks(scheduledReload)
+        val sdk = sdk ?: return
+        // Ответ на прошлый запрос больше не нужен, и снимать лоадер он уже не будет — его
+        // отбросит проверка requestSeq. Поэтому лоадер снимается здесь, иначе без источника
+        // он крутился бы вечно, а loadMore так и стоял бы заблокированным.
+        requestSeq++
+        loading = false
+        catalog.isLoading = false
+        failed = false
+        answered = false
+        loaded = emptyList()
+        total = 0
+        page = 0
+        renderProducts()
+        // Новая выдача — с начала ленты, а не с места, где пользователь бросил прошлую.
+        catalog.scrollToPosition(0)
+        if (!hasSource) return
+        trackRequest(sdk)
+        request(sdk, nextPage = 1)
+    }
+
+    /** Следующая страница, если она есть и запрос не в полёте. */
+    fun loadMore() {
+        val sdk = sdk ?: return
+        if (!hasSource || loading || loaded.size >= total) return
+        request(sdk, nextPage = page + 1)
+    }
+
+    /** Повторить упавший запрос: первую страницу или следующую. */
+    fun retry() {
+        val sdk = sdk ?: return
+        if (!hasSource || loading || !failed) return
+        request(sdk, nextPage = page + 1)
+    }
+
+    private fun request(sdk: SDK, nextPage: Int) {
+        val seq = ++requestSeq
+        loading = true
+        failed = false
+        catalog.isLoading = true
+        applyLoadMore()
+        applyEmpty()
+        fetch(
+            sdk,
+            nextPage,
+            onPage = { response ->
+                MainThread.run {
+                    if (seq != requestSeq) return@run
+                    loading = false
+                    catalog.isLoading = false
+                    page = nextPage
+                    total = response.total
+                    loaded = if (nextPage == 1) response.products else loaded + response.products
+                    if (nextPage == 1) {
+                        facetSource = response
+                        answered = true
+                    }
+                    renderProducts()
+                }
+            },
+            onError = { code, message ->
+                MainThread.run {
+                    if (seq != requestSeq) return@run
+                    loading = false
+                    failed = true
+                    catalog.isLoading = false
+                    applyLoadMore()
+                    applyEmpty()
+                    onError?.invoke(code, message)
+                }
+            }
+        )
+    }
+
+    // --- Раскладка ------------------------------------------------------------------------------
+
+    private fun renderProducts() {
+        catalog.products = loaded.map { it.toPersonalizationProduct(productActionText) }
+        // Пока первая страница текущего запроса не ответила (загрузка, новые фильтры или
+        // сортировка, ошибка), число неизвестно: «Найдено 0» на лоадере вводило в заблуждение.
+        title.setResults(foundPrefix, if (answered) total else null, foundSuffix)
+        if (loaded.isEmpty()) catalog.setCount(null, 0, countSeparator, 0)
+        else catalog.setCount(countPrefix, loaded.size, countSeparator, total)
+        applyLoadMore()
+        applyEmpty()
+        renderAppliedTags()
+    }
+
+    private fun applyEmpty() {
+        catalog.emptyText = if (answered && loaded.isEmpty()) emptyText else null
+        catalog.errorText = if (failed && loaded.isEmpty()) errorText else null
+    }
+
+    private fun applyLoadMore() {
+        val hasMore = loaded.isNotEmpty() && loaded.size < total
+        catalog.loadMoreText = when {
+            !hasMore -> null
+            failed -> retryText
+            infiniteScroll -> null
+            else -> loadMoreText
+        }
+    }
+
+    private fun renderAppliedTags() {
+        val tags = mutableListOf<PersonalizationSearchResultsTitle.Filter>()
+        applied.brands.forEach { brand ->
+            tags += PersonalizationSearchResultsTitle.Filter(brand) { applied = applied.copy(brands = applied.brands - brand) }
+        }
+        if (!applied.priceMin.isNullOrBlank() || !applied.priceMax.isNullOrBlank()) {
+            val label = listOfNotNull(applied.priceMin?.takeIf { it.isNotBlank() }, applied.priceMax?.takeIf { it.isNotBlank() })
+                .joinToString(" – ")
+            tags += PersonalizationSearchResultsTitle.Filter("$priceTitle $label") {
+                applied = applied.copy(priceMin = null, priceMax = null)
+            }
+        }
+        applied.colors.forEach { color ->
+            tags += PersonalizationSearchResultsTitle.Filter(color) { applied = applied.copy(colors = applied.colors - color) }
+        }
+        applied.sizes.forEach { size ->
+            tags += PersonalizationSearchResultsTitle.Filter(size) { applied = applied.copy(sizes = applied.sizes - size) }
+        }
+        applied.facets.forEach { (name, values) ->
+            values.forEach { value ->
+                tags += PersonalizationSearchResultsTitle.Filter(valueTitle(name, value)) {
+                    applied = applied.copy(facets = applied.facets + (name to (values - value)))
+                }
+            }
+        }
+        title.setFilters(tags)
+    }
+
+    private fun loadImage(imageView: ImageView, url: String?) {
+        val loader = imageLoader
+        if (loader != null && url != null) loader(imageView, url) else SearchImages.load(imageView, url)
+    }
+
+    private fun productTapped(product: Product) {
+        sdk?.let { trackProductClick(it) }
+        onProductClick?.invoke(product)
+    }
+
+    // --- Фасеты ⇄ секции экрана фильтров -----------------------------------------------------------
+
+    /** Подпись значения произвольного фасета: хоста, иначе `title` значения-JSON, иначе само значение. */
+    private fun valueTitle(facet: String, value: String): CharSequence =
+        facetValueTitle(facet, value)?.takeIf { it.isNotBlank() } ?: jsonTitle(value) ?: value
+
+    /**
+     * Значения ответа с числом товаров и отмеченные (их может не быть в ответе — тогда без числа).
+     * id варианта — исходное значение: оно и уходит в запрос.
+     */
+    private fun options(
+        counts: Map<String, Int>,
+        checked: Set<String>,
+        title: (String) -> CharSequence = { it }
+    ): List<PersonalizationFilters.Option> =
+        (counts.keys + checked).distinct().map { value ->
+            val count = counts[value]?.takeIf { showValueCounts }
+            val label = title(value)
+            PersonalizationFilters.Option(
+                id = value,
+                label = if (count == null) label else TextUtils.concat(label, " ($count)"),
+                checked = value in checked
+            )
+        }
+
+    private fun buildSections(): List<PersonalizationFilters.Section> {
+        val source = facetSource?.facets
+        val sections = mutableListOf<PersonalizationFilters.Section>()
+        val range = source?.priceRange
+        if (range != null || applied.priceMin != null || applied.priceMax != null) {
+            // Границы диапазона — подсказками: в запрос уходит только то, что ввёл пользователь.
+            sections += PersonalizationFilters.Section.Range(
+                id = SECTION_PRICE, title = priceTitle, fromLabel = fromLabel, toLabel = toLabel,
+                from = applied.priceMin, to = applied.priceMax,
+                fromPlaceholder = range?.let { bound(it.min) }, toPlaceholder = range?.let { bound(it.max) }
+            )
+        }
+        val brands = source?.brands.orEmpty()
+        if (brands.isNotEmpty() || applied.brands.isNotEmpty()) {
+            sections += PersonalizationFilters.Section.Options(
+                id = SECTION_BRANDS, title = brandsTitle, options = options(brands, applied.brands),
+                showMoreText = showMoreText, showLessText = showLessText
+            )
+        }
+        val colors = source?.colors.orEmpty()
+        if (colors.isNotEmpty() || applied.colors.isNotEmpty()) {
+            sections += PersonalizationFilters.Section.Options(
+                id = SECTION_COLORS, title = colorsTitle, options = options(colors, applied.colors),
+                showMoreText = showMoreText, showLessText = showLessText
+            )
+        }
+        val sizes = source?.sizes.orEmpty()
+        if (sizes.isNotEmpty() || applied.sizes.isNotEmpty()) {
+            sections += PersonalizationFilters.Section.Options(
+                id = SECTION_SIZES, title = sizesTitle, options = options(sizes, applied.sizes),
+                showMoreText = showMoreText, showLessText = showLessText
+            )
+        }
+        val available = source?.filters.orEmpty()
+        visibleFacets(available, applied.facets, facets, maxFacets).forEach { name ->
+            val values = available[name]?.let { valuesOf(it) }.orEmpty()
+            sections += PersonalizationFilters.Section.Options(
+                id = SECTION_FACET + name, title = facetTitle(name),
+                options = options(values, applied.facets[name].orEmpty()) { value -> valueTitle(name, value) },
+                showMoreText = showMoreText, showLessText = showLessText
+            )
+        }
+        return sections
+    }
+
+    /** Граница цены без хвоста «.0»: сервер отдаёт число, форматированной строки у него нет. */
+    private fun bound(value: Double): String =
+        if (value == Math.floor(value)) value.toLong().toString() else value.toString()
+
+    private fun fromSections(sections: List<PersonalizationFilters.Section>): Applied {
+        var next = Applied()
+        val facetValues = mutableMapOf<String, Set<String>>()
+        sections.forEach { section ->
+            when (section) {
+                is PersonalizationFilters.Section.Range -> if (section.id == SECTION_PRICE) {
+                    next = next.copy(
+                        priceMin = section.from?.toString()?.takeIf { it.isNotBlank() },
+                        priceMax = section.to?.toString()?.takeIf { it.isNotBlank() }
+                    )
+                }
+                is PersonalizationFilters.Section.Options -> {
+                    val checked = section.options.filter { it.checked }.map { it.id }.toSet()
+                    when {
+                        section.id == SECTION_BRANDS -> next = next.copy(brands = checked)
+                        section.id == SECTION_COLORS -> next = next.copy(colors = checked)
+                        section.id == SECTION_SIZES -> next = next.copy(sizes = checked)
+                        section.id.startsWith(SECTION_FACET) -> facetValues[section.id.removePrefix(SECTION_FACET)] = checked
+                    }
+                }
+            }
+        }
+        return next.copy(facets = facetValues)
+    }
+
+    private companion object {
+        const val DEFAULT_ERROR_TEXT = "Something went wrong. Check your connection and try again."
+        const val DEFAULT_RETRY_TEXT = "Retry"
+        const val DEFAULT_MAX_FACETS = 10
+
+        const val SECTION_PRICE = "price"
+        const val SECTION_BRANDS = "brands"
+        const val SECTION_COLORS = "colors"
+        const val SECTION_SIZES = "sizes"
+        const val SECTION_FACET = "facet:"
+    }
+}

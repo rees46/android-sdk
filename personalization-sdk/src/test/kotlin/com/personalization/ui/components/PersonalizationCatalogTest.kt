@@ -80,6 +80,28 @@ class PersonalizationCatalogTest {
     }
 
     @Test
+    fun `an error replaces the empty state and its button retries`() {
+        var retries = 0
+        val catalog = PersonalizationCatalog(context).apply {
+            emptyText = "Nothing found"
+            errorText = "Something went wrong"
+            retryText = "Retry"
+            onRetry = { retries++ }
+        }
+        layOut(catalog)
+
+        assertEquals(listOf("Something went wrong"), descendants<PersonalizationEmptyState>(catalog).map { it.text.toString() })
+        descendants<PersonalizationButton>(catalog).single { it.text == "Retry" }.performClick()
+        assertEquals(1, retries)
+
+        catalog.products = products(2)
+        layOut(catalog)
+
+        assertTrue(descendants<PersonalizationEmptyState>(catalog).isEmpty())
+        assertTrue(descendants<PersonalizationButton>(catalog).none { it.text == "Retry" })
+    }
+
+    @Test
     fun `switching to the list keeps the products`() {
         val catalog = PersonalizationCatalog(context).apply { products = products(6) }
 
@@ -107,6 +129,53 @@ class PersonalizationCatalogTest {
         assertEquals(6, descendants<PersonalizationProductCard>(catalog).size)
         assertEquals(1, descendants<PersonalizationCount>(catalog).size)
         assertFalse(catalog.canScrollVertically(1))
+    }
+
+    @Test
+    fun `cards draw the rating unless it is switched off`() {
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply { products = rated }
+        layOut(catalog)
+        assertTrue(descendants<PersonalizationRating>(catalog).any { it.visibility == View.VISIBLE })
+
+        catalog.showRating = false
+        layOut(catalog)
+
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
+    }
+
+    @Test
+    fun `switching the rating rebinds the rating row, not the pictures`() {
+        var loads = 0
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply {
+            products = rated
+            imageLoader = { _, _ -> loads++ }
+        }
+        layOut(catalog)
+        val before = loads
+        assertTrue(before > 0)
+
+        catalog.showRating = false
+        layOut(catalog)
+
+        assertEquals(before, loads)
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
+    }
+
+    @Test
+    fun `switching to the list keeps the rating switched off`() {
+        val rated = (0 until 4).map { PersonalizationProduct(id = "$it", name = "Item $it", price = "$it", ratingValue = "4,5", reviews = 10) }
+        val catalog = PersonalizationCatalog(context).apply {
+            products = rated
+            showRating = false
+        }
+
+        catalog.view = PersonalizationProductsGrid.View.LIST
+        layOut(catalog)
+
+        assertFalse(catalog.showRating)
+        assertTrue(descendants<PersonalizationRating>(catalog).none { it.visibility == View.VISIBLE })
     }
 
     private fun layOut(view: View) {

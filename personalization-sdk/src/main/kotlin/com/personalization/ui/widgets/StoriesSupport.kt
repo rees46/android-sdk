@@ -13,7 +13,6 @@ import com.personalization.stories.models.elements.ButtonElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationStoryCover
 import com.personalization.ui.components.PersonalizationStoryItem
@@ -26,7 +25,6 @@ import org.json.JSONObject
  * Перевод моделей сторис SDK (те же, что у старого `StoriesView`) в данные компонентов кита.
  * Отдельно от вьюх — чтобы проверялось тестами без экрана.
  */
-@InternalPersonalizationUiApi
 internal object StoriesMapping {
 
     /** Длительность слайда, когда админка её не задала или задала 0 (A7). */
@@ -336,10 +334,15 @@ internal class StoriesSeenStore internal constructor(private val preferences: Sh
 /**
  * Загрузка сторис-блока для V2. Тот же запрос, что у старого `StoriesView`, но с ошибкой:
  * её надо показать хосту, а не крутить скелетон вечно. Ответ — на главном потоке.
+ * С [domain] (`apiV3Domain`) — лента API v3 ([StoriesApiV3]).
  */
 internal object StoriesLoader {
 
-    fun load(sdk: SDK, code: String, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) {
+    fun load(sdk: SDK, code: String, domain: String?, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) {
+        if (domain != null) {
+            StoriesApiV3.feed(sdk, domain, code, onLoaded, onFailed)
+            return
+        }
         val listener = object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
                 val stories = try {

@@ -16,7 +16,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -35,7 +34,6 @@ import com.personalization.ui.PersonalizationTheme
  * по центру, на 16 от края безопасной зоны, с затуханием, и через [durationMs] прячется
  * сам. Новый тост сменяет тот, что ещё на экране, — очереди нет. Касания проходят сквозь.
  */
-@InternalPersonalizationUiApi
 class PersonalizationToast @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

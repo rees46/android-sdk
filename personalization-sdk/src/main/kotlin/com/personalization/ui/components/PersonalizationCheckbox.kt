@@ -7,9 +7,9 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import androidx.annotation.ColorInt
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Чекбокс дизайн-системы, 20x20.
@@ -19,8 +19,10 @@ import com.personalization.ui.InternalPersonalizationUiApi
  *
  * Галка и черта рисуются штрихом по геометрии из макета:
  * `M5 10 L8.75 13.75 L15 7.5` и `M5 10 H15`, толщина 2, круглые концы.
+ *
+ * Цвета — токены кита; заданный цвет заменяет свой токен, кроме заливки
+ * неактивного — она всегда из disabled-токенов кита. Геометрия от цветов не зависит.
  */
-@InternalPersonalizationUiApi
 class PersonalizationCheckbox @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -40,6 +42,38 @@ class PersonalizationCheckbox @JvmOverloads constructor(
 
     /** Зовётся с состоянием, в которое чекбокс перешёл. */
     var onCheckedChange: ((CheckState) -> Unit)? = null
+
+    /** Заливка отмеченного и частично отмеченного; null — Button/Primary. */
+    @ColorInt
+    var checkedColor: Int? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Галка и черта; null — Text/Light/Primary. */
+    @ColorInt
+    var checkmarkColor: Int? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Заливка пустого; null — Background/Input. */
+    @ColorInt
+    var uncheckedColor: Int? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Рамка пустого; null — Line/Input. */
+    @ColorInt
+    var uncheckedBorderColor: Int? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -79,15 +113,13 @@ class PersonalizationCheckbox @JvmOverloads constructor(
         val radius = 4f * scale
         val filled = checkState != CheckState.UNCHECKED
 
-        fillPaint.color = PersonalizationTheme.color(context,
-            if (filled) {
-                if (isEnabled) R.color.personalization_button_primary
-                else R.color.personalization_button_primary_disabled
-            } else {
-                if (isEnabled) R.color.personalization_background_input
-                else R.color.personalization_background_input_disabled
-            }
-        )
+        fillPaint.color = if (filled) {
+            if (isEnabled) checkedColor ?: PersonalizationTheme.color(context, R.color.personalization_button_primary)
+            else PersonalizationTheme.color(context, R.color.personalization_button_primary_disabled)
+        } else {
+            if (isEnabled) uncheckedColor ?: PersonalizationTheme.color(context, R.color.personalization_background_input)
+            else PersonalizationTheme.color(context, R.color.personalization_background_input_disabled)
+        }
 
         boxRect.set(0f, 0f, side, side)
         canvas.drawRoundRect(boxRect, radius, radius, fillPaint)
@@ -96,8 +128,8 @@ class PersonalizationCheckbox @JvmOverloads constructor(
             // Рамка внутрь, чтобы внешний размер остался ровно 20dp.
             val inset = 0.5f * scale
             borderPaint.strokeWidth = 1f * scale
-            borderPaint.color =
-                PersonalizationTheme.color(context, R.color.personalization_line_input)
+            borderPaint.color = uncheckedBorderColor
+                ?: PersonalizationTheme.color(context, R.color.personalization_line_input)
             boxRect.set(inset, inset, side - inset, side - inset)
             canvas.drawRoundRect(boxRect, radius, radius, borderPaint)
             return
@@ -117,8 +149,8 @@ class PersonalizationCheckbox @JvmOverloads constructor(
             CheckState.UNCHECKED -> return
         }
         glyphPaint.strokeWidth = 2f * scale
-        glyphPaint.color =
-            PersonalizationTheme.color(context, R.color.personalization_text_light_primary)
+        glyphPaint.color = checkmarkColor
+            ?: PersonalizationTheme.color(context, R.color.personalization_text_light_primary)
         canvas.drawPath(glyphPath, glyphPaint)
     }
 }

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Крестики-нолики</title>
+<!--
+  Demo mini-game opened by the demo apps from a `<demo scheme>://game` link (a stories or popup
+  button). One self-contained file, no network: the apps ship it as is and load it locally.
+  Theme: `?theme=dark|light` or `#dark|#light` in the address, `window.setGameTheme('dark'|'light')`,
+  otherwise the system `prefers-color-scheme`.
+-->
+<style>
+  :root {
+    --bg: #F2F2F2;
+    --card: #FFFFFF;
+    --text: #000000;
+    --text-secondary: rgba(0, 0, 0, 0.6);
+    --line: rgba(0, 0, 0, 0.08);
+    --brand: #007DF2;
+    --brand-pressed: #0064C2;
+    --brand-soft: rgba(0, 125, 242, 0.12);
+    --danger: #E51919;
+    --danger-soft: rgba(229, 25, 25, 0.12);
+    --on-brand: #FFFFFF;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0D0D0D;
+      --card: #1A1A1A;
+      --text: #FFFFFF;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --line: rgba(255, 255, 255, 0.1);
+      --brand-soft: rgba(0, 125, 242, 0.24);
+      --danger-soft: rgba(229, 25, 25, 0.24);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D0D0D;
+    --card: #1A1A1A;
+    --text: #FFFFFF;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --line: rgba(255, 255, 255, 0.1);
+    --brand-soft: rgba(0, 125, 242, 0.24);
+    --danger-soft: rgba(229, 25, 25, 0.24);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 400 16px/1.375 -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, "Segoe UI", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    display: flex;
+    justify-content: center;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+             calc(24px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+  }
+  .game {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .status {
+    margin: 4px 0 0;
+    min-height: 28px;
+    text-align: center;
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  .status.thinking { color: var(--text-secondary); }
+  .status.win { color: var(--brand); }
+  .status.loss { color: var(--danger); }
+
+  /* Board */
+  .board {
+    position: relative;
+    width: min(100%, calc(100vh - 260px));
+    min-width: 216px;
+    aspect-ratio: 1;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .cell {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    border-radius: 16px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color 200ms, opacity 200ms, transform 120ms;
+  }
+  .cell:active:not(:disabled) { transform: scale(0.96); }
+  .cell:disabled { cursor: default; }
+  .cell svg { width: 100%; height: 100%; display: block; }
+  .cell.win { background: var(--brand-soft); }
+  .board.loss .cell.win { background: var(--danger-soft); }
+  .board.over:not(.draw) .cell:not(.win) { opacity: 0.45; }
+
+  .mark {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: draw 240ms ease-out both;
+  }
+  .mark.x { stroke: var(--brand); }
+  .mark.x.second { animation-delay: 110ms; }
+  .mark.o { stroke: var(--text); }
+  @keyframes draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+
+  .strike {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .strike line {
+    stroke: var(--brand);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: draw 300ms 120ms ease-out both;
+  }
+  .board.loss .strike line { stroke: var(--danger); }
+
+  .again {
+    appearance: none;
+    border: 0;
+    height: 52px;
+    border-radius: 12px;
+    background: var(--brand);
+    color: var(--on-brand);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .again:active { background: var(--brand-pressed); }
+
+  .hint {
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark, .strike line { animation: none; }
+    .cell { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main class="game">
+  <p class="status" id="status" aria-live="polite">Ваш ход</p>
+
+  <div class="board" id="board" role="grid" aria-label="Поле 3 на 3"></div>
+
+  <button class="again" id="again" type="button">Ещё раз</button>
+  <p class="hint">Вы — ✕, компьютер — ◯. Первый ход по очереди</p>
+</main>
+
+<script id="ttt-logic">
+/* Rules and the computer's moves; no DOM and no timers, so they can be tested on their own. */
+var TicTacToe = (function () {
+  var LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  var CORNERS = [0, 2, 6, 8];
+
+  /** The completed line and its mark, or null. */
+  function winner(board) {
+    for (var i = 0; i < LINES.length; i++) {
+      var a = LINES[i][0], b = LINES[i][1], c = LINES[i][2];
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) return { mark: board[a], line: LINES[i] };
+    }
+    return null;
+  }
+
+  function freeCells(board) {
+    var cells = [];
+    for (var i = 0; i < 9; i++) if (!board[i]) cells.push(i);
+    return cells;
+  }
+
+  /** Cells where `mark` completes a line right away. */
+  function winningCells(board, mark) {
+    return freeCells(board).filter(function (i) {
+      var next = board.slice();
+      next[i] = mark;
+      var w = winner(next);
+      return w !== null && w.mark === mark;
+    });
+  }
+
+  /**
+   * The computer (O): take a win, else block the player's win, else the centre, else a free corner,
+   * else any free cell. Ties go to `random` (0 ≤ r < 1). A fork still beats it — on purpose.
+   */
+  function computerMove(board, random) {
+    random = random || Math.random;
+    function pick(cells) { return cells[Math.min(cells.length - 1, Math.floor(random() * cells.length))]; }
+    var win = winningCells(board, 'O');
+    if (win.length) return pick(win);
+    var block = winningCells(board, 'X');
+    if (block.length) return pick(block);
+    if (!board[4]) return 4;
+    var corners = CORNERS.filter(function (i) { return !board[i]; });
+    if (corners.length) return pick(corners);
+    return pick(freeCells(board));
+  }
+
+  /** A session: rounds, whose turn it is and the result. The player is X. */
+  function Game() {
+    this.round = 0;
+    this.reset();
+  }
+  Game.prototype.reset = function () {
+    this.board = [null, null, null, null, null, null, null, null, null];
+    // The first move alternates: the player opens even rounds, the computer odd ones.
+    this.turn = this.round % 2 === 0 ? 'X' : 'O';
+    this.result = null;
+  };
+  /** A new round; an unfinished one is dropped. */
+  Game.prototype.next = function () {
+    this.round += 1;
+    this.reset();
+  };
+  /** Puts `mark` on `cell` if it is that mark's turn and the cell is free; false otherwise. */
+  Game.prototype.play = function (cell, mark) {
+    if (this.result || this.turn !== mark || this.board[cell]) return false;
+    this.board[cell] = mark;
+    var w = winner(this.board);
+    if (w) {
+      this.result = { mark: w.mark, line: w.line };
+    } else if (freeCells(this.board).length === 0) {
+      this.result = { mark: null, line: null };
+    } else {
+      this.turn = mark === 'X' ? 'O' : 'X';
+    }
+    return true;
+  };
+
+  return { LINES: LINES, winner: winner, winningCells: winningCells, computerMove: computerMove, Game: Game };
+})();
+if (typeof module === 'object' && module.exports) module.exports = TicTacToe;
+</script>
+
+<script>
+(function () {
+  var COMPUTER_DELAY_MS = 420;
+  var SVG = 'http://www.w3.org/2000/svg';
+
+  var root = document.documentElement;
+  function setGameTheme(theme) {
+    if (theme === 'dark' || theme === 'light') root.setAttribute('data-theme', theme);
+    else root.removeAttribute('data-theme');
+  }
+  window.setGameTheme = setGameTheme;
+  function themeFromAddress() {
+    var query = null;
+    try { query = new URLSearchParams(location.search).get('theme'); } catch (e) { /* old engines */ }
+    return query || location.hash.replace('#', '') || null;
+  }
+  setGameTheme(themeFromAddress());
+  window.addEventListener('hashchange', function () { setGameTheme(themeFromAddress()); });
+
+  var game = new TicTacToe.Game();
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var cells = [];
+  var timer = null;
+
+  for (var i = 0; i < 9; i++) {
+    var cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cell';
+    cell.setAttribute('role', 'gridcell');
+    cell.addEventListener('click', onCellTap.bind(null, i));
+    boardEl.appendChild(cell);
+    cells.push(cell);
+  }
+  var strike = document.createElementNS(SVG, 'svg');
+  strike.setAttribute('class', 'strike');
+  strike.setAttribute('aria-hidden', 'true');
+  boardEl.appendChild(strike);
+
+  function markSvg(mark) {
+    if (mark === 'X') {
+      return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+        '<path class="mark x" pathLength="100" d="M30 30 L70 70"/>' +
+        '<path class="mark x second" pathLength="100" d="M70 30 L30 70"/></svg>';
+    }
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<circle class="mark o" pathLength="100" cx="50" cy="50" r="22" transform="rotate(-90 50 50)"/></svg>';
+  }
+
+  function onCellTap(index) {
+    if (!game.play(index, 'X')) return;
+    render(index);
+    if (!game.result) scheduleComputer();
+  }
+
+  function scheduleComputer() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      timer = null;
+      if (game.result || game.turn !== 'O') return;
+      var cell = TicTacToe.computerMove(game.board);
+      game.play(cell, 'O');
+      render(cell);
+    }, COMPUTER_DELAY_MS);
+  }
+
+  /** Draws the state; `changed` is the cell just played (only it gets its mark animated). */
+  function render(changed) {
+    var result = game.result;
+    var waiting = !result && game.turn === 'O';
+    for (var i = 0; i < 9; i++) {
+      var mark = game.board[i];
+      var cell = cells[i];
+      if (i === changed || (!mark && cell.innerHTML) || (mark && !cell.innerHTML)) {
+        cell.innerHTML = mark ? markSvg(mark) : '';
+      }
+      cell.disabled = !!mark || !!result || waiting;
+      cell.classList.toggle('win', !!(result && result.line && result.line.indexOf(i) >= 0));
+      cell.setAttribute('aria-label', 'Клетка ' + (i + 1) + ': ' + (mark === 'X' ? 'крестик' : mark === 'O' ? 'нолик' : 'пусто'));
+    }
+
+    boardEl.classList.toggle('over', !!result);
+    boardEl.classList.toggle('loss', !!(result && result.mark === 'O'));
+    boardEl.classList.toggle('draw', !!(result && !result.mark));
+    drawStrike(result && result.line);
+
+    statusEl.className = 'status';
+    if (!result) {
+      statusEl.textContent = waiting ? 'Ход компьютера…' : 'Ваш ход';
+      if (waiting) statusEl.classList.add('thinking');
+    } else if (result.mark === 'X') {
+      statusEl.textContent = 'Вы выиграли!';
+      statusEl.classList.add('win');
+    } else if (result.mark === 'O') {
+      statusEl.textContent = 'Компьютер выиграл';
+      statusEl.classList.add('loss');
+    } else {
+      statusEl.textContent = 'Ничья';
+    }
+
+  }
+
+  /** The line across the winning cells, a little past their centres; measured from the layout. */
+  function drawStrike(line) {
+    strike.innerHTML = '';
+    if (!line) return;
+    var box = boardEl.getBoundingClientRect();
+    var a = cells[line[0]].getBoundingClientRect();
+    var b = cells[line[2]].getBoundingClientRect();
+    var x1 = a.left + a.width / 2 - box.left, y1 = a.top + a.height / 2 - box.top;
+    var x2 = b.left + b.width / 2 - box.left, y2 = b.top + b.height / 2 - box.top;
+    var reach = a.width * 0.3;
+    var length = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) || 1;
+    var dx = (x2 - x1) / length * reach, dy = (y2 - y1) / length * reach;
+    strike.setAttribute('viewBox', '0 0 ' + box.width + ' ' + box.height);
+    var el = document.createElementNS(SVG, 'line');
+    el.setAttribute('x1', String(x1 - dx));
+    el.setAttribute('y1', String(y1 - dy));
+    el.setAttribute('x2', String(x2 + dx));
+    el.setAttribute('y2', String(y2 + dy));
+    el.setAttribute('pathLength', '100');
+    strike.appendChild(el);
+  }
+
+  document.getElementById('again').addEventListener('click', function () {
+    clearTimeout(timer);
+    timer = null;
+    game.next();
+    cells.forEach(function (cell) { cell.innerHTML = ''; });
+    render(-1);
+    if (game.turn === 'O') scheduleComputer();
+  });
+
+  window.addEventListener('resize', function () { drawStrike(game.result && game.result.line); });
+
+  render(-1);
+})();
+</script>
+</body>
+</html>

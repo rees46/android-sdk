@@ -10,7 +10,6 @@ import androidx.core.view.isVisible
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Заголовок выдачи поиска.
@@ -24,7 +23,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Собран из готовых компонентов: [PersonalizationTitle], [PersonalizationButton],
  * [PersonalizationButtonGroup], [PersonalizationTag].
  */
-@InternalPersonalizationUiApi
 class PersonalizationSearchResultsTitle @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -44,6 +42,7 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
     private val foundPrefix = AppCompatTextView(context)
     private val foundCount = AppCompatTextView(context)
     private val foundSuffix = AppCompatTextView(context)
+    private val found = LinearLayout(context)
 
     private val filtersRow = LinearLayout(context)
 
@@ -132,7 +131,7 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
         styleFound(foundCount, emphasized = true)
         styleFound(foundSuffix, emphasized = true)
 
-        val found = LinearLayout(context).apply {
+        found.apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(foundPrefix)
@@ -163,15 +162,26 @@ class PersonalizationSearchResultsTitle @JvmOverloads constructor(
 
     /**
      * Строка «найдено N товаров». Слова — параметры, локализация за интегратором.
-     * Не задана — ряд скрыт.
+     * Не задана — ряд скрыт. Без слова перед числом («N товаров» у категории) число
+     * стоит вплотную к кнопкам, без пустого места под слово. [count] `null` — число ещё
+     * неизвестно (выдача грузится): кнопки на месте, а «Найдено 0» не показывается.
      */
-    fun setResults(prefix: CharSequence?, count: Int, suffix: CharSequence?) {
+    fun setResults(prefix: CharSequence?, count: Int?, suffix: CharSequence?) {
         if (prefix == null && suffix == null) {
             resultsRow.isVisible = false
             return
         }
+        found.isVisible = count != null
         foundPrefix.text = prefix
-        foundCount.text = count.toString()
+        foundPrefix.isVisible = !prefix.isNullOrEmpty()
+        (foundCount.layoutParams as? MarginLayoutParams)?.let { params ->
+            val start = if (foundPrefix.isVisible) resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm) else 0
+            if (params.marginStart != start) {
+                params.marginStart = start
+                foundCount.layoutParams = params
+            }
+        }
+        foundCount.text = count?.toString()
         foundSuffix.text = suffix
         resultsRow.isVisible = true
     }

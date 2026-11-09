@@ -1,5 +1,6 @@
 package com.personalization.api.responses.product
 
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
 data class Product(
@@ -46,13 +47,24 @@ data class Product(
     @SerializedName("url_handle")
     val urlHandle: String,
     @SerializedName("oldprice")
+    @JsonAdapter(LenientDoubleAdapter::class)
     val oldPrice: Double? = null,
     @SerializedName("oldprice_formatted")
     val oldPriceFormatted: String? = null,
     @SerializedName("discount")
+    @JsonAdapter(LenientIntAdapter::class)
     val discount: Int? = null,
     @SerializedName("discount_formatted")
     val discountFormatted: String? = null,
     @SerializedName("is_new")
-    val isNew: Boolean? = null
+    val isNew: Boolean? = null,
+    /** Link that opens the product in the Android app; `null` when the shop does not send one. */
+    @SerializedName("deeplink_android")
+    val deeplinkAndroid: String? = null,
+    /** Link that opens the product in the iOS app; `null` when the shop does not send one. */
+    @SerializedName("deeplink_ios")
+    val deeplinkIos: String? = null,
+    @SerializedName("discount_percent")
+    @JsonAdapter(LenientIntAdapter::class)
+    val discountPercent: Int? = null
 )

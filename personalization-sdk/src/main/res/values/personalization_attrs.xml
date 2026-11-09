@@ -86,8 +86,18 @@
     <declare-styleable name="PersonalizationSearchResultsScreen">
         <attr name="shop_id" />
     </declare-styleable>
+    <!-- Экран категории: category_id — slug категории, как в getCategory. -->
+    <declare-styleable name="PersonalizationCategoryScreen">
+        <attr name="shop_id" />
+        <attr name="category_id" format="string" />
+    </declare-styleable>
     <!-- Сторис V2: code — тот же атрибут, что у старого StoriesView. -->
     <declare-styleable name="PersonalizationStories">
+        <attr name="code" />
+        <attr name="shop_id" />
+    </declare-styleable>
+    <!-- Блок рекомендаций: code — код блока рекомендаций; коллекция задаётся из кода. -->
+    <declare-styleable name="PersonalizationRecommenderBlock">
         <attr name="code" />
         <attr name="shop_id" />
     </declare-styleable>

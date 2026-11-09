@@ -12,7 +12,6 @@ import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.PersonalizationTheme
 
 /**
@@ -27,7 +26,6 @@ import com.personalization.ui.PersonalizationTheme
  *
  * Цвет текста шапки — Text/Primary контекста: на медиа-слайде он тёмный режим.
  */
-@InternalPersonalizationUiApi
 class PersonalizationStoryCard @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -12,6 +12,8 @@ import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.stories.models.elements.TextBlockElement
+import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryCard
 import com.personalization.ui.components.PersonalizationStoryPrice
 import com.personalization.ui.components.PersonalizationStoryTextBlock
@@ -42,6 +44,25 @@ class StorySlideViewTest {
         val view = laidOut(slideWithProducts())
 
         assertFalse(view.onInterceptTouchEvent(down(pointIn(view.navigation.closeButton))))
+    }
+
+    @Test
+    fun `share sits left of the cross only with a link and gets the touch over an open sheet`() {
+        assertEquals(View.GONE, laidOut(slideWithProducts()).navigation.shareButton.visibility)
+
+        host.sheetOpen = true
+        val view = laidOut(slideWithProducts(), shareUrl = "https://shop.test/?r46_slide=1")
+        val share = view.navigation.shareButton
+        val close = view.navigation.closeButton
+        assertEquals(View.VISIBLE, share.visibility)
+        assertEquals("Share", share.contentDescription)
+        assertEquals(close.width, share.width)
+        assertEquals(close.left - share.right, (8 * activity.resources.displayMetrics.density).toInt())
+        assertEquals(close.alpha, share.alpha)
+        assertFalse(view.onInterceptTouchEvent(down(pointIn(share))))
+
+        share.performClick()
+        assertEquals(listOf("https://shop.test/?r46_slide=1"), host.shared)
     }
 
     @Test
@@ -98,6 +119,59 @@ class StorySlideViewTest {
     }
 
     @Test
+    fun `a text block stands at y_offset of the whole slide, inside the area between the header and the buttons`() {
+        fun laidOutBlock(offset: Any): Pair<StorySlideView, PersonalizationStoryTextBlock> {
+            val slide = Slide(
+                JSONObject()
+                    .put("id", "5")
+                    .put(
+                        "elements",
+                        JSONArray()
+                            .put(JSONObject().put("type", "text_block").put("text_input", "Text").put("y_offset", offset))
+                            .put(JSONObject().put("type", "button").put("title", "Buy"))
+                    )
+            )
+            val view = laidOut(slide)
+            return view to view.first(PersonalizationStoryTextBlock::class.java)!!
+        }
+
+        // null — the top of the area, right under the header.
+        val (view, top) = laidOutBlock(JSONObject.NULL)
+        val area = top.parent as View
+        val areaTop = windowTop(area) - windowTop(view)
+        assertTrue("the area starts under the header", areaTop > 0)
+        assertEquals(0, top.top)
+        // 5 is under the header — the block moves down to the top of the area.
+        assertEquals(0, laidOutBlock(5).second.top)
+        // 50 is half of the whole slide, not of the area.
+        val (half, middle) = laidOutBlock(50)
+        assertTrue("${middle.top}", Math.abs(half.height / 2 - areaTop - middle.top) <= 1)
+        // 95 — the block stays whole at the bottom of the area, above the buttons.
+        val (low, bottom) = laidOutBlock(95)
+        assertEquals((bottom.parent as View).height, bottom.bottom)
+        val button = low.all().filterIsInstance<PersonalizationButton>().single { it.text?.toString() == "Buy" }
+        assertTrue(windowTop(bottom) + bottom.height <= windowTop(button))
+    }
+
+    @Test
+    fun `the placement reads y_offset as the poll does, null is 0, the block stays inside the area`() {
+        assertEquals(
+            listOf(null, null, null, 0f, 100f, 40f, 12.5f),
+            listOf(null, JSONObject.NULL, "abc", -10, 150, "40", 12.5).map(StorySlidePlacement::offset)
+        )
+        val block = TextBlockElement(JSONObject().put("y_offset", "12.5"))
+        assertEquals(12.5f, block.offset)
+        assertEquals("V1 keeps its whole percents", 12, block.yOffset)
+
+        // A slide 1000 high, the area 100…800, a block 50 high.
+        assertEquals("null — the top of the area", 0, StorySlidePlacement.top(null, 1000, 100, 700, 50))
+        assertEquals("under the header — the top of the area", 0, StorySlidePlacement.top(5f, 1000, 100, 700, 50))
+        assertEquals("of the whole slide", 400, StorySlidePlacement.top(50f, 1000, 100, 700, 50))
+        assertEquals("the bottom of the area", 650, StorySlidePlacement.top(95f, 1000, 100, 700, 50))
+        assertEquals("taller than the area — its top", 0, StorySlidePlacement.top(50f, 1000, 100, 700, 900))
+    }
+
+    @Test
     fun `only the slide background may play a gif, the video poster stays on the first frame`() {
         StorySlideView(activity, 0, 0, mediaSlide("image", "https://example.com/a.gif"), 1, host)
         StorySlideView(activity, 0, 0, mediaSlide("video", "https://example.com/v.mp4", "https://example.com/p.gif"), 1, host)
@@ -116,8 +190,8 @@ class StorySlideViewTest {
     )
 
     /** On screen: an unattached view has no location, and the slide hit-tests by location. */
-    private fun laidOut(slide: Slide): StorySlideView =
-        StorySlideView(activity, 0, 0, slide, 1, host).also { view ->
+    private fun laidOut(slide: Slide, shareUrl: String? = null): StorySlideView =
+        StorySlideView(activity, 0, 0, slide, 1, host, shareUrl).also { view ->
             activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             shadowOf(Looper.getMainLooper()).idle()
             assertTrue(view.isAttachedToWindow && view.width > 0)
@@ -161,6 +235,11 @@ class StorySlideViewTest {
             )
     )
 
+    private fun windowTop(view: View): Int = IntArray(2).also(view::getLocationInWindow)[1]
+
+    private fun View.all(): List<View> =
+        if (this !is ViewGroup) listOf(this) else listOf(this) + (0 until childCount).flatMap { getChildAt(it).all() }
+
     private fun <T : View> View.first(type: Class<T>): T? {
         if (type.isInstance(this)) return type.cast(this)
         if (this !is ViewGroup) return null
@@ -169,7 +248,7 @@ class StorySlideViewTest {
     }
 
     private class FakeHost : StorySlideHost {
-        override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off")
+        override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off", "Share")
         override val muted = true
         override var sheetOpen = false
         override val insets: Insets = Insets.NONE
@@ -208,5 +287,10 @@ class StorySlideViewTest {
         override fun onSoundToggle() = Unit
         override fun onRetry(view: StorySlideView) = Unit
         override fun onClose() = Unit
+        val shared = mutableListOf<String>()
+
+        override fun onShare(url: String) {
+            shared += url
+        }
     }
 }

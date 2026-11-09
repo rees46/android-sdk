@@ -59,6 +59,15 @@ internal interface StorySlideHost {
     fun onSoundToggle()
     fun onRetry(view: StorySlideView)
     fun onClose()
+
+    /** «Поделиться» ссылкой [url] показанного слайда. */
+    fun onShare(url: String)
+
+    /** Опросы (API v3 или свой транспорт); `null` — элементы `poll` не рисуются. */
+    val polls: StoryPollsContext? get() = null
+
+    /** Опрос слайда [view] держит его: карточку трогают, пишут в поле или ждут ответа. */
+    fun onPollHold(view: StorySlideView, hold: Boolean) = Unit
 }
 
 /**
@@ -76,7 +85,11 @@ internal class StorySlideView(
     val slideIndex: Int,
     val slide: Slide,
     slideCount: Int,
-    private val host: StorySlideHost
+    private val host: StorySlideHost,
+    /** Ссылка «Поделиться» слайда (API v3); `null` — кнопки нет. */
+    val shareUrl: String? = null,
+    /** Id сторис — для ответов на опросы. */
+    private val storyId: Int = 0
 ) : FrameLayout(if (StoriesMapping.isMedia(slide)) StorySupport.darkContext(baseContext) else baseContext) {
 
     enum class ImageState { LOADING, READY, FAILED }
@@ -115,7 +128,11 @@ internal class StorySlideView(
     private var usedProducts: PersonalizationStoryUsedProducts? = null
     private var usedHost: View? = null
     private var sheetTapPending = false
+    private var pollLayer: StoryPollLayer? = null
+    private val pollHolds = HashSet<StoryPollController>()
+    private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
+    private val pollInset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
 
     init {
         setBackgroundColor(
@@ -129,6 +146,8 @@ internal class StorySlideView(
         column.orientation = LinearLayout.VERTICAL
         navigation.closeContentDescription = host.texts.closeLabel
         navigation.onClose = { host.onClose() }
+        navigation.shareContentDescription = host.texts.shareLabel
+        navigation.onShare = shareUrl?.let { url -> { host.onShare(url) } }
         navigation.progress.count = slideCount
         navigation.progress.current = slideIndex
         // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
@@ -238,7 +257,14 @@ internal class StorySlideView(
         } else {
             StoryTextBlocks.build(context, slide, host)
         }
-        column.addView(middle, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        val area = withPolls(middle)
+        column.addView(area, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply {
+            // Карточки опросов — в 12 от краёв слайда, середина под ними — как была, в 16.
+            if (area !== middle) {
+                marginStart = pollInset
+                marginEnd = pollInset
+            }
+        })
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
@@ -247,6 +273,46 @@ internal class StorySlideView(
 
         val products = StoriesMapping.products(slide)?.let { element -> element to element.getProducts() }
         if (products != null || isVideo) addUsedProducts(products?.first, products?.second.orEmpty())
+    }
+
+    /**
+     * Опросы — поверх середины слайда, и на товарном тоже: между шапкой и кнопками. Без
+     * транспорта (не API v3) их нет.
+     */
+    private fun withPolls(middle: View): View {
+        val polls = host.polls ?: return middle
+        if (slide.polls.isEmpty()) return middle
+        val layer = StoryPollLayer(context)
+        slide.polls.forEach { poll ->
+            lateinit var controller: StoryPollController
+            controller = StoryPollController(poll, storyId, slide.id, polls.shopId, polls.transport, polls.texts, onHold = { hold ->
+                val before = pollHolds.isNotEmpty()
+                if (hold) pollHolds.add(controller) else pollHolds.remove(controller)
+                if (before != pollHolds.isNotEmpty()) host.onPollHold(this, pollHolds.isNotEmpty())
+            })
+            layer.add(StoryPollView(context, controller))
+        }
+        pollLayer = layer
+        return FrameLayout(context).apply {
+            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
+                marginStart = padding - pollInset
+                marginEnd = padding - pollInset
+            })
+            addView(layer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        }
+    }
+
+    /** Карточки опросов слайда. */
+    val pollCards: List<StoryPollView> get() = pollLayer?.cards.orEmpty()
+
+    /** Клавиатура окна: [bottom] — сколько она закрывает снизу. Слайд не сжимается — поднимается карточка. */
+    fun applyIme(bottom: Int) {
+        pollLayer?.setIme(bottom)
+    }
+
+    /** Убрать клавиатуру опроса — сворачивание, закрытие просмотра. */
+    fun hidePollKeyboard() {
+        pollLayer?.hideKeyboard()
     }
 
     private fun addButton(title: CharSequence, onClick: () -> Unit) {
@@ -321,12 +387,22 @@ internal class StorySlideView(
     }
 
     /**
-     * При открытой шторке тап мимо неё только закрывает её (B5). Крестик не в счёт: он
-     * закрывает просмотр всегда, и при открытой шторке тоже (F2).
+     * При открытой шторке тап мимо неё только закрывает её (B5). Крестик и «Поделиться» не в
+     * счёт: они работают всегда, и при открытой шторке тоже (F2).
      */
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        // Клавиатура опроса открыта: тап мимо карточки только прячет её, слайд не листается.
+        val typing = pollLayer?.focusedCard
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && typing != null && !inside(typing, event) &&
+            !inside(navigation.closeButton, event) && !inside(navigation.shareButton, event)
+        ) {
+            keyboardTapPending = true
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return true
+        }
         if (event.actionMasked == MotionEvent.ACTION_DOWN && host.sheetOpen &&
-            !inside(usedHost, event) && !inside(navigation.closeButton, event)
+            !inside(usedHost, event) && !inside(navigation.closeButton, event) &&
+            !inside(navigation.shareButton, event)
         ) {
             sheetTapPending = true
             return true
@@ -336,6 +412,16 @@ internal class StorySlideView(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (keyboardTapPending) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_UP -> {
+                    keyboardTapPending = false
+                    pollLayer?.hideKeyboard()
+                }
+                MotionEvent.ACTION_CANCEL -> keyboardTapPending = false
+            }
+            return true
+        }
         if (!sheetTapPending) return super.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_UP -> {
@@ -348,7 +434,7 @@ internal class StorySlideView(
     }
 
     private fun inside(view: View?, event: MotionEvent): Boolean {
-        view ?: return false
+        if (view == null || view.visibility != View.VISIBLE) return false
         val location = IntArray(2)
         view.getLocationOnScreen(location)
         return event.rawX >= location[0] && event.rawX <= location[0] + view.width &&

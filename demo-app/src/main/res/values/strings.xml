@@ -72,6 +72,8 @@
     <string name="push_channel_name">Push notifications</string>
     <!-- Stories block code for the demo shop. Replace with a code configured for your shop. -->
     <string name="stories_code">115bd0b67cf5989a1b60c841790b2af6</string>
+    <!-- Stories block on the demo shop's Home (API v3): one campaign with a poll of every kind. -->
+    <string name="shop_stories_code">272dd914ea13824a0abb6ef4e776ddaa</string>
     <!-- Stories block code for the SECOND shop (Multi-instance tab). Fill in a code configured for
          shop2.id, otherwise shop B's stories pane stays empty (the /stories call still routes to B). -->
     <string name="stories2_code">3704bd6e8a1a9a6dc65b75a5f01e5c8d</string>
@@ -80,6 +82,7 @@
     <string name="tab_ui_kit">UI Kit</string>
     <string name="tab_legacy_ui">Legacy UI</string>
     <string name="tab_multi_instance">Multi</string>
+    <string name="tab_shop">Shop</string>
 
     <!-- Stories tabs -->
     <string name="compose_stories_title">StoriesWidget (Compose)</string>

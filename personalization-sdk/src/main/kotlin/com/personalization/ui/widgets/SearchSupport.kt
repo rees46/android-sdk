@@ -7,16 +7,12 @@ import android.widget.ImageView
 import androidx.core.view.doOnLayout
 import com.bumptech.glide.Glide
 import com.personalization.SDK
-import com.personalization.api.responses.product.Product
-import com.personalization.ui.InternalPersonalizationUiApi
-import com.personalization.ui.components.PersonalizationProduct
 import org.json.JSONArray
 
 /**
  * Категория, на которую можно перейти из поиска: из подсказок instant-поиска
  * (есть id) или из популярных категорий пустого запроса (только имя и ссылка).
  */
-@InternalPersonalizationUiApi
 data class PersonalizationSearchCategory(
     val id: String?,
     val name: String,
@@ -101,30 +97,4 @@ internal object SearchImages {
             if (firstFrame) request.asBitmap().load(url).into(view as ImageView) else request.load(url).into(view as ImageView)
         }
     }
-}
-
-/**
- * Товар ответа поиска → данные карточки кита. Строки берутся уже отформатированными
- * сервером (`price_formatted`, `oldprice_formatted`, `discount_formatted`); картинка —
- * `picture` (уменьшенная копия), иначе оригинал.
- */
-internal fun Product.toCardProduct(actionText: CharSequence?): PersonalizationProduct {
-    // Gson кладёт null в поля без значения даже при non-null типе — читаем через nullable копии.
-    val priceText: String? = priceFormatted
-    val pictureUrl: String? = picture
-    val originalUrl: String? = imageUrl
-    val brandName: String? = brand
-    val hasOldPrice = (oldPrice ?: 0.0) > price && !oldPriceFormatted.isNullOrEmpty()
-    val discountText = discountFormatted?.takeIf { it.isNotEmpty() && hasOldPrice }
-        ?: discount?.takeIf { it > 0 && hasOldPrice }?.let { "$it%" }
-    return PersonalizationProduct(
-        id = id,
-        name = name,
-        price = priceText?.takeIf { it.isNotEmpty() } ?: "$price $currency",
-        imageUrl = pictureUrl?.takeIf { it.isNotEmpty() } ?: originalUrl,
-        brand = brandName?.takeIf { it.isNotEmpty() },
-        oldPrice = if (hasOldPrice) oldPriceFormatted else null,
-        discount = discountText?.let { if (it.startsWith("-")) it else "-$it" },
-        actionText = actionText
-    )
 }

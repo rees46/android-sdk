@@ -12,7 +12,6 @@ import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.R
-import com.personalization.ui.InternalPersonalizationUiApi
 
 /**
  * Рейтинг товара, короткая форма.
@@ -26,7 +25,6 @@ import com.personalization.ui.InternalPersonalizationUiApi
  * Цвет заполненной звезды в макете не привязан к переменной, взят ближайший
  * существующий токен Semantic/Warning — его стоит подтвердить у дизайнера.
  */
-@InternalPersonalizationUiApi
 class PersonalizationRating @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,

@@ -14,7 +14,6 @@ import com.personalization.api.responses.product.Product
 import com.personalization.api.responses.search.Category
 import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchInstantResponse
-import com.personalization.ui.InternalPersonalizationUiApi
 import com.personalization.ui.components.PersonalizationInstantSearch
 
 /**
@@ -42,7 +41,6 @@ import com.personalization.ui.components.PersonalizationInstantSearch
  * историю и вызывает [onSubmit] — экран полной выдачи открывает хост, событие
  * `search` трекает [PersonalizationSearchResultsScreen].
  */
-@InternalPersonalizationUiApi
 class PersonalizationInstantSearchField @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -332,7 +330,7 @@ class PersonalizationInstantSearchField @JvmOverloads constructor(
     }
 
     private fun Product.toSuggestion(): PersonalizationInstantSearch.Suggestion {
-        val card = toCardProduct(actionText = null)
+        val card = toPersonalizationProduct()
         return PersonalizationInstantSearch.Suggestion(
             id = id,
             title = name,
