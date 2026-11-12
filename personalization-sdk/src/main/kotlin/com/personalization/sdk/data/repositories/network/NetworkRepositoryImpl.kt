@@ -35,6 +35,9 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private lateinit var baseUrl: String
 
+    /** How long a request may wait for the next bytes of an answer; tests shorten it. */
+    internal var readTimeoutMs: Int = READ_TIMEOUT_MS
+
     private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
 
     override fun initialize(
@@ -183,6 +186,11 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         notificationSource: NotificationSource?
     ): JSONObject {
+        // A request with its own `from` or `code` (a story event, a push event) keeps them: the
+        // clicked push would replace that code and pair its `from` with someone else's code.
+        val pushSource = notificationSource?.takeUnless {
+            params.has(UserBasicParams.SOURCE_FROM) || params.has(UserBasicParams.SOURCE_CODE)
+        }
         addMultipleParams(
             params = params,
             paramsToAdd = mapOf(
@@ -200,8 +208,8 @@ class NetworkRepositoryImpl @Inject constructor(
                     key = UserBasicParams.STREAM,
                     repoValue = userSettingsRepository.getStream(),
                 ),
-                UserBasicParams.SOURCE_FROM to notificationSource?.type,
-                UserBasicParams.SOURCE_CODE to notificationSource?.id
+                UserBasicParams.SOURCE_FROM to pushSource?.type,
+                UserBasicParams.SOURCE_CODE to pushSource?.id
             )
         )
         return params
@@ -239,86 +247,92 @@ class NetworkRepositoryImpl @Inject constructor(
             var responseCode = -1
             var responseBodyForLog: String? = null
             var errorForLog: String? = null
-            try {
+            var connection: HttpURLConnection? = null
+            // The outcome is decided first and delivered once the connection is done with: a host
+            // callback that throws can neither be called again nor turn into a second outcome.
+            val outcome: (OnApiCallbackListener) -> Unit = try {
                 val buildUri = build(networkMethod, params)
                 val url = getUrl(networkMethod, buildUri)
                 logUrl = url.toString()
-                val connection = getConnection(networkMethod, url, params)
+                connection = getConnection(networkMethod, url, params)
 
                 connection.connect()
                 responseCode = connection.responseCode
 
-                if (networkMethod is NetworkMethod.POST) {
-                    SDK.debug("$responseCode: ${networkMethod.type} $url with body: $params")
-                } else {
-                    SDK.debug("$responseCode: ${networkMethod.type} $buildUri")
-                }
+                // Method and path only: the query string and the body carry the user's data.
+                SDK.debug("$responseCode: ${networkMethod.type} ${networkMethod.method}")
 
-                if (responseCode >= 400) {
-                    val error = readStream(connection.errorStream)
-                    responseBodyForLog = error
-                    SDK.error(error)
-                    listener?.onError(responseCode, error)
-                } else {
+                if (responseCode in HTTP_SUCCESS) {
                     val responseText = try {
-                        readStream(connection.inputStream)
-                    } catch (e: Exception) {
+                        connection.inputStream?.let(::readStream).orEmpty()
+                    } catch (e: IOException) {
                         ""
                     }
                     responseBodyForLog = responseText
-
-                    if (listener != null) {
-                        when (responseCode) {
-                            HttpURLConnection.HTTP_OK -> {
-                                try {
-                                    if (responseText.isNotEmpty()) {
-                                        when (val json = JSONTokener(responseText).nextValue()) {
-                                            is JSONObject -> listener.onSuccess(json)
-                                            is JSONArray -> listener.onSuccess(json)
-                                            // Empty or invalid JSON, treat as success with empty object
-                                            else -> listener.onSuccess(JSONObject())
-                                        }
-                                    } else {
-                                        // Empty response, treat as success
-                                        listener.onSuccess(JSONObject())
-                                    }
-                                } catch (e: Exception) {
-                                    // Failed to parse JSON, but response code is 200, treat as success
-                                    listener.onSuccess(JSONObject())
-                                }
-                            }
-                            HttpURLConnection.HTTP_NO_CONTENT -> {
-                                // 204 No Content - successful response with no body
-                                listener.onSuccess(JSONObject())
-                            }
-                        }
-                    }
+                    successOutcome(responseText)
+                } else {
+                    // Below 400 there is no error stream: a redirect the connection did not follow.
+                    val error = connection.errorStream?.let(::readStream).orEmpty()
+                    responseBodyForLog = error
+                    SDK.error("$responseCode: ${networkMethod.type} ${networkMethod.method} $error")
+                    errorOutcome(responseCode, error)
                 }
-
-                connection.disconnect()
             } catch (e: ConnectException) {
                 SDK.error(e.message)
                 errorForLog = e.message
                 responseCode = 504
-                listener?.onError(504, e.message)
+                errorOutcome(504, e.message)
             } catch (e: Exception) {
                 SDK.error(e.message, e)
                 errorForLog = e.message
-                listener?.onError(-1, e.message)
+                errorOutcome(-1, e.message)
             } finally {
-                SDK.networkLogger?.onHttpCall(
-                    method = networkMethod.type,
-                    url = logUrl,
-                    requestBody = requestBodyForLog,
-                    responseCode = responseCode,
-                    responseBody = responseBodyForLog,
-                    durationMs = System.currentTimeMillis() - startTime,
-                    error = errorForLog
-                )
+                connection?.disconnect()
+                try {
+                    SDK.networkLogger?.onHttpCall(
+                        method = networkMethod.type,
+                        url = logUrl,
+                        requestBody = requestBodyForLog,
+                        responseCode = responseCode,
+                        responseBody = responseBodyForLog,
+                        durationMs = System.currentTimeMillis() - startTime,
+                        error = errorForLog
+                    )
+                } catch (e: Exception) {
+                    SDK.error("NetworkLogger failed: ${e.message}", e)
+                }
             }
+
+            listener?.let { deliver(it, outcome) }
         }
 
         thread.start()
+    }
+
+    /** Any 2xx is a success; an empty answer or one that is not JSON succeeds with an empty object. */
+    private fun successOutcome(responseText: String): (OnApiCallbackListener) -> Unit {
+        val json = try {
+            if (responseText.isEmpty()) null else JSONTokener(responseText).nextValue()
+        } catch (e: JSONException) {
+            null
+        }
+        return when (json) {
+            is JSONObject -> { listener -> listener.onSuccess(json) }
+            is JSONArray -> { listener -> listener.onSuccess(json) }
+            else -> { listener -> listener.onSuccess(JSONObject()) }
+        }
+    }
+
+    private fun errorOutcome(code: Int, message: String?): (OnApiCallbackListener) -> Unit =
+        { listener -> listener.onError(code, message) }
+
+    /** A callback of the host that throws is logged; it must not take down the SDK's network thread. */
+    private fun deliver(listener: OnApiCallbackListener, outcome: (OnApiCallbackListener) -> Unit) {
+        try {
+            outcome(listener)
+        } catch (e: Exception) {
+            SDK.error("A request callback failed: ${e.message}", e)
+        }
     }
 
     private fun build(
@@ -357,7 +371,8 @@ class NetworkRepositoryImpl @Inject constructor(
         val connection = url.openConnection() as HttpURLConnection
         connection.setRequestProperty("User-Agent", SDK.userAgent())
         connection.requestMethod = networkMethod.type
-        connection.connectTimeout = 5000
+        connection.connectTimeout = CONNECT_TIMEOUT_MS
+        connection.readTimeout = readTimeoutMs
 
         if (networkMethod is NetworkMethod.POST) {
             connection.setRequestProperty("Content-Type", "application/json")
@@ -394,5 +409,11 @@ class NetworkRepositoryImpl @Inject constructor(
             }
         }
         return response.toString()
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 5_000
+        const val READ_TIMEOUT_MS = 10_000
+        val HTTP_SUCCESS = 200..299
     }
 }
