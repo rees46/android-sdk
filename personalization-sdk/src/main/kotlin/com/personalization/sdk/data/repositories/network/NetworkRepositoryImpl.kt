@@ -248,9 +248,9 @@ class NetworkRepositoryImpl @Inject constructor(
             var responseBodyForLog: String? = null
             var errorForLog: String? = null
             var connection: HttpURLConnection? = null
-            // The outcome is decided first and delivered once the connection is done with: a host
-            // callback that throws can neither be called again nor turn into a second outcome.
-            val outcome: (OnApiCallbackListener) -> Unit = try {
+            // The outcome is decided first and delivered once the connection is done with, so a
+            // callback that throws cannot change it.
+            val outcome: Outcome = try {
                 val buildUri = build(networkMethod, params)
                 val url = getUrl(networkMethod, buildUri)
                 logUrl = url.toString()
@@ -263,29 +263,32 @@ class NetworkRepositoryImpl @Inject constructor(
                 SDK.debug("$responseCode: ${networkMethod.type} ${networkMethod.method}")
 
                 if (responseCode in HTTP_SUCCESS) {
-                    val responseText = try {
-                        connection.inputStream?.let(::readStream).orEmpty()
-                    } catch (e: IOException) {
-                        ""
-                    }
+                    // A body the read timeout cuts short throws here and ends in onError.
+                    val responseText = readStream(connection.inputStream)
                     responseBodyForLog = responseText
                     successOutcome(responseText)
                 } else {
                     // Below 400 there is no error stream: a redirect the connection did not follow.
-                    val error = connection.errorStream?.let(::readStream).orEmpty()
+                    // The status is the answer, so a body that fails to arrive does not replace it.
+                    val error = try {
+                        connection.errorStream?.let(::readStream).orEmpty()
+                    } catch (e: IOException) {
+                        ""
+                    }
                     responseBodyForLog = error
-                    SDK.error("$responseCode: ${networkMethod.type} ${networkMethod.method} $error")
-                    errorOutcome(responseCode, error)
+                    // Without the body: an error answer often repeats the request's data.
+                    SDK.error("$responseCode: ${networkMethod.type} ${networkMethod.method}")
+                    Outcome.Failure(responseCode, error)
                 }
             } catch (e: ConnectException) {
                 SDK.error(e.message)
                 errorForLog = e.message
                 responseCode = 504
-                errorOutcome(504, e.message)
+                Outcome.Failure(504, e.message)
             } catch (e: Exception) {
                 SDK.error(e.message, e)
                 errorForLog = e.message
-                errorOutcome(-1, e.message)
+                Outcome.Failure(-1, e.message)
             } finally {
                 connection?.disconnect()
                 try {
@@ -309,29 +312,47 @@ class NetworkRepositoryImpl @Inject constructor(
         thread.start()
     }
 
+    private sealed interface Outcome {
+        /** [body] is a [JSONObject] or a [JSONArray]. */
+        class Success(val body: Any) : Outcome
+        class Failure(val code: Int, val message: String?) : Outcome
+    }
+
     /** Any 2xx is a success; an empty answer or one that is not JSON succeeds with an empty object. */
-    private fun successOutcome(responseText: String): (OnApiCallbackListener) -> Unit {
+    private fun successOutcome(responseText: String): Outcome {
         val json = try {
             if (responseText.isEmpty()) null else JSONTokener(responseText).nextValue()
         } catch (e: JSONException) {
             null
         }
-        return when (json) {
-            is JSONObject -> { listener -> listener.onSuccess(json) }
-            is JSONArray -> { listener -> listener.onSuccess(json) }
-            else -> { listener -> listener.onSuccess(JSONObject()) }
+        return Outcome.Success(if (json is JSONObject || json is JSONArray) json else JSONObject())
+    }
+
+    /**
+     * A callback that throws is logged and must not take down the SDK's network thread. A failed
+     * onSuccess ends in one onError(-1): the SDK's own listeners parse the answer there and hand
+     * the model to the app, so without it a parse error would leave the app waiting for an answer.
+     */
+    private fun deliver(listener: OnApiCallbackListener, outcome: Outcome) {
+        when (outcome) {
+            is Outcome.Success -> try {
+                when (val body = outcome.body) {
+                    is JSONArray -> listener.onSuccess(body)
+                    else -> listener.onSuccess(body as JSONObject)
+                }
+            } catch (e: Exception) {
+                SDK.error("onSuccess of a request failed: ${e.message}", e)
+                fail(listener, -1, e.message)
+            }
+            is Outcome.Failure -> fail(listener, outcome.code, outcome.message)
         }
     }
 
-    private fun errorOutcome(code: Int, message: String?): (OnApiCallbackListener) -> Unit =
-        { listener -> listener.onError(code, message) }
-
-    /** A callback of the host that throws is logged; it must not take down the SDK's network thread. */
-    private fun deliver(listener: OnApiCallbackListener, outcome: (OnApiCallbackListener) -> Unit) {
+    private fun fail(listener: OnApiCallbackListener, code: Int, message: String?) {
         try {
-            outcome(listener)
+            listener.onError(code, message)
         } catch (e: Exception) {
-            SDK.error("A request callback failed: ${e.message}", e)
+            SDK.error("onError of a request failed: ${e.message}", e)
         }
     }
 
@@ -388,28 +409,11 @@ class NetworkRepositoryImpl @Inject constructor(
         return connection
     }
 
-    private fun readStream(inputStream: InputStream): String {
-        var reader: BufferedReader? = null
-        val response = StringBuffer()
-        try {
-            reader = BufferedReader(InputStreamReader(inputStream))
-            var line: String?
-            while ((reader.readLine().also { line = it }) != null) {
-                response.append(line)
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close()
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
-            }
+    /** The whole answer, its lines joined; a read that fails midway throws instead of returning a part. */
+    private fun readStream(inputStream: InputStream): String =
+        BufferedReader(InputStreamReader(inputStream)).use { reader ->
+            buildString { reader.forEachLine { append(it) } }
         }
-        return response.toString()
-    }
 
     private companion object {
         const val CONNECT_TIMEOUT_MS = 5_000

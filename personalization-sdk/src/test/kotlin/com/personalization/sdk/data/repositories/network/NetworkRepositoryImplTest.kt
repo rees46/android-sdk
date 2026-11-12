@@ -37,8 +37,11 @@ class NetworkRepositoryImplTest {
 
     private data class Recorded(val method: String, val uri: String, val body: String)
 
-    /** An answer of the local server; `null` from [handler] keeps the connection open, silent. */
-    private data class Reply(val code: Int, val body: String?)
+    /**
+     * An answer of the local server; `null` from [handler] keeps the connection open, silent.
+     * [stall] sends the status, the headers and [body], then falls silent before the promised rest.
+     */
+    private data class Reply(val code: Int, val body: String?, val stall: Boolean = false)
 
     private lateinit var server: ServerSocket
     private val requests = CopyOnWriteArrayList<Recorded>()
@@ -127,13 +130,25 @@ class NetworkRepositoryImplTest {
     }
 
     @Test
-    fun `a throwing onSuccess is called once and does not turn into onError`() {
+    fun `a failing onSuccess ends in one onError and does not crash the network thread`() {
         handler = { Reply(200, "{}") }
 
+        // The SDK's own listeners parse the answer in onSuccess: a parse error must reach the app.
         val listener = Recorder(throwOnSuccess = true)
         repository.post("track/custom", JSONObject(), listener)
 
-        assertEquals(listOf("success:{}"), listener.awaitCalls())
+        assertEquals(listOf("success:{}", "error:-1"), listener.awaitCalls())
+        assertTrue("uncaught: $uncaught", uncaught.isEmpty())
+    }
+
+    @Test
+    fun `a failing onSuccess and onError end the request without crashing the network thread`() {
+        handler = { Reply(200, "{}") }
+
+        val listener = Recorder(throwOnSuccess = true, throwOnError = true)
+        repository.post("track/custom", JSONObject(), listener)
+
+        assertEquals(listOf("success:{}", "error:-1"), listener.awaitCalls())
         assertTrue("uncaught: $uncaught", uncaught.isEmpty())
     }
 
@@ -155,6 +170,17 @@ class NetworkRepositoryImplTest {
 
         val listener = Recorder()
         repository.get("products/get", JSONObject(), listener)
+
+        assertEquals(listOf("error:-1"), listener.awaitCalls(timeoutMs = 5_000))
+    }
+
+    @Test
+    fun `a success answer cut short by the read timeout ends in onError`() {
+        handler = { Reply(200, """{"did":"abc",""", stall = true) }
+        repository.readTimeoutMs = 300
+
+        val listener = Recorder()
+        repository.get("init", JSONObject(), listener)
 
         assertEquals(listOf("error:-1"), listener.awaitCalls(timeoutMs = 5_000))
     }
@@ -197,11 +223,17 @@ class NetworkRepositoryImplTest {
         val post = Recorder()
         repository.post("profile/set", JSONObject().put("phone", "+79990001122"), post)
         post.awaitCalls()
+        handler = { Reply(422, """{"error":"invalid phone +79990004455"}""") }
+        val rejected = Recorder()
+        repository.post("profile/set", JSONObject().put("phone", "+79990004455"), rejected)
+        rejected.awaitCalls()
 
         val log = ShadowLog.getLogs().joinToString("\n") { "${it.tag}: ${it.msg}" }
         assertFalse(log, log.contains("get@example.com"))
         assertFalse(log, log.contains("79990001122"))
         assertFalse(log, log.contains("answer@example.com"))
+        assertFalse(log, log.contains("79990004455"))
+        assertTrue(log, log.contains("422: POST profile/set"))
     }
 
     /** Reads one HTTP/1.1 request from [socket], records it and writes the [handler]'s reply. */
@@ -228,14 +260,16 @@ class NetworkRepositoryImplTest {
         requests += recorded
         val reply = handler(recorded) ?: return
         val bytes = reply.body?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+        val promised = if (reply.stall) bytes.size + 100 else bytes.size
         val out = it.getOutputStream()
         out.write(
             ("HTTP/1.1 ${reply.code} Status\r\n" +
-                "Content-Length: ${bytes.size}\r\n" +
+                "Content-Length: $promised\r\n" +
                 "Connection: close\r\n\r\n").toByteArray(Charsets.US_ASCII)
         )
         out.write(bytes)
         out.flush()
+        if (reply.stall) release.await(10, TimeUnit.SECONDS)
     }
 
     /** Records every callback; waits for the first one, then a little longer for repeats. */
