@@ -172,6 +172,8 @@ class NetworkRepositoryImplTest {
         repository.get("products/get", JSONObject(), listener)
 
         assertEquals(listOf("error:-1"), listener.awaitCalls(timeoutMs = 5_000))
+        val log = ShadowLog.getLogs().joinToString("\n") { it.msg.orEmpty() }
+        assertTrue("the failed request is named: $log", log.contains("GET products/get:"))
     }
 
     @Test

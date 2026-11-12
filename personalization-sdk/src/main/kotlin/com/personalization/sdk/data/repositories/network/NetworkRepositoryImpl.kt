@@ -281,12 +281,12 @@ class NetworkRepositoryImpl @Inject constructor(
                     Outcome.Failure(responseCode, error)
                 }
             } catch (e: ConnectException) {
-                SDK.error(e.message)
+                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}")
                 errorForLog = e.message
                 responseCode = 504
                 Outcome.Failure(504, e.message)
             } catch (e: Exception) {
-                SDK.error(e.message, e)
+                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}", e)
                 errorForLog = e.message
                 Outcome.Failure(-1, e.message)
             } finally {
