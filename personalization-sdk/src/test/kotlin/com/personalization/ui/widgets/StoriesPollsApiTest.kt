@@ -99,6 +99,14 @@ class StoriesPollsApiTest {
     }
 
     @Test
+    fun `a request is logged by method and path, without the identity and the answer`() {
+        answer(body = mapOf("text" to "my own answer"))
+        val logs = ShadowLog.getLogs().map { it.msg.orEmpty() }
+        assertTrue(logs.toString(), logs.any { it == "200: POST /api/v3/polls/mini_polls/gift_recipient/answers" })
+        assertTrue(logs.toString(), logs.none { "did1" in it || "sid1" in it || "my own answer" in it })
+    }
+
+    @Test
     fun `success takes the answer and results of the payload`() {
         reply = StoriesApiV3.Response(
             200,

@@ -21,7 +21,6 @@ class JsonResponseErrorHandler(
             logError("Response is null or incorrect")
             false
         } else {
-            Log.i(tag, "Response is: $response")
             true
         }
     }

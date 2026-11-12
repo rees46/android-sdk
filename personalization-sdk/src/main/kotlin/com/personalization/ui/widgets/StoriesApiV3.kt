@@ -110,7 +110,7 @@ internal object StoriesApiV3 {
         whenDid(sdk) {
             val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId)
             val response = post(eventsUrl(domain, code), body)
-            if (response.code !in 200..299) SDK.error("stories v3: $event failed: ${response.code} ${response.body}")
+            if (response.code !in 200..299) SDK.error("stories v3: $event failed: ${response.code}")
         }
     }
 
@@ -180,10 +180,13 @@ internal object StoriesApiV3 {
             SDK.networkLogger?.onHttpCall(method, url, body, -1, null, System.currentTimeMillis() - started, throwable.message)
             throw throwable
         }
-        SDK.debug("${response.code}: $method $url" + (body?.let { " with body: $it" } ?: ""))
+        // Method and path only: the query and the body carry did, the session and the user's answers.
+        SDK.debug("${response.code}: $method ${pathOf(url)}")
         SDK.networkLogger?.onHttpCall(method, url, body, response.code, response.body, System.currentTimeMillis() - started, null)
         return response
     }
+
+    private fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
 
     private fun sendHttp(method: String, url: String, body: String?): Response {
         val connection = URL(url).openConnection() as HttpURLConnection

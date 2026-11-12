@@ -53,10 +53,9 @@ internal class SearchManagerImpl @Inject constructor(
         val searchParams = SearchParams()
         locations?.let {
             searchParams.put(SearchParams.Parameter.LOCATIONS, locations)
-            excludedMerchants?.let {
-                val excludeMerchantsString = excludedMerchants.joinToString(",")
-                searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludeMerchantsString)
-            }
+        }
+        excludedMerchants?.let {
+            searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludedMerchants.joinToString(","))
         }
         excludedBrands?.let {
             searchParams.put(SearchParams.Parameter.EXCLUDED_BRANDS, excludedBrands.joinToString(","))
