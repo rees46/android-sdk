@@ -371,7 +371,7 @@ open class SDK {
                         .toJson(),
                     listener = object : OnApiCallbackListener() {
                         override fun onSuccess(response: JSONObject?) {
-                            debug("Profile GAID sent successfully: $advertisingId")
+                            debug("Profile GAID sent successfully")
                         }
 
                         override fun onError(code: Int, msg: String?) {

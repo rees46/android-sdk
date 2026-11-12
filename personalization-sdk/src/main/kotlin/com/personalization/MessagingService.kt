@@ -17,7 +17,7 @@ class MessagingService : FirebaseMessagingService() {
         try {
             // Check if message contains a data payload.
             if (remoteMessage.data.isNotEmpty()) {
-                SDK.debug("Message data payload: ${remoteMessage.data}")
+                SDK.debug("Message data payload keys: ${remoteMessage.data.keys}")
                 // Route through the facade so a lazily-registered shop the push targets is materialized
                 // on demand — the cold process FCM starts to deliver a data-only message only has the
                 // eagerly-initialized shops live, so a lazy shop would otherwise be dropped at routing.
@@ -26,7 +26,7 @@ class MessagingService : FirebaseMessagingService() {
 
             // Check if message contains a notification payload.
             if (remoteMessage.notification != null) {
-                SDK.debug("Message Notification Body: ${remoteMessage.notification?.body.orEmpty()}")
+                SDK.debug("Message has a notification payload")
             }
         } catch (throwable: Throwable) {
             SDK.error("Failed to handle push message", throwable)

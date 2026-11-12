@@ -22,7 +22,7 @@ class HmsMessagingService : HmsMessageService() {
             // lazily-registered shop the push targets, so a cold-process push (app not running) reaches
             // the second shop instead of being dropped for not being live yet.
             if (data.isNotEmpty()) {
-                SDK.debug("HMS message data: $data")
+                SDK.debug("HMS message data keys: ${data.keys}")
                 Rees46.handlePush(data, PushEventType.RECEIVED)
             }
         } catch (throwable: Throwable) {
