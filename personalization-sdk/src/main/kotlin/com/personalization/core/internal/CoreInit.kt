@@ -74,7 +74,7 @@ internal interface InitHooks {
  * - **Without an answer** an instance with a `did` works as [SdkState.READY] (`init_saved_answer`); one
  *   without waits for the network instead of failing again.
  * - **Later `/init`.** When the session's window ended ([SessionWindow], `core/session.md`): found by
- *   a request ([awaitUsable]), by the queue before an event ([renewSession]) or on coming back to the
+ *   a request ([awaitUsable]), by the queue before a tracking event in the foreground ([renewSession]) or on coming back to the
  *   foreground; and on [checkShop]. A refused shop is not asked again before the next launch.
  * - **Session.** `/init` carries the `sid` only while its window is alive; the `seance` of the answer is
  *   the session from then on. The core never makes a `sid` of its own.

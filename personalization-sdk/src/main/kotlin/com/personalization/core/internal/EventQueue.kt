@@ -53,10 +53,12 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *   and the time it was made as `time` on `/push/custom` only (the only path that reads it), unless the
  *   call set its own. Numbers the older builders put in as text go as numbers ([EventNumbers]). Nothing
  *   stamped reaches the disk.
- * - **Sending.** One event at a time, oldest first, once the instance is ready and the session alive
- *   (a session whose window ended gets its `/init` first), by the one process of the app that holds the
- *   queue's file lock. A push's event needs only the `did`: it neither waits for a session nor starts one.
- *   The queue of an instance brought up only for a push sends the push events alone. An event cleared while it waited (the customer's deletion) does not go. Sending
+ * - **Sending.** One event at a time, by the one process of the app that holds the queue's file lock, in
+ *   two lanes that each keep their order. The push events need only the `did`: they neither wait for a
+ *   session nor start one. The tracking events need the instance ready and the session alive: a session
+ *   whose window ended gets its `/init` first, from the foreground only, and while they wait for it the
+ *   push events behind them go. The queue of an instance brought up only for a push sends the push
+ *   events alone. An event cleared while it waited (the customer's deletion) does not go. Sending
  *   starts on [SdkState.READY], on the app's foreground and background, on the network's return, on
  *   [flush] and on a timer.
  * - **Answers.** `2xx` removes the event. No network waits for it and a timeout repeats it after a pause,
@@ -520,19 +522,26 @@ internal class EventQueue(
         }
     }
 
-    /** Sends events oldest first until the queue is empty or cannot send now. */
+    /**
+     * Sends events oldest first until the queue is empty or cannot send now, in two lanes that each keep
+     * their order: the push events, which need only a `did`, and the tracking events, which need a live
+     * session. A tracking event that waits for its session does not hold the push events behind it: the
+     * pass goes on with the push lane alone.
+     */
     private suspend fun pass(hold: Hold): Outcome {
         urgent = false
+        // What the tracking lane waits for, once its head was found unable to go now.
+        var trackingHeld: Outcome? = null
         while (true) {
             if (released || !store.isOwner(this) || state.current == SdkState.REFUSED) return Outcome.Idle
             // A clear gives the lock back: it is taken again for what came after it.
             if (!store.lockForSending()) return Outcome.Waiting
             val generation = store.generation
             val unreadable = ArrayList<QueueStore.Waiting>()
-            val head = store.head(unreadable) { event -> pushEventsOnly && event.path !in PUSH_EVENT_PATHS }
+            val head = store.head(unreadable) { event -> event.path !in PUSH_EVENT_PATHS && (pushEventsOnly || trackingHeld != null) }
             unreadable.forEach { delivery.failure(it.listener, UNREADABLE) }
             val event = when (head) {
-                QueueStore.Head.Empty -> return Outcome.Idle
+                QueueStore.Head.Empty -> return trackingHeld ?: Outcome.Idle
                 // The disk failed to read it: later, not again at once.
                 QueueStore.Head.Unavailable -> return pause(null)
                 is QueueStore.Head.Event -> head.event
@@ -547,8 +556,11 @@ internal class EventQueue(
                 // after the window ended starts no /init.
                 if (init.awaitReady(waitMs) != null) return Outcome.Waiting
             } else {
-                // Ready, and when the session's window ended, the /init of a new one first.
-                if (init.awaitUsable(waitMs) != null || !init.session.isAlive()) return Outcome.Waiting
+                val held = trackingWait()
+                if (held != null) {
+                    trackingHeld = held
+                    continue
+                }
             }
             // Cleared while it waited (the customer was deleted): it does not go under the next one.
             val body = store.ifCurrent(generation, event.id) { stamped(event) } ?: continue
@@ -558,6 +570,19 @@ internal class EventQueue(
             val next = withContext(NonCancellable) { take(event, result, sentAt) }
             if (next != null) return next
         }
+    }
+
+    /**
+     * Null when the tracking lane's head may go now: the instance is ready and the session alive. When the
+     * session's window ended, a new session starts from the foreground only — its `/init` goes, and its
+     * answer wakes the queue — and never from the background: the lane waits for the app to come back.
+     */
+    private suspend fun trackingWait(): Outcome? {
+        if (init.session.isAlive()) {
+            return if (init.awaitReady(waitMs) == null && init.session.isAlive()) null else Outcome.Waiting
+        }
+        if (lifecycle.isForeground) init.renewSession()
+        return Outcome.Waiting
     }
 
     /** What goes for [event]: a copy of its fields with the queue's and the common ones. */

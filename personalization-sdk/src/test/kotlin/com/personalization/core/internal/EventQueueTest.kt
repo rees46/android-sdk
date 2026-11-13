@@ -945,6 +945,53 @@ class EventQueueTest {
     }
 
     @Test
+    fun `a tracking event that waits for its new session does not hold the push events behind it`() {
+        val queue = start()
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        holdInit = true
+        event(queue, "1")
+        queue.accept("track/clicked", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+
+        assertEquals(listOf("track/clicked"), sent.map { it.path })
+        assertEquals("the new session's /init is on its way", 2, initsSent)
+        initCalls.single().complete(ok(sid = "S2"))
+        run()
+        assertEquals(listOf("track/clicked", "push"), sent.map { it.path })
+        assertEquals("S2", sent.last().sid)
+    }
+
+    @Test
+    fun `a push in the background after the window ended goes past the tracking events, and no init goes until the foreground`() {
+        val queue = start()
+        connectivity.set(false)
+        event(queue, "1")
+        event(queue, "2")
+        run()
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        lifecycle.set(false)
+        connectivity.set(true)
+        run()
+
+        queue.accept("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+        assertEquals(listOf("track/delivered"), sent.map { it.path })
+        // The timer looks again: still in the background, still no new session.
+        after(EventQueue.TIMER_MS)
+        assertEquals(listOf("track/delivered"), sent.map { it.path })
+        assertEquals(1, initsSent)
+
+        // The app comes back: a new session, then the tracking lane in its order.
+        initAnswer = { ok(sid = "S2") }
+        lifecycle.set(true)
+        run()
+        assertEquals(2, initsSent)
+        assertEquals(listOf("track/delivered", "push", "push"), sent.map { it.path })
+        assertEquals(listOf("1", "2"), sent.drop(1).map { it.body.getJSONArray("items").getJSONObject(0).getString("id") })
+        assertTrue(sent.drop(1).all { it.sid == "S2" })
+    }
+
+    @Test
     fun `the queue of an instance brought up for a push sends its push events alone, ready on the stored did, and asks the server nothing`() {
         settings.updateDid("STORED")
         val queue = start(pushOnly = true)
