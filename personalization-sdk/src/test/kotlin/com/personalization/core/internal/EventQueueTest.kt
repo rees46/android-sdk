@@ -973,6 +973,75 @@ class EventQueueTest {
         assertEquals(0, initsSent)
     }
 
+    @Test
+    fun `a flush ends however the pass it waits for ends, a release that cuts it off or an exception in it`() {
+        val queue = start()
+        holdEvents = true
+        event(queue, "1")
+        // Taken by the pass that sends 1 and waits for its answer.
+        val cutOff = flush(queue)
+        assertEquals(1, eventCalls.size)
+        assertFalse(cutOff.isCompleted)
+        queue.release()
+        run()
+        assertTrue("ended by the release", cutOff.isCompleted)
+        assertNull(cutOff.getCompleted())
+        eventCalls.single().complete(HttpResult.Success(JSONObject()))
+        run()
+
+        // A pass that throws: the flush ends the pause of the first failure, and the pass it is taken by
+        // throws too.
+        val next = start()
+        holdEvents = false
+        sourceFailures = 2
+        event(next, "2")
+        val failed = flush(next)
+        assertEquals(0, sourceFailures)
+        assertTrue("ended by the failed pass", failed.isCompleted)
+        assertEquals(listOf("1"), ids())
+        after(2_000)
+        assertEquals(listOf("1", "2"), ids())
+    }
+
+    @Test
+    fun `a request cut off by release keeps its event until it ends, and the queue made next does not send it again meanwhile`() {
+        val queue = start()
+        holdEvents = true
+        event(queue, "1")
+        run()
+        assertEquals(1, eventCalls.size)
+
+        queue.release()
+        run()
+        // The app initializes the shop again: a new queue over the same files.
+        holdEvents = false
+        val next = start()
+        event(next, "2")
+        run()
+        flush(next)
+        assertEquals("1 is still on its way", listOf("1"), ids())
+
+        // It failed: the new queue sends it, then the next one.
+        eventCalls.single().complete(HttpResult.Failure(SdkError.Timeout))
+        run()
+        assertEquals(listOf("1", "1", "2"), ids())
+        assertTrue(files().isEmpty())
+
+        // Cut off again, and it went: nobody sends it twice.
+        holdEvents = true
+        event(next, "3")
+        run()
+        next.release()
+        holdEvents = false
+        val third = start()
+        run()
+        eventCalls.last().complete(HttpResult.Success(JSONObject()))
+        run()
+        flush(third)
+        assertEquals(listOf("1", "1", "2", "3"), ids())
+        assertTrue(files().isEmpty())
+    }
+
     // After the review of stages 4 and 5.
 
     @Test

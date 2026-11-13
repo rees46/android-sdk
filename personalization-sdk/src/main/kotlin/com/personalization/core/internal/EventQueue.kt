@@ -24,7 +24,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
@@ -310,15 +309,17 @@ internal class EventQueue(
     /**
      * Stops sending; the events stay on disk for the next launch. With [cancel] the sending stops at once
      * and the listeners of this queue's events hear `-1`; the request of the event in flight still ends,
-     * and an answer that says it went takes the event off the disk. Without, as when a push-only instance
-     * gives way to the app's, the event in flight finishes and the listeners stay for the queue that
-     * sends next. Events accepted before are still written; a flush asked before it and not
-     * handled yet ends with `notInitialized`.
+     * holding the queue until then so that the queue made next does not send its event again, and an
+     * answer that says it went takes the event off the disk. Without, as when a push-only instance gives
+     * way to the app's, the event in flight finishes and the listeners stay for the queue that sends next.
+     * Events accepted before are still written; a flush asked before it and not handled yet ends with
+     * `notInitialized`, and one a pass had taken ends.
      */
     fun release(cancel: Boolean = true) {
         val heard = synchronized(subscriptions) {
             if (released) return
-            released = true
+            // Under the flushes' lock too: a flush handed over after this sees it and ends at once.
+            synchronized(flushLock) { released = true }
             subscriptions.toList().also { subscriptions.clear() }
         }
         heard.forEach { it.cancel() }
@@ -393,8 +394,7 @@ internal class EventQueue(
                 if (owner != null && owner !== this) {
                     owner.flushFromOther(command.done)
                 } else {
-                    synchronized(flushLock) { flushes += command.done }
-                    kick(urgent = true)
+                    addFlush(command.done)
                 }
             }
             is Command.Barrier -> command.done.complete(Unit)
@@ -402,13 +402,12 @@ internal class EventQueue(
     }
 
     /** A flush asked of another queue of the shop: this one sends. */
-    private fun flushFromOther(done: CompletableDeferred<Unit>) {
-        if (released) {
-            done.complete(Unit)
-            return
-        }
-        synchronized(flushLock) { flushes += done }
-        kick(urgent = true)
+    private fun flushFromOther(done: CompletableDeferred<Unit>) = addFlush(done)
+
+    /** Hands [done] to the next pass; a released queue sends nothing more, so it ends at once. */
+    private fun addFlush(done: CompletableDeferred<Unit>) {
+        val added = synchronized(flushLock) { if (released) false else flushes.add(done) }
+        if (added) kick(urgent = true) else done.complete(Unit)
     }
 
     private fun write(accept: Command.Accept) {
@@ -443,17 +442,18 @@ internal class EventQueue(
 
     private suspend fun work() {
         while (!released) {
+            val tried = synchronized(flushLock) { flushes.toList().also { flushes.clear() } }
             val outcome = try {
-                val tried = synchronized(flushLock) { flushes.toList().also { flushes.clear() } }
-                val outcome = if (store.isOwner(this)) store.sending.withLock { passHoldingLock() } else Outcome.Idle
-                tried.forEach { it.complete(Unit) }
-                outcome
+                if (store.isOwner(this)) sendingPass() else Outcome.Idle
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 // Never a tight loop: the next pass comes after a pause.
                 log(LogLevel.ERROR, LogCodes.SDK_LOG, "Sending the event queue failed", throwable = e)
                 pause(null)
+            } finally {
+                // The flushes this pass took end however it ended: done, failed, or cut off by a release.
+                tried.forEach { it.complete(Unit) }
             }
             when (outcome) {
                 Outcome.Idle -> wake.receive()
@@ -490,18 +490,38 @@ internal class EventQueue(
         done.forEach { it.complete(Unit) }
     }
 
-    /** One pass while this process holds the queue's file lock; when another process holds it, that one sends. */
-    private suspend fun passHoldingLock(): Outcome {
-        if (!store.lockForSending()) return Outcome.Waiting
+    /**
+     * Whether the request of the event in flight took over the pass's hold of the queue: a cancelling
+     * [release] cut the pass off while the request runs ([sendOne]).
+     */
+    private class Hold {
+        @Volatile
+        var handedOver = false
+    }
+
+    /**
+     * One pass holding [QueueStore.sending] and, while this process holds the queue's file lock, sending;
+     * when another process holds it, that one sends. A request a cancelling [release] cut off keeps both
+     * until it ends, so neither the queue made after this one nor another process sends its event again
+     * meanwhile.
+     */
+    private suspend fun sendingPass(): Outcome {
+        store.sending.lock()
+        val hold = Hold()
         try {
-            return pass()
+            if (!store.lockForSending()) return Outcome.Waiting
+            try {
+                return pass(hold)
+            } finally {
+                if (!hold.handedOver) store.unlockForSending()
+            }
         } finally {
-            store.unlockForSending()
+            if (!hold.handedOver) store.sending.unlock()
         }
     }
 
     /** Sends events oldest first until the queue is empty or cannot send now. */
-    private suspend fun pass(): Outcome {
+    private suspend fun pass(hold: Hold): Outcome {
         urgent = false
         while (true) {
             if (released || !store.isOwner(this) || state.current == SdkState.REFUSED) return Outcome.Idle
@@ -533,7 +553,7 @@ internal class EventQueue(
             // Cleared while it waited (the customer was deleted): it does not go under the next one.
             val body = store.ifCurrent(generation, event.id) { stamped(event) } ?: continue
             val sentAt = clock.nowMillis()
-            val result = sendOne(event, body)
+            val result = sendOne(event, body, hold)
             // The answer is in: what it decides is done even if the queue is released meanwhile.
             val next = withContext(NonCancellable) { take(event, result, sentAt) }
             if (next != null) return next
@@ -553,16 +573,24 @@ internal class EventQueue(
 
     /**
      * Sends [event]. The request runs apart from the sending: a [release] that cancels the sending lets it
-     * end, and an answer that says it went still takes the event off the disk, so it does not go twice.
+     * end, holding [hold]'s claim on the queue — the sending's lock and the file lock — until then, so the
+     * event is not sent twice at once; an answer that says it went still takes the event off the disk, so it
+     * does not go again later either.
      */
-    private suspend fun sendOne(event: QueuedEvent, body: JSONObject): HttpResult {
+    private suspend fun sendOne(event: QueuedEvent, body: JSONObject, hold: Hold): HttpResult {
         val call = writing.async { request(event, body) }
         try {
             return call.await()
         } catch (e: CancellationException) {
+            hold.handedOver = true
             writing.launch {
-                val result = call.await()
-                if (result is HttpResult.Success || (result as? HttpResult.Failure)?.error == SdkError.Decoding) store.remove(event.id)
+                try {
+                    val result = call.await()
+                    if (result is HttpResult.Success || (result as? HttpResult.Failure)?.error == SdkError.Decoding) store.remove(event.id)
+                } finally {
+                    store.unlockForSending()
+                    store.sending.unlock()
+                }
             }
             throw e
         }
