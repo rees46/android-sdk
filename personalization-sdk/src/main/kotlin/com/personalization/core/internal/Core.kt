@@ -28,4 +28,10 @@ internal interface Core {
 
     /** Stops the core: requests in flight are cancelled where the core can cancel them. */
     fun release()
+
+    /**
+     * Forgets the customer in [storage]: what [ShopStorage.deleteUserCredentials] wipes, and whatever
+     * the core keeps of its own. Runs on a background thread; false when part of it did not reach the disk.
+     */
+    fun deleteUserCredentials(storage: ShopStorage): Boolean
 }

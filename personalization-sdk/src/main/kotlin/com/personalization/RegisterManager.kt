@@ -46,6 +46,13 @@ class RegisterManager @Inject constructor(
     private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
 
+    /**
+     * Which start the `/init` in flight belongs to. [restartAsNewDevice] begins a new one, and an
+     * answer to an `/init` of an earlier start is dropped: it carries the forgotten customer's did.
+     */
+    @Volatile
+    private var generation: Int = 0
+
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
             contentResolver,
@@ -76,6 +83,19 @@ class RegisterManager @Inject constructor(
         }
     }
 
+    /**
+     * Starts over as a device the server has not seen, after `deleteUserCredentials()` wiped the did:
+     * `/init` goes out without a did and the server hands out a new one, which the requests waiting
+     * for a did then carry. The push token waits for it too: sent before, it would be registered
+     * without a did. An answer to an `/init` sent before is ignored. Nothing happens before [initialize].
+     */
+    internal fun restartAsNewDevice() {
+        if (!::context.isInitialized) return
+        generation++
+        initializeSdk(seance = null, releaseQueue = false, fetchPushTokens = false)
+        init()
+    }
+
     private fun initializeNewDevice() {
         // Do NOT seed the did with a hardware id (Settings.Secure.ANDROID_ID). Like the iOS, React
         // Native and web SDKs, send an empty did on the first /init and let the backend assign one —
@@ -97,7 +117,8 @@ class RegisterManager @Inject constructor(
         sendInitRequestWithRetry(knownDevice = knownDevice)
     }
 
-    private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false) {
+    private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false, start: Int = generation) {
+        if (start != generation) return
         try {
             val params = buildInitParams()
             sendNetworkMethodUseCase.get(
@@ -105,12 +126,12 @@ class RegisterManager @Inject constructor(
                 params = params,
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        handleInitSuccess(response, knownDevice)
+                        if (start == generation) handleInitSuccess(response, knownDevice)
                     }
 
                     // The answer's body stays out of the log: a server often repeats the request's data in it.
                     override fun onError(code: Int, msg: String?) {
-                        handleInitError(code, attempt, knownDevice)
+                        if (start == generation) handleInitError(code, attempt, knownDevice, start)
                     }
                 }
             )
@@ -166,7 +187,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    private fun handleInitError(code: Int, attempt: Int, knownDevice: Boolean) {
+    private fun handleInitError(code: Int, attempt: Int, knownDevice: Boolean, start: Int) {
         if (code in 500..Int.MAX_VALUE || code <= 0) {
             if (attempt < MAX_INIT_RETRIES) {
                 log(
@@ -177,7 +198,7 @@ class RegisterManager @Inject constructor(
                 )
                 CoroutineScope(Dispatchers.Main).launch {
                     delay(RETRY_DELAY_MILLISECONDS * (attempt + 1))
-                    sendInitRequestWithRetry(attempt + 1, knownDevice)
+                    sendInitRequestWithRetry(attempt + 1, knownDevice, start)
                 }
             } else {
                 log(
@@ -208,12 +229,15 @@ class RegisterManager @Inject constructor(
         SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
-    /** Starts the session; [releaseQueue] sends the requests that waited for a did, which must be stored by now. */
-    private fun initializeSdk(seance: String?, releaseQueue: Boolean = true) {
+    /**
+     * Starts the session; [releaseQueue] sends the requests that waited for a did, which must be stored
+     * by now, and [fetchPushTokens] asks the providers for their tokens.
+     */
+    private fun initializeSdk(seance: String?, releaseQueue: Boolean = true, fetchPushTokens: Boolean = true) {
         val finalSeance = seance ?: generateOrRetrieveSeance()
         updateUserSettingsValueUseCase.updateSid(value = finalSeance)
         if (releaseQueue) executeQueueTasksUseCase.invoke()
-        pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
+        if (fetchPushTokens) pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
     }
 
     private fun generateOrRetrieveSeance(): String {

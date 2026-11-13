@@ -51,6 +51,9 @@ internal class LegacyCore(
 
     override fun release() = Unit
 
+    /** The legacy path has no queue: the partition's credentials and the saved answer go. */
+    override fun deleteUserCredentials(storage: ShopStorage): Boolean = storage.deleteUserCredentials(includeQueue = false)
+
     private fun executeMethod(
         networkMethod: NetworkMethod,
         params: JSONObject,

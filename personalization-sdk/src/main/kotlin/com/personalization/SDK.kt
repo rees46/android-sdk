@@ -26,8 +26,12 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
+import com.personalization.core.CompletionListener
+import com.personalization.core.SdkError
+import com.personalization.core.SdkException
 import com.personalization.core.internal.AndroidConnectivityMonitor
 import com.personalization.core.internal.Core
+import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.CoreV2
 import com.personalization.core.internal.ShopStorage
@@ -57,9 +61,12 @@ import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisin
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import javax.inject.Inject
 import org.json.JSONException
@@ -188,6 +195,13 @@ open class SDK {
     @Volatile
     internal var storage: ShopStorage? = null
         private set
+
+    /** Where the calls made for Java and for code outside coroutines run; nothing they do reaches the app as an exception. */
+    private val calls: CoroutineScope by lazy {
+        CoroutineScope(SupervisorJob() + CoreDispatchers.DEFAULT.io + CoroutineExceptionHandler { _, throwable ->
+            log(LogLevel.ERROR, LogCodes.SDK_LOG, "A call of the instance failed unexpectedly", throwable = throwable)
+        })
+    }
 
     /** The shop this instance logs for, once it is initialized: its lines pass that shop's level. */
     @Volatile
@@ -688,6 +702,68 @@ open class SDK {
         core?.release()
         // Only this instance's level goes: another live instance of the shop keeps logging at its own.
         logShopId?.let { SdkLogs.unregister(it, owner = this) }
+    }
+
+    /**
+     * Forgets this shop's customer on this device: the `did`, the session (`sid` and the time of the last
+     * activity), the saved `/init` answer, the source [tracking] `setSource` set, the dates the push
+     * token was sent (so the token goes to the next customer) and, on the new core, the queue of events
+     * not sent yet. The stories' state, the device's push token, its A/B group and its advertising id
+     * stay: they belong to the device, not to the customer. Logs `device_id_reset`.
+     *
+     * The instance stays registered and asks `/init` again without a `did`; the server hands out a new
+     * one, and requests made meanwhile wait for it. Other shops of the app keep their customers.
+     *
+     * Android's Auto Backup (on by default for apps targeting Android 6.0 and later) copies the app's
+     * `SharedPreferences`, the SDK's among them, and restores them on the user's new device: the `did`
+     * of the backed-up customer comes back there. A library cannot change the app's backup rules; an
+     * app that wants every device to start without one excludes the SDK's files in its own
+     * `fullBackupContent` / `dataExtractionRules`: `personalization_sdk_<shopId>.xml` (with a
+     * [Rees46Config.storageKey], `<storageKey>_personalization_sdk_<shopId>.xml`) and
+     * `personalization_sdk.device.xml` in the `sharedpref` domain. The saved `/init` answer and the
+     * queue are kept in `noBackupFilesDir` and never leave the device.
+     *
+     * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized.
+     */
+    suspend fun deleteUserCredentials() {
+        val core = core
+        val storage = storage
+        if (core == null || storage == null) throw SdkException(SdkError.NotInitialized)
+        withContext(CoreDispatchers.DEFAULT.io) { core.deleteUserCredentials(storage) }
+        log(
+            LogLevel.INFO,
+            LogCodes.DEVICE_ID_RESET,
+            "The customer's data was deleted; /init asks for a new did",
+            mapOf("reason" to "delete_user_credentials")
+        )
+        try {
+            registerManager.restartAsNewDevice()
+        } catch (e: Exception) {
+            // The customer is forgotten either way; the next launch asks /init.
+            log(LogLevel.ERROR, LogCodes.SDK_LOG, "/init could not be restarted after the deletion", throwable = e)
+        }
+    }
+
+    /**
+     * [deleteUserCredentials] for Java and for code outside coroutines: [listener] gets null once the
+     * customer is forgotten, or the error ([SdkError.NotInitialized]), once, on the main thread.
+     */
+    fun deleteUserCredentials(listener: CompletionListener) {
+        calls.launch {
+            val error = try {
+                deleteUserCredentials()
+                null
+            } catch (e: SdkException) {
+                e.error
+            }
+            withContext(CoreDispatchers.DEFAULT.main) {
+                try {
+                    listener.onComplete(error)
+                } catch (e: Exception) {
+                    log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "The app's CompletionListener threw", throwable = e)
+                }
+            }
+        }
     }
 
     /** Writes to the SDK's log under this instance's shop, so the shop's [Rees46Config.logLevel] applies. */

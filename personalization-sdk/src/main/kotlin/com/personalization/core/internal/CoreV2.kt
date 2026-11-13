@@ -90,6 +90,9 @@ internal class CoreV2(
         requests.cancel()
     }
 
+    /** The events in the queue were the customer's: its directory goes with the credentials. */
+    override fun deleteUserCredentials(storage: ShopStorage): Boolean = storage.deleteUserCredentials(includeQueue = true)
+
     private fun deliver(listener: OnApiCallbackListener, result: HttpResult) = when (result) {
         is HttpResult.Success -> delivery.success(listener, result.body)
         is HttpResult.Failure -> LegacyErrors.of(result.error, result.errorBody).let { delivery.failure(listener, it.code, it.message) }
