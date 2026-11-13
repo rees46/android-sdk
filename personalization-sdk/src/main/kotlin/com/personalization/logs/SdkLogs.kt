@@ -168,6 +168,9 @@ internal object LogCodes {
     /** The shop refused and the core is in the `refused` state; the legacy path has no such state. */
     const val INIT_REFUSED = "init_refused"
     const val DEVICE_ID_RESET = "device_id_reset"
+
+    /** `Rees46Config.deviceId` not taken because the shop has a `did` of its own (`warning`, once per shop). */
+    const val DEVICE_ID_KEPT = "device_id_kept"
     const val STORAGE_FAILED = "storage_failed"
     const val QUEUE_DROPPED = "queue_dropped"
 

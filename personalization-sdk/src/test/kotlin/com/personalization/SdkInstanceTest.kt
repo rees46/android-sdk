@@ -12,8 +12,10 @@ import com.personalization.core.SdkState
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.CoreV2
 import com.personalization.core.internal.DeviceStorage
+import com.personalization.core.internal.LegacyCore
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.TrackingThreads
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import kotlinx.coroutines.flow.first
@@ -48,6 +50,7 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The instance and the facade on both cores: one instance per shop whoever asks and however often,
@@ -64,6 +67,10 @@ class SdkInstanceTest {
 
     /** Every request the server got, `/init` among them. */
     private val requests = LinkedBlockingQueue<HttpUrl>()
+    private val initRequests = AtomicInteger()
+
+    /** The legacy path's requests run here, so a test waits until they are answered instead of sleeping. */
+    private val threads = TrackingThreads()
 
     /** The answer to `/init`, given the did it carried. */
     @Volatile
@@ -91,11 +98,14 @@ class SdkInstanceTest {
         // A test that runs both cores starts over in the middle: a server starts once.
         server = MockWebServer()
         requests.clear()
+        initRequests.set(0)
+        LegacyCore.threads = threads
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val url = request.requestUrl ?: return MockResponse().setResponseCode(400)
                 requests += url
                 if (url.encodedPath != "/init") return MockResponse().setBody("{}")
+                initRequests.incrementAndGet()
                 return initAnswer(url.queryParameter("did").orEmpty())
             }
         }
@@ -106,6 +116,7 @@ class SdkInstanceTest {
     fun tearDown() {
         SdkRegistry.all().forEach { it.release() }
         server.shutdown()
+        LegacyCore.threads = LegacyCore.DEFAULT_THREADS
         CoreSelection.reset()
         SdkRegistry.reset()
         Rees46.reset()
@@ -132,15 +143,17 @@ class SdkInstanceTest {
         }
     }
 
-    /** No more requests to [path] within a moment; requests to other paths (the legacy profile/set) are let by. */
-    private fun assertNoMore(path: String) {
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(300)
-        while (true) {
-            val left = deadline - System.nanoTime()
-            if (left <= 0) return
-            val url = requests.poll(left, TimeUnit.NANOSECONDS) ?: return
-            assertFalse("unexpected $url", url.encodedPath == "/$path")
+    /**
+     * [sdk] sent one `/init` and has none on its way: the legacy core's requests have all been answered
+     * (its threads are idle), the new core's `/init` is not running and went once.
+     */
+    private fun assertOneInit(sdk: SDK) {
+        threads.awaitIdle()
+        (sdk.core as? CoreV2)?.init?.let { init ->
+            assertFalse("an /init is on its way", init.isRunning)
+            assertEquals(1, init.sent)
         }
+        assertEquals(1, initRequests.get())
     }
 
     private fun awaitState(sdk: SDK, state: SdkState) = runBlocking {
@@ -179,7 +192,8 @@ class SdkInstanceTest {
 
             assertSame(first, second)
             assertEquals(1, SdkRegistry.count())
-            assertNoMore("init")
+            awaitState(first, SdkState.READY)
+            assertOneInit(first)
             assertTrue(logged.none { it.code == LogCodes.INVALID_CONFIG })
         }
     }
@@ -216,7 +230,8 @@ class SdkInstanceTest {
         assertEquals(1, made.toSet().size)
         assertEquals(1, SdkRegistry.count())
         nextRequest("init")
-        assertNoMore("init")
+        awaitState(made.first(), SdkState.READY)
+        assertOneInit(made.first())
     }
 
     @Test
@@ -279,7 +294,7 @@ class SdkInstanceTest {
             }
             // Nothing was deleted and no /init went.
             assertEquals(did, partition().getString("did", null))
-            assertNoMore("init")
+            assertOneInit(sdk)
         }
     }
 
@@ -318,7 +333,7 @@ class SdkInstanceTest {
 
     @Test
     @Suppress("DEPRECATION")
-    fun `on the legacy core a new device goes from initializing to ready, heard once each on the main thread`() {
+    fun `on the legacy core a new device goes from initializing to ready, heard once each on the main thread after the current state`() {
         val sdk = SDK()
         val heard = CopyOnWriteArrayList<Pair<SdkState, Boolean>>()
         sdk.onStateChange { heard += it to (Looper.myLooper() == Looper.getMainLooper()) }

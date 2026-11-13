@@ -93,3 +93,31 @@ internal class TrackingThreads : java.util.concurrent.Executor {
         }
     }
 }
+
+/**
+ * A started [CoreInit] for [shopId], whose `/init` [send] answers without a server: with the `did`
+ * [settings] already hold, the instance is ready at once. For tests of what goes after `/init`.
+ */
+internal fun startedCoreInit(
+    context: android.content.Context,
+    settings: com.personalization.sdk.domain.repositories.UserSettingsRepository,
+    connectivity: ConnectivityMonitor = FakeConnectivity(connected = true),
+    shopId: String = "shop",
+    dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
+    send: suspend (org.json.JSONObject) -> HttpResult = {
+        HttpResult.Success(org.json.JSONObject().put("did", settings.getDid().ifEmpty { "did" }).put("seance", "S"))
+    },
+): CoreInit = CoreInit(
+    setup = InitSetup(shopId),
+    send = send,
+    settings = settings,
+    storage = ShopStorage(context, StorageLayout(shopId, null)),
+    state = InstanceState(shopId = { shopId }, dispatchers = dispatchers),
+    connectivity = connectivity,
+    lifecycle = FakeAppLifecycle(foreground = true),
+    hooks = object : InitHooks {
+        override fun onAnswer(answer: org.json.JSONObject, fresh: Boolean) = Unit
+        override fun onUsable() = Unit
+    },
+    dispatchers = dispatchers,
+).also { it.start() }

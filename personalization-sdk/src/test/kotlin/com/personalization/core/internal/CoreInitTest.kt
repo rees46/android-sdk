@@ -416,6 +416,59 @@ class CoreInitTest {
     }
 
     @Test
+    fun `the did of the config is taken once and after a deletion does not come back, even passed again`() {
+        started(InitSetup(SHOP, deviceId = "FROM_RN"))
+        assertEquals("FROM_RN", settings.getDid())
+        inits.single().release()
+
+        assertTrue(storage.deleteUserCredentials(includeQueue = true))
+        started(InitSetup(SHOP, deviceId = "FROM_RN"))
+
+        assertEquals("", settings.getDid())
+        assertEquals(SdkState.INITIALIZING, state.current)
+        assertTrue(codes(LogCodes.DEVICE_ID_KEPT).isEmpty())
+    }
+
+    @Test
+    fun `a did of the config that the shop does not take is logged once`() {
+        settings.updateDid("MINE")
+        started(InitSetup(SHOP, deviceId = "FROM_RN"))
+        inits.single().release()
+        started(InitSetup(SHOP, deviceId = "FROM_RN"))
+
+        assertEquals("MINE", settings.getDid())
+        val kept = codes(LogCodes.DEVICE_ID_KEPT).single()
+        assertEquals(LogLevel.WARNING, kept.level)
+        assertTrue("no did in the log", "MINE" !in kept.message && "FROM_RN" !in kept.message && kept.context.isEmpty())
+    }
+
+    @Test
+    fun `an init cancelled by something else than the SDK is repeated`() {
+        started()
+
+        answer(HttpResult.Failure(SdkError.Cancelled))
+
+        assertEquals(SdkState.RETRYING, state.current)
+        after(1_000)
+        assertEquals(2, sent.size)
+        answer(ok())
+        assertEquals(SdkState.READY, state.current)
+    }
+
+    @Test
+    fun `an answer whose start a deletion ended shows nothing and makes nothing usable`() {
+        // Held right as the answer is taken: the hooks see the new start and do nothing.
+        val init = started()
+        val first = calls.single()
+        init.holdForRestart()
+        first.complete(ok("STALE"))
+        scheduler.runCurrent()
+
+        assertTrue(answers.isEmpty())
+        assertEquals(0, usable)
+    }
+
+    @Test
     fun `needReInitialization forgets the did, the session and the saved answer before init`() {
         settings.updateDid("OLD")
         settings.updateSid("OLD_SID")
@@ -594,6 +647,112 @@ class CoreInitTest {
     }
 
     // Restart and release.
+
+    @Test
+    fun `while a deletion holds the instance no init goes, not on coming back nor on checkShop`() {
+        val init = started()
+        answer(ok("D1", "S1"))
+        lifecycle.set(false)
+
+        init.holdForRestart()
+        clock.advance(CoreInit.SESSION_WINDOW_MS + 1)
+        lifecycle.set(true)
+        scheduler.runCurrent()
+        assertFalse(init.checkShop())
+        after(CoreInit.CHECK_SHOP_INTERVAL_MS)
+        assertEquals(1, sent.size)
+
+        init.restart()
+        scheduler.runCurrent()
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun `the storage is prepared off the caller's thread, a stored did is ready at once`() {
+        storage.saveInitAnswer(JSONObject().put("did", "SAVED"))
+        val init = init()
+
+        init.start()
+        // Nothing read from the file and nothing sent yet: that is the io dispatcher's work.
+        assertEquals("", settings.getDid())
+        assertEquals(SdkState.INITIALIZING, state.current)
+        assertTrue(sent.isEmpty())
+
+        scheduler.runCurrent()
+        assertEquals("SAVED", settings.getDid())
+        assertEquals(SdkState.READY, state.current)
+        assertEquals(1, sent.size)
+        assertEquals(1, usable)
+    }
+
+    @Test
+    fun `coming back to the foreground is handled off the main thread`() {
+        started()
+        answer(ok("D1", "S1"))
+        lifecycle.set(false)
+        clock.now = settings.getSidLastActTime() + CoreInit.SESSION_WINDOW_MS + 1
+
+        lifecycle.set(true)
+        assertEquals(1, sent.size)
+        scheduler.runCurrent()
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun `after a wipe the saved answer gives no did until an init succeeds`() {
+        // The wipe committed its preferences, but the saved answer's file outlived it.
+        storage.saveInitAnswer(JSONObject().put("did", "FORGOTTEN"))
+        storage.isWiped = true
+        started()
+
+        assertEquals("", settings.getDid())
+        assertEquals(SdkState.INITIALIZING, state.current)
+        assertEquals("init goes without a did", 1, sent.size)
+        answer(ok("NEW", "S"))
+        assertEquals("NEW", settings.getDid())
+        assertFalse(storage.isWiped)
+        inits.single().release()
+
+        // Later launches read the new answer again.
+        settings.removeDid()
+        started()
+        assertEquals("NEW", settings.getDid())
+    }
+
+    @Test
+    fun `a release that comes while start adds its lifecycle listener does not leave it behind`() {
+        lateinit var racing: CoreInit
+        var listening = 0
+        val raceLifecycle = object : AppLifecycle {
+            override val isForeground = true
+            override fun addListener(listener: (foreground: Boolean) -> Unit): com.personalization.Cancellable {
+                listening++
+                racing.release()
+                return com.personalization.Cancellable { listening-- }
+            }
+        }
+        racing = CoreInit(
+            setup = InitSetup(SHOP),
+            send = { sent += it; ok() },
+            settings = settings,
+            storage = storage,
+            state = state,
+            connectivity = connectivity,
+            lifecycle = raceLifecycle,
+            hooks = object : InitHooks {
+                override fun onAnswer(answer: JSONObject, fresh: Boolean) = Unit
+                override fun onUsable() = Unit
+            },
+            dispatchers = dispatchers,
+            clock = clock,
+        )
+
+        racing.start()
+        scheduler.runCurrent()
+
+        assertEquals(0, listening)
+        assertTrue(sent.isEmpty())
+    }
 
     @Test
     fun `an answer to an init sent before a restart is not taken`() {

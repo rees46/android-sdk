@@ -6,6 +6,7 @@ import android.util.AtomicFile
 import com.personalization.LogLevel
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
+import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
@@ -76,6 +77,39 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
             preferences.edit().putBoolean(StorageKeys.REFUSED, value).apply()
         }
 
+    /**
+     * Takes the `did` an app brings in `Rees46Config.deviceId`, once for the shop: on the first launch
+     * that brings one, while the shop has no `did` of its own. A shop that has one keeps it and logs
+     * `device_id_kept`. Either way the flag [StorageKeys.MIGRATED_CONFIG_DEVICE_ID] is set and later
+     * launches leave the config's `did` alone, so it does not come back after `deleteUserCredentials()`
+     * even when the app passes it on every launch. True when it was taken.
+     */
+    fun adoptConfiguredDid(deviceId: String?, settings: UserSettingsRepository): Boolean {
+        val configured = deviceId?.trim().orEmpty()
+        if (configured.isEmpty() || preferences.getBoolean(StorageKeys.MIGRATED_CONFIG_DEVICE_ID, false)) return false
+        val own = settings.getDid()
+        val taken = own.isEmpty()
+        if (taken) {
+            settings.updateDid(configured)
+        } else if (own != configured) {
+            SdkLogs.log(
+                LogLevel.WARNING,
+                LogCodes.DEVICE_ID_KEPT,
+                "Rees46Config.deviceId is not taken: the shop keeps the did it has",
+                layout.shopId,
+            )
+        }
+        preferences.edit().putBoolean(StorageKeys.MIGRATED_CONFIG_DEVICE_ID, true).commit()
+        return taken
+    }
+
+    /** Whether the customer was wiped and no `/init` has succeeded since ([StorageKeys.CREDENTIALS_WIPED]). */
+    var isWiped: Boolean
+        get() = preferences.getBoolean(StorageKeys.CREDENTIALS_WIPED, false)
+        set(value) {
+            preferences.edit().putBoolean(StorageKeys.CREDENTIALS_WIPED, value).apply()
+        }
+
     /** The directory of the shop's event queue, created if needed; null when the disk refused it. */
     fun queueDirectory(): File? {
         val queue = File(directory, QUEUE_DIRECTORY)
@@ -92,7 +126,8 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
      * Forgets the customer: [StorageKeys.USER_CREDENTIALS] and the saved `/init` answer, and with
      * [includeQueue] the queue's directory. The A/B group, the push tokens, the advertising id, the
      * stories' state and the migration flags stay. Written with `commit()`: a crash right after must
-     * not bring the customer back. False when part of it did not reach the disk.
+     * not bring the customer back. The same commit sets [isWiped], so a saved answer whose file outlives
+     * the wipe gives its `did` to nobody. False when part of it did not reach the disk.
      *
      * The stores a migration reads lose the customer too ([StorageKeys.SOURCE_CREDENTIALS], nothing
      * else of them): a partition restored without its migration flags, or lost, would otherwise read
@@ -102,6 +137,7 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         var complete = attempt(OP_DELETE_CREDENTIALS) {
             val editor = preferences.edit()
             StorageKeys.USER_CREDENTIALS.forEach { editor.remove(it) }
+            editor.putBoolean(StorageKeys.CREDENTIALS_WIPED, true)
             editor.commit()
         }
         listOfNotNull(layout.namedFile, layout.legacyFile).forEach { name ->
@@ -136,11 +172,15 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
 
     /**
      * Forgets the device for `needReInitialization`: the `did`, the session and the saved `/init`
-     * answer, so the next `/init` gets a new `did`. False when part of it did not reach the disk.
+     * answer, so the next `/init` gets a new `did`; [isWiped] as [deleteUserCredentials] sets it. False
+     * when part of it did not reach the disk.
      */
     fun forgetDevice(): Boolean {
         val complete = attempt(OP_FORGET_DEVICE) {
-            preferences.edit().remove(StorageKeys.DID).remove(StorageKeys.SID).remove(StorageKeys.SEANCE).remove(StorageKeys.SID_LAST_ACT).commit()
+            preferences.edit()
+                .remove(StorageKeys.DID).remove(StorageKeys.SID).remove(StorageKeys.SEANCE).remove(StorageKeys.SID_LAST_ACT)
+                .putBoolean(StorageKeys.CREDENTIALS_WIPED, true)
+                .commit()
         }
         return attempt(OP_DELETE_INIT_ANSWER) {
             synchronized(fileLock) {

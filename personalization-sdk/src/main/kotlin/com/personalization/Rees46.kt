@@ -54,8 +54,9 @@ object Rees46 {
         }
         val sdk = SDK()
         sdk.initializeWith(context, config)
-        // A shop brought up only to track a push gives way to the full instance.
-        if (existing != null && existing !== sdk) existing.release()
+        // A shop brought up only to track a push gives way to the full instance; the push's tracking
+        // in flight still gets through.
+        existing?.giveWay()
         // Removed once the instance is registered: a lookup meanwhile still finds the shop.
         pending.remove(config.shopId)
         sdk

@@ -79,6 +79,7 @@ import com.personalization.utils.DomainFormattingUtils.formatApiDomain
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,6 +90,14 @@ import org.json.JSONObject
 
 private const val GAID_KEY = "google_advertising_id"
 
+/**
+ * One shop's instance of the SDK: made by [Rees46.initialize], found with [Rees46.instance].
+ *
+ * The class stays `open` for apps that subclassed it in earlier releases. The members this release
+ * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange] and
+ * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
+ * that declares one of them needs to rename its own.
+ */
 @OptIn(InternalPersonalizationV3Api::class)
 open class SDK {
 
@@ -502,12 +511,17 @@ open class SDK {
         val coreV2 = CoreSelection.resolve(coreV2Requested, shopId)
         if (coreV2) {
             val connectivity = AndroidConnectivityMonitor(context)
-            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers)
+            lateinit var init: CoreInit
+            // The core gets its /init before it takes a request: none goes without waiting for it.
+            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
+                init = createCoreInit(core, connectivity, context, config, storage, autoSendPushToken, needReInitialization)
+                core.init = init
+            }
             this.core = core
-            startCoreV2(core, connectivity, context, config, storage, autoSendPushToken, needReInitialization)
+            init.start()
         } else {
             core = networkRepository.core
-            startLegacy(context, config, autoSendPushToken, needReInitialization)
+            startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
         }
 
         // Register this instance so pushes delivered to the (process-global) messaging services are
@@ -553,19 +567,19 @@ open class SDK {
 
     }
 
-    /** Stops what an earlier initialization of this object started. */
-    private fun stopCurrent() {
+    /**
+     * Stops what an earlier initialization of this object started. Without [cancelRequests] the new
+     * core's requests in flight finish (see [giveWay]).
+     */
+    private fun stopCurrent(cancelRequests: Boolean = true) {
         if (::registerManager.isInitialized) registerManager.stop()
-        if (::networkRepository.isInitialized) networkRepository.release()
+        if (::networkRepository.isInitialized) networkRepository.release(cancelRequests)
     }
 
     /** `/init` and the session of the legacy path, as before. */
-    private fun startLegacy(context: Context, config: Rees46Config, autoSendPushToken: Boolean, needReInitialization: Boolean) {
-        // A did the app brings is taken while the shop has none, as on the new core.
-        val configured = config.deviceId?.trim().orEmpty()
-        if (!needReInitialization && configured.isNotEmpty() && userSettingsRepository.getDid().isEmpty()) {
-            userSettingsRepository.updateDid(configured)
-        }
+    private fun startLegacy(context: Context, config: Rees46Config, storage: ShopStorage, autoSendPushToken: Boolean, needReInitialization: Boolean) {
+        // A did the app brings is taken once, while the shop has none, as on the new core.
+        if (!needReInitialization) storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
 
         // Popups v3 start from the /init answer; in their test mode /init counts test popups too.
         registerManager.onInitFinished = { flag ->
@@ -583,8 +597,8 @@ open class SDK {
         )
     }
 
-    /** The new core's `/init` and state ([CoreInit]); requests wait for it in [CoreV2]. */
-    private fun startCoreV2(
+    /** The new core's `/init` and state ([CoreInit]); requests wait for it in [CoreV2]. Started by the caller. */
+    private fun createCoreInit(
         core: CoreV2,
         connectivity: ConnectivityMonitor,
         context: Context,
@@ -592,9 +606,9 @@ open class SDK {
         storage: ShopStorage,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
-    ) {
+    ): CoreInit {
         val contentResolver = context.contentResolver
-        val init = CoreInit(
+        return CoreInit(
             setup = InitSetup(
                 shopId = config.shopId,
                 needReInitialization = needReInitialization,
@@ -627,8 +641,6 @@ open class SDK {
             },
             dispatchers = dispatchers,
         )
-        core.init = init
-        init.start()
     }
 
     /** The advertising id for `/init`, or null when it cannot be read. */
@@ -885,11 +897,20 @@ open class SDK {
      * stops; the legacy one cannot cancel a request in flight. The shop's data stays on the device, and
      * a new [Rees46.initialize] for the shop makes a fresh instance.
      */
-    fun release() {
+    fun release() = stop(cancelRequests = true)
+
+    /**
+     * [release] for a push-only instance ([initializeForPush]) that gives way to the app's instance of
+     * its shop: the requests it has in flight — the push's tracking — finish and get their answers.
+     */
+    internal fun giveWay() = stop(cancelRequests = false)
+
+    /** Waits for an initialization in progress: a release during it is not undone by its end. */
+    private fun stop(cancelRequests: Boolean): Unit = synchronized(initLock) {
         released = true
         SdkRegistry.unregister(this)
         // Nothing more goes out: no /init, and requests fail with notInitialized.
-        stopCurrent()
+        stopCurrent(cancelRequests)
         instanceState.set(SdkState.NOT_INITIALIZED)
         instanceState.dropListeners()
         // Only this instance's level goes: another live instance of the shop keeps logging at its own.
@@ -936,6 +957,12 @@ open class SDK {
         val core = core
         val storage = storage
         if (core == null || storage == null || released) throw SdkException(SdkError.NotInitialized)
+        // Once the hold begins, the wipe and the restart run to the end even if the caller is cancelled:
+        // stopping between them would leave the instance initializing for good.
+        withContext(NonCancellable) { forgetCustomer(core, storage) }
+    }
+
+    private suspend fun forgetCustomer(core: Core, storage: ShopStorage) {
         // From here on an answer to an /init sent before is dropped: one landing during the wipe would
         // write the forgotten did back. The new core also holds requests until the new did.
         val init = (core as? CoreV2)?.init

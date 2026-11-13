@@ -12,7 +12,11 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -34,9 +38,17 @@ internal class CoreV2(
 
     override val isV2: Boolean = true
 
-    /** The instance's `/init`, once it started; a request waits on it. */
-    @Volatile
-    internal var init: CoreInit? = null
+    private val initFlow = MutableStateFlow<CoreInit?>(null)
+
+    /**
+     * The instance's `/init`; a request waits on it. Set before the core takes requests: one that comes
+     * while it is not set yet waits for it like for the instance to be ready.
+     */
+    internal var init: CoreInit?
+        get() = initFlow.value
+        set(value) {
+            initFlow.value = value
+        }
 
     /** How long a request waits for the instance to be ready: its own read timeout. */
     private val readyWaitMs: Long = client.timeouts.readMs
@@ -72,7 +84,7 @@ internal class CoreV2(
             return
         }
         val request = requests.launch {
-            val waited = init?.awaitReady(readyWaitMs)
+            val waited = awaitInstance()
             if (waited != null) {
                 if (waited == SdkError.Timeout) {
                     SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: the SDK is not ready", shopId,
@@ -104,9 +116,31 @@ internal class CoreV2(
         }
     }
 
-    override fun release() {
+    /**
+     * Waits, within the read timeout, for the instance's `/init` to be set and for the instance to be
+     * ready; then the request gets its own full timeout. Null when it may go.
+     */
+    private suspend fun awaitInstance(): SdkError? {
+        val waited = withTimeoutOrNull(readyWaitMs) {
+            val current = initFlow.filterNotNull().first()
+            Verdict(current.ready())
+        }
+        return if (waited == null) SdkError.Timeout else waited.error
+    }
+
+    /** What a wait decided; null [error] when the request may go. */
+    private class Verdict(val error: SdkError?)
+
+    override fun release() = release(cancelRequests = true)
+
+    /**
+     * Stops the core: `/init` stops and later requests fail with `notInitialized`. With [cancelRequests]
+     * the requests in flight are cancelled too; without, as when a push-only instance gives way to the
+     * app's, they finish and get their answers.
+     */
+    fun release(cancelRequests: Boolean) {
         released = true
-        requests.cancel()
+        if (cancelRequests) requests.cancel()
         init?.release()
     }
 

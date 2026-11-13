@@ -1,25 +1,41 @@
 package com.personalization
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.core.CompletionListener
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
 import com.personalization.core.SdkResult
+import com.personalization.core.SdkState
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.LegacyCore
-import com.personalization.core.internal.TrackingThreads
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
+import com.personalization.core.internal.TrackingThreads
 import com.personalization.core.internal.testCoreDispatchers
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.ui.widgets.RecentSearches
+import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -33,14 +49,9 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import java.io.File
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.Executor
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import org.robolectric.shadows.ShadowNetworkCapabilities
 
 /**
  * Storage through the SDK as an app starts it: the partition [Rees46Config.storageKey] picks, the old
@@ -84,6 +95,11 @@ class SdkStorageTest {
             context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit()
         }
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
+        // Robolectric's default network has no internet capability: give it one, as a device's has.
+        val manager = context.getSystemService(ConnectivityManager::class.java)
+        val capabilities = ShadowNetworkCapabilities.newInstance()
+        shadowOf(capabilities).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        shadowOf(manager).setNetworkCapabilities(manager.activeNetwork, capabilities)
         LegacyCore.threads = threads
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -229,6 +245,41 @@ class SdkStorageTest {
 
         assertEquals(1, calls)
         assertEquals(LogLevel.ERROR, logged.single { it.code == LogCodes.CALLBACK_FAILED }.level)
+    }
+
+    @Test
+    fun `a deletion whose caller is cancelled midway still wipes and restarts, on both cores`() {
+        initAnswer = { n, _ -> MockResponse().setBody("""{"did":"did-$n","seance":"S$n"}""") }
+        listOf(false, true).forEach { coreV2 ->
+            SdkRegistry.all().forEach { it.release() }
+            CoreSelection.reset()
+            initCount.set(0)
+            inits.clear()
+            context.getSharedPreferences(StorageLayout(SHOP, null).partitionName, Context.MODE_PRIVATE).edit().clear().commit()
+            val sdk = Rees46.initialize(context, config(coreV2 = coreV2))
+            awaitReady(sdk, "did-1")
+            val scheduler = TestCoroutineScheduler()
+            sdk.dispatchers = testCoreDispatchers(scheduler)
+
+            // The caller goes as soon as the wipe is handed to the io dispatcher.
+            val caller = CoroutineScope(Dispatchers.Unconfined).launch { sdk.deleteUserCredentials() }
+            assertEquals(SdkState.INITIALIZING, sdk.state)
+            caller.cancel()
+            scheduler.advanceUntilIdle()
+
+            assertTrue(caller.isCancelled)
+            awaitReady(sdk, "did-2")
+            assertEquals("core v2: $coreV2", listOf("", ""), inits)
+        }
+    }
+
+    /** Waits for the instance to be ready with [did]. */
+    private fun awaitReady(sdk: SDK, did: String) {
+        threads.awaitIdle()
+        val reached = runBlocking {
+            withTimeoutOrNull(5_000) { sdk.instanceState.changes.first { it == SdkState.READY && sdk.getDid() == did } }
+        }
+        assertTrue("state ${sdk.state}, did ${sdk.getDid()}, inits $inits, expected $did", reached != null)
     }
 
     @Test

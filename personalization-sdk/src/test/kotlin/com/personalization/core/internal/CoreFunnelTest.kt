@@ -76,7 +76,9 @@ class CoreFunnelTest {
         // HttpURLConnection on the JVM asks for no compression; OkHttp asks for gzip.
         assertEquals(null, server.takeRequest().headers["Accept-Encoding"])
 
-        repository.useCoreV2("shop", FakeConnectivity(connected = true))
+        repository.useCoreV2("shop", FakeConnectivity(connected = true)) {
+            it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings)
+        }
         assertTrue(repository.core.isV2)
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         await { repository.get("products/get", JSONObject(), it) }
@@ -85,12 +87,14 @@ class CoreFunnelTest {
 
     @Test
     fun `on the new core a request without a did waits for the instance, not for the did queue`() {
-        repository.useCoreV2("shop", FakeConnectivity(connected = true))
         did.set("")
+        // The instance's /init gives it a did once it answers: the request goes then.
+        repository.useCoreV2("shop", FakeConnectivity(connected = true)) {
+            it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings)
+        }
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         val answered = CountDownLatch(1)
 
-        // Without an init to wait on the request goes at once: the did queue no longer holds it.
         repository.getAsync("products/get", JSONObject(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) = answered.countDown()
         })

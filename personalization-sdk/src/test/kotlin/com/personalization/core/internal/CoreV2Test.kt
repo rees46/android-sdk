@@ -1,5 +1,6 @@
 package com.personalization.core.internal
 
+import androidx.test.core.app.ApplicationProvider
 import com.personalization.LogLevel
 import com.personalization.SdkLogHandler
 import com.personalization.SdkLogMessage
@@ -47,7 +48,7 @@ class CoreV2Test {
     fun setUp() {
         server.start()
         val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, "shop")
-        core = CoreV2(client, "shop")
+        core = CoreV2(client, "shop").also { it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings, connectivity) }
     }
 
     @After
@@ -129,6 +130,38 @@ class CoreV2Test {
         assertEquals(LogLevel.DEBUG, cancelled.single().level)
         assertEquals(mapOf("method" to "GET", "path" to "products/get"), cancelled.single().context)
         assertTrue(logged.none { "a@example.com" in it.message || "a@example.com" in it.context.toString() })
+    }
+
+    @Test
+    fun `a request waits for the core's init to be set, within its read timeout`() {
+        val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, "shop", timeouts = CoreTimeouts(readMs = 300))
+        val bare = CoreV2(client, "shop")
+        val timedOut = Recorder()
+        bare.send(NetworkMethod.GET("products/get"), JSONObject(), timedOut)
+        assertEquals(listOf("error:-1"), timedOut.await().map { it.substringBefore(":The") })
+        assertEquals(0, server.requestCount)
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val waiting = Recorder()
+        bare.send(NetworkMethod.GET("products/get"), JSONObject(), waiting)
+        bare.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings, connectivity)
+        assertEquals(listOf("success:{}"), waiting.await())
+        bare.release()
+    }
+
+    @Test
+    fun `a release that lets requests finish gives the one in flight its answer`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}").setHeadersDelay(300, TimeUnit.MILLISECONDS))
+        val inFlight = Recorder()
+        core.send(NetworkMethod.GET("products/get"), JSONObject(), inFlight)
+        server.takeRequest(5, TimeUnit.SECONDS)
+
+        core.release(cancelRequests = false)
+
+        assertEquals(listOf("success:{}"), inFlight.await())
+        val after = Recorder()
+        core.send(NetworkMethod.GET("products/get"), JSONObject(), after)
+        assertEquals(listOf("error:-1"), after.await().map { it.substringBefore(":The") })
     }
 
     @Test

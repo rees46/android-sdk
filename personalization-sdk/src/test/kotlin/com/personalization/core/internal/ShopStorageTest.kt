@@ -142,9 +142,12 @@ class ShopStorageTest {
                 "token" to "fcm-old",
                 "push_token_hms" to "hms-1",
                 StorageKeys.MIGRATED_LEGACY_FILE to true,
+                // Written in the wipe's own commit: a saved answer that outlived it gives no did.
+                StorageKeys.CREDENTIALS_WIPED to true,
             ),
             left
         )
+        assertTrue(storage.isWiped)
         assertNull(storage.initAnswer())
         // The legacy core has no queue: its directory is not its to delete.
         assertTrue(File(queue, "event-1").isFile)

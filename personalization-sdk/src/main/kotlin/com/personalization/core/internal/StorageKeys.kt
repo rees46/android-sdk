@@ -42,6 +42,14 @@ internal object StorageKeys {
     /** The shop refused the SDK (`402`, `403`, `404` or another `4xx` on `/init`). */
     const val REFUSED = "refused"
 
+    /**
+     * The customer was wiped (`deleteUserCredentials()`, `needReInitialization`) and no `/init` has
+     * succeeded since: the saved `/init` answer, should its file have outlived the wipe, is the forgotten
+     * customer's and gives no `did`. Written in the same commit as the wipe; the next successful `/init`
+     * clears it.
+     */
+    const val CREDENTIALS_WIPED = "credentials_wiped"
+
     // One-shot migrations: each marks itself here once it has run, so it never runs twice for a shop.
     /** The old full-name file (`preferencesKey` of `SDK.initialize`) was read into the partition. */
     const val MIGRATED_NAMED_FILE = "migrated_named_file"
@@ -52,7 +60,10 @@ internal object StorageKeys {
     /** The shop's A/B group, push tokens and advertising id were offered to the device-level store. */
     const val MIGRATED_DEVICE_LEVEL = "migrated_device_level"
 
-    val MIGRATION_FLAGS: Set<String> = setOf(MIGRATED_NAMED_FILE, MIGRATED_LEGACY_FILE, MIGRATED_DEVICE_LEVEL)
+    /** `Rees46Config.deviceId` was considered once: taken by a shop without a `did`, or kept out. */
+    const val MIGRATED_CONFIG_DEVICE_ID = "migrated_config_device_id"
+
+    val MIGRATION_FLAGS: Set<String> = setOf(MIGRATED_NAMED_FILE, MIGRATED_LEGACY_FILE, MIGRATED_DEVICE_LEVEL, MIGRATED_CONFIG_DEVICE_ID)
 
     /**
      * Every key the SDK has kept in a shop's store: what a migration may take from a file that may be

@@ -75,7 +75,12 @@ internal fun interface ReadyGate {
  *   on [checkShop]. A refused shop is not asked again before the next launch.
  *
  * Requests with a result wait in [awaitReady]. A stale answer (an `/init` of a start [restart] or
- * [release] ended) is dropped.
+ * [release] ended) is dropped, and while [holdForRestart] holds the instance no `/init` goes at all.
+ *
+ * Disk work stays off the caller's thread: [start] decides the first state from what the preferences
+ * already hold (a stored `did` is ready at once) and prepares the rest of the storage on [CoreDispatchers.io]
+ * before the first `/init`. The app's foreground is handled there too, so the main thread never waits
+ * for an answer being written under the lock.
  */
 internal class CoreInit(
     private val setup: InitSetup,
@@ -108,41 +113,87 @@ internal class CoreInit(
     private var job: Job? = null
     private var generation = 0
     private var released = false
+
+    /** Storage prepared for the first `/init`; none goes before. */
+    private var prepared = false
+
+    /** Held by [holdForRestart] until [restart]: the customer is being deleted, no `/init` goes. */
+    private var held = false
     private var usable = false
     private var fallbackLogged = false
     private var lastCheckAt: Long? = null
     private var foreground: Cancellable? = null
 
+    /** How many `/init` went out; for tests. */
+    @Volatile
+    internal var sent = 0
+        private set
+
+    /** Whether an `/init` is on its way or waits for its next attempt; for tests. */
+    internal val isRunning: Boolean
+        get() = synchronized(lock) { job?.isActive == true }
+
     /** Read once and reused: the advertising id goes with every `/init` of the launch. */
     @Volatile
     private var advertisingIdValue: String? = null
 
-    /** Prepares the shop's storage, sets the first state and sends `/init`. */
+    /**
+     * Sets the first state and sends `/init` once the shop's storage is prepared. The first state comes
+     * from what the preferences hold: a refused shop starts refused, a stored `did` ready at once
+     * (decision 1). The rest — `needReInitialization`, the `did` of the config or of the saved answer,
+     * the ended session — is disk work and runs on [CoreDispatchers.io].
+     */
     fun start() {
         val ready = synchronized(lock) {
             if (released) return
-            prepareStorage()
             val first = when {
                 storage.isRefused -> SdkState.REFUSED
-                settings.getDid().isNotEmpty() -> SdkState.READY
+                !setup.needReInitialization && settings.getDid().isNotEmpty() -> SdkState.READY
                 else -> SdkState.INITIALIZING
             }
             publish(first)
             first == SdkState.READY
         }
         if (ready) markUsable(generation())
-        foreground = lifecycle.addListener(::onForegroundChanged)
-        synchronized(lock) { launchLocked() }
+        val handle = lifecycle.addListener(::onForegroundChanged)
+        // A release that came meanwhile does not leave the observer behind.
+        val kept = synchronized(lock) { if (released) false else true.also { foreground = handle } }
+        if (!kept) {
+            handle.cancel()
+            return
+        }
+        val start = generation()
+        scope.launch { prepare(start) }
+    }
+
+    /** On [CoreDispatchers.io]: the disk work of the start, then the first `/init`. */
+    private fun prepare(start: Int) {
+        val becameReady = synchronized(lock) {
+            if (released) return
+            // A deletion that began meanwhile has the customer forgotten: nothing of theirs comes back.
+            if (start == generation) prepareStorage()
+            prepared = true
+            val ready = state.current == SdkState.INITIALIZING && !held && settings.getDid().isNotEmpty()
+            if (ready) publish(SdkState.READY)
+            launchLocked()
+            ready
+        }
+        if (becameReady) markUsable(start)
     }
 
     override suspend fun awaitReady(timeoutMs: Long): SdkError? {
         val decided = withTimeoutOrNull(timeoutMs) { gate.first { it != Gate.WAIT } } ?: return SdkError.Timeout
-        return when (decided) {
-            Gate.OPEN -> null
-            Gate.BLOCKED -> SdkError.ShopBlocked
-            Gate.CLOSED -> SdkError.NotInitialized
-            Gate.WAIT -> SdkError.Timeout
-        }
+        return errorOf(decided)
+    }
+
+    /** Waits without a limit until a request may go or may not; the caller sets the deadline. */
+    internal suspend fun ready(): SdkError? = errorOf(gate.first { it != Gate.WAIT })
+
+    /** Null for an open gate, otherwise why a request may not go; [Gate.WAIT] is never decided. */
+    private fun errorOf(decided: Gate): SdkError? = when (decided) {
+        Gate.BLOCKED -> SdkError.ShopBlocked
+        Gate.CLOSED -> SdkError.NotInitialized
+        else -> null
     }
 
     /**
@@ -151,7 +202,7 @@ internal class CoreInit(
      * True when `/init` went out.
      */
     internal fun checkShop(): Boolean = synchronized(lock) {
-        if (released || state.current == SdkState.REFUSED || job?.isActive == true) return false
+        if (released || held || !prepared || state.current == SdkState.REFUSED || job?.isActive == true) return false
         val now = clock.nowMillis()
         val last = lastCheckAt
         if (last != null && now - last < CHECK_SHOP_INTERVAL_MS) return false
@@ -161,11 +212,13 @@ internal class CoreInit(
 
     /**
      * Stops the current start before `deleteUserCredentials()` wipes the customer: the `/init` on its
-     * way is cancelled and its answer will not be taken, and requests wait for the next `did`.
+     * way is cancelled and its answer will not be taken, requests wait for the next `did`, and no
+     * `/init` goes — not on coming back to the foreground, not on [checkShop] — until [restart].
      */
     fun holdForRestart(): Unit = synchronized(lock) {
         if (released) return
         generation++
+        held = true
         job?.cancel()
         job = null
         usable = false
@@ -176,20 +229,22 @@ internal class CoreInit(
     /** Starts over as a new device after [holdForRestart]: `/init` goes without a `did`. */
     fun restart(): Unit = synchronized(lock) {
         if (released) return
+        held = false
         launchLocked()
     }
 
     /** Stops for good: `/init` is cancelled, waiting requests and later ones get `notInitialized`. */
     fun release() {
-        synchronized(lock) {
+        val listening = synchronized(lock) {
             if (released) return
             released = true
             generation++
             job?.cancel()
             job = null
             gate.value = Gate.CLOSED
+            foreground.also { foreground = null }
         }
-        foreground?.cancel()
+        listening?.cancel()
         scope.cancel()
     }
 
@@ -206,19 +261,22 @@ internal class CoreInit(
                 mapOf("reason" to LogReasons.NEED_REINITIALIZATION),
             )
         } else {
-            val configured = setup.deviceId?.trim().orEmpty()
-            if (configured.isNotEmpty() && settings.getDid().isEmpty()) settings.updateDid(configured)
+            storage.adoptConfiguredDid(setup.deviceId, settings)
         }
-        // The saved answer's did fills a shop that lost its own; it never replaces one.
-        if (settings.getDid().isEmpty()) {
+        // The saved answer's did fills a shop that lost its own; it never replaces one. After a wipe
+        // (deleteUserCredentials, needReInitialization) whose file did not go, it is the forgotten one.
+        if (settings.getDid().isEmpty() && !storage.isWiped) {
             storage.initAnswer()?.optString(UserBasicParams.DID)?.takeIf { it.isNotEmpty() }?.let(settings::updateDid)
         }
         forgetStaleSession()
     }
 
-    /** Must hold [lock]. Sends `/init` unless it is on its way already; true when it went. */
+    /**
+     * Must hold [lock]. Sends `/init` unless it is on its way already, the storage is not prepared yet or
+     * a deletion holds the instance; true when it went.
+     */
     private fun launchLocked(): Boolean {
-        if (released || job?.isActive == true) return false
+        if (released || held || !prepared || job?.isActive == true) return false
         val start = generation
         job = scope.launch { run(start) }
         return true
@@ -242,6 +300,7 @@ internal class CoreInit(
                 if (start != generation) return
                 forgetStaleSession()
             }
+            sent++
             val result = send(params())
             val step = synchronized(lock) {
                 // An answer to a start that restart() or release() ended belongs to nobody.
@@ -251,7 +310,7 @@ internal class CoreInit(
             when (step) {
                 Step.Done -> return
                 is Step.Answered -> {
-                    hook("onAnswer") { hooks.onAnswer(step.answer, fresh = true) }
+                    answered(start, step.answer, fresh = true)
                     markUsable(start)
                     return
                 }
@@ -259,7 +318,7 @@ internal class CoreInit(
                     if (step.fallback) {
                         log(LogLevel.WARNING, LogCodes.INIT_SAVED_ANSWER, "The SDK works on the did it has while /init is repeated")
                         val saved = storage.initAnswer() ?: JSONObject()
-                        hook("onAnswer") { hooks.onAnswer(saved, fresh = false) }
+                        answered(start, saved, fresh = false)
                         markUsable(start)
                     }
                     if (step.waitForNetwork) {
@@ -295,7 +354,8 @@ internal class CoreInit(
                         else -> retry(attempt, mapOf("status" to code), result.retryAfterMs.takeIf { code in RETRY_AFTER_CODES })
                     }
                 }
-                if (error == SdkError.Cancelled) return Step.Done
+                // A cancel the SDK did not make (an interceptor, the network layer): this start is still
+                // current, so /init is repeated as after any other failure. Its own cancels never get here.
                 return retry(attempt, mapOf("error" to errorName(error)), retryAfterMs = null)
             }
         }
@@ -306,6 +366,8 @@ internal class CoreInit(
         if (settings.getDid().isEmpty()) settings.updateDid(did)
         answer.optString(UserBasicParams.SEANCE).takeIf { it.isNotEmpty() }?.let(settings::updateSid)
         storage.saveInitAnswer(answer)
+        // The answer on disk is the new customer's now.
+        if (storage.isWiped) storage.isWiped = false
         if (storage.isRefused) storage.isRefused = false
         publish(SdkState.READY)
         log(LogLevel.INFO, LogCodes.INIT_SUCCEEDED, "/init succeeded")
@@ -355,14 +417,24 @@ internal class CoreInit(
         }
     }
 
-    /** Tells the instance it can send, once per start. */
+    /**
+     * Hands an answer of [start] to the instance (its popup, its flags), unless a restart or a release
+     * ended that start meanwhile: under [lock], so the forgotten customer's popup is never shown.
+     */
+    private fun answered(start: Int, answer: JSONObject, fresh: Boolean) {
+        synchronized(lock) {
+            if (start != generation || released) return
+            hook("onAnswer") { hooks.onAnswer(answer, fresh) }
+        }
+    }
+
+    /** Tells the instance it can send, once per start, and only while that start is the current one. */
     private fun markUsable(start: Int) {
-        val first = synchronized(lock) {
+        synchronized(lock) {
             if (start != generation || released || usable) return
             usable = true
-            true
+            hook("onUsable") { hooks.onUsable() }
         }
-        if (first) hook("onUsable") { hooks.onUsable() }
     }
 
     /** A `sid` whose window ended (two hours without activity) is not sent: the server starts a new session. */
@@ -371,8 +443,13 @@ internal class CoreInit(
         if (clock.nowMillis() - settings.getSidLastActTime() > SESSION_WINDOW_MS) storage.forgetSession()
     }
 
+    /** Heard on the main thread; handled on [CoreDispatchers.io], where waiting for [lock] blocks nothing. */
     private fun onForegroundChanged(foreground: Boolean) {
         if (!foreground) return
+        scope.launch { onForeground() }
+    }
+
+    private fun onForeground() {
         synchronized(lock) {
             if (released || state.current == SdkState.REFUSED || job?.isActive == true) return
             if (clock.nowMillis() - settings.getSidLastActTime() <= SESSION_WINDOW_MS) return
@@ -441,6 +518,7 @@ internal class CoreInit(
         SdkError.Network -> "network"
         SdkError.Timeout -> "timeout"
         SdkError.Decoding -> ERROR_DECODING
+        SdkError.Cancelled -> "cancelled"
         else -> "failed"
     }
 

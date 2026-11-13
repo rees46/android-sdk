@@ -274,7 +274,7 @@ class LogCodesTest {
             "push_received", "push_dropped", "push_failed", "push_permission", "push_permission_failed",
             "push_token_sent", "push_token_skipped", "push_token_failed", "advertising_id_sent",
             "advertising_id_failed", "popup_not_shown", "core_flag_mismatch", "not_implemented",
-            "request_cancelled", "init_skipped", "push_token_received",
+            "request_cancelled", "init_skipped", "push_token_received", "device_id_kept",
             "sdk_log", "ui", "stories", "stories_v3", "popups_v3", "push",
         )
     }

@@ -15,7 +15,6 @@ import okhttp3.mockwebserver.MockWebServer
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -63,7 +62,9 @@ class PushTokenDidTest {
     fun `the app's token waits for the did and goes with it`() {
         manager.sendToken("app-token", PushProvider.FCM, null)
 
-        assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS))
+        // Held with the requests that wait for a did: never handed to a thread.
+        assertEquals(1, repository.waitingForDid)
+        assertEquals(0, server.requestCount)
 
         did.set("new-did")
         repository.executeQueueTasks()
@@ -79,7 +80,8 @@ class PushTokenDidTest {
 
         manager.onTokenReceived("provider-token", PushProvider.HMS)
 
-        assertNull(server.takeRequest(300, TimeUnit.MILLISECONDS))
+        assertEquals(1, repository.waitingForDid)
+        assertEquals(0, server.requestCount)
         did.set("new-did")
         repository.executeQueueTasks()
         val body = JSONObject(checkNotNull(server.takeRequest(5, TimeUnit.SECONDS)).body.readUtf8())

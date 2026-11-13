@@ -48,13 +48,20 @@ class NetworkRepositoryImpl @Inject constructor(
     private val queueLock = Any()
     private val queue = ArrayList<Thread>()
 
+    /** How many requests wait for a `did` on the legacy core; for tests. */
+    internal val waitingForDid: Int
+        get() = synchronized(queueLock) { queue.size }
+
     override fun initialize(
         baseUrl: String
     ) {
         this.baseUrl = baseUrl
     }
 
-    /** Sends this instance's requests through the new core from now on. */
+    /**
+     * Sends this instance's requests through the new core from now on. [attach] runs before the core
+     * takes any request: it gives the core its `/init`, so no request goes without waiting for it.
+     */
     internal fun useCoreV2(
         shopId: String,
         connectivity: ConnectivityMonitor,
@@ -65,7 +72,11 @@ class NetworkRepositoryImpl @Inject constructor(
             connectivity = connectivity,
             shopId = shopId,
         ),
-    ): CoreV2 = CoreV2(client, shopId, dispatchers).also { core = it }
+        attach: (CoreV2) -> Unit = {},
+    ): CoreV2 = CoreV2(client, shopId, dispatchers).also {
+        attach(it)
+        core = it
+    }
 
     override fun post(
         method: String,
@@ -166,10 +177,15 @@ class NetworkRepositoryImpl @Inject constructor(
 
     /**
      * Stops the instance's core. The requests still waiting for a `did` are let go and fail with
-     * `notInitialized`, as every request made after this does.
+     * `notInitialized`, as every request made after this does. Without [cancelRequests] the new core lets
+     * the requests in flight finish (a push-only instance giving way to the app's); the legacy one never
+     * cancels them.
      */
-    internal fun release() {
-        core.release()
+    internal fun release(cancelRequests: Boolean = true) {
+        when (val current = core) {
+            is CoreV2 -> current.release(cancelRequests)
+            else -> current.release()
+        }
         executeQueueTasks()
     }
 
