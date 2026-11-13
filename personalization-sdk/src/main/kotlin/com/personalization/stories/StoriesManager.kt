@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.internal.ArgumentRefusals
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
 import com.personalization.stories.models.Story
@@ -137,7 +138,7 @@ class StoriesManager @Inject constructor(
         if (effectiveCode == null) {
             val message = "trackStory($event): no stories code given and no block loaded yet"
             SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, message, logShopId)
-            listener?.onError(CLIENT_VALIDATION_ERROR_CODE, message)
+            refuse(listener, message)
             return
         }
         try {
@@ -152,9 +153,16 @@ class StoriesManager @Inject constructor(
             sendNetworkMethodUseCase.postAsync(TRACK_STORIES_METHOD, params, listener)
         } catch (e: JSONException) {
             SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", logShopId, throwable = e)
-            listener?.onError(CLIENT_VALIDATION_ERROR_CODE, e.message)
+            refuse(listener, e.message)
         }
     }
+
+    /**
+     * A story event that cannot go: `invalidArgument` behind the old code ([ArgumentRefusals]), off the
+     * caller's thread on the new core.
+     */
+    private fun refuse(listener: OnApiCallbackListener?, message: String?) =
+        ArgumentRefusals.refuse(listener, CLIENT_VALIDATION_ERROR_CODE, message, offThread = sendNetworkMethodUseCase.queuesEvents)
 
     /**
      * A numeric id keeps going on the wire as a number, the way `trackStory(storyId: Int)` always sent

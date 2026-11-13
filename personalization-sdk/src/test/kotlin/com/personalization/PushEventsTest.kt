@@ -660,9 +660,33 @@ class PushEventsTest {
             results.poll(5, TimeUnit.SECONDS),
         )
 
+        // The checks of the tracking managers: invalidArgument with their message, off the caller's thread.
+        val caller = Thread.currentThread()
+        val threads = CopyOnWriteArrayList<Thread>()
+        sdk.tracking.custom("e", null, null, null, null, mapOf("did" to "mine"), com.personalization.core.BridgeErrors.listener { threads += Thread.currentThread(); results += it })
+        val reserved = results.poll(5, TimeUnit.SECONDS)
+        assertTrue(reserved is com.personalization.core.SdkResult.Failure && reserved.error is com.personalization.core.SdkError.InvalidArgument)
+        assertTrue(((reserved as com.personalization.core.SdkResult.Failure).error as com.personalization.core.SdkError.InvalidArgument).message.contains("did"))
+        sdk.tracking.storyView("42", "3", null, com.personalization.core.BridgeErrors.listener { threads += Thread.currentThread(); results += it })
+        val noCode = results.poll(5, TimeUnit.SECONDS)
+        assertTrue(((noCode as com.personalization.core.SdkResult.Failure).error as com.personalization.core.SdkError.InvalidArgument).message.contains("no stories code"))
+        assertTrue(threads.none { it === caller })
+
         // Without the core's error (the legacy core), one made from the code.
         assertEquals(com.personalization.core.SdkError.Http(500), com.personalization.core.BridgeErrors.errorOf(500, null))
         assertEquals(com.personalization.core.SdkError.Network, com.personalization.core.BridgeErrors.errorOf(-1, null))
+    }
+
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `on the legacy core a bridge gets invalidArgument with its message for a check of the tracking managers, on the caller's thread as before`() {
+        val sdk = sdk(coreV2 = false)
+        val results = CopyOnWriteArrayList<com.personalization.core.SdkResult<Any?>>()
+
+        sdk.tracking.custom("e", null, null, null, null, mapOf("did" to "mine"), com.personalization.core.BridgeErrors.listener { results += it })
+
+        val reserved = results.single()
+        assertTrue(reserved is com.personalization.core.SdkResult.Failure && reserved.error is com.personalization.core.SdkError.InvalidArgument)
     }
 
     @OptIn(com.personalization.core.BridgeApi::class)
@@ -681,6 +705,10 @@ class PushEventsTest {
         sdk.queueEvent("profile/set", JSONObject(), completions)
         val refused = takeOnMain(main, ends)
         assertTrue(refused is com.personalization.core.SdkResult.Failure && refused.error is com.personalization.core.SdkError.InvalidArgument)
+        // Fields JSON cannot hold: refused through the listener, never thrown at the bridge.
+        sdk.queueEvent("push/custom", JSONObject(mapOf("event" to "nan", "value" to Double.NaN)), completions)
+        val notJson = takeOnMain(main, ends)
+        assertTrue(notJson is com.personalization.core.SdkResult.Failure && notJson.error is com.personalization.core.SdkError.InvalidArgument)
         flush(sdk)
         assertEquals("from_dart", next("push/custom")?.second?.getString("event"))
 

@@ -1892,7 +1892,8 @@ open class SDK {
      *
      * [listener] hears once, on the main thread: [SdkResult.Success] once the event is accepted — written
      * to disk, the way the contract's tracking methods complete — or [SdkResult.Failure] with
-     * [SdkError.InvalidArgument] for another path, [SdkError.NotInitialized], or [SdkError.ShopBlocked]. On
+     * [SdkError.InvalidArgument] for another path or fields JSON cannot hold (NaN, Infinity),
+     * [SdkError.NotInitialized], or [SdkError.ShopBlocked]. It never throws. On
      * the legacy core, which has no queue, the event goes at once and [listener] hears the server's answer.
      */
     @BridgeApi
@@ -1907,7 +1908,18 @@ open class SDK {
             calls.launch { complete(listener, SdkResult.Failure(error ?: SdkError.NotInitialized)) }
             return
         }
-        val copy = JSONObject(body.toString())
+        // A copy of the fields as they are now; null for fields JSON cannot hold (NaN, Infinity).
+        val copy = try {
+            val text: String? = body.toString()
+            text?.let(::JSONObject)
+        } catch (e: Exception) {
+            null
+        }
+        if (copy == null) {
+            log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A bridge's event was refused: its fields are not JSON", mapOf("reason" to "invalid_json", "path" to path))
+            calls.launch { complete(listener, SdkResult.Failure(SdkError.InvalidArgument("The event's fields cannot be written as JSON"))) }
+            return
+        }
         if (core is CoreV2) {
             core.accept(path, copy) { refused ->
                 calls.launch { complete(listener, if (refused == null) SdkResult.Success(Unit) else SdkResult.Failure(refused)) }

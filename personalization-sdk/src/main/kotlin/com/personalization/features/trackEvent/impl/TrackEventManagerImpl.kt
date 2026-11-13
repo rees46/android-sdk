@@ -12,6 +12,7 @@ import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.internal.ArgumentRefusals
 import com.personalization.core.internal.EventAnswerListener
 import com.personalization.sdk.data.mappers.popup.PopupDtoMapper
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUP
@@ -65,7 +66,7 @@ internal class TrackEventManagerImpl @Inject constructor(
 
     override fun trackPurchase(request: PurchaseTrackingRequest, listener: OnApiCallbackListener?) {
         val body = PurchaseTrackingJsonBuilder.buildOrError(request).getOrElse { error ->
-            listener?.onError(PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE, error.message)
+            refuse(listener, PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE, error.message)
             return
         }
         popups()?.onPurchase()
@@ -99,7 +100,7 @@ internal class TrackEventManagerImpl @Inject constructor(
     ) {
         val effectiveCustom = TrackCustomEventPayloadHelper.effectiveCustomFields(customFields)
         TrackCustomEventPayloadHelper.validateNoReservedKeyCollisions(effectiveCustom)?.let { msg ->
-            listener?.onError(TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE, msg)
+            refuse(listener, TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE, msg)
             return
         }
 
@@ -129,7 +130,8 @@ internal class TrackEventManagerImpl @Inject constructor(
                 }
                 body.put(PAYLOAD_PARAMETER, payload)
             } catch (e: JSONException) {
-                listener?.onError(
+                refuse(
+                    listener,
                     TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE,
                     "trackEvent: failed to build custom fields payload: ${e.message}"
                 )
@@ -179,6 +181,13 @@ internal class TrackEventManagerImpl @Inject constructor(
 
         postCustomEvent(params.build(), listener)
     }
+
+    /**
+     * An argument the call cannot take: `invalidArgument` behind the old code ([ArgumentRefusals]), off the
+     * caller's thread on the new core.
+     */
+    private fun refuse(listener: OnApiCallbackListener?, code: Int, message: String?) =
+        ArgumentRefusals.refuse(listener, code, message, offThread = sendNetworkMethodUseCase.queuesEvents)
 
     override fun trackPopupShown(popupId: Int, listener: OnApiCallbackListener?) {
         val params = Params()
