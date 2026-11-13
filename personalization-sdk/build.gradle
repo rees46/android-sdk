@@ -256,12 +256,13 @@ tasks.register('publishToMavenCentral') {
     }
 }
 
-// No new `!!` in the SDK: a force unwrap on a path the app reaches crashes the app instead of
-// failing one call. force-unwrap-baseline.txt lists the views that still have them; it may only
-// shrink. Plain text scan, so it needs no compiler and runs as part of `check` in CI.
+// No new `!!` in the SDK: a force unwrap on a path the app reaches crashes the app instead of failing one call.
+// force-unwrap-baseline.txt lists the views that still have them and how many; it may only shrink, and it must
+// stay exact, so a removed `!!` or file shows up as a stale line to delete. Plain text scan that skips
+// comments, strings and characters (`"https://…"`, `"Hi!!"`), so it needs no compiler and runs in `check`.
 tasks.register('checkForceUnwraps') {
     group = 'verification'
-    description = 'Fails when a Kotlin source has more `!!` than force-unwrap-baseline.txt allows.'
+    description = 'Fails when the `!!` in the Kotlin sources differ from force-unwrap-baseline.txt.'
     def sourceRoot = file('src/main/kotlin')
     def baseline = file('force-unwrap-baseline.txt')
     def sources = fileTree(sourceRoot) { include '**/*.kt' }
@@ -277,23 +278,98 @@ tasks.register('checkForceUnwraps') {
                 allowed[parts[0]] = parts[1] as int
             }
         }
-        def violations = []
+        def counts = [:]
         sources.each { File source ->
             def path = sourceRoot.toPath().relativize(source.toPath()).toString().replace(File.separator, '/')
-            int count = 0
-            source.eachLine { line ->
-                def code = line.trim()
-                if (code.startsWith('//') || code.startsWith('*') || code.startsWith('/*')) return
-                int comment = code.indexOf('//')
-                if (comment >= 0) code = code.substring(0, comment)
-                count += code.findAll(/!!/).size()
+            counts[path] = ForceUnwraps.count(source.getText('UTF-8'))
+        }
+        def problems = []
+        counts.each { path, count ->
+            if (!allowed.containsKey(path)) {
+                if (count > 0) problems << "${path}: ${count} `!!` in a file the baseline does not list; new code handles the null instead"
+            } else {
+                int limit = allowed[path] as int
+                if (count > limit) problems << "${path}: ${count} `!!`, ${limit} allowed"
+                if (count < limit) {
+                    def fix = count == 0 ? 'remove its line' : "lower its count to ${count}"
+                    problems << "${path}: ${count} `!!`, the baseline still allows ${limit}: ${fix} in force-unwrap-baseline.txt"
+                }
             }
-            int limit = allowed.getOrDefault(path, 0) as int
-            if (count > limit) violations << "${path}: ${count} `!!`, ${limit} allowed"
         }
-        if (!violations.isEmpty()) {
-            throw new GradleException("Force unwraps (`!!`) in the SDK — handle the null instead:\n" + violations.join('\n'))
+        allowed.keySet().findAll { !counts.containsKey(it) }.each { path ->
+            problems << "${path}: no such file any more: remove its line from force-unwrap-baseline.txt"
         }
+        if (!problems.isEmpty()) {
+            throw new GradleException("Force unwraps (`!!`) in the SDK do not match the baseline:\n" + problems.join('\n'))
+        }
+    }
+}
+
+/** Counts `!!` in Kotlin code, skipping comments, string and character literals but not string templates. */
+class ForceUnwraps {
+    static int count(String text) {
+        int count = 0
+        int i = 0
+        int n = text.length()
+        // Frames: [kind, brace depth]. The bottom one is the file's code; a code frame above it is a
+        // string template (`${…}`), closed by its own `}`.
+        def frames = new ArrayDeque<List>()
+        frames.push(['code', 0])
+        while (i < n) {
+            def frame = frames.peek()
+            char c = text.charAt(i)
+            switch (frame[0]) {
+                case 'code':
+                    if (text.startsWith('//', i)) {
+                        int end = text.indexOf('\n', i)
+                        i = end < 0 ? n : end
+                    } else if (text.startsWith('/*', i)) {
+                        int depth = 1
+                        i += 2
+                        while (i < n && depth > 0) {
+                            if (text.startsWith('/*', i)) { depth++; i += 2 }
+                            else if (text.startsWith('*/', i)) { depth--; i += 2 }
+                            else i++
+                        }
+                    } else if (text.startsWith('"""', i)) {
+                        frames.push(['raw', 0]); i += 3
+                    } else if (c == '"' as char) {
+                        frames.push(['string', 0]); i++
+                    } else if (c == '\'' as char) {
+                        int from = (i + 1 < n && text.charAt(i + 1) == '\\' as char) ? i + 3 : i + 2
+                        int close = text.indexOf("'", Math.min(from, n))
+                        i = close < 0 ? n : close + 1
+                    } else if (text.startsWith('!!', i)) {
+                        count++; i += 2
+                    } else if (c == '{' as char) {
+                        frame[1]++; i++
+                    } else if (c == '}' as char) {
+                        if (frame[1] == 0 && frames.size() > 1) frames.pop() else frame[1]--
+                        i++
+                    } else {
+                        i++
+                    }
+                    break
+                case 'string':
+                    if (c == '\\' as char) i += 2
+                    else if (c == '"' as char || c == '\n' as char) { frames.pop(); i++ }
+                    else if (text.startsWith('${', i)) { frames.push(['code', 0]); i += 2 }
+                    else i++
+                    break
+                case 'raw':
+                    if (text.startsWith('"""', i)) {
+                        i += 3
+                        while (i < n && text.charAt(i) == '"' as char) i++
+                        frames.pop()
+                    } else if (text.startsWith('${', i)) {
+                        frames.push(['code', 0]); i += 2
+                    } else {
+                        i++
+                    }
+                    break
+            }
+        }
+        return count
     }
 }
 
