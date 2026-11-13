@@ -32,7 +32,15 @@ package com.personalization
  *   without a `did`: a new device's first requests fail with `onError(-1)` if `/init` does not answer
  *   in time;
  * - [needReInitialization] really gives the device a new `did`; [stream] goes with `/init` too; the
- *   advertising id is read and sent only with [sendAdvertisingId].
+ *   advertising id is read and sent only with [sendAdvertisingId];
+ * - its session: the `sid` is the server's, and a session two hours without events ends — the next
+ *   request or event sends `/init` first; requests with a result no longer extend it;
+ * - its event queue: tracking events (`/push`, `/push/custom`, `track/stories`, `popup/showed`) are
+ *   kept on disk and sent in order, repeated after failures and after a restart, for up to 7 days;
+ *   their listeners hear the server's answer once the event went, or the error that dropped it, and an
+ *   empty id is refused at once; [SDK.flush] sends the queue now; the stored tracking source goes on
+ *   `/push` only, and a popup in an event's answer is shown only within 10 s of the event and in the
+ *   foreground.
  * @property deviceId a `did` the app already keeps, from another SDK or an earlier version of it: taken
  * only while the shop has no `did` of its own, and sent with the next `/init`. Ignored with
  * [needReInitialization].

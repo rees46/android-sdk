@@ -11,7 +11,7 @@ import org.json.JSONObject
  * same code for both cores.
  *
  * [LegacyCore] keeps today's paths. [CoreV2] is the new core, chosen by `Rees46Config.coreV2`: its own
- * client, `/init` ([CoreInit]) and session ([SessionWindow]).
+ * client, `/init` ([CoreInit]), session ([SessionWindow]) and event queue ([EventQueue]).
  */
 internal interface Core {
 
@@ -32,5 +32,5 @@ internal interface Core {
      * Forgets the customer in [storage]: what [ShopStorage.deleteUserCredentials] wipes, and whatever
      * the core keeps of its own. Runs on a background thread; false when part of it did not reach the disk.
      */
-    fun deleteUserCredentials(storage: ShopStorage): Boolean
+    suspend fun deleteUserCredentials(storage: ShopStorage): Boolean
 }

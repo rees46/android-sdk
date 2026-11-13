@@ -1,5 +1,6 @@
 package com.personalization.features.tracking.impl
 
+import com.personalization.LogLevel
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
@@ -10,6 +11,10 @@ import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.putSource
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.internal.LegacyDelivery
+import com.personalization.core.internal.LegacyErrors
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
 import com.personalization.stories.StoriesManager
 import org.json.JSONArray
@@ -26,13 +31,30 @@ internal class TrackingApiImpl @Inject constructor(
     private val trackEventManager: TrackEventManager,
     private val storiesManager: StoriesManager,
     private val setTrackingSourceUseCase: SetTrackingSourceUseCase,
+    /**
+     * Whether an empty id or query is refused before it is queued (contract `tracking`: `invalidArgument`).
+     * True on the new core, whose queue keeps events; the legacy core sends them as before.
+     */
+    private val checksArguments: () -> Boolean = { false },
 ) : TrackingApi {
+
+    /** Refuses a blank [value] of [name] on the new core: the listener hears `-1` at once. True when refused. */
+    private fun refused(name: String, value: String, listener: OnApiCallbackListener?): Boolean {
+        if (value.isNotBlank() || !checksArguments()) return false
+        val message = "$name is empty"
+        SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A tracking call was refused: $message", null, mapOf("reason" to "empty_$name"))
+        listener?.let { delivery.failure(it, LegacyErrors.NO_ANSWER, message) }
+        return true
+    }
+
+    private val delivery = LegacyDelivery { level, code, message, throwable -> SdkLogs.log(level, code, message, throwable = throwable) }
 
     override fun productView(
         itemId: String,
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("itemId", itemId, listener)) return
         trackEventManager.track(
             event = TrackEvent.VIEW,
             params = Params().put(ProductItemParams(itemId)).withSource(source),
@@ -41,6 +63,7 @@ internal class TrackingApiImpl @Inject constructor(
     }
 
     override fun categoryView(categoryId: String, listener: OnApiCallbackListener?) {
+        if (refused("categoryId", categoryId, listener)) return
         trackEventManager.track(
             event = TrackEvent.CATEGORY,
             params = Params().put(Params.Parameter.CATEGORY_ID, categoryId),
@@ -53,6 +76,7 @@ internal class TrackingApiImpl @Inject constructor(
         results: List<String>?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("query", query, listener)) return
         val params = Params().put(Params.Parameter.SEARCH_QUERY, query)
         if (!results.isNullOrEmpty()) {
             params.put(Params.RESULTS_PARAM, results.joinToString(separator = ","))
@@ -65,6 +89,7 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("itemId", item.id, listener)) return
         trackEventManager.track(
             event = TrackEvent.CART,
             params = Params().put(item.toProductParams()).withSource(source),
@@ -81,6 +106,7 @@ internal class TrackingApiImpl @Inject constructor(
     }
 
     override fun removeFromCart(itemId: String, listener: OnApiCallbackListener?) {
+        if (refused("itemId", itemId, listener)) return
         trackEventManager.track(
             event = TrackEvent.REMOVE_FROM_CART,
             params = Params().put(ProductItemParams(itemId)),
@@ -93,6 +119,7 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("itemId", itemId, listener)) return
         trackEventManager.track(
             event = TrackEvent.WISH,
             params = Params().put(ProductItemParams(itemId)).withSource(source),
@@ -109,6 +136,7 @@ internal class TrackingApiImpl @Inject constructor(
     }
 
     override fun removeFromFavorites(itemId: String, listener: OnApiCallbackListener?) {
+        if (refused("itemId", itemId, listener)) return
         trackEventManager.track(
             event = TrackEvent.REMOVE_FROM_WISH,
             params = Params().put(ProductItemParams(itemId)),

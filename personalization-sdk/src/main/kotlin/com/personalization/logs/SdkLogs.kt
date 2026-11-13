@@ -228,4 +228,30 @@ internal object LogReasons {
     const val NEED_REINITIALIZATION = "need_reinitialization"
     const val ALREADY_INITIALIZED = "already_initialized"
     const val NOT_READY = "not_ready"
+
+    // Why the queue dropped events (`queue_dropped`).
+    /** Older than the queue keeps an event (7 days). */
+    const val EXPIRED = "expired"
+
+    /** The oldest event made room: the queue holds at most 1000. */
+    const val OVERFLOW = "overflow"
+
+    /** Ten answers to repeat in a row. */
+    const val ATTEMPTS = "attempts"
+
+    /** An answer that says the event itself is wrong (`400`, `401`, `405`, `422`, another `4xx`). */
+    const val REJECTED = "rejected"
+
+    /** A `402`, `403` or `404` once more after `/init` found the shop fine: the service is refused, not the shop. */
+    const val SERVICE_REFUSED = "service_refused"
+
+    /** The shop refused the SDK: its queue is cleared. */
+    const val REFUSED = "refused"
+
+    // Why a popup of an event's answer was not shown (`popup_not_shown`, decision 2).
+    /** The event went more than 10 s after it was made. */
+    const val LATE_EVENT = "late_event"
+
+    /** The app was in the background when the answer came. */
+    const val APP_IN_BACKGROUND = "app_in_background"
 }

@@ -3,6 +3,7 @@ package com.personalization.core.internal
 import com.personalization.LogLevel
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.core.SdkError
+import com.personalization.core.SdkException
 import com.personalization.logs.LogCodes
 import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
@@ -25,8 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * [CoreInit]'s, its session [SessionWindow]'s. A request waits for the instance to be ready within its
  * own read timeout, and for the `/init` of a new session when the window of the last one ended: a
  * refused shop fails it with `shopBlocked` (the old callbacks get `402`), a wait that runs out with
- * `timeout`. A request with a result does not extend the session. The queue stays the legacy one until
- * the core takes it over.
+ * `timeout`. A request with a result does not extend the session. Events (`/push`, `/push/custom`,
+ * `track/stories`, `track/slider`, `popup/showed`) go to the [EventQueue] instead, once it is set.
  *
  * Every request ends in exactly one callback, on a background thread as today: the answer, or the
  * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [release] cancels the requests in
@@ -51,6 +52,10 @@ internal class CoreV2(
         set(value) {
             initFlow.value = value
         }
+
+    /** The instance's event queue; set with [init], before the core takes requests. */
+    @Volatile
+    internal var queue: EventQueue? = null
 
     /** How long a request waits for the instance to be ready: its own read timeout. */
     private val readyWaitMs: Long = client.timeouts.readMs
@@ -85,6 +90,23 @@ internal class CoreV2(
             endings.launch { answer(HttpResult.Failure(SdkError.NotInitialized)) }
             return
         }
+        val queue = queue
+        if (queue != null && method is NetworkMethod.POST && method.method in EventQueue.PATHS) {
+            queue.accept(method.method, params, listener)
+            return
+        }
+        sendNow(method, params, answer)
+    }
+
+    /** Sends an event the queue's disk would not take, once, as a request. */
+    internal fun sendDirectly(path: String, params: JSONObject, listener: OnApiCallbackListener?) {
+        val answered = AtomicBoolean(false)
+        sendNow(NetworkMethod.POST(path), params) { result: HttpResult ->
+            answered.compareAndSet(false, true).also { first -> if (first && listener != null) deliver(listener, result) }
+        }
+    }
+
+    private fun sendNow(method: NetworkMethod, params: JSONObject, answer: (HttpResult) -> Boolean) {
         val request = requests.launch {
             val waited = awaitInstance()
             if (waited != null) {
@@ -145,10 +167,28 @@ internal class CoreV2(
         released = true
         if (cancelRequests) requests.cancel()
         init?.release()
+        queue?.release(cancel = cancelRequests)
     }
 
-    /** The events in the queue were the customer's: its directory goes with the credentials. */
-    override fun deleteUserCredentials(storage: ShopStorage): Boolean = storage.deleteUserCredentials(includeQueue = true)
+    /** Sends the queue now ([EventQueue.flush]). */
+    suspend fun flush() {
+        if (released) throw SdkException(SdkError.NotInitialized)
+        queue?.flush()
+    }
+
+    /**
+     * The events in the queue were the customer's: the queue is emptied — an event accepted before the
+     * call goes, its listener hears `-1` — and its directory goes with the credentials while no event
+     * can be accepted.
+     */
+    override suspend fun deleteUserCredentials(storage: ShopStorage): Boolean {
+        val queue = queue ?: return storage.deleteUserCredentials(includeQueue = true)
+        return queue.clear(LogReasons.DELETE_USER_CREDENTIALS, CLEARED) { storage.deleteUserCredentials(includeQueue = true) }
+    }
+
+    private companion object {
+        val CLEARED = LegacyError(LegacyErrors.NO_ANSWER, "The event was deleted with the customer's data")
+    }
 
     private fun deliver(listener: OnApiCallbackListener, result: HttpResult) = when (result) {
         is HttpResult.Success -> delivery.success(listener, result.body)

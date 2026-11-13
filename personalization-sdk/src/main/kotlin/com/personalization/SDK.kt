@@ -42,7 +42,9 @@ import com.personalization.core.internal.CoreV2
 import com.personalization.core.internal.InitHooks
 import com.personalization.core.internal.InitSetup
 import com.personalization.core.internal.InstanceState
+import com.personalization.core.internal.EventQueue
 import com.personalization.core.internal.ProcessAppLifecycle
+import com.personalization.core.internal.QueueStore
 import com.personalization.core.internal.SessionWindow
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
@@ -69,6 +71,7 @@ import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsU
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.trackingSource.GetTrackingSourceUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
@@ -96,7 +99,7 @@ private const val GAID_KEY = "google_advertising_id"
  * One shop's instance of the SDK: made by [Rees46.initialize], found with [Rees46.instance].
  *
  * The class stays `open` for apps that subclassed it in earlier releases. The members this release
- * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange] and
+ * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush] and
  * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
  * that declares one of them needs to rename its own.
  */
@@ -143,6 +146,9 @@ open class SDK {
 
     @Inject
     internal lateinit var userSettingsRepository: UserSettingsRepository
+
+    @Inject
+    internal lateinit var getTrackingSourceUseCase: GetTrackingSourceUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -547,11 +553,24 @@ open class SDK {
         val coreV2 = CoreSelection.resolve(coreV2Requested, shopId)
         if (coreV2) {
             val connectivity = AndroidConnectivityMonitor(context)
+            val lifecycle = ProcessAppLifecycle()
             lateinit var init: CoreInit
-            // The core gets its /init before it takes a request: none goes without waiting for it.
+            // The core gets its /init and its queue before it takes a request: none goes without them.
             val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
-                init = createCoreInit(core, connectivity, context, config, storage, autoSendPushToken, needReInitialization)
+                init = createCoreInit(core, connectivity, lifecycle, context, config, storage, autoSendPushToken, needReInitialization)
                 core.init = init
+                core.queue = EventQueue(
+                    shopId = shopId,
+                    store = QueueStore.of(storage.queuePath, shopId),
+                    init = init,
+                    state = instanceState,
+                    send = core.client::send,
+                    connectivity = connectivity,
+                    lifecycle = lifecycle,
+                    source = ::trackingSource,
+                    sendDirectly = core::sendDirectly,
+                    dispatchers = dispatchers,
+                ).also { it.start() }
             }
             this.core = core
             init.start()
@@ -637,6 +656,7 @@ open class SDK {
     private fun createCoreInit(
         core: CoreV2,
         connectivity: ConnectivityMonitor,
+        lifecycle: ProcessAppLifecycle,
         context: Context,
         config: Rees46Config,
         storage: ShopStorage,
@@ -658,7 +678,7 @@ open class SDK {
             storage = storage,
             state = instanceState,
             connectivity = connectivity,
-            lifecycle = ProcessAppLifecycle(),
+            lifecycle = lifecycle,
             session = SessionWindow(userSettingsRepository, storage).also { session ->
                 session.addListener { sid, changed -> if (changed) sessionChanged(sid) }
             },
@@ -680,6 +700,12 @@ open class SDK {
             },
             dispatchers = dispatchers,
         )
+    }
+
+    /** The source `tracking.setSource` stored, as the queue puts it on `/push`; null when none or expired. */
+    private fun trackingSource(): JSONObject? {
+        val source = getTrackingSourceUseCase() ?: return null
+        return JSONObject().put("from", source.type).put("code", source.code)
     }
 
     /** The advertising id for `/init`, or null when it cannot be read. */
@@ -954,6 +980,37 @@ open class SDK {
         instanceState.dropListeners()
         // Only this instance's level goes: another live instance of the shop keeps logging at its own.
         logShopId?.let { SdkLogs.unregister(it, owner = this) }
+    }
+
+    /**
+     * Sends the events waiting in the queue now, without waiting for the queue's own triggers, and
+     * returns once each of them was tried: sent, dropped, or held — by no network, by the instance not
+     * being ready yet, or by a server that asked to wait (`Retry-After`). It does not repeat a failed
+     * event at once and promises no delivery. On the legacy core, which has no queue, it returns at once.
+     *
+     * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
+     * was released, with [SdkError.ShopBlocked] when the shop refused the SDK.
+     */
+    suspend fun flush() {
+        val core = core
+        if (core == null || released) throw SdkException(SdkError.NotInitialized)
+        (core as? CoreV2)?.flush()
+    }
+
+    /**
+     * [flush] for Java and for code outside coroutines: [listener] gets [SdkResult.Success] once the
+     * queue was tried, or [SdkResult.Failure] with the error, once, on the main thread.
+     */
+    fun flush(listener: CompletionListener<Unit>) {
+        calls.launch {
+            val result: SdkResult<Unit> = try {
+                flush()
+                SdkResult.Success(Unit)
+            } catch (e: SdkException) {
+                SdkResult.Failure(e.error)
+            }
+            complete(listener, result)
+        }
     }
 
     /**

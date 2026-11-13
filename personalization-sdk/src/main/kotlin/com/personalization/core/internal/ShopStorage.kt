@@ -110,6 +110,9 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
             preferences.edit().putBoolean(StorageKeys.CREDENTIALS_WIPED, value).apply()
         }
 
+    /** Where the shop's event queue lives ([queueDirectory] creates it). */
+    val queuePath: File get() = File(directory, QUEUE_DIRECTORY)
+
     /** The directory of the shop's event queue, created if needed; null when the disk refused it. */
     fun queueDirectory(): File? {
         val queue = File(directory, QUEUE_DIRECTORY)
