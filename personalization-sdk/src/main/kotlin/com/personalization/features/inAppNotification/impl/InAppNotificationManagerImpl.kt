@@ -96,11 +96,11 @@ class InAppNotificationManagerImpl @Inject constructor(
                 val activity = try {
                     listener(popupDto)
                 } catch (exception: Exception) {
-                    SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "Popup was not shown: the presentation listener threw", context = mapOf("popup" to popupDto.id), throwable = exception)
+                    log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "Popup was not shown: the presentation listener threw", context = mapOf("popup" to popupDto.id), throwable = exception)
                     return
                 }
                 if (activity == null) {
-                    SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id))
+                    log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id))
                     return
                 }
                 activity.supportFragmentManager.takeIf { it.canShowDialog() }
@@ -109,18 +109,18 @@ class InAppNotificationManagerImpl @Inject constructor(
             presentation.autoPresentation -> defaultTarget()
 
             else -> {
-                SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id))
+                log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id))
                 return
             }
         }
         if (target == null) {
-            SdkLogs.log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id))
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id))
             return
         }
         try {
             showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id), throwable = exception)
+            log(LogLevel.ERROR, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id), throwable = exception)
             return
         }
 
@@ -262,7 +262,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         target: FragmentManager?
     ) {
         if (target == null) {
-            SdkLogs.log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in")
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in")
             return
         }
 
@@ -367,6 +367,22 @@ class InAppNotificationManagerImpl @Inject constructor(
                 /* duration = */ Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    /**
+     * Writes to the log under the instance's shop. The level is checked before the shop is read from
+     * the preferences, so a line below every shop's level costs nothing.
+     */
+    private fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) {
+        if (!SdkLogs.isLoggable(level)) return
+        val shopId = runCatching { getUserSettingsValueUseCase.getShopId() }.getOrNull()?.takeIf { it.isNotEmpty() }
+        SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
     companion object {

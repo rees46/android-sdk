@@ -2,7 +2,6 @@
 
 package com.personalization.stories.viewAdapters
 
-import com.personalization.logs.SdkLogs
 import com.personalization.logs.LogCodes
 import com.personalization.LogLevel
 import android.annotation.SuppressLint
@@ -106,7 +105,7 @@ internal class ProductsAdapter(
 
         private fun setupClickListener(product: Product) {
             itemView.setOnClickListener {
-                SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES, "Story product clicked")
+                sdk.log(LogLevel.DEBUG, LogCodes.STORIES, "Story product clicked")
                 handleProductClick(product)
             }
         }
@@ -128,7 +127,7 @@ internal class ProductsAdapter(
                     onCloseStories.invoke()
                 }
             } catch (e: ActivityNotFoundException) {
-                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
             }
         }
     }

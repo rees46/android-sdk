@@ -2,7 +2,6 @@
 
 package com.personalization.stories.views
 
-import com.personalization.logs.SdkLogs
 import com.personalization.logs.LogCodes
 import com.personalization.LogLevel
 import android.annotation.SuppressLint
@@ -225,7 +224,7 @@ internal class StoryView(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Story video failed", context = mapOf("story" to story?.id), throwable = error)
+        sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Story video failed", context = mapOf("story" to story?.id), throwable = error)
         val holder = currentHolder
         holder?.storyItem?.let { storyItem ->
             storyItem.reloadLayout.visibility = VISIBLE
@@ -277,7 +276,7 @@ internal class StoryView(
                             try {
                                 storiesProgressView.resume()
                             } catch (e: IndexOutOfBoundsException) {
-                                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Story video could not start", throwable = e)
+                                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Story video could not start", throwable = e)
                             }
                         }
                     }

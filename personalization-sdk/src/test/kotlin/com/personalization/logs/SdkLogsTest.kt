@@ -132,6 +132,73 @@ class SdkLogsTest {
     }
 
     @Test
+    fun `an exception reaches logcat and the handler as its class name only`() {
+        SdkLogs.register("shop", LogLevel.WARNING, "ShopTag")
+
+        SdkLogs.log(
+            LogLevel.ERROR,
+            "decoding_failed",
+            "The answer did not parse",
+            shopId = "shop",
+            throwable = IllegalStateException("Value secret@example.com at email of type java.lang.String"),
+        )
+
+        val entry = ShadowLog.getLogsForTag("ShopTag").single()
+        assertEquals("[decoding_failed] The answer did not parse {exception=IllegalStateException}", entry.msg)
+        assertEquals(null, entry.throwable)
+        assertFalse(received.single().toString().contains("secret@example.com"))
+    }
+
+    @Test
+    fun `a forced line is written whatever the level`() {
+        SdkLogs.register("shop", LogLevel.NONE, "ShopTag")
+
+        SdkLogs.log(LogLevel.DEBUG, "popups_v3", "skipped by the level", shopId = "shop")
+        SdkLogs.log(LogLevel.DEBUG, "popups_v3", "asked for by the app", shopId = "shop", force = true)
+
+        assertEquals(listOf("asked for by the app"), received.map { it.message })
+    }
+
+    @Test
+    fun `popups v3 debug writes the engine's lines at the default level`() {
+        val sdk = io.mockk.mockk<SDK>(relaxed = true)
+        val popups = com.personalization.popups.PopupsV3(sdk)
+        io.mockk.every { sdk.popupsV3 } returns popups
+
+        popups.log(LogLevel.DEBUG, "hidden: debug is off")
+        popups.debug = true
+        popups.log(LogLevel.DEBUG, "shown: debug is on")
+
+        assertEquals(listOf("popups_v3" to "shown: debug is on"), received.map { it.code to it.message })
+    }
+
+    @Test
+    fun `a shop keeps its level while one of its instances is live`() {
+        val first = Any()
+        val second = Any()
+        SdkLogs.register("shop", LogLevel.DEBUG, "SDK", owner = first)
+        SdkLogs.register("shop", LogLevel.ERROR, "SDK", owner = second)
+        assertEquals(LogLevel.DEBUG, SdkLogs.levelFor("shop"))
+
+        SdkLogs.unregister("shop", owner = first)
+        assertEquals(LogLevel.ERROR, SdkLogs.levelFor("shop"))
+
+        SdkLogs.unregister("shop", owner = second)
+        // No instance left: the shop falls back to the default.
+        assertEquals(LogLevel.WARNING, SdkLogs.levelFor("shop"))
+    }
+
+    @Test
+    fun `the level can be checked before the shop is known`() {
+        assertFalse(SdkLogs.isLoggable(LogLevel.DEBUG))
+        SdkLogs.register("quiet", LogLevel.ERROR, "SDK")
+        SdkLogs.register("loud", LogLevel.DEBUG, "SDK")
+
+        assertTrue(SdkLogs.isLoggable(LogLevel.DEBUG))
+        assertFalse(SdkLogs.isLoggable(LogLevel.DEBUG, "quiet"))
+    }
+
+    @Test
     fun `log levels allow from their own level up`() {
         assertTrue(LogLevel.WARNING.allows(LogLevel.ERROR))
         assertTrue(LogLevel.WARNING.allows(LogLevel.WARNING))

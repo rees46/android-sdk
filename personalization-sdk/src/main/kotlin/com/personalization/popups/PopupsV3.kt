@@ -4,7 +4,10 @@ import android.app.Activity
 import android.os.Handler
 import android.os.Looper
 import com.personalization.InternalPersonalizationV3Api
+import com.personalization.LogLevel
 import com.personalization.SDK
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.popups.PopupV3Presenter
@@ -44,7 +47,10 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
      */
     var testMode: Boolean = false
 
-    /** `debug=1` в списке и каждое решение движка в лог SDK. */
+    /**
+     * `debug=1` в списке и каждое решение движка в лог SDK. Это явная просьба приложения: строки
+     * движка пишутся при любом `Rees46Config.logLevel`.
+     */
     var debug: Boolean = false
 
     /** Хост личного кабинета, на котором живёт API попапов. */
@@ -91,7 +97,7 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
             sid = sid,
             testMode = { testMode },
             debug = { debug },
-            log = SDK::debug,
+            log = { message -> log(LogLevel.DEBUG, message) },
             autoPresentation = { sdk.enableAutoPopupPresentation }
         ).also { ForegroundActivity.addListener(lifecycle) }
     }
@@ -120,7 +126,7 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
     fun show(id: Int) {
         MainThread.run {
             if (!enabled) {
-                SDK.debug("popups v3: show($id) ignored: popups are not enabled")
+                log(LogLevel.DEBUG, "popups v3: show($id) ignored: popups are not enabled")
                 return@run
             }
             engine.showManual(id)
@@ -131,7 +137,7 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
     internal fun onInit(flag: Boolean) {
         MainThread.run {
             initFlag = flag
-            if (debug) SDK.debug("popups v3: /init popups_v3=$flag")
+            if (debug) log(LogLevel.DEBUG, "popups v3: /init popups_v3=$flag")
             maybeStart(refresh = true)
         }
     }
@@ -150,12 +156,23 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
         MainThread.run { if (enabled) engine.onContextChange(type, signature) }
     }
 
+    /**
+     * Строка попапов v3 в лог под магазином экземпляра. С [debug] она пишется при любом уровне лога:
+     * приложение само попросило подробности.
+     */
+    internal fun log(
+        level: LogLevel,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) = popupsV3Log(sdk, level, message, context, throwable)
+
     /** [refresh] — новый ответ `/init`: уже работающий движок обновляет список. */
     private fun maybeStart(refresh: Boolean = false) {
         if (!enabled) return
         val flag = initFlag ?: return
         if (!flag && !ignoreInitFlag) {
-            if (debug) SDK.debug("popups v3: off — /init did not send popups_v3")
+            if (debug) log(LogLevel.DEBUG, "popups v3: off — /init did not send popups_v3")
             return
         }
         if (engine.isStarted && !refresh) return
@@ -167,3 +184,15 @@ class PopupsV3 internal constructor(private val sdk: SDK) {
         const val DEFAULT_APP_HOST = "app.rees46.ru"
     }
 }
+
+/**
+ * A popups v3 line under the shop of [sdk]. With `PopupsV3.debug` on it is written whatever the log
+ * level: the app asked for the details.
+ */
+internal fun popupsV3Log(
+    sdk: SDK,
+    level: LogLevel,
+    message: String,
+    context: Map<String, Any?> = emptyMap(),
+    throwable: Throwable? = null,
+) = SdkLogs.log(level, LogCodes.POPUPS_V3, message, sdk.logShopId, context, throwable, force = sdk.popupsV3?.debug == true)

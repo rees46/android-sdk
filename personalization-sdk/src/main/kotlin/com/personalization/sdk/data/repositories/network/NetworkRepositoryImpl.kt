@@ -410,7 +410,10 @@ class NetworkRepositoryImpl @Inject constructor(
             buildString { reader.forEachLine { append(it) } }
         }
 
-    /** Writes to the log by method and path only: the query and the body carry the user's data. */
+    /**
+     * Writes to the log by method and path only: the query and the body carry the user's data. The
+     * level is checked first, so a line no shop writes reads no preferences and builds nothing.
+     */
     private fun log(
         level: LogLevel,
         code: String,
@@ -419,6 +422,7 @@ class NetworkRepositoryImpl @Inject constructor(
         status: Int? = null,
         throwable: Throwable? = null,
     ) {
+        if (!SdkLogs.isLoggable(level)) return
         val context = buildMap<String, Any?> {
             method?.let { put("method", it.type); put("path", it.method) }
             status?.let { put("status", it) }

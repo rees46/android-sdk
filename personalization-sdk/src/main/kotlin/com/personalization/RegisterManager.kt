@@ -195,6 +195,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
+    /** The level is checked first, so a line no shop writes reads no preferences. */
     private fun log(
         level: LogLevel,
         code: String,
@@ -202,6 +203,7 @@ class RegisterManager @Inject constructor(
         context: Map<String, Any?> = emptyMap(),
         throwable: Throwable? = null,
     ) {
+        if (!SdkLogs.isLoggable(level)) return
         val shopId = runCatching { getUserSettingsValueUseCase.getShopId() }.getOrNull()?.takeIf { it.isNotEmpty() }
         SdkLogs.log(level, code, message, shopId, context, throwable)
     }

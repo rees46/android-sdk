@@ -167,8 +167,10 @@ open class SDK {
     /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
     internal var logLevel: LogLevel = LogLevel.WARNING
 
-    /** The shop this instance logs for, once it is initialized. */
-    private var logShopId: String? = null
+    /** The shop this instance logs for, once it is initialized: its lines pass that shop's level. */
+    @Volatile
+    internal var logShopId: String? = null
+        private set
 
     /** `popups_v3` of the last `/init` answer; null while `/init` has not answered. */
     @Volatile
@@ -310,8 +312,10 @@ open class SDK {
         sdkComponent.inject(sdk = this)
         this.context = context
         TAG = tag
-        SdkLogs.register(shopId = shopId, level = logLevel, tag = tag)
+        SdkLogs.register(shopId = shopId, level = logLevel, tag = tag, owner = this)
         logShopId = shopId
+        pushTokenManager.logShopId = shopId
+        storiesManager.logShopId = shopId
 
         // Before the init request goes out: its response may already carry a popup.
         ForegroundActivity.install(context)
@@ -468,7 +472,7 @@ open class SDK {
                 event = event, code = code, storyId = storyId, slideId = slideId
             )
         } else {
-            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, "storiesManager is not initialized")
+            log(LogLevel.WARNING, LogCodes.STORIES, "storiesManager is not initialized")
         }
     }
 
@@ -643,9 +647,18 @@ open class SDK {
      */
     fun release() {
         SdkRegistry.unregister(this)
-        // Another instance of the same shop (a repeated initialize) keeps the shop's log level.
-        logShopId?.takeIf { SdkRegistry.byShopId(it) == null }?.let { SdkLogs.unregister(it) }
+        // Only this instance's level goes: another live instance of the shop keeps logging at its own.
+        logShopId?.let { SdkLogs.unregister(it, owner = this) }
     }
+
+    /** Writes to the SDK's log under this instance's shop, so the shop's [Rees46Config.logLevel] applies. */
+    internal fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) = SdkLogs.log(level, code, message, logShopId, context, throwable)
 
     /**
      * Quick search
@@ -691,7 +704,7 @@ open class SDK {
                 .put(InternalParameter.SEARCH_QUERY, query)
             getAsync(SEARCH_FIELD, params.build(), listener)
         } else {
-            warn("Search not initialized")
+            log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")
         }
     }
 
@@ -719,7 +732,7 @@ open class SDK {
                 listener.onSuccess(search?.blank)
             }
         } else {
-            warn("Search not initialized")
+            log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")
         }
     }
 
@@ -963,7 +976,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE_PRICE, params, listener)
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1020,7 +1033,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE, params, listener)
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1097,7 +1110,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_MANAGE, params, listener)
             popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1162,7 +1175,7 @@ open class SDK {
             sendAsync("$SEGMENTS_FIELD/$method", params, listener)
             popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1171,7 +1184,9 @@ open class SDK {
      */
     fun notificationReceived(data: Map<String, String>) {
         if (!isSdkInitialized) {
-            warn(
+            log(
+                LogLevel.WARNING,
+                LogCodes.SDK_LOG,
                 "notificationReceived() called before SDK.initialize(); ignoring. " +
                     "Initialize SDK.instance in Application.onCreate so push delivery works in a cold process."
             )
@@ -1191,7 +1206,7 @@ open class SDK {
                 sendNetworkMethodUseCase.postAsync(TRACK_RECEIVED, params)
             }
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 

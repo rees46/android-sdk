@@ -31,6 +31,10 @@ class StoriesManager @Inject constructor(
 
     private var lastAttachedView: WeakReference<StoriesView>? = null
 
+    /** The shop of the instance, so the stories' log lines pass that shop's level. */
+    @Volatile
+    internal var logShopId: String? = null
+
     /** The block the SDK last requested — the fallback for tracking calls that omit the code. */
     @Volatile
     private var lastRequestedCode: String? = null
@@ -50,7 +54,7 @@ class StoriesManager @Inject constructor(
                     try {
                         onLoaded(getStories(response))
                     } catch (e: JSONException) {
-                        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+                        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", logShopId, throwable = e)
                     }
                 }
             }
@@ -60,7 +64,7 @@ class StoriesManager @Inject constructor(
     internal fun showStories(looper: Looper, code: String) {
         val view = lastAttachedView?.get()
         if (view == null) {
-            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, "showStories: no StoriesView is attached to present from", context = mapOf("code" to code))
+            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, "showStories: no StoriesView is attached to present from", logShopId, mapOf("code" to code))
             return
         }
         requestStories(
@@ -77,7 +81,7 @@ class StoriesManager @Inject constructor(
 
                             showStories(looper, view, stories)
                         } catch (e: JSONException) {
-                            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+                            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", logShopId, throwable = e)
                         }
                     }
                 }
@@ -132,7 +136,7 @@ class StoriesManager @Inject constructor(
         val effectiveCode = code ?: lastRequestedCode
         if (effectiveCode == null) {
             val message = "trackStory($event): no stories code given and no block loaded yet"
-            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, message)
+            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, message, logShopId)
             listener?.onError(CLIENT_VALIDATION_ERROR_CODE, message)
             return
         }
@@ -147,7 +151,7 @@ class StoriesManager @Inject constructor(
 
             sendNetworkMethodUseCase.postAsync(TRACK_STORIES_METHOD, params, listener)
         } catch (e: JSONException) {
-            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", logShopId, throwable = e)
             listener?.onError(CLIENT_VALIDATION_ERROR_CODE, e.message)
         }
     }

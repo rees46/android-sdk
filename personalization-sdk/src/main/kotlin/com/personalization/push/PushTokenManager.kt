@@ -37,6 +37,10 @@ class PushTokenManager @Inject constructor(
     private var autoSendPushToken: Boolean = false
     private var listener: OnPushTokenListener? = null
 
+    /** The shop of the instance, so the token's log lines pass that shop's level. */
+    @Volatile
+    internal var logShopId: String? = null
+
     /**
      * Tokens whose request is already on the wire, as `provider:token`.
      *
@@ -163,7 +167,7 @@ class PushTokenManager @Inject constructor(
                     // Released only after the token is persisted, so a delivery arriving in
                     // between is still deduplicated — by the cache rather than by the claim.
                     tokensInFlight.remove(inFlightKey(provider, token))
-                    SdkLogs.log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", null, mapOf("provider" to provider.id))
+                    SdkLogs.log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", logShopId, mapOf("provider" to provider.id))
                     external?.onSuccess(response)
                 }
 
@@ -175,7 +179,7 @@ class PushTokenManager @Inject constructor(
                         LogLevel.ERROR,
                         LogCodes.PUSH_TOKEN_FAILED,
                         "Push token was not sent",
-                        null,
+                        logShopId,
                         mapOf("provider" to provider.id, "status" to code)
                     )
                     external?.onError(code, msg)

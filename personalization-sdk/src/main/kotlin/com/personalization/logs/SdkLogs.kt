@@ -19,9 +19,11 @@ import java.util.concurrent.Executors
  */
 internal object SdkLogs {
 
-    private data class Shop(val level: LogLevel, val tag: String)
+    /** One live instance of a shop and the level it asked for. */
+    private class Registration(val owner: Any, val level: LogLevel, val tag: String)
 
-    private val shops = ConcurrentHashMap<String, Shop>()
+    /** The live instances of each shop, the latest last. */
+    private val shops = ConcurrentHashMap<String, List<Registration>>()
 
     @Volatile
     var handler: SdkLogHandler? = null
@@ -32,12 +34,21 @@ internal object SdkLogs {
         Thread(runnable, "rees46-log").apply { isDaemon = true }
     }
 
-    fun register(shopId: String, level: LogLevel, tag: String) {
-        shops[shopId] = Shop(level, tag)
+    /**
+     * Gives [shopId] the level of [owner], an instance of that shop. While several instances of a shop
+     * are live, the shop logs at the most detailed of their levels, under the tag of the latest one.
+     */
+    fun register(shopId: String, level: LogLevel, tag: String, owner: Any = shopId) {
+        shops.compute(shopId) { _, current ->
+            current.orEmpty().filterNot { it.owner == owner } + Registration(owner, level, tag)
+        }
     }
 
-    fun unregister(shopId: String) {
-        shops.remove(shopId)
+    /** [owner] is gone; the shop keeps a level while another of its instances is live. */
+    fun unregister(shopId: String, owner: Any = shopId) {
+        shops.computeIfPresent(shopId) { _, current ->
+            current.filterNot { it.owner == owner }.takeIf { it.isNotEmpty() }
+        }
     }
 
     internal fun reset() {
@@ -47,10 +58,20 @@ internal object SdkLogs {
 
     /** The level of [shopId], or for a message without a shop the most detailed level of any shop. */
     fun levelFor(shopId: String?): LogLevel {
-        shopId?.let { shops[it] }?.let { return it.level }
-        return shops.values.minByOrNull { it.level.ordinal }?.level ?: LogLevel.WARNING
+        val registrations = shopId?.let { shops[it] } ?: shops.values.flatten()
+        return registrations.minByOrNull { it.level.ordinal }?.level ?: LogLevel.WARNING
     }
 
+    /**
+     * Whether a message at [level] would be written. Without [shopId] it answers for the most detailed
+     * shop, so a caller can skip building a message before it knows the shop.
+     */
+    fun isLoggable(level: LogLevel, shopId: String? = null): Boolean = levelFor(shopId).allows(level)
+
+    /**
+     * Writes one message. [force] writes it whatever the level, for logs the app asked for explicitly
+     * (`PopupsV3.debug`).
+     */
     fun log(
         level: LogLevel,
         code: String,
@@ -58,9 +79,11 @@ internal object SdkLogs {
         shopId: String? = null,
         context: Map<String, Any?> = emptyMap(),
         throwable: Throwable? = null,
+        force: Boolean = false,
     ) {
-        if (!levelFor(shopId).allows(level)) return
-        val tag = shopId?.let { shops[it]?.tag } ?: SDK.TAG
+        if (level == LogLevel.NONE) return
+        if (!force && !isLoggable(level, shopId)) return
+        val tag = shopId?.let { shops[it]?.lastOrNull()?.tag } ?: SDK.TAG
         val fullContext = if (throwable == null) context else context + ("exception" to exceptionName(throwable))
         writeToLogcat(level, tag, code, message, fullContext)
         val handler = handler ?: return

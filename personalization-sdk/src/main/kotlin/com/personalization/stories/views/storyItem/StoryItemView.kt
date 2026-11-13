@@ -2,7 +2,6 @@
 
 package com.personalization.stories.views.storyItem
 
-import com.personalization.logs.SdkLogs
 import com.personalization.logs.LogCodes
 import com.personalization.LogLevel
 import android.annotation.SuppressLint
@@ -342,10 +341,10 @@ class StoryItemView(
                 }
                 storyStateListener.onStoryStateChanged(StoryState.CLOSE)
             } catch (e: ActivityNotFoundException) {
-                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
             } catch (e: NullPointerException) {
-                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
             }
         }
