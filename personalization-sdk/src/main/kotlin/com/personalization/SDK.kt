@@ -30,6 +30,9 @@ import com.personalization.core.internal.AndroidConnectivityMonitor
 import com.personalization.core.internal.Core
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.CoreV2
+import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
@@ -181,6 +184,11 @@ open class SDK {
     internal var core: Core? = null
         private set
 
+    /** The shop's partition, once the instance is initialized. */
+    @Volatile
+    internal var storage: ShopStorage? = null
+        private set
+
     /** The shop this instance logs for, once it is initialized: its lines pass that shop's level. */
     @Volatile
     internal var logShopId: String? = null
@@ -245,6 +253,9 @@ open class SDK {
 
     /**
      * @param shopId Shop key
+     * @param preferencesKey the prefix of the shop's storage, as [Rees46Config.storageKey]. Earlier
+     * releases kept everything in one file of this name; it is read once into the shop's partition and
+     * left as it is.
      */
     @Deprecated(
         message = "Use Rees46.initialize(context, Rees46Config(...)) — the unified, multi-instance " +
@@ -270,7 +281,7 @@ open class SDK {
         shopId = shopId,
         apiDomain = apiDomain,
         tag = tag,
-        preferencesKey = preferencesKey,
+        storageKey = preferencesKey.takeUnless { it == PreferencesPartition.LEGACY_KEY },
         stream = stream,
         autoSendPushToken = autoSendPushToken,
         needReInitialization = needReInitialization,
@@ -294,7 +305,7 @@ open class SDK {
             shopId = config.shopId,
             apiDomain = config.apiDomain,
             tag = config.tag,
-            preferencesKey = PreferencesPartition.LEGACY_KEY,
+            storageKey = config.storageKey,
             stream = config.stream,
             autoSendPushToken = false,
             needReInitialization = false,
@@ -308,7 +319,7 @@ open class SDK {
         shopId: String,
         apiDomain: String,
         tag: String,
-        preferencesKey: String,
+        storageKey: String?,
         stream: String,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
@@ -342,18 +353,17 @@ open class SDK {
 
         onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
 
-        // A host that leaves preferencesKey at its default gets a per-shop partition instead of the
-        // single shared file, plus a one-time migration out of the legacy file so an existing
-        // install keeps its did/sid. A host that passes its own key keeps using it verbatim, with no
-        // derivation and no migration.
-        val usingDefaultPartition = preferencesKey == PreferencesPartition.LEGACY_KEY
-        val effectivePreferencesKey =
-            if (usingDefaultPartition) PreferencesPartition.keyFor(shopId) else preferencesKey
+        // The shop's own partition, prefixed by the app's storageKey if it has one. Before /init, the
+        // data of older releases is read into it once (the file of a custom preferencesKey, or the file
+        // all shops shared before partitions), and the device-level store gets the A/B group, push
+        // tokens and advertising id. Nothing older is deleted.
+        val layout = StorageLayout(shopId, storageKey)
+        StorageMigrations.run(context, layout)
+        storage = ShopStorage(context, layout)
 
         initPreferencesUseCase.invoke(
             context = context,
-            preferencesKey = effectivePreferencesKey,
-            legacyPreferencesKey = if (usingDefaultPartition) PreferencesPartition.LEGACY_KEY else null,
+            preferencesKey = layout.partitionName,
             shopId = shopId
         )
 

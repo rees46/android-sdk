@@ -7,7 +7,8 @@ interface PreferencesDataSource {
     /**
      * Opens the preferences partition named [preferencesKey]. When [legacyPreferencesKey] and
      * [shopId] are provided, a one-time migration copies the legacy shared file into the partition
-     * if it is still empty and the legacy file belongs to [shopId].
+     * if it is still empty and the legacy file belongs to [shopId] or names no shop; a flag in the
+     * partition keeps it from running again. The legacy file is never changed.
      */
     fun initialize(
         context: Context,

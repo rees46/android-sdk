@@ -4,9 +4,9 @@ package com.personalization
  * Naming of the SDK's SharedPreferences partitions.
  *
  * Release 2 of multi-instance: storage is partitioned per `shop_id` so instances do not share one
- * file. Transparent to hosts — a host that leaves `SDK.initialize(preferencesKey)` at its default
- * gets a shop-scoped partition plus a one-time migration out of the old shared file, so an existing
- * install keeps its `did`/`sid`. A host that passes its own `preferencesKey` keeps using it verbatim.
+ * file. Transparent to hosts — an existing install's data is read once into the shop's partition,
+ * so it keeps its `did`/`sid`. With an app's `storageKey` (formerly `SDK.initialize(preferencesKey)`)
+ * the partition name gets that prefix; see [com.personalization.core.internal.StorageLayout].
  */
 internal object PreferencesPartition {
 

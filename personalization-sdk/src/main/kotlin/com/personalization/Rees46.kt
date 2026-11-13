@@ -47,6 +47,8 @@ object Rees46 {
             shopId = config.shopId,
             apiDomain = config.apiDomain,
             tag = config.tag,
+            // The prefix of the shop's partition; a file of the same name is read once as its old data.
+            preferencesKey = config.storageKey ?: PreferencesPartition.LEGACY_KEY,
             stream = config.stream,
             autoSendPushToken = config.autoSendPushToken,
             needReInitialization = config.needReInitialization,

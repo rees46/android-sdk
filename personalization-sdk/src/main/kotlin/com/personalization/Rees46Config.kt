@@ -4,8 +4,9 @@ package com.personalization
  * Configuration for one SDK instance (one shop).
  *
  * The unified initialization input shared by [Rees46.initialize] and [Rees46.registerShops]. Mirrors
- * the parameters of the legacy `SDK.initialize`, minus the Android `Context` (passed separately) and
- * the preferences key (storage is partitioned per [shopId] automatically — see [PreferencesPartition]).
+ * the parameters of the legacy `SDK.initialize`, minus the Android `Context` (passed separately); its
+ * `preferencesKey` is [storageKey] here. Storage is partitioned per [shopId] automatically — see
+ * [PreferencesPartition].
  *
  * @property shopId the shop key; also the partition key and the id used by [Rees46.getInstance].
  * @property apiDomain API host the instance talks to (a region points here).
@@ -24,6 +25,14 @@ package com.personalization
  * network client only: requests go through OkHttp, a request without a network fails at once,
  * `release()` cancels the instance's requests, and a failure without an answer is `onError(-1)` (no
  * connection used to be `504`), as is a `2xx` whose body is not JSON (it used to succeed empty).
+ * @property storageKey a prefix for the shop's storage, when the app needs its own split of it: the
+ * shop's `SharedPreferences` file becomes `<storageKey>_personalization_sdk_<shopId>` instead of
+ * `personalization_sdk_<shopId>`. A file named exactly [storageKey] (the whole store of
+ * `SDK.initialize(preferencesKey = …)` in earlier releases) is read into it once and left as it is,
+ * so an app moving its `preferencesKey` here keeps its customers. The device-level data (A/B group,
+ * push token, advertising id) is the app's and has no prefix. Android's Auto Backup restores these
+ * files on the user's new device, the `did` among them; see [SDK.deleteUserCredentials] for the files
+ * an app excludes from its backup rules to avoid that.
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.
@@ -39,4 +48,5 @@ data class Rees46Config @JvmOverloads constructor(
     val enableAutoPopupPresentation: Boolean = true,
     val logLevel: LogLevel = LogLevel.WARNING,
     val coreV2: Boolean = false,
+    val storageKey: String? = null,
 )
