@@ -255,8 +255,9 @@ internal class TrackEventManagerImpl @Inject constructor(
     private fun handlePopup(response: JSONObject, heldBack: String? = null) {
         val popUpData = response.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) } ?: return
         if (heldBack != null) {
+            // Held back on purpose (decision 2): a late event, an app in the background.
             SdkLogs.log(
-                LogLevel.WARNING,
+                LogLevel.DEBUG,
                 LogCodes.POPUP_NOT_SHOWN,
                 "The popup of an event's answer is not shown",
                 getUserSettingsValueUseCase.getShopId().takeIf { it.isNotEmpty() },

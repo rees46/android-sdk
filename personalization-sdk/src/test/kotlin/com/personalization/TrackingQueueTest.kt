@@ -249,6 +249,42 @@ class TrackingQueueTest {
         assertEquals(SdkResult.Success(Unit) to true, ends.single())
     }
 
+    @Test
+    fun `on the new core an empty event or story id is refused off the caller's thread, and a virtual slide is not sent`() {
+        val sdk = sdk()
+        val caller = Thread.currentThread()
+        val heard = LinkedBlockingQueue<String>()
+        val listener = object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                heard += "success:$response:${Thread.currentThread() !== caller}"
+            }
+
+            override fun onError(code: Int, msg: String?) {
+                heard += "error:$code:${Thread.currentThread() !== caller}"
+            }
+        }
+
+        sdk.tracking.custom(event = "", listener = listener)
+        sdk.tracking.storyView("", "34", "main_stories", listener)
+        sdk.tracking.storyClick("12", "", "main_stories", listener)
+        sdk.tracking.categoryView("", listener)
+        repeat(4) { assertEquals("error:-1:true", heard.poll(5, TimeUnit.SECONDS)) }
+
+        sdk.tracking.storyView("12_3", "34", "main_stories", listener)
+        sdk.tracking.storyClick("12", "slide-a", "main_stories", listener)
+        repeat(2) { assertEquals("success:{}:true", heard.poll(5, TimeUnit.SECONDS)) }
+
+        // Only the event after them goes.
+        sdk.tracking.storyView("12", "34", "main_stories", listener)
+        val seen = mutableListOf<String>()
+        while (seen.lastOrNull() != "track/stories") {
+            val (path, body) = requests.poll(5, TimeUnit.SECONDS) ?: throw AssertionError("no track/stories request")
+            seen += path
+            if (path == "track/stories") assertEquals(12, body.getInt("story_id"))
+        }
+        assertEquals(listOf("track/stories"), seen.filter { it != "init" })
+    }
+
     /** Calls the `tracking` method of a fixture with its contract arguments. */
     private fun call(sdk: SDK, method: String, args: JSONObject, listener: OnApiCallbackListener) {
         val tracking = sdk.tracking

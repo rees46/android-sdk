@@ -11,13 +11,18 @@ import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.putSource
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
 import com.personalization.stories.StoriesManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 
 /**
@@ -38,16 +43,37 @@ internal class TrackingApiImpl @Inject constructor(
     private val checksArguments: () -> Boolean = { false },
 ) : TrackingApi {
 
-    /** Refuses a blank [value] of [name] on the new core: the listener hears `-1` at once. True when refused. */
+    /**
+     * Refuses a blank [value] of [name] on the new core, before the queue: the listener hears `-1`
+     * (`invalidArgument`) on a background thread, as for the core's other refusals. True when refused.
+     */
     private fun refused(name: String, value: String, listener: OnApiCallbackListener?): Boolean {
         if (value.isNotBlank() || !checksArguments()) return false
         val message = "$name is empty"
         SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A tracking call was refused: $message", null, mapOf("reason" to "empty_$name"))
-        listener?.let { delivery.failure(it, LegacyErrors.NO_ANSWER, message) }
+        listener?.let { refusals.launch { delivery.failure(it, LegacyErrors.NO_ANSWER, message) } }
         return true
     }
 
     private val delivery = LegacyDelivery { level, code, message, throwable -> SdkLogs.log(level, code, message, throwable = throwable) }
+
+    /**
+     * On the new core, a slide `track/stories` does not take — a story id that is not a positive whole
+     * number (a product campaign's virtual slide, `{story_id}_{index}`), or a slide id that is not one in
+     * digits — is not sent and is no error (contract `tracking`): the listener hears an empty success.
+     */
+    private fun virtualSlide(storyId: String, slideId: String, listener: OnApiCallbackListener?): Boolean {
+        if (!checksArguments()) return false
+        val story = storyId.toLongOrNull()?.takeIf { it > 0 && it.toString() == storyId }
+        val slide = slideId.takeIf { id -> id.all { it in '0'..'9' } }?.toLongOrNull()?.takeIf { it > 0 }
+        if (story != null && slide != null) return false
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES, "A story event of a virtual slide is not sent", null, mapOf("reason" to "virtual_slide"))
+        listener?.let { refusals.launch { delivery.success(it, JSONObject()) } }
+        return true
+    }
+
+    /** Where a refusal reaches its listener: off the caller's thread, once. */
+    private val refusals = CoroutineScope(SupervisorJob() + CoreDispatchers.DEFAULT.io)
 
     override fun productView(
         itemId: String,
@@ -150,6 +176,8 @@ internal class TrackingApiImpl @Inject constructor(
         code: String?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("storyId", storyId, listener) || refused("slideId", slideId, listener)) return
+        if (virtualSlide(storyId, slideId, listener)) return
         storiesManager.trackStory(
             event = STORY_VIEW_EVENT,
             code = code,
@@ -165,6 +193,8 @@ internal class TrackingApiImpl @Inject constructor(
         code: String?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("storyId", storyId, listener) || refused("slideId", slideId, listener)) return
+        if (virtualSlide(storyId, slideId, listener)) return
         storiesManager.trackStory(
             event = STORY_CLICK_EVENT,
             code = code,
@@ -199,6 +229,7 @@ internal class TrackingApiImpl @Inject constructor(
         customFields: Map<String, Any?>?,
         listener: OnApiCallbackListener?,
     ) {
+        if (refused("event", event, listener)) return
         trackEventManager.trackEvent(
             event = event,
             time = time,
