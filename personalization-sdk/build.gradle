@@ -89,6 +89,13 @@ android {
         enable = false
     }
 
+    lint {
+        // The Compose runtime's lint check reads Kotlin metadata only up to 2.0 and crashes on the
+        // kotlin-stdlib 2.2 that OkHttp 5 brings; the SDK's one Compose file (StoriesWidget) launches
+        // no coroutine during composition.
+        disable 'CoroutineCreationDuringComposition'
+    }
+
     namespace 'com.personalization'
 }
 
