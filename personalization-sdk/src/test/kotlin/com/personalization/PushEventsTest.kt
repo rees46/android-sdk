@@ -18,7 +18,13 @@ import com.personalization.core.internal.QueueStore
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.TrackingThreads
+import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.domain.model.NotificationConstants
+import com.personalization.features.notification.presentation.helpers.NotificationHelper
+import com.personalization.features.notification.presentation.helpers.NotificationNavigationHelper
+import com.personalization.features.notification.service.mapper.toNotificationData
+import com.personalization.push.PushDismissReceiver
+import com.personalization.push.PushExtras
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.models.dto.notification.NotificationData
@@ -64,6 +70,7 @@ class PushEventsTest {
     private val logged = CopyOnWriteArrayList<SdkLogMessage>()
     private val threads = TrackingThreads()
     private val defaultExecutor = SdkLogs.handlerExecutor
+    private val defaultWork = PushDismissReceiver.work
 
     /** Holds the answer to /init while it is not null. */
     @Volatile
@@ -127,6 +134,7 @@ class PushEventsTest {
         SdkLogs.handlerExecutor = defaultExecutor
         QueueStore.reset()
         PushHub.reset()
+        PushDismissReceiver.work = defaultWork
     }
 
     private fun config(shop: String = SHOP, coreV2: Boolean = true) = Rees46Config(
@@ -163,6 +171,9 @@ class PushEventsTest {
     }
 
     private fun flush(sdk: SDK) = runBlocking { withTimeout(5_000) { sdk.flush() } }
+
+    /** What the server got and the test has not taken yet. */
+    private fun drained(): List<Pair<String, JSONObject>> = buildList { while (true) add(requests.poll() ?: break) }
 
     // The new core.
 
@@ -335,20 +346,29 @@ class PushEventsTest {
     // The legacy core.
 
     @Test
-    fun `the legacy core sends a delivery to track received, as it did, and the new events directly`() {
-        sdk(coreV2 = false)
+    fun `the legacy core sends a delivery to track received and a tap as it did, and reports no shown or dismissed notification`() {
+        val sdk = sdk(coreV2 = false)
+        val handed = CopyOnWriteArrayList<String>()
+        sdk.networkRepository.onRequest = { handed += it }
         @Suppress("DEPRECATION")
         Rees46.handlePush(push(code = "old"), PushEventType.RECEIVED)
-        assertEquals("old", next("track/received", "track/delivered")?.takeIf { it.first == "track/received" }?.second?.getString("code"))
+        assertEquals("old", next("track/received")?.second?.getString("code"))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "new"), PushEvent.DELIVERED))
-        assertEquals("track/received", next("track/received", "track/delivered")?.first)
-        Rees46.handlePush(push(code = "new"), PushEvent.OPENED)
-        assertEquals("track/opened", next("track/opened")?.first)
-        // No once-per-process rule on the legacy core.
-        Rees46.handlePush(push(code = "new"), PushEvent.OPENED)
-        assertEquals("track/opened", next("track/opened")?.first)
-        assertNull(next("track/delivered", timeoutMs = 300))
+        assertEquals("new", next("track/received")?.second?.getString("code"))
+        // Neither event reaches the network: nothing is handed to the funnel for them.
+        assertEquals(SHOP, Rees46.handlePush(push(code = "new"), PushEvent.OPENED))
+        assertEquals(SHOP, Rees46.handlePush(push(code = "new"), PushEvent.CLOSED))
+        assertEquals(SHOP, Rees46.handlePush(push(code = "new"), PushEvent.CLICKED))
+        assertEquals("new", next("track/clicked")?.second?.getString("code"))
+
+        // A notification the SDK draws: no dismissal intent, nothing reported, as in 2.49.0.
+        val data = NotificationData(id = "drawn", title = "T", body = "B", icon = null, type = "bulk", actions = null, actionUrls = null, image = null, event = null)
+        sdk.notificationHelper.createNotification(context, data, images = null)
+        val notification = shadowOf(context.getSystemService(android.app.NotificationManager::class.java)).allNotifications.single()
+        assertNull(notification.deleteIntent)
+
+        assertEquals(listOf("track/received", "track/received", "track/clicked"), handed.filter { it.startsWith("track/") })
     }
 
     // The token.
@@ -388,23 +408,103 @@ class PushEventsTest {
 
     // A notification the SDK draws.
 
-    @Test
-    fun `a notification the SDK draws is reported as opened, and its dismissal as closed`() {
-        val sdk = sdk()
-        val data = NotificationData(id = "drawn", title = "T", body = "B", icon = null, type = "bulk", actions = null, actionUrls = null, image = null, event = null)
-        sdk.notificationHelper.createNotification(context, data, images = null)
-        flush(sdk)
-        val opened = next("track/opened")?.second ?: throw AssertionError("no track/opened")
-        assertEquals("drawn", opened.getString("code"))
+    /** A push of [shop] with every field a callback reads. */
+    private fun fullPush(code: String, shop: String) = mapOf(
+        "id" to code,
+        "type" to "bulk",
+        "shop_id" to shop,
+        "title" to "Sale",
+        "body" to "Today only",
+        "image" to "https://example.com/i.png",
+        "actions" to """[{"action":"buy","title":"Buy"}]""",
+        "action_urls" to """["https://example.com/buy"]""",
+        "event" to """{"type":"product","uri":"37","payload":{"k":"v"}}""",
+        "custom" to "kept",
+    )
 
+    private fun assertWhole(payload: PushPayload?, shop: String) {
+        if (payload == null) throw AssertionError("no payload")
+        assertEquals(shop, payload.shopId)
+        assertEquals("Sale", payload.title)
+        assertEquals("Today only", payload.body)
+        assertEquals(com.personalization.core.PushTargetType.PRODUCT, payload.target?.type)
+        assertEquals("37", payload.target?.uri)
+        assertEquals("v", payload.target?.payload?.get("k"))
+        assertEquals("buy", payload.actions.single().id)
+        assertEquals("https://example.com/buy", payload.actions.single().url)
+        assertEquals("kept", payload.data["custom"])
+    }
+
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `a notification the SDK draws is reported as opened and its dismissal as closed, for the push's own shop, whole`() {
+        val shop = sdk(SHOP)
+        val other = sdk(OTHER)
+        val opened = CopyOnWriteArrayList<PushPayload>()
+        val closed = CopyOnWriteArrayList<PushPayload>()
+        val bridge = CopyOnWriteArrayList<Pair<PushEvent, PushPayload>>()
+        Rees46.setPushCallbacks(PushCallbacks(onOpened = { opened += it }, onClosed = { closed += it }))
+        Rees46.onPushEvent { event, payload -> bridge += event to payload }
+        val push = fullPush("drawn", OTHER)
+        Rees46.handlePush(push, PushEvent.DELIVERED)
+
+        // Drawn by the helper of another shop's instance: the push names its own.
+        shop.notificationHelper.createNotification(context, push.toNotificationData(), images = null)
+        flush(other)
+        val shown = next("track/opened")?.second ?: throw AssertionError("no track/opened")
+        assertEquals("drawn", shown.getString("code"))
+        assertEquals(OTHER, shown.getString("shop_id"))
+        assertWhole(opened.single(), OTHER)
+        assertWhole(bridge.single { it.first == PushEvent.OPENED }.second, OTHER)
+
+        // The dismissal is handled off the receiver's thread, and the broadcast ends once the event is written.
+        val work = LinkedBlockingQueue<Runnable>()
+        PushDismissReceiver.work = Executor { work += it }
+        val notification = shadowOf(context.getSystemService(android.app.NotificationManager::class.java)).allNotifications.single()
+        PushDismissReceiver().onReceive(context, shadowOf(notification.deleteIntent).savedIntent)
+        assertTrue("nothing handled on the receiver's thread", closed.isEmpty())
+        work.single().run()
+        flush(other)
+        val dismissed = next("track/closed")?.second ?: throw AssertionError("no track/closed")
+        assertEquals(OTHER, dismissed.getString("shop_id"))
+        assertWhole(closed.single(), OTHER)
+        assertWhole(bridge.single { it.first == PushEvent.CLOSED }.second, OTHER)
+    }
+
+    @Test
+    fun `a carousel drawn again in a new process still reports its dismissal for the push's shop, whole`() {
+        sdk(SHOP)
+        val other = sdk(OTHER)
+        val closed = CopyOnWriteArrayList<PushPayload>()
+        Rees46.setPushCallbacks(PushCallbacks(onClosed = { closed += it }))
+        val push = fullPush("carousel", OTHER)
+        val data = push.toNotificationData()
+        // The carousel's button carries the push.
+        val button = shadowOf(
+            NotificationNavigationHelper.createNavigationPendingIntent(context, data, 1, NotificationConstants.ACTION_NEXT_IMAGE, push)
+        ).savedIntent
+
+        // A new process: nothing of the push in memory, and the helper the service makes belongs to no instance.
+        PushHub.forgetPushes()
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
-        val notification = shadowOf(manager).allNotifications.single()
-        val dismiss = shadowOf(notification.deleteIntent).savedIntent
-        com.personalization.push.PushDismissReceiver().onReceive(context, dismiss)
-        flush(sdk)
-        val closed = next("track/closed")?.second ?: throw AssertionError("no track/closed")
-        assertEquals("drawn", closed.getString("code"))
-        assertEquals(SHOP, closed.getString("shop_id"))
+        NotificationHelper(manager).redraw(context, button.toNotificationData(), images = null, currentImageIndex = 1, hasError = false, push = PushExtras.read(button))
+        PushDismissReceiver.work = Executor { it.run() }
+        PushDismissReceiver().onReceive(context, shadowOf(shadowOf(manager).allNotifications.single().deleteIntent).savedIntent)
+        flush(other)
+
+        val dismissed = next("track/closed")?.second ?: throw AssertionError("no track/closed")
+        assertEquals("carousel", dismissed.getString("code"))
+        assertEquals(OTHER, dismissed.getString("shop_id"))
+        assertWhole(closed.single(), OTHER)
+        // Drawn again, not shown again: flushed, the queue sent everything it had.
+        assertFalse(drained().any { it.first == "track/opened" })
+    }
+
+    @Test
+    fun `a push larger than an intent carries keeps what routes it and what a callback shows first`() {
+        val big = fullPush("big", OTHER) + ("extra" to "x".repeat(PushExtras.MAX_CHARS))
+        assertEquals(setOf("id", "type", "shop_id", "title", "body"), PushExtras.fit(big).keys)
+        assertEquals(fullPush("small", OTHER), PushExtras.fit(fullPush("small", OTHER)))
     }
 
     // The bridges.

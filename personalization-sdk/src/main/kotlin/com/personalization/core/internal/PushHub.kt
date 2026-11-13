@@ -54,6 +54,14 @@ internal object PushHub {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > SEEN_LIMIT
     }
 
+    /**
+     * The pushes handed to a shop in this process, as they came and with the shop they went to, by
+     * `type|code`: a notification the SDK draws reports them whole ([received]). Bounded like [seen].
+     */
+    private val pushes = object : LinkedHashMap<String, Map<String, String>>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<String, String>>?): Boolean = size > PUSHES_LIMIT
+    }
+
     /** The last token of each provider the facade's `onToken` heard of. */
     private val facadeReported = ConcurrentHashMap<PushProvider, String>()
 
@@ -64,6 +72,16 @@ internal object PushHub {
     fun firstTime(shopId: String, event: PushEvent, code: String): Boolean = synchronized(seen) {
         seen.put("$shopId|${event.name}|$code", true) == null
     }
+
+    /** Keeps [payload], handed to its shop ([PushPayload.shopId]), for [received]. */
+    fun remember(payload: PushPayload) {
+        val shopId = payload.shopId ?: return
+        val push = if (payload.data[PushPayload.SHOP_ID].isNullOrEmpty()) payload.data + (PushPayload.SHOP_ID to shopId) else payload.data
+        synchronized(pushes) { pushes["${payload.type}|${payload.code}"] = push }
+    }
+
+    /** The push of mailing [type] and message [code] as it came in this process, with its `shop_id`; null when it did not. */
+    fun received(code: String, type: String): Map<String, String>? = synchronized(pushes) { pushes["$type|$code"] }
 
     /**
      * Tells the callbacks about [event]: the shop's own one for it ([own]) when set, otherwise the
@@ -137,10 +155,15 @@ internal object PushHub {
         eventSinks.clear()
         tokenSinks.clear()
         synchronized(seen) { seen.clear() }
+        forgetPushes()
         facadeReported.clear()
         sinkReported.clear()
         main = MainThread
     }
 
+    /** Test-only: forgets the pushes that came, as a new process would. */
+    internal fun forgetPushes() = synchronized(pushes) { pushes.clear() }
+
     private const val SEEN_LIMIT = 1_000
+    private const val PUSHES_LIMIT = 100
 }

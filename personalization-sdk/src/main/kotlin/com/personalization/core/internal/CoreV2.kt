@@ -191,6 +191,11 @@ internal class CoreV2(
         queue?.release(cancel = cancelRequests)
     }
 
+    /** Returns once the events accepted before the call are written to disk ([EventQueue.awaitWrites]). */
+    suspend fun awaitWrites() {
+        queue?.awaitWrites()
+    }
+
     /** Sends the queue now ([EventQueue.flush]). */
     suspend fun flush() {
         if (released) throw SdkException(SdkError.NotInitialized)

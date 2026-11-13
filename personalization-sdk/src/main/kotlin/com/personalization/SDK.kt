@@ -99,6 +99,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
@@ -1807,26 +1808,25 @@ open class SDK {
     private val isCoreV2: Boolean get() = core?.isV2 == true
 
     /**
-     * A push event of the message [code] of mailing [type] for [Rees46.handlePush]; false when it was a
-     * repeat. The new core queues it ([queuePushEvent]). The legacy core sends it as it always has: a tap
-     * through [notificationClicked], a delivery to `track/received`, and the shown and dismissed
-     * notifications, which it never reported before, to `track/opened` and `track/closed`.
+     * A shown, tapped or dismissed push of the message [code] of mailing [type] for [Rees46.handlePush];
+     * false when it was a repeat. The new core queues it ([queuePushEvent]). The legacy core reports neither
+     * a shown nor a dismissed notification, as before; [Rees46.handlePush] takes its taps through
+     * [notificationClicked] and its deliveries through [onPushReceived].
      */
     internal fun pushEvent(event: PushEvent, code: String, type: String): Boolean {
         if (isCoreV2) return queuePushEvent(event, code, type)
-        val fields = mapOf(ID_FIELD to code, TYPE_FIELD to type)
-        when (event) {
-            PushEvent.DELIVERED -> trackReceivedLegacy(fields)
-            PushEvent.CLICKED -> notificationClicked(Bundle().apply {
-                putString(NotificationConstants.NOTIFICATION_TYPE, type)
-                putString(NotificationConstants.NOTIFICATION_ID, code)
-            })
-            PushEvent.OPENED, PushEvent.CLOSED -> {
-                if (!isSdkInitialized) return false
-                sendNetworkMethodUseCase.postAsync(pathOf(event), JSONObject().put(TYPE_FIELD, type).put(CODE_FIELD, code))
-            }
-        }
+        log(LogLevel.DEBUG, LogCodes.PUSH, "The legacy core does not report this push event", mapOf("event" to event.name.lowercase(Locale.ROOT)))
         return true
+    }
+
+    /**
+     * Returns once the events this instance accepted before the call are written to the disk of its
+     * queue, or after [timeoutMs]; at once on the legacy core, which has no queue. Blocks: not for the
+     * main thread.
+     */
+    internal fun awaitEventsWritten(timeoutMs: Long) {
+        val core = core as? CoreV2 ?: return
+        runBlocking { withTimeoutOrNull(timeoutMs) { core.awaitWrites() } }
     }
 
     /**
@@ -2032,11 +2032,13 @@ open class SDK {
                 return
             }
             SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to "received"))
+            val payload = PushPayload.parse(data)?.withShop(shopId)
+            // Kept before it is shown: a notification the SDK draws for it reports the whole push.
+            payload?.let(PushHub::remember)
             // Show via the process-global listener, then track the delivery on the instance.
             SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
             val fresh = target.receiveMessage(data = data)
-            val payload = PushPayload.parse(data)
-            if (fresh && payload != null) PushHub.event(PushEvent.DELIVERED, payload.withShop(shopId), target.pushCallbacks)
+            if (fresh && payload != null) PushHub.event(PushEvent.DELIVERED, payload, target.pushCallbacks)
         }
 
         /**

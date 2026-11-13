@@ -48,6 +48,13 @@ class NetworkRepositoryImpl @Inject constructor(
     private val queueLock = Any()
     private val queue = ArrayList<Thread>()
 
+    /**
+     * Hears the path of each request handed to the funnel, on the caller's thread, before anything else
+     * happens to it; for tests, which then know what went without waiting for it.
+     */
+    @Volatile
+    internal var onRequest: ((path: String) -> Unit)? = null
+
     /** How many requests wait for a `did` on the legacy core; for tests. */
     internal val waitingForDid: Int
         get() = synchronized(queueLock) { queue.size }
@@ -83,6 +90,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendMethod(
             networkMethod = NetworkMethod.POST(method),
             params = params,
@@ -95,6 +103,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendAsync {
             sendMethod(
                 networkMethod = NetworkMethod.POST(method),
@@ -117,6 +126,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendMethod(
             networkMethod = NetworkMethod.GET(method),
             params = params,
@@ -129,6 +139,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendAsync {
             sendMethod(
                 networkMethod = NetworkMethod.GET(method),

@@ -33,6 +33,9 @@ internal object CoreSelection {
         return decided
     }
 
+    /** The process's choice, without making it: true for the new core, null before the first call. */
+    fun decided(): Boolean? = synchronized(this) { coreV2 }
+
     /** Test-only: the next call decides again. */
     internal fun reset() = synchronized(this) {
         coreV2 = null

@@ -149,6 +149,9 @@ internal class EventQueue(
 
         class Clear(val reason: String, val error: LegacyError, val then: () -> Boolean, val done: CompletableDeferred<Boolean>?) : Command
         class Flush(val done: CompletableDeferred<Unit>) : Command
+
+        /** Done once every command sent before it was handled. */
+        class Barrier(val done: CompletableDeferred<Unit>) : Command
     }
 
     private sealed interface Outcome {
@@ -271,6 +274,16 @@ internal class EventQueue(
     }
 
     /**
+     * Returns once every event accepted before the call is written to disk, or refused: the writer handled
+     * what came before. At once without a writer (released).
+     */
+    suspend fun awaitWrites() {
+        val done = CompletableDeferred<Unit>()
+        if (writer?.isActive != true || commands.trySend(Command.Barrier(done)).isFailure) return
+        done.await()
+    }
+
+    /**
      * Empties the queue for [reason] and runs [then] while no event can be accepted: an event accepted
      * before this call goes, one accepted after it stays. The listeners waiting hear [error]. Returns
      * [then]'s result. Without a writer to keep the order (released) it is done here.
@@ -353,6 +366,7 @@ internal class EventQueue(
                 }
             )
             is Command.Flush -> command.done.completeExceptionally(SdkException(SdkError.NotInitialized))
+            is Command.Barrier -> command.done.complete(Unit)
         }
     }
 
@@ -377,6 +391,7 @@ internal class EventQueue(
                     kick(urgent = true)
                 }
             }
+            is Command.Barrier -> command.done.complete(Unit)
         }
     }
 

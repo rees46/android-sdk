@@ -255,6 +255,9 @@ object Rees46 {
         }
         val (resolution, shopId) = resolvePushTarget(data[PreferencesPartition.SHOP_ID_FIELD]) ?: return null
         logHandedOver(shopId, event.name)
+        // Kept before it is shown: a notification the SDK draws for it reports the whole push for its shop.
+        val payload = parsed.withShop(shopId)
+        PushHub.remember(payload)
         // Shown first, as before: the process-global listener needs no instance.
         if (event == PushEvent.DELIVERED) SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
         val target = targetInstance(resolution, shopId)
@@ -262,11 +265,16 @@ object Rees46 {
             logDropped(shopId, LogReasons.UNKNOWN_SHOP)
             return null
         }
-        val fresh = when (event) {
-            PushEvent.DELIVERED -> target.onPushReceived(data)
+        val fresh = when {
+            event == PushEvent.DELIVERED -> target.onPushReceived(data)
+            // The legacy core's tap, as it always went: from the extras of a tap's intent.
+            event == PushEvent.CLICKED && target.core?.isV2 != true -> {
+                target.notificationClicked(tapExtras(parsed.code, parsed.type))
+                true
+            }
             else -> target.pushEvent(event, parsed.code, parsed.type)
         }
-        if (fresh) PushHub.event(event, parsed.withShop(shopId), target.pushCallbacks)
+        if (fresh) PushHub.event(event, payload, target.pushCallbacks)
         return shopId
     }
 
@@ -298,6 +306,9 @@ object Rees46 {
     internal fun receivePush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
         logHandedOver(shopId, PushEventType.RECEIVED.name)
+        val parsed = PushPayload.parse(payload)?.withShop(shopId)
+        // Kept before it is shown: a notification the SDK draws for it reports the whole push for its shop.
+        parsed?.let(PushHub::remember)
         // Show first — the process-global listener needs no instance, so a pending shop's push still
         // appears. Then track the delivery on the shop's own network (light bring-up if it isn't live);
         // a tracking/init failure must never undo the shown notification.
@@ -305,8 +316,7 @@ object Rees46 {
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
             val fresh = target.onPushReceived(payload)
-            val parsed = PushPayload.parse(payload)
-            if (fresh && parsed != null) PushHub.event(PushEvent.DELIVERED, parsed.withShop(shopId), target.pushCallbacks)
+            if (fresh && parsed != null) PushHub.event(PushEvent.DELIVERED, parsed, target.pushCallbacks)
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
@@ -319,14 +329,15 @@ object Rees46 {
         logHandedOver(shopId, PushEventType.CLICKED.name)
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
-            val parsed = PushPayload.parse(payload)
+            val parsed = PushPayload.parse(payload)?.withShop(shopId)
+            parsed?.let(PushHub::remember)
             val fresh = if (parsed != null && target.core?.isV2 == true) {
                 target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type)
             } else {
                 target.notificationClicked(payload.toBundle())
                 true
             }
-            if (fresh && parsed != null) PushHub.event(PushEvent.CLICKED, parsed.withShop(shopId), target.pushCallbacks)
+            if (fresh && parsed != null) PushHub.event(PushEvent.CLICKED, parsed, target.pushCallbacks)
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
     }
 
@@ -436,6 +447,12 @@ object Rees46 {
      */
     fun setLogHandler(handler: SdkLogHandler?) {
         SdkLogs.handler = handler
+    }
+
+    /** The extras of a tap's intent, as the SDK's notification helpers name them: what the legacy core reads. */
+    private fun tapExtras(code: String, type: String): Bundle = Bundle().apply {
+        putString(PushPayload.CLICK_TYPE, type)
+        putString(PushPayload.CLICK_ID, code)
     }
 
     private fun Map<String, String>.toBundle(): Bundle =

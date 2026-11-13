@@ -16,6 +16,7 @@ import com.personalization.sdk.data.models.dto.notification.NotificationData
 import com.personalization.LogLevel
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
+import com.personalization.push.PushExtras
 import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,9 @@ class NotificationService : Service() {
             data != null -> updateNotification(
                 data,
                 currentIndex = currentIndex,
-                startId = startId
+                startId = startId,
+                // The push behind it, with its shop, on the new core: the dismissal is still reported.
+                push = PushExtras.read(intent),
             )
 
             else -> onStopService(startId)
@@ -96,7 +99,8 @@ class NotificationService : Service() {
     private fun updateNotification(
         data: NotificationData,
         currentIndex: Int,
-        startId: Int
+        startId: Int,
+        push: Map<String, String>?,
     ) {
         serviceScope.launch {
             try {
@@ -119,7 +123,8 @@ class NotificationService : Service() {
                     ),
                     images = loadedImages,
                     currentImageIndex = currentIndex,
-                    hasError = hasError
+                    hasError = hasError,
+                    push = push,
                 )
             } catch (ioException: IOException) {
                 showToast(

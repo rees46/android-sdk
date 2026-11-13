@@ -8,25 +8,47 @@ import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.personalization.Rees46
 import com.personalization.core.PushEvent
+import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.PushHub
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTION
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTIONS
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ACTION_URLS
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_CHANNEL
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_EVENT
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_ICON
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_PAYLOAD
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_URI
+import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
+import com.personalization.features.notification.event.model.NotificationEvent
 import com.personalization.push.PushDismissReceiver
 import com.personalization.resources.NotificationResources
 import com.personalization.sdk.data.models.dto.notification.NotificationData
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 import javax.inject.Inject
 
 class NotificationHelper @Inject constructor(
     private val notificationManager: NotificationManager
 ) {
 
-    /** The shop of the instance this helper belongs to: the notifications it draws are that shop's. */
+    /** The shop of the instance this helper belongs to: the shop of a push the SDK did not see come in. */
     @Volatile
     internal var shopId: String? = null
 
     /**
-     * Draws [data] as a notification. When it is a push of the SDK — it has an `id` and a `type` — the SDK
-     * reports it as shown (`Rees46.handlePush(push, PushEvent.OPENED)`: `track/opened` and the `onOpened`
-     * callback), and a dismissal without a tap as closed (`track/closed`, `onClosed`), for the shop of the
-     * instance whose helper this is.
+     * Draws [data] as a notification.
+     *
+     * On the new core ([com.personalization.Rees46Config.coreV2]), a push of the SDK — one with an `id` and
+     * a `type` — is reported as shown (`Rees46.handlePush(push, PushEvent.OPENED)`: `track/opened` and the
+     * `onOpened` callback) and its dismissal without a tap as closed (`track/closed`, `onClosed`), for the
+     * shop the push names in its `shop_id`. The callbacks get the whole push as the SDK received it. A push
+     * the SDK did not see come in is rebuilt from [data], for the shop of this helper's instance.
+     *
+     * The legacy core reports neither and sets no dismissal intent, as before.
      */
     fun createNotification(
         context: Context,
@@ -34,16 +56,21 @@ class NotificationHelper @Inject constructor(
         images: List<Bitmap>?,
         currentImageIndex: Int = 0,
         hasError: Boolean = false
-    ) = show(context, data, images, currentImageIndex, hasError, shopId ?: shopOf(data.id), reportShown = true)
+    ) = show(context, data, images, currentImageIndex, hasError, push = if (CoreSelection.decided() == true) pushOf(data) else null, reportShown = true)
 
-    /** The same push drawn again, with another picture of its carousel: not shown once more. */
+    /**
+     * The same push drawn again, with another picture of its carousel: not reported as shown once more.
+     * [push] is what the carousel's button carried ([com.personalization.push.PushExtras]): the dismissal of the notification drawn
+     * again is still reported for the push's shop, in a process the button started. Null on the legacy core.
+     */
     internal fun redraw(
         context: Context,
         data: NotificationData,
         images: List<Bitmap>?,
         currentImageIndex: Int,
         hasError: Boolean,
-    ) = show(context, data, images, currentImageIndex, hasError, shopOf(data.id), reportShown = false)
+        push: Map<String, String>?,
+    ) = show(context, data, images, currentImageIndex, hasError, push, reportShown = false)
 
     private fun show(
         context: Context,
@@ -51,7 +78,7 @@ class NotificationHelper @Inject constructor(
         images: List<Bitmap>?,
         currentImageIndex: Int,
         hasError: Boolean,
-        shopId: String?,
+        push: Map<String, String>?,
         reportShown: Boolean,
     ) {
         val view = RemoteViews(
@@ -74,7 +101,8 @@ class NotificationHelper @Inject constructor(
             data = data,
             currentIndex = currentImageIndex,
             imageCount = images?.size ?: 0,
-            hasError = hasError
+            hasError = hasError,
+            push = push,
         )
 
         val notificationBuilder = NotificationCompat.Builder(context, NOTIFICATION_CHANNEL)
@@ -91,26 +119,54 @@ class NotificationHelper @Inject constructor(
             .setDefaults(NotificationCompat.DEFAULT_ALL)
 
         val notificationId = (data.title + data.body).hashCode()
-        val push = pushOf(data, shopId)
         push?.let { notificationBuilder.setDeleteIntent(PushDismissReceiver.intent(context, notificationId, it)) }
 
         notificationManager.notify(
             /* id = */ notificationId,
             /* notification = */ notificationBuilder.build()
         )
-        if (push == null) return
-        if (shopId != null) remember(push.getValue(FIELD_ID), shopId)
-        if (reportShown) Rees46.handlePush(push, PushEvent.OPENED)
+        if (reportShown && push != null) Rees46.handlePush(push, PushEvent.OPENED)
     }
 
-    /** What reports the push of [data]: its code, type and shop; null when it is not a push of the SDK. */
-    private fun pushOf(data: NotificationData, shopId: String?): Map<String, String>? {
+    /**
+     * The push behind [data], for its events: as the SDK received it, with its own `shop_id` and every
+     * field ([PushHub.received]); or, for a push the SDK did not see come in, rebuilt from [data] for the
+     * shop of this helper's instance. Null when it is not a push of the SDK.
+     */
+    private fun pushOf(data: NotificationData): Map<String, String>? {
         val code = data.id?.takeIf { it.isNotBlank() } ?: return null
         val type = data.type?.takeIf { it.isNotBlank() } ?: return null
+        PushHub.received(code, type)?.let { return it }
         return buildMap {
             put(FIELD_ID, code)
             put(FIELD_TYPE, type)
             shopId?.let { put(FIELD_SHOP_ID, it) }
+            data.title?.let { put(NOTIFICATION_TITLE, it) }
+            data.body?.let { put(NOTIFICATION_BODY, it) }
+            data.icon?.takeIf { it.isNotEmpty() }?.let { put(NOTIFICATION_ICON, it) }
+            data.image?.takeIf { it.isNotEmpty() }?.let { put(NOTIFICATION_IMAGE, it) }
+            data.actions?.takeIf { it.isNotEmpty() }?.let { actions ->
+                val list = JSONArray()
+                actions.forEach { list.put(JSONObject().put(NOTIFICATION_ACTION, it.action).put(NOTIFICATION_TITLE, it.title)) }
+                put(NOTIFICATION_ACTIONS, list.toString())
+            }
+            data.actionUrls?.takeIf { it.isNotEmpty() }?.let { urls -> put(NOTIFICATION_ACTION_URLS, JSONArray(urls).toString()) }
+            data.event?.let(::eventOf)?.let { put(NOTIFICATION_EVENT, it) }
+        }
+    }
+
+    /** The `event` of a push as JSON text; null for the empty event the mapper gives a push without one. */
+    private fun eventOf(event: NotificationEvent): String? {
+        val payload = event.payload.orEmpty()
+        if (event.type.isNullOrEmpty() && event.uri.isNullOrEmpty() && payload.isEmpty()) return null
+        return try {
+            JSONObject()
+                .put(TYPE_PARAM, event.type.orEmpty())
+                .put(NOTIFICATION_URI, event.uri.orEmpty())
+                .apply { if (payload.isNotEmpty()) put(NOTIFICATION_PAYLOAD, JSONObject(payload)) }
+                .toString()
+        } catch (e: JSONException) {
+            null
         }
     }
 
@@ -137,19 +193,6 @@ class NotificationHelper @Inject constructor(
         const val FIELD_ID = "id"
         const val FIELD_TYPE = "type"
         const val FIELD_SHOP_ID = "shop_id"
-        private const val SHOPS_LIMIT = 100
-
-        /**
-         * The shop of each push drawn in this process, by its code: the carousel's service draws a push
-         * again without an instance, and its dismissal still belongs to the shop.
-         */
-        private val shops = object : LinkedHashMap<String, String>() {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > SHOPS_LIMIT
-        }
-
-        fun remember(code: String, shopId: String) = synchronized(shops) { shops[code] = shopId }
-
-        fun shopOf(code: String?): String? = code?.let { synchronized(shops) { shops[it] } }
 
         // De-facto standard meta-data hosts use to declare a dedicated push notification icon.
         const val META_DATA_NOTIFICATION_ICON =
