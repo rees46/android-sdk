@@ -499,6 +499,40 @@ class PushEventsTest {
         assertEquals(listOf("tok"), heardTokens)
     }
 
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `setPushToken after release answers notInitialized and keeps nothing`() {
+        val sdk = sdk()
+        sdk.release()
+        val heard = LinkedBlockingQueue<Any>()
+
+        sdk.setPushToken("after", PushProvider.FCM, object : com.personalization.api.OnApiCallbackListener() {
+            override fun onError(code: Int, msg: String?) {
+                heard += code
+                heard += com.personalization.core.BridgeErrors.currentError() ?: "none"
+            }
+        })
+
+        assertEquals(-1, heard.poll(5, TimeUnit.SECONDS))
+        assertEquals(com.personalization.core.SdkError.NotInitialized, heard.poll(5, TimeUnit.SECONDS))
+        assertNull(DeviceStorage(context).pushToken("fcm"))
+    }
+
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `a bridge that registers after the token came hears it once on registration`() {
+        sdk()
+        SDK.onPushTokenReceived("early", PushProvider.FCM)
+        val tokens = CopyOnWriteArrayList<String>()
+
+        Rees46.onPushToken { tokens += it.token }
+        assertEquals(listOf("early"), tokens)
+
+        SDK.onPushTokenReceived("early", PushProvider.FCM)
+        SDK.onPushTokenReceived("next", PushProvider.FCM)
+        assertEquals(listOf("early", "next"), tokens)
+    }
+
     // A notification the SDK draws.
 
     /** A push of [shop] with every field a callback reads. */

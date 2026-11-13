@@ -65,7 +65,7 @@ internal object PushHub {
     /** The last token of each provider the facade's `onToken` heard of. */
     private val facadeReported = ConcurrentHashMap<PushProvider, String>()
 
-    /** The last token of each provider the bridges heard of. */
+    /** The last token of each provider the SDK got in this process: what the bridges heard, or hear on joining. */
     private val sinkReported = ConcurrentHashMap<PushProvider, String>()
 
     /** True the first time [event] of the message [code] comes for [shopId] in this process. */
@@ -107,7 +107,10 @@ internal object PushHub {
         val ownNew = ownListener != null && ownReported.put(token.provider, token.token) != token.token
         val facadeListener = if (ownListener == null) callbacks?.onToken else null
         val facade = facadeListener?.takeIf { facadeReported.put(token.provider, token.token) != token.token }
-        val sinks = if (sinkReported.put(token.provider, token.token) != token.token) tokenSinks.toList() else emptyList()
+        // With the sinks' lock: a sink that joins meanwhile hears this token once, here or on joining.
+        val sinks = synchronized(tokenSinks) {
+            if (sinkReported.put(token.provider, token.token) != token.token) tokenSinks.toList() else emptyList()
+        }
         if (!ownNew && facade == null && sinks.isEmpty()) return
         run(shopId) {
             if (ownNew) ownListener?.let { call(shopId, "A push token callback threw") { it.onToken(token) } }
@@ -121,8 +124,18 @@ internal object PushHub {
         return Cancellable { eventSinks -= sink }
     }
 
+    /**
+     * Adds a bridge's token listener. A token the SDK got before it joined comes to it at once, once per
+     * provider, on the main thread: a bridge that registers after the token came still hears it.
+     */
     fun addTokenSink(sink: PushTokenListener): Cancellable {
-        tokenSinks += sink
+        val current = synchronized(tokenSinks) {
+            tokenSinks += sink
+            sinkReported.map { (provider, token) -> PushToken(token, provider) }
+        }
+        if (current.isNotEmpty()) {
+            run(null) { current.forEach { token -> call(null, "A bridge's token listener threw") { sink.onToken(token) } } }
+        }
         return Cancellable { tokenSinks -= sink }
     }
 

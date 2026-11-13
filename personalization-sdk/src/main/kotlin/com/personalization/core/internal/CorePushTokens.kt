@@ -9,11 +9,16 @@ import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The push token on the new core (`core/push.md`), for one shop.
@@ -25,10 +30,14 @@ import org.json.JSONObject
  *   `push_provider` `firebase` or `huawei`) and keeps, in its partition, which token it sent last and
  *   when. A token the shop has not sent goes at once; the same token at most once a week.
  * - The week is taken before the request: two sends of one token at once make one request, the second
- *   hearing the first's answer. A failed send gives the week back.
+ *   hearing the first's answer. The claim is kept in the partition with its time, and the token and the
+ *   date of the send only once the server took it. A failed send gives the claim back, and a claim older
+ *   than [CLAIM_TTL_MS] without a send — its process died — is free.
  * - A token goes only once the instance is ready ([ready]) and never without a `did`. After each start's
  *   `/init` ([sendStored]) the shop sends the device's token if it is due.
  * - A push-only instance ([sends] false) sends no token.
+ * - After [release] nothing is sent or kept: [set] answers `notInitialized`, and so does one that was
+ *   waiting for the instance to be ready.
  */
 internal class CorePushTokens(
     private val shopId: String,
@@ -46,20 +55,32 @@ internal class CorePushTokens(
     private val clock: Clock = Clock.SYSTEM,
 ) {
 
-    private val scope = CoroutineScope(SupervisorJob() + dispatchers.io + CoroutineExceptionHandler { _, throwable ->
+    private val handler = CoroutineExceptionHandler { _, throwable ->
         log(LogLevel.ERROR, LogCodes.PUSH_TOKEN_FAILED, "The push token could not be sent", throwable = throwable)
-    })
+    }
+
+    /** The sends waiting for the instance; [release] cancels them. */
+    private val scope = CoroutineScope(SupervisorJob() + dispatchers.io + handler)
+
+    /** Answers that come from no running send: a refusal, a send [release] cut off. Never cancelled. */
+    private val endings = CoroutineScope(SupervisorJob() + dispatchers.io + handler)
 
     private val delivery = LegacyDelivery { level, code, message, throwable -> log(level, code, message, throwable = throwable) }
 
     private val lock = Any()
 
+    /** Guarded by [lock]: after [release] nothing is kept or sent. */
+    private var released = false
+
     /** The sends on their way, by `provider:token`, with the listeners waiting for their answer. */
     private val flights = HashMap<String, Flight>()
 
-    private class Flight(val claimedAt: Long, val previousToken: String?, val previousDate: Long) {
+    private class Flight(val claimedAt: Long) {
         val waiting = ArrayList<OnApiCallbackListener>()
     }
+
+    /** Sends waiting for the instance and requests on their way; for [awaitIdle]. */
+    private val busy = MutableStateFlow(0)
 
     /** The device's token of [provider], or the one this shop sent last. */
     fun token(provider: PushProvider): String? = device.pushToken(provider.id) ?: sentToken(provider)
@@ -67,29 +88,46 @@ internal class CorePushTokens(
     /** A token FCM or HMS gave: kept and sent, when the shop takes them, once the instance is ready. */
     fun received(token: String, provider: PushProvider) {
         if (token.isEmpty() || !autoSend) return
-        device.savePushToken(provider.id, token)
-        scope.launch { if (ready() == null) sendIfDue(token, provider, null) }
+        synchronized(lock) {
+            if (released) return
+            device.savePushToken(provider.id, token)
+        }
+        launch { if (ready() == null) sendIfDue(token, provider, null) }
     }
 
     /**
      * A token the app passes (`setPushToken`): kept for the device, then sent by the same rules once the
      * instance is ready. [listener] hears the server's answer, success without a request when the token
-     * went this week, or the error.
+     * went this week, or the error — `notInitialized` after [release], even while it waited for the
+     * instance; then nothing is kept.
      */
     fun set(token: String, provider: PushProvider, listener: OnApiCallbackListener?) {
         if (token.isBlank()) {
             log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "setPushToken: the token is empty", mapOf("reason" to "empty_token"))
-            listener?.let { delivery.failure(it, LegacyErrors.of(SdkError.InvalidArgument("The token is empty"))) }
+            refuse(listener, SdkError.InvalidArgument("The token is empty"))
             return
         }
-        device.savePushToken(provider.id, token)
-        scope.launch {
+        val kept = synchronized(lock) {
+            if (!released) device.savePushToken(provider.id, token)
+            !released
+        }
+        if (!kept) {
+            refuse(listener, SdkError.NotInitialized)
+            return
+        }
+        // Who answers [listener]: the send, or the release that cut it off before it went.
+        val handed = AtomicBoolean(false)
+        val job = launch {
             val error = ready()
+            if (!handed.compareAndSet(false, true)) return@launch
             if (error != null) {
                 listener?.let { delivery.failure(it, LegacyErrors.of(error)) }
                 return@launch
             }
             sendIfDue(token, provider, listener)
+        }
+        job.invokeOnCompletion { cause ->
+            if (cause != null && handed.compareAndSet(false, true)) refuse(listener, SdkError.NotInitialized)
         }
     }
 
@@ -97,7 +135,7 @@ internal class CorePushTokens(
     fun sendStored() {
         PushProvider.entries.forEach { provider ->
             val token = device.pushToken(provider.id) ?: return@forEach
-            scope.launch { sendIfDue(token, provider, null) }
+            launch { sendIfDue(token, provider, null) }
         }
     }
 
@@ -122,16 +160,18 @@ internal class CorePushTokens(
                 listener?.let { going.waiting += it }
                 return
             }
-            val sentToken = sentToken(provider)
-            val sentAt = sentDate(provider)
-            if (sentToken == token && now - sentAt in 0 until WEEK_MS) {
+            val sentThisWeek = sentToken(provider) == token && now - sentDate(provider) in 0 until WEEK_MS
+            // Taken by another process of the app moments ago; one whose process died is free.
+            val claimed = claimedToken(provider) == token && now - claimedAt(provider) in 0 until CLAIM_TTL_MS
+            if (sentThisWeek || claimed) {
                 null
             } else {
                 // The week is taken before the request: a second send meanwhile finds it taken.
-                Flight(now, sentToken, sentAt).also { claimed ->
-                    listener?.let { claimed.waiting += it }
-                    flights[key] = claimed
-                    shop.edit().putString(StorageKeys.pushToken(provider.id), token).putLong(StorageKeys.pushTokenDate(provider.id), now).apply()
+                Flight(now).also { taken ->
+                    listener?.let { taken.waiting += it }
+                    flights[key] = taken
+                    busy.update { it + 1 }
+                    shop.edit().putString(StorageKeys.pushTokenClaim(provider.id), token).putLong(StorageKeys.pushTokenClaimedAt(provider.id), now).apply()
                 }
             }
         }
@@ -167,21 +207,54 @@ internal class CorePushTokens(
             private fun landed(failed: Boolean = false, tell: (List<OnApiCallbackListener>) -> Unit) {
                 val waiting = synchronized(lock) {
                     val ended = flights.remove(key) ?: return
-                    if (failed) giveBack(provider, token, ended)
+                    settle(provider, token, ended, sent = !failed)
                     ended.waiting.toList()
                 }
-                tell(waiting)
+                try {
+                    tell(waiting)
+                } finally {
+                    busy.update { it - 1 }
+                }
             }
         })
     }
 
-    /** Must hold [lock]. A failed send gives the week back, unless something else wrote the claim over meanwhile. */
-    private fun giveBack(provider: PushProvider, token: String, flight: Flight) {
-        if (sentToken(provider) != token || sentDate(provider) != flight.claimedAt) return
+    /**
+     * Must hold [lock]. The claim of [flight] ends: a send that went is recorded as the shop's, and the
+     * claim goes unless another one wrote over it meanwhile.
+     */
+    private fun settle(provider: PushProvider, token: String, flight: Flight, sent: Boolean) {
         val editor = shop.edit()
-        if (flight.previousToken == null) editor.remove(StorageKeys.pushToken(provider.id)) else editor.putString(StorageKeys.pushToken(provider.id), flight.previousToken)
-        if (flight.previousDate == 0L) editor.remove(StorageKeys.pushTokenDate(provider.id)) else editor.putLong(StorageKeys.pushTokenDate(provider.id), flight.previousDate)
+        if (sent) {
+            editor.putString(StorageKeys.pushToken(provider.id), token).putLong(StorageKeys.pushTokenDate(provider.id), flight.claimedAt)
+        }
+        if (claimedToken(provider) == token && claimedAt(provider) == flight.claimedAt) {
+            editor.remove(StorageKeys.pushTokenClaim(provider.id)).remove(StorageKeys.pushTokenClaimedAt(provider.id))
+        }
         editor.apply()
+    }
+
+    private fun claimedToken(provider: PushProvider): String? = shop.getString(StorageKeys.pushTokenClaim(provider.id), null)
+
+    private fun claimedAt(provider: PushProvider): Long = shop.getLong(StorageKeys.pushTokenClaimedAt(provider.id), 0L)
+
+    /** Runs [block] on the sends' scope, counted for [awaitIdle]. */
+    private fun launch(block: suspend () -> Unit): Job {
+        busy.update { it + 1 }
+        val job = scope.launch { block() }
+        job.invokeOnCompletion { busy.update { it - 1 } }
+        return job
+    }
+
+    /** Hands [listener] [error] off the caller's thread. */
+    private fun refuse(listener: OnApiCallbackListener?, error: SdkError) {
+        listener ?: return
+        endings.launch { delivery.failure(listener, LegacyErrors.of(error)) }
+    }
+
+    /** Returns once nothing waits for the instance and no request is on its way; for tests. */
+    internal suspend fun awaitIdle() {
+        busy.first { it == 0 }
     }
 
     /** The token this shop sent last, under the key of this release or of the ones before. */
@@ -199,8 +272,14 @@ internal class CorePushTokens(
     private fun skipped(provider: PushProvider, reason: String) =
         log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_SKIPPED, "Push token not sent", mapOf("provider" to provider.id, "reason" to reason))
 
-    /** Stops the sends waiting for the instance; a request on its way still ends. */
-    fun release() = scope.cancel()
+    /**
+     * Stops the sends waiting for the instance — a [set] among them hears `notInitialized` — and keeps or
+     * sends nothing more; a request on its way still ends.
+     */
+    fun release() {
+        synchronized(lock) { released = true }
+        scope.cancel()
+    }
 
     private fun log(level: LogLevel, code: String, message: String, context: Map<String, Any?> = emptyMap(), throwable: Throwable? = null) =
         SdkLogs.log(level, code, message, shopId, context, throwable)
@@ -208,6 +287,9 @@ internal class CorePushTokens(
     internal companion object {
         const val PATH = "mobile_push_tokens"
         const val WEEK_MS = 7 * 24 * 60 * 60 * 1000L
+
+        /** A claim this old without a send is free: the process that took it died before the answer. */
+        const val CLAIM_TTL_MS = 3 * 60 * 1000L
 
         const val REASON_SENT_THIS_WEEK = "sent_this_week"
         const val REASON_NO_DID = "no_did"

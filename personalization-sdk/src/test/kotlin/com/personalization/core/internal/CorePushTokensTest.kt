@@ -103,12 +103,14 @@ class CorePushTokensTest {
 
     private class Heard : OnApiCallbackListener() {
         val calls = CopyOnWriteArrayList<String>()
+        val errors = CopyOnWriteArrayList<SdkError?>()
         override fun onSuccess(response: JSONObject?) {
             calls += "success"
         }
 
         override fun onError(code: Int, msg: String?) {
             calls += "error:$code"
+            errors += CurrentError.get()
         }
     }
 
@@ -233,6 +235,8 @@ class CorePushTokensTest {
 
         val empty = Heard()
         tokens.set("", PushProvider.FCM, empty)
+        assertTrue("off the caller's thread", empty.calls.isEmpty())
+        run()
         assertEquals(listOf("error:-1"), empty.calls)
 
         readiness = CompletableDeferred<SdkError?>().apply { complete(SdkError.ShopBlocked) }
@@ -254,6 +258,54 @@ class CorePushTokensTest {
         tokens.set("from-app", PushProvider.FCM, null)
         run()
         assertEquals("from-app", sent.single().second.getString("token"))
+    }
+
+    @Test
+    fun `setPushToken waiting for ready when the instance is released hears notInitialized, and one after release keeps and sends nothing`() {
+        readiness = CompletableDeferred()
+        val tokens = tokens()
+        val waiting = Heard()
+        tokens.set("t1", PushProvider.FCM, waiting)
+        run()
+        assertTrue(waiting.calls.isEmpty())
+
+        tokens.release()
+        run()
+        assertEquals(listOf("error:-1"), waiting.calls)
+        assertEquals(listOf<SdkError?>(SdkError.NotInitialized), waiting.errors)
+
+        val after = Heard()
+        tokens.set("t2", PushProvider.FCM, after)
+        run()
+        assertEquals(listOf("error:-1"), after.calls)
+        assertEquals(listOf<SdkError?>(SdkError.NotInitialized), after.errors)
+        assertEquals("the token of before release", "t1", DeviceStorage(context).pushToken("fcm"))
+        readiness.complete(null)
+        run()
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `a claim whose process died before the answer frees the week after a few minutes`() {
+        tokens().received("t1", PushProvider.FCM)
+        run()
+        assertEquals(1, sent.size)
+        // The process dies before the answer: the next one finds the claim.
+        answers.clear()
+        val next = tokens()
+        next.sendStored()
+        run()
+        assertEquals("a claim moments old is another process's send", 1, sent.size)
+
+        clock.advance(CorePushTokens.CLAIM_TTL_MS)
+        next.sendStored()
+        run()
+        assertEquals(2, sent.size)
+        ok()
+        next.sendStored()
+        run()
+        assertEquals("the send that went counts the week", 2, sent.size)
+        assertEquals(listOf<Any?>(CorePushTokens.REASON_SENT_THIS_WEEK, CorePushTokens.REASON_SENT_THIS_WEEK), reasons())
     }
 
     private companion object {

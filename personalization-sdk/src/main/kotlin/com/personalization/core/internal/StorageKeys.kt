@@ -29,6 +29,15 @@ internal object StorageKeys {
     /** When the shop last sent the push token of a provider. */
     fun pushTokenDate(provider: String): String = "push_token_date_$provider"
 
+    /**
+     * The token of a provider a send of the new core took the week for, before the server answered: the
+     * claim, with its time ([pushTokenClaimedAt]). Gone once the send ends.
+     */
+    fun pushTokenClaim(provider: String): String = "push_token_claim_$provider"
+
+    /** When the claim of [pushTokenClaim] was taken. */
+    fun pushTokenClaimedAt(provider: String): String = "push_token_claimed_at_$provider"
+
     /** The token keys of releases before the provider was part of the key; still read as a fallback. */
     val LEGACY_PUSH_TOKEN: Map<String, String> = mapOf("fcm" to "token", "hms" to "hms_token")
 
@@ -98,7 +107,11 @@ internal object StorageKeys {
         add(TRACKING_SOURCE_TYPE)
         add(TRACKING_SOURCE_CODE)
         add(TRACKING_SOURCE_SAVED_AT)
-        PUSH_PROVIDERS.forEach { add(pushTokenDate(it)) }
+        PUSH_PROVIDERS.forEach {
+            add(pushTokenDate(it))
+            add(pushTokenClaim(it))
+            add(pushTokenClaimedAt(it))
+        }
         addAll(LEGACY_PUSH_TOKEN_DATE.values)
         add(REFUSED)
     }
