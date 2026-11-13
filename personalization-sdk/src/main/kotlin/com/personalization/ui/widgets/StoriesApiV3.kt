@@ -143,13 +143,15 @@ internal object StoriesApiV3 {
     /**
      * Задача — когда у SDK есть did: сразу или из очереди `getAsync` после init. Init мог
      * закончиться между проверкой и постановкой в очередь — тогда задача стартует сама; дважды
-     * она не выполнится.
+     * она не выполнится. В новом ядре перед задачей — проверка окна сессии, как у любого запроса
+     * ядра: если окно кончилось, сначала `/init`, и задача берёт живой `sid`.
      */
     fun whenDid(sdk: SDK, task: () -> Unit) {
         val once = AtomicBoolean(false)
         val run = Runnable {
             if (!once.compareAndSet(false, true)) return@Runnable
             try {
+                sdk.awaitLiveSession()
                 task()
             } catch (throwable: Throwable) {
                 SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES_V3, "stories v3: request failed", sdk.logShopId, throwable = throwable)

@@ -11,6 +11,7 @@ import com.personalization.core.SdkException
 import com.personalization.core.SdkState
 import com.personalization.core.BridgeApi
 import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.CoreInit
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.HeldMain
 import com.personalization.core.internal.CoreV2
@@ -472,6 +473,25 @@ class SdkInstanceTest {
 
         assertEquals("S", sdk.sessionId)
         assertEquals(listOf("S" to true), heard)
+    }
+
+    @Test
+    fun `on the new core the v3 clients check the session's window and take the live sid`() {
+        var seance = "S1"
+        initAnswer = { _ -> MockResponse().setBody(JSONObject().put("did", "D1").put("seance", seance).toString()) }
+        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        nextRequest("init")
+        awaitState(sdk, SdkState.READY)
+        // Two hours without an event: the window ended, and the sid with it.
+        partition().edit().putLong("sid_last_act", System.currentTimeMillis() - CoreInit.SESSION_WINDOW_MS - 1).commit()
+        assertNull(sdk.sessionId)
+        seance = "S2"
+
+        val seen = java.util.concurrent.LinkedBlockingQueue<String>()
+        com.personalization.ui.widgets.StoriesApiV3.whenDid(sdk) { seen += sdk.getSid() }
+
+        nextRequest("init")
+        assertEquals("S2", seen.poll(5, java.util.concurrent.TimeUnit.SECONDS))
     }
 
     @Test

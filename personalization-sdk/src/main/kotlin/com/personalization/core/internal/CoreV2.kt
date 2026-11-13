@@ -167,6 +167,13 @@ internal class CoreV2(
         return if (waited == null) SdkError.Timeout else waited.error
     }
 
+    /**
+     * For the clients that make their own requests (popups v3, stories v3): the wait a request of the core
+     * makes — for the instance and, when the session's window ended, for the `/init` of a new one — so they
+     * go with the live `sid`. Null when they may go.
+     */
+    internal suspend fun awaitUsable(): SdkError? = awaitInstance()
+
     /** What a wait decided; null [error] when the request may go. */
     private class Verdict(val error: SdkError?)
 

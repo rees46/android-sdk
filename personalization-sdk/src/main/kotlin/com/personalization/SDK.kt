@@ -97,6 +97,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
@@ -283,6 +284,17 @@ open class SDK {
             if (session != null && !session.isAlive()) return null
             return userSettingsRepository.getSid().ifEmpty { null }
         }
+
+    /**
+     * For the clients that make their own requests (popups v3, stories v3), on their background thread:
+     * on the new core, waits as a request of the core does, within its read timeout, for the instance and
+     * for the `/init` of a new session when the window ended, so [sessionId] is the live `sid` after it.
+     * The legacy core does not wait.
+     */
+    internal fun awaitLiveSession() {
+        val core = core as? CoreV2 ?: return
+        runBlocking { core.awaitUsable() }
+    }
 
     /** The bridges' listeners of a new `sid` ([onSessionChange]). */
     private val sessionListeners = CopyOnWriteArrayList<(String) -> Unit>()
