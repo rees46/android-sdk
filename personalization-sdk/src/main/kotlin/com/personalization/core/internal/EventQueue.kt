@@ -555,12 +555,18 @@ internal class EventQueue(
                 // A push's event needs a did and no session: the server reads no sid in it. One that came
                 // after the window ended starts no /init.
                 if (init.awaitReady(waitMs) != null) return Outcome.Waiting
-            } else {
-                val held = trackingWait()
-                if (held != null) {
-                    trackingHeld = held
-                    continue
-                }
+            } else if (!init.session.isAlive()) {
+                // The session's window ended: a new one starts from the foreground only — its /init goes,
+                // and its answer wakes the queue — never from the background. The push lane goes meanwhile.
+                if (lifecycle.isForeground) init.renewSession()
+                trackingHeld = Outcome.Waiting
+                continue
+            } else if (init.awaitReady(waitMs) != null) {
+                // Not ready: neither lane can go.
+                return Outcome.Waiting
+            } else if (!init.session.isAlive()) {
+                // The window ended while it waited: the head is looked at again, as a session's that ended.
+                continue
             }
             // Cleared while it waited (the customer was deleted): it does not go under the next one.
             val body = store.ifCurrent(generation, event.id) { stamped(event) } ?: continue
@@ -570,19 +576,6 @@ internal class EventQueue(
             val next = withContext(NonCancellable) { take(event, result, sentAt) }
             if (next != null) return next
         }
-    }
-
-    /**
-     * Null when the tracking lane's head may go now: the instance is ready and the session alive. When the
-     * session's window ended, a new session starts from the foreground only — its `/init` goes, and its
-     * answer wakes the queue — and never from the background: the lane waits for the app to come back.
-     */
-    private suspend fun trackingWait(): Outcome? {
-        if (init.session.isAlive()) {
-            return if (init.awaitReady(waitMs) == null && init.session.isAlive()) null else Outcome.Waiting
-        }
-        if (lifecycle.isForeground) init.renewSession()
-        return Outcome.Waiting
     }
 
     /** What goes for [event]: a copy of its fields with the queue's and the common ones. */
