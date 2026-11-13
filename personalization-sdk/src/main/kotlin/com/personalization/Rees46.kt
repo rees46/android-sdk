@@ -229,9 +229,10 @@ object Rees46 {
      *    a repeat sends nothing and still returns the shop. A tap also sets the tracking source for 48 hours,
      *    which the `/push` events carry as `source`. The legacy core sends a delivery to `track/received`
      *    and a tap to `track/clicked`, as before.
-     * 4. The shop's callback of the event runs on the main thread: the one of [SDK.setPushCallbacks], or
-     *    else the one of [setPushCallbacks]. For [PushEvent.DELIVERED] the old listeners
-     *    ([setOnMessageListener], [SDK.setOnMessageListener]) hear the push too, as before.
+     * 4. The shop's callback of the event runs on the main thread, on the new core once the queue accepted
+     *    the event: the one of [SDK.setPushCallbacks], or else the one of [setPushCallbacks]. An event the
+     *    queue refused (the instance released, the shop refused) calls none. For [PushEvent.DELIVERED] the
+     *    old listeners ([setOnMessageListener], [SDK.setOnMessageListener]) hear the push too, as before.
      */
     fun handlePush(payload: Map<String, String>, event: PushEvent): String? = try {
         route(payload, event)
@@ -266,16 +267,17 @@ object Rees46 {
             return null
         }
         if (target.dropsPushWithoutDid()) return null
-        val fresh = when {
-            event == PushEvent.DELIVERED -> target.onPushReceived(data)
+        // The callbacks hear the event once it is taken: on the new core, once its queue accepted it.
+        val tell = { PushHub.event(event, payload, target.pushCallbacks) }
+        when {
+            event == PushEvent.DELIVERED -> target.onPushReceived(data, tell)
             // The legacy core's tap, as it always went: from the extras of a tap's intent.
             event == PushEvent.CLICKED && target.core?.isV2 != true -> {
                 target.notificationClicked(tapExtras(parsed.code, parsed.type))
-                true
+                tell()
             }
-            else -> target.pushEvent(event, parsed.code, parsed.type)
+            else -> target.pushEvent(event, parsed.code, parsed.type, tell)
         }
-        if (fresh) PushHub.event(event, payload, target.pushCallbacks)
         return shopId
     }
 
@@ -317,8 +319,7 @@ object Rees46 {
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
             if (target.dropsPushWithoutDid()) return@runCatching
-            val fresh = target.onPushReceived(payload)
-            if (fresh && parsed != null) PushHub.event(PushEvent.DELIVERED, parsed, target.pushCallbacks)
+            target.onPushReceived(payload) { parsed?.let { PushHub.event(PushEvent.DELIVERED, it, target.pushCallbacks) } }
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
@@ -334,13 +335,12 @@ object Rees46 {
             if (target.dropsPushWithoutDid()) return@runCatching
             val parsed = PushPayload.parse(payload)?.withShop(shopId)
             parsed?.let(PushHub::remember)
-            val fresh = if (parsed != null && target.core?.isV2 == true) {
-                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type)
+            if (parsed != null && target.core?.isV2 == true) {
+                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type) { PushHub.event(PushEvent.CLICKED, parsed, target.pushCallbacks) }
             } else {
                 target.notificationClicked(payload.toBundle())
-                true
+                parsed?.let { PushHub.event(PushEvent.CLICKED, it, target.pushCallbacks) }
             }
-            if (fresh && parsed != null) PushHub.event(PushEvent.CLICKED, parsed, target.pushCallbacks)
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
     }
 
@@ -357,7 +357,7 @@ object Rees46 {
     /**
      * For the bridges: [listener] hears every push event the SDK handles, of every shop, on the main
      * thread, beside the app's [PushCallbacks] and whatever they are. Once per event of a message, like
-     * them. Until the handle is cancelled.
+     * them, and on the new core once the queue accepted the event. Until the handle is cancelled.
      */
     @BridgeApi
     fun onPushEvent(listener: BridgePushListener): Cancellable = PushHub.addEventSink(listener)

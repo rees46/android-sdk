@@ -256,8 +256,13 @@ class PushEventsTest {
         assertEquals(listOf("m-1"), clicked)
     }
 
+    @OptIn(com.personalization.core.BridgeApi::class)
     @Test
-    fun `a push event the queue refused counts as not sent, and goes when it comes again`() {
+    fun `a push event the queue refused counts as not sent and calls no callback, and goes when it comes again`() {
+        val clicked = CopyOnWriteArrayList<String>()
+        val bridge = CopyOnWriteArrayList<String>()
+        Rees46.setPushCallbacks(PushCallbacks(onClicked = { clicked += it.code }))
+        Rees46.onPushEvent { _, payload -> bridge += payload.code }
         initStatus = 403
         val refused = Rees46.initialize(context, config())
         runBlocking { withTimeout(5_000) { refused.instanceState.changes.first { it == SdkState.REFUSED } } }
@@ -266,6 +271,7 @@ class PushEventsTest {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
         while (logged.none { it.message == "The push event was not accepted" } && System.nanoTime() < deadline) Thread.sleep(10)
         assertTrue(logged.any { it.message == "The push event was not accepted" })
+        assertTrue("no callback for an event the queue refused", clicked.isEmpty() && bridge.isEmpty())
         refused.release()
 
         initStatus = 200
@@ -273,6 +279,8 @@ class PushEventsTest {
         assertEquals(SHOP, Rees46.handlePush(push(code = "again"), PushEvent.CLICKED))
         flush(sdk)
         assertEquals("again", next("track/clicked")?.second?.getString("code"))
+        assertEquals(listOf("again"), clicked)
+        assertEquals(listOf("again"), bridge)
     }
 
     @Test
@@ -438,6 +446,8 @@ class PushEventsTest {
         Rees46.handlePush(push(code = "1", shop = null), PushEvent.DELIVERED)
         Rees46.handlePush(push(code = "1"), PushEvent.CLICKED)
         Rees46.handlePush(push(code = "1"), PushEvent.CLOSED)
+        // The callbacks come once the queue accepted the events.
+        sdk.awaitEventsWritten(5_000)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(listOf("facade-delivered:$SHOP:1", "shop-clicked:$SHOP:1"), heard)
@@ -459,6 +469,7 @@ class PushEventsTest {
         Rees46.handlePush(push(code = "1"), PushEvent.DELIVERED)
         @Suppress("DEPRECATION")
         Rees46.handlePush(push(code = "2"), PushEventType.RECEIVED)
+        sdk.awaitEventsWritten(5_000)
 
         assertEquals(listOf("$SHOP:1", "$SHOP:2"), global)
         assertEquals(listOf("1", "2"), own.map { it.id })
@@ -737,6 +748,12 @@ class PushEventsTest {
         sdk.queueEvent("profile/set", JSONObject(), completions)
         val refused = takeOnMain(main, ends)
         assertTrue(refused is com.personalization.core.SdkResult.Failure && refused.error is com.personalization.core.SdkError.InvalidArgument)
+        // A push event: the bridge hands the push to handlePush.
+        listOf("track/delivered", "track/opened", "track/clicked", "track/closed", "track/received").forEach { path ->
+            sdk.queueEvent(path, JSONObject().put("code", "x").put("type", "bulk"), completions)
+            val pushPath = takeOnMain(main, ends)
+            assertTrue(path, pushPath is com.personalization.core.SdkResult.Failure && pushPath.error is com.personalization.core.SdkError.InvalidArgument)
+        }
         // Fields JSON cannot hold: refused through the listener, never thrown at the bridge.
         sdk.queueEvent("push/custom", JSONObject(mapOf("event" to "nan", "value" to Double.NaN)), completions)
         val notJson = takeOnMain(main, ends)
@@ -750,10 +767,12 @@ class PushEventsTest {
         Rees46.onPushToken { tokens += it.token }
         Rees46.handlePush(push(code = "b1"), PushEvent.DELIVERED)
         Rees46.handlePush(push(code = "b1"), PushEvent.DELIVERED)
+        sdk.awaitEventsWritten(5_000)
         SDK.onPushTokenReceived("bridge-token", PushProvider.HMS)
         SDK.onPushTokenReceived("bridge-token", PushProvider.HMS)
         pushes.cancel()
         Rees46.handlePush(push(code = "b2"), PushEvent.DELIVERED)
+        sdk.awaitEventsWritten(5_000)
 
         assertEquals(listOf("DELIVERED:$SHOP:b1"), events)
         assertEquals(listOf("bridge-token"), tokens)

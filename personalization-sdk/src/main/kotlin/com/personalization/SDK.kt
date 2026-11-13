@@ -340,9 +340,9 @@ open class SDK {
      * the instance is initialized.
      *
      * A callback runs on the main thread when the SDK sees its event: its messaging service,
-     * [Rees46.handlePush], or a notification the SDK drew ([NotificationHelper]). One event of one message
-     * is reported once per process. [setOnMessageListener] and [setOnPushTokenListener] keep working beside
-     * them.
+     * [Rees46.handlePush], or a notification the SDK drew ([NotificationHelper]); on the new core once the
+     * queue accepted the event. One event of one message is reported once per process. [setOnMessageListener]
+     * and [setOnPushTokenListener] keep working beside them.
      */
     fun setPushCallbacks(callbacks: PushCallbacks?) {
         pushCallbacks = callbacks
@@ -937,7 +937,7 @@ open class SDK {
                 notSdkPush("The clicked push has no type or code", extras?.keySet()?.sorted())
                 return
             }
-            queuePushEvent(PushEvent.CLICKED, code, type)
+            queuePushEvent(PushEvent.CLICKED, code, type, accepted = {})
             return
         }
         notificationHandler.notificationClicked(
@@ -1773,22 +1773,27 @@ open class SDK {
      * @param data from data notification
      */
     fun notificationReceived(data: Map<String, String>) {
-        trackDelivered(data)
+        trackDelivered(data, accepted = {})
     }
 
-    /** [notificationReceived]; false when the new core had the message's delivery already. */
-    private fun trackDelivered(data: Map<String, String>): Boolean {
+    /**
+     * [notificationReceived]; [accepted] runs once the delivery is taken: on the new core once its queue
+     * accepted it — not for a repeat, nor for a push without an `id` and a `type` — and on the legacy core
+     * at once.
+     */
+    private fun trackDelivered(data: Map<String, String>, accepted: () -> Unit) {
         if (isCoreV2) {
             val code = data[ID_FIELD]
             val type = data[TYPE_FIELD]
             if (code.isNullOrBlank() || type.isNullOrBlank()) {
                 notSdkPush("The push has no id or type", data.keys.sorted())
-                return false
+                return
             }
-            return queuePushEvent(PushEvent.DELIVERED, code, type)
+            queuePushEvent(PushEvent.DELIVERED, code, type, accepted)
+            return
         }
         trackReceivedLegacy(data)
-        return true
+        accepted()
     }
 
     private fun trackReceivedLegacy(data: Map<String, String>) {
@@ -1821,32 +1826,38 @@ open class SDK {
 
     /**
      * Tracks the delivery on this instance's network and fires the deprecated per-instance listener;
-     * false when the new core had the message's delivery already. The process-global listener
+     * [accepted] runs once the delivery is taken ([trackDelivered]). The process-global listener
      * (Rees46.setOnMessageListener) is dispatched by the router ([Rees46.handlePush] / the [onMessage]
      * companion) instead, so the notification shows even for a shop that has no live instance yet.
      */
-    private fun receiveMessage(data: Map<String, String>): Boolean {
-        val fresh = trackDelivered(data)
+    private fun receiveMessage(data: Map<String, String>, accepted: () -> Unit) {
+        trackDelivered(data, accepted)
         onMessageListener?.onMessage(data = data.toNotificationData())
-        return fresh
     }
 
-    /** Entry point for [Rees46.handlePush]: track a received push on the already-resolved instance. */
-    internal fun onPushReceived(data: Map<String, String>): Boolean = receiveMessage(data = data)
+    /**
+     * Entry point for [Rees46.handlePush]: track a received push on the already-resolved instance;
+     * [accepted] runs once the delivery is taken, for the push callbacks.
+     */
+    internal fun onPushReceived(data: Map<String, String>, accepted: () -> Unit) = receiveMessage(data, accepted)
 
     /** Whether the instance runs on the new core. */
     private val isCoreV2: Boolean get() = core?.isV2 == true
 
     /**
      * A shown, tapped or dismissed push of the message [code] of mailing [type] for [Rees46.handlePush];
-     * false when it was a repeat. The new core queues it ([queuePushEvent]). The legacy core reports neither
-     * a shown nor a dismissed notification, as before; [Rees46.handlePush] takes its taps through
-     * [notificationClicked] and its deliveries through [onPushReceived].
+     * [accepted] runs once it is taken, for the push callbacks. The new core queues it ([queuePushEvent])
+     * and runs [accepted] once the queue accepted it. The legacy core reports neither a shown nor a
+     * dismissed notification, as before, and runs [accepted] at once; [Rees46.handlePush] takes its taps
+     * through [notificationClicked] and its deliveries through [onPushReceived].
      */
-    internal fun pushEvent(event: PushEvent, code: String, type: String): Boolean {
-        if (isCoreV2) return queuePushEvent(event, code, type)
+    internal fun pushEvent(event: PushEvent, code: String, type: String, accepted: () -> Unit) {
+        if (isCoreV2) {
+            queuePushEvent(event, code, type, accepted)
+            return
+        }
         log(LogLevel.DEBUG, LogCodes.PUSH, "The legacy core does not report this push event", mapOf("event" to event.name.lowercase(Locale.ROOT)))
-        return true
+        accepted()
     }
 
     /**
@@ -1862,26 +1873,29 @@ open class SDK {
     /**
      * The new core's push event: `track/delivered`, `track/opened`, `track/clicked` or `track/closed`
      * through the queue with `code` and `type`, once per message and event in a process (a repeat is a
-     * no-op, false). The event counts as sent once the queue accepted it: one the queue refused (the
-     * instance released, the shop refused) may come again and go. A tap also sets the tracking source for
-     * 48 hours, when its type is one of [TrackingSourceType]: the `/push` events carry it as `source`.
+     * no-op). The event counts as sent once the queue accepted it, and only then [accepted] runs: one the
+     * queue refused (the instance released, the shop refused) may come again and go. A tap also sets the
+     * tracking source for 48 hours, when its type is one of [TrackingSourceType]: the `/push` events carry
+     * it as `source`.
      */
-    private fun queuePushEvent(event: PushEvent, code: String, type: String): Boolean {
-        val core = core as? CoreV2 ?: return false
+    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: () -> Unit) {
+        val core = core as? CoreV2 ?: return
         val shop = shopId
         if (!PushHub.firstTime(shop, event, code)) {
             log(LogLevel.DEBUG, LogCodes.PUSH, "The push event was handled already", mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
-            return false
+            return
         }
         if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) {
             notificationHandler.setClickSource(type = type, code = code)
         }
         core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
-            if (refused == null) return@accept
+            if (refused == null) {
+                accepted()
+                return@accept
+            }
             PushHub.forget(shop, event, code)
             log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
         }
-        return true
     }
 
     private fun pathOf(event: PushEvent): String = "track/" + event.name.lowercase(Locale.ROOT)
@@ -1893,9 +1907,10 @@ open class SDK {
 
     /**
      * For the bridges: [body] as an event of [path] through the queue, as the tracking methods send it —
-     * `push`, `push/custom`, `track/stories`, `track/slider`, `popup/showed` and the push events
-     * `track/delivered`, `track/opened`, `track/clicked`, `track/closed`. The queue adds the common fields
-     * and, on `/push`, the stored source when the event goes.
+     * `push`, `push/custom`, `track/stories`, `track/slider` and `popup/showed`. The queue adds the common
+     * fields and, on `/push`, the stored source when the event goes. A push event (`track/delivered`,
+     * `track/opened`, `track/clicked`, `track/closed`, `track/received`) is [SdkError.InvalidArgument]: a
+     * bridge hands the push to [Rees46.handlePush], which keeps its rules (once per message, the callbacks).
      *
      * [listener] hears once, on the main thread: [SdkResult.Success] once the event is accepted — written
      * to disk, the way the contract's tracking methods complete — or [SdkResult.Failure] with
@@ -1907,6 +1922,8 @@ open class SDK {
     fun queueEvent(path: String, body: JSONObject, listener: CompletionListener<Unit>) {
         val core = core
         val error = when {
+            path in EventQueue.PUSH_EVENT_PATHS || path == TRACK_RECEIVED ->
+                SdkError.InvalidArgument("$path is a push event: hand the push to Rees46.handlePush")
             path !in CoreV2.EVENT_PATHS -> SdkError.InvalidArgument("$path is not an event of the queue")
             core == null || released -> SdkError.NotInitialized
             else -> null
@@ -2087,8 +2104,8 @@ open class SDK {
             // Show via the process-global listener, then track the delivery on the instance.
             SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
             if (target.dropsPushWithoutDid()) return
-            val fresh = target.receiveMessage(data = data)
-            if (fresh && payload != null) PushHub.event(PushEvent.DELIVERED, payload, target.pushCallbacks)
+            // The callbacks hear the delivery once the queue accepted it.
+            target.receiveMessage(data) { payload?.let { PushHub.event(PushEvent.DELIVERED, it, target.pushCallbacks) } }
         }
 
         /**
