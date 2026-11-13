@@ -68,9 +68,17 @@ internal object PushHub {
     /** The last token of each provider the SDK got in this process: what the bridges heard, or hear on joining. */
     private val sinkReported = ConcurrentHashMap<PushProvider, String>()
 
-    /** True the first time [event] of the message [code] comes for [shopId] in this process. */
+    /**
+     * True the first time [event] of the message [code] comes for [shopId] in this process: it is taken,
+     * and a repeat is not sent. [forget] gives it back when the queue did not accept the event.
+     */
     fun firstTime(shopId: String, event: PushEvent, code: String): Boolean = synchronized(seen) {
         seen.put("$shopId|${event.name}|$code", true) == null
+    }
+
+    /** [event] of the message [code] was not accepted for [shopId]: it may come again and go. */
+    fun forget(shopId: String, event: PushEvent, code: String) {
+        synchronized(seen) { seen.remove("$shopId|${event.name}|$code") }
     }
 
     /** Keeps [payload], handed to its shop ([PushPayload.shopId]), for [received]. */

@@ -76,6 +76,10 @@ class PushEventsTest {
     private val defaultExecutor = SdkLogs.handlerExecutor
     private val defaultWork = PushDismissReceiver.work
 
+    /** The status of the answer to /init. */
+    @Volatile
+    private var initStatus = 200
+
     /** Holds the answer to /init while it is not null. */
     @Volatile
     private var holdInit: java.util.concurrent.CountDownLatch? = null
@@ -105,6 +109,7 @@ class PushEventsTest {
         shadowOf(manager).setNetworkCapabilities(manager.activeNetwork, capabilities)
         LegacyCore.threads = threads
         server = MockWebServer()
+        initStatus = 200
         requests.clear()
         seen.clear()
         logged.clear()
@@ -118,6 +123,7 @@ class PushEventsTest {
                 seen += path to body
                 if (path == "init") {
                     holdInit?.await(5, TimeUnit.SECONDS)
+                    if (initStatus != 200) return MockResponse().setResponseCode(initStatus)
                     return MockResponse().setBody("""{"did":"D1","seance":"S1"}""")
                 }
                 if (path == "segments/get") return MockResponse().setResponseCode(404)
@@ -244,6 +250,25 @@ class PushEventsTest {
         assertEquals("track/closed", next("track/clicked", "track/closed")?.first)
         assertNull(next("track/clicked", timeoutMs = 300))
         assertEquals(listOf("m-1"), clicked)
+    }
+
+    @Test
+    fun `a push event the queue refused counts as not sent, and goes when it comes again`() {
+        initStatus = 403
+        val refused = Rees46.initialize(context, config())
+        runBlocking { withTimeout(5_000) { refused.instanceState.changes.first { it == SdkState.REFUSED } } }
+        assertEquals(SHOP, Rees46.handlePush(push(code = "again"), PushEvent.CLICKED))
+        // The queue's refusal comes off the caller's thread.
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (logged.none { it.message == "The push event was not accepted" } && System.nanoTime() < deadline) Thread.sleep(10)
+        assertTrue(logged.any { it.message == "The push event was not accepted" })
+        refused.release()
+
+        initStatus = 200
+        val sdk = sdk()
+        assertEquals(SHOP, Rees46.handlePush(push(code = "again"), PushEvent.CLICKED))
+        flush(sdk)
+        assertEquals("again", next("track/clicked")?.second?.getString("code"))
     }
 
     @Test

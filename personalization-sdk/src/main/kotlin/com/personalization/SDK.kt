@@ -1862,18 +1862,25 @@ open class SDK {
     /**
      * The new core's push event: `track/delivered`, `track/opened`, `track/clicked` or `track/closed`
      * through the queue with `code` and `type`, once per message and event in a process (a repeat is a
-     * no-op, false). A tap also sets the tracking source for 48 hours, when its type is one of
-     * [TrackingSourceType]: the `/push` events carry it as `source`.
+     * no-op, false). The event counts as sent once the queue accepted it: one the queue refused (the
+     * instance released, the shop refused) may come again and go. A tap also sets the tracking source for
+     * 48 hours, when its type is one of [TrackingSourceType]: the `/push` events carry it as `source`.
      */
     private fun queuePushEvent(event: PushEvent, code: String, type: String): Boolean {
-        if (!PushHub.firstTime(shopId, event, code)) {
-            log(LogLevel.DEBUG, LogCodes.PUSH, "The push event was handled already", mapOf("event" to event.name.lowercase(), "reason" to REASON_REPEAT))
+        val core = core as? CoreV2 ?: return false
+        val shop = shopId
+        if (!PushHub.firstTime(shop, event, code)) {
+            log(LogLevel.DEBUG, LogCodes.PUSH, "The push event was handled already", mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
             return false
         }
         if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) {
             notificationHandler.setClickSource(type = type, code = code)
         }
-        sendNetworkMethodUseCase.postAsync(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type))
+        core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
+            if (refused == null) return@accept
+            PushHub.forget(shop, event, code)
+            log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
+        }
         return true
     }
 
