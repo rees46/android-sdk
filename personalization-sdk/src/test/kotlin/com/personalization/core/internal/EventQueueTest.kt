@@ -273,15 +273,15 @@ class EventQueueTest {
         // temporary file another process is writing right now.
         QueueStore.reset()
         File(storage.queuePath, "0000000000000000099.tmp").apply { writeText("{") }.setLastModified(System.currentTimeMillis() - QueueStore.STALE_TEMPORARY_MS - 1_000)
-        File(storage.queuePath, "0000000000000-000000-1-00000000.json").writeText("not json")
-        File(storage.queuePath, "9999999999999-000000-2-00000000.tmp").writeText("{")
+        File(storage.queuePath, "0000000000000000-1-00000000.json").writeText("not json")
+        File(storage.queuePath, "9999999999999999-2-00000000.tmp").writeText("{")
         state = InstanceState(shopId = { SHOP }, dispatchers = dispatchers)
 
         connectivity.set(true)
         start()
 
         assertEquals(listOf("1", "2"), ids())
-        assertEquals("another process's write stays", listOf("9999999999999-000000-2-00000000.tmp"), files())
+        assertEquals("another process's write stays", listOf("9999999999999999-2-00000000.tmp"), files())
         assertEquals("unreadable", codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
     }
 
@@ -466,7 +466,7 @@ class EventQueueTest {
     }
 
     @Test
-    fun `the check of the shop goes at most every ten minutes, and an event waits for the next one`() {
+    fun `a refusal less than ten minutes after a check that found the shop fine drops the event as the service's`() {
         val queue = start()
         eventAnswers += http(404)
         eventAnswers += http(404)
@@ -477,18 +477,11 @@ class EventQueueTest {
         run()
 
         // The first event: a 404, the check, a 404 again and it is dropped. The second: a 404 while the
-        // shop may not be checked again yet: it is not marked checked, and it waits for the next check.
+        // shop was found fine less than ten minutes ago: dropped at once, without another /init.
         assertEquals(2, initsSent)
         assertEquals(listOf("1", "1", "2"), ids())
-        lifecycle.set(false)
-        lifecycle.set(true)
-        after(CoreInit.CHECK_SHOP_INTERVAL_MS - 1_000)
-        assertEquals("no trigger ends the wait", listOf("1", "1", "2"), ids())
-
-        clock.advance(CoreInit.CHECK_SHOP_INTERVAL_MS)
-        after(1_000)
-        assertEquals(listOf("1", "1", "2", "2"), ids())
-        assertTrue(heard.calls.single().startsWith("success"))
+        assertEquals(listOf("error:404"), heard.calls)
+        assertEquals(listOf(LogReasons.SERVICE_REFUSED, LogReasons.SERVICE_REFUSED), codes(LogCodes.QUEUE_DROPPED).map { it.context["reason"] })
     }
 
     @Test
@@ -739,6 +732,23 @@ class EventQueueTest {
         event(queue, "2", listener = later)
         run()
         assertEquals(listOf("error:-1"), later.calls)
+    }
+
+    @Test
+    fun `an answer that comes after release still takes the event off the disk`() {
+        val queue = start()
+        holdEvents = true
+        event(queue, "1")
+        run()
+        assertEquals(1, eventCalls.size)
+
+        queue.release()
+        run()
+        assertEquals(1, files().size)
+        eventCalls.single().complete(HttpResult.Success(JSONObject()))
+        run()
+
+        assertTrue("it went: not sent again at the next launch", files().isEmpty())
     }
 
     @Test

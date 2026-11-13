@@ -71,8 +71,8 @@ internal class QueuedEvent(
 
 /**
  * The files of one shop's queue, in its `queue/` directory under `noBackupFilesDir`: one JSON file per
- * event, named by the time it was made, a counter, the process and a random part, so the names sort in
- * order and two processes never pick the same one. One store per directory in the process, shared by
+ * event, named by the time it was made (in microseconds, rising within the process), the process and a
+ * random part: the names sort in order, and two instances or processes never pick the same one. One store per directory in the process, shared by
  * every [EventQueue] of the shop, so two instances of one shop never send an event twice:
  * - the queue made last is the [owner] and the only one that sends; the others write what they accept
  *   and wake it;
@@ -106,8 +106,8 @@ internal class QueueStore private constructor(private val directory: File, priva
     /** The state of events whose file could not be rewritten: kept for this process. */
     private val patched = HashMap<String, QueuedEvent>()
 
+    /** The time of the last name, in microseconds: names of one process rise with the calls. */
     private var lastStamp = 0L
-    private var counter = 0
 
     private var lockChannel: FileChannel? = null
     private var processLock: FileLock? = null
@@ -301,12 +301,14 @@ internal class QueueStore private constructor(private val directory: File, priva
         event
     }
 
-    /** Must hold [files]. Sorts by time and, within one millisecond of this process, by the order of the calls. */
+    /**
+     * Must hold [files]. Sorts by time: the event's in microseconds, kept above the last name's so that
+     * two events of one millisecond keep the order of the calls.
+     */
     private fun newId(createdAt: Long): String {
-        val stamp = maxOf(createdAt, lastStamp)
-        counter = if (stamp == lastStamp) counter + 1 else 0
+        val stamp = maxOf(createdAt * 1_000, lastStamp + 1)
         lastStamp = stamp
-        return String.format(Locale.ROOT, ID_FORMAT, stamp, counter, PROCESS, Random.nextInt() and 0x7fffffff)
+        return String.format(Locale.ROOT, ID_FORMAT, stamp, PROCESS, Random.nextInt() and 0x7fffffff)
     }
 
     /**
@@ -410,8 +412,8 @@ internal class QueueStore private constructor(private val directory: File, priva
         private const val TEMPORARY = ".tmp"
         const val LOCK_FILE = ".lock"
 
-        /** Time, a counter, the process and a random part: sortable, and unique across processes. */
-        private const val ID_FORMAT = "%013d-%06d-%d-%08x"
+        /** Time, the process and a random part: sortable, and unique across instances and processes. */
+        private const val ID_FORMAT = "%016d-%d-%08x"
 
         /** A temporary file older than this is a crash's leftover, not a write in progress. */
         const val STALE_TEMPORARY_MS = 5 * 60 * 1000L

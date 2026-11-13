@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -288,10 +289,11 @@ internal class EventQueue(
     }
 
     /**
-     * Stops sending; the events stay on disk for the next launch. With [cancel] the event in flight is
-     * cancelled and the listeners of this queue's events hear `-1`; without, as when a push-only
-     * instance gives way to the app's, the event in flight finishes and the listeners stay for the
-     * queue that sends next. Events accepted before are still written; a flush asked before it and not
+     * Stops sending; the events stay on disk for the next launch. With [cancel] the sending stops at once
+     * and the listeners of this queue's events hear `-1`; the request of the event in flight still ends,
+     * and an answer that says it went takes the event off the disk. Without, as when a push-only instance
+     * gives way to the app's, the event in flight finishes and the listeners stay for the queue that
+     * sends next. Events accepted before are still written; a flush asked before it and not
      * handled yet ends with `notInitialized`.
      */
     fun release(cancel: Boolean = true) {
@@ -522,7 +524,24 @@ internal class EventQueue(
         return body
     }
 
-    private suspend fun sendOne(event: QueuedEvent, body: JSONObject): HttpResult = try {
+    /**
+     * Sends [event]. The request runs apart from the sending: a [release] that cancels the sending lets it
+     * end, and an answer that says it went still takes the event off the disk, so it does not go twice.
+     */
+    private suspend fun sendOne(event: QueuedEvent, body: JSONObject): HttpResult {
+        val call = writing.async { request(event, body) }
+        try {
+            return call.await()
+        } catch (e: CancellationException) {
+            writing.launch {
+                val result = call.await()
+                if (result is HttpResult.Success || (result as? HttpResult.Failure)?.error == SdkError.Decoding) store.remove(event.id)
+            }
+            throw e
+        }
+    }
+
+    private suspend fun request(event: QueuedEvent, body: JSONObject): HttpResult = try {
         send(NetworkMethod.POST(event.path), body)
     } catch (e: CancellationException) {
         throw e
@@ -576,6 +595,11 @@ internal class EventQueue(
                 return when (check) {
                     // A new answer found the shop fine: the event goes once more, after a pause if the disk failed.
                     CoreInit.ShopCheck.Fine -> if (store.update(event.copy(shopChecked = true))) null else pause(null)
+                    // Found fine less than 10 minutes ago: the service refuses, not the shop.
+                    CoreInit.ShopCheck.RecentlyFine -> {
+                        drop(event, LogReasons.SERVICE_REFUSED, error)
+                        null
+                    }
                     // Cleared by the state's own news; a released queue sends nothing more.
                     CoreInit.ShopCheck.Refused, CoreInit.ShopCheck.Released -> Outcome.Idle
                     // The check may not go yet: the event waits for it. Or it told nothing: a pause.

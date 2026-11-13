@@ -152,6 +152,9 @@ internal class CoreInit(
      */
     private val wake = Channel<Unit>(Channel.CONFLATED)
 
+    /** [successes] when the last check of the shop went: a success since found the shop fine. */
+    private var successesAtCheck = 0L
+
     /** How many `/init` went out; for tests. */
     @Volatile
     internal var sent = 0
@@ -282,8 +285,15 @@ internal class CoreInit(
         object Released : ShopCheck
 
         /**
-         * No new answer told: the check could not go yet — [retryInMs] until it may, after one less than
-         * 10 minutes ago — or its answer did not come in time or was not a success (null).
+         * A check less than 10 minutes ago found the shop fine and it is ready: this refusal is the
+         * service's, not the shop's.
+         */
+        object RecentlyFine : ShopCheck
+
+        /**
+         * No answer told: the check could not go yet — [retryInMs] until it may, after one less than 10
+         * minutes ago that did not find the shop fine — or its answer did not come in time or was not a
+         * success (null).
          */
         class Unknown(val retryInMs: Long?) : ShopCheck
     }
@@ -292,7 +302,8 @@ internal class CoreInit(
      * Asks the server about the shop after a `402`, `403` or `404` to an event ([checkShop]), and waits
      * up to [timeoutMs] for the answer of the `/init` that went, or of the one already on its way. Only a
      * new answer tells: [ShopCheck.Fine] when it was a success, [ShopCheck.Refused] when the shop refused;
-     * a wait that ends first, a failure, or a check that may not go yet is [ShopCheck.Unknown].
+     * a check less than 10 minutes ago that found the shop fine is [ShopCheck.RecentlyFine]; a wait that
+     * ends first, a failure, or a check that may not go yet is [ShopCheck.Unknown].
      */
     internal suspend fun checkShopAndAwait(timeoutMs: Long): ShopCheck {
         val seen: Long
@@ -306,6 +317,8 @@ internal class CoreInit(
             if (!went && job?.isActive != true) {
                 val last = lastCheckAt
                 val wait = if (last == null) null else (CHECK_SHOP_INTERVAL_MS - (clock.nowMillis() - last)).takeIf { it > 0 }
+                // Checked less than 10 minutes ago, and fine.
+                if (wait != null && state.current == SdkState.READY && successes > successesAtCheck) return ShopCheck.RecentlyFine
                 return ShopCheck.Unknown(wait)
             }
         }
@@ -345,6 +358,7 @@ internal class CoreInit(
         val last = lastCheckAt
         if (last != null && now - last < CHECK_SHOP_INTERVAL_MS) return false
         lastCheckAt = now
+        successesAtCheck = successes
         launchLocked()
     }
 
