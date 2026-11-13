@@ -52,7 +52,7 @@ internal class LegacyCore(
             // Off the caller's thread, as every answer of this path.
             if (listener != null) {
                 val error = LegacyErrors.of(SdkError.NotInitialized)
-                threads.execute { delivery.failure(listener, error.code, error.message) }
+                threads.execute { delivery.failure(listener, error) }
             }
             return
         }

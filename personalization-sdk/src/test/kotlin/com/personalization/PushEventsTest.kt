@@ -407,6 +407,81 @@ class PushEventsTest {
         assertEquals(SHOP, closed.getString("shop_id"))
     }
 
+    // The bridges.
+
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `a bridge gets the whole error behind an old onError, and a result instead of a code`() {
+        val sdk = sdk()
+        val results = LinkedBlockingQueue<com.personalization.core.SdkResult<Any?>>()
+        val current = LinkedBlockingQueue<Any>()
+
+        sdk.getCurrentSegment(object : com.personalization.api.OnApiCallbackListener() {
+            override fun onError(code: Int, msg: String?) {
+                current += com.personalization.core.BridgeErrors.currentError() ?: "none"
+            }
+        })
+        assertEquals(com.personalization.core.SdkError.Http(404), current.poll(5, TimeUnit.SECONDS))
+        assertNull("only inside onError", com.personalization.core.BridgeErrors.currentError())
+
+        sdk.getCurrentSegment(com.personalization.core.BridgeErrors.listener { results += it })
+        assertEquals(com.personalization.core.SdkResult.Failure(com.personalization.core.SdkError.Http(404)), results.poll(5, TimeUnit.SECONDS))
+
+        sdk.tracking.categoryView("", com.personalization.core.BridgeErrors.listener { results += it })
+        assertEquals(
+            com.personalization.core.SdkResult.Failure(com.personalization.core.SdkError.InvalidArgument("categoryId is empty")),
+            results.poll(5, TimeUnit.SECONDS),
+        )
+
+        // Without the core's error (the legacy core), one made from the code.
+        assertEquals(com.personalization.core.SdkError.Http(500), com.personalization.core.BridgeErrors.errorOf(500, null))
+        assertEquals(com.personalization.core.SdkError.Network, com.personalization.core.BridgeErrors.errorOf(-1, null))
+    }
+
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `a bridge's event completes once it is accepted, and its push and token streams hear everything once`() {
+        // The completions are handed to the main thread: the test runs them on its own.
+        val main = com.personalization.core.internal.HeldMain()
+        val sdk = SDK().apply { dispatchers = com.personalization.core.internal.CoreDispatchers(main = { main }) }
+        sdk.initializeWith(context, config())
+        runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
+        val ends = LinkedBlockingQueue<com.personalization.core.SdkResult<Unit>>()
+        val completions = com.personalization.core.CompletionListener<Unit> { ends += it }
+
+        sdk.queueEvent("push/custom", JSONObject().put("event", "from_dart"), completions)
+        assertEquals(com.personalization.core.SdkResult.Success(Unit), takeOnMain(main, ends))
+        sdk.queueEvent("profile/set", JSONObject(), completions)
+        val refused = takeOnMain(main, ends)
+        assertTrue(refused is com.personalization.core.SdkResult.Failure && refused.error is com.personalization.core.SdkError.InvalidArgument)
+        flush(sdk)
+        assertEquals("from_dart", next("push/custom")?.second?.getString("event"))
+
+        val events = CopyOnWriteArrayList<String>()
+        val tokens = CopyOnWriteArrayList<String>()
+        val pushes = Rees46.onPushEvent { event, payload -> events += "${event.name}:${payload.shopId}:${payload.code}" }
+        Rees46.onPushToken { tokens += it.token }
+        Rees46.handlePush(push(code = "b1"), PushEvent.DELIVERED)
+        Rees46.handlePush(push(code = "b1"), PushEvent.DELIVERED)
+        SDK.onPushTokenReceived("bridge-token", PushProvider.HMS)
+        SDK.onPushTokenReceived("bridge-token", PushProvider.HMS)
+        pushes.cancel()
+        Rees46.handlePush(push(code = "b2"), PushEvent.DELIVERED)
+
+        assertEquals(listOf("DELIVERED:$SHOP:b1"), events)
+        assertEquals(listOf("bridge-token"), tokens)
+
+        sdk.release()
+        sdk.queueEvent("push", JSONObject(), completions)
+        assertEquals(com.personalization.core.SdkResult.Failure(com.personalization.core.SdkError.NotInitialized), takeOnMain(main, ends))
+    }
+
+    /** The next of [queue], running what [main] was handed until it comes. */
+    private fun <T> takeOnMain(main: com.personalization.core.internal.HeldMain, queue: LinkedBlockingQueue<T>): T? {
+        while (queue.isEmpty() && main.runNext()) Unit
+        return queue.poll()
+    }
+
     private companion object {
         const val SHOP = "push-shop"
         const val OTHER = "push-other"

@@ -27,6 +27,8 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
+import com.personalization.core.BridgeApi
+import com.personalization.core.BridgeErrors
 import com.personalization.core.CompletionListener
 import com.personalization.core.PushCallbacks
 import com.personalization.core.PushEvent
@@ -112,7 +114,7 @@ private const val GAID_KEY = "google_advertising_id"
  * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
  * that declares one of them needs to rename its own.
  */
-@OptIn(InternalPersonalizationV3Api::class)
+@OptIn(InternalPersonalizationV3Api::class, BridgeApi::class)
 open class SDK {
 
     internal lateinit var context: Context
@@ -286,11 +288,12 @@ open class SDK {
     private val sessionListeners = CopyOnWriteArrayList<(String) -> Unit>()
 
     /**
-     * For the bridges (stage 7): [listener] hears every new `sid` of the new core, on the main thread,
-     * until the handle is cancelled — instead of asking [sessionId] on a timer. The legacy core does not
-     * call it. May be set before the instance is initialized.
+     * For the bridges: [listener] hears every new `sid` of the new core, on the main thread, until the
+     * handle is cancelled — instead of asking [sessionId] on a timer. The legacy core does not call it.
+     * May be set before the instance is initialized. An exception it throws is logged as `callback_failed`.
      */
-    internal fun onSessionChange(listener: (sessionId: String) -> Unit): Cancellable {
+    @BridgeApi
+    fun onSessionChange(listener: (sessionId: String) -> Unit): Cancellable {
         sessionListeners += listener
         return Cancellable { sessionListeners -= listener }
     }
@@ -1836,6 +1839,41 @@ open class SDK {
     private fun notSdkPush(message: String, keys: List<String>?) {
         // Not the keys' values: they carry the push's content.
         log(LogLevel.DEBUG, LogCodes.PUSH_DROPPED, "$message: not a push of the SDK", mapOf("reason" to LogReasons.NOT_SDK_PUSH, "keys" to keys))
+    }
+
+    /**
+     * For the bridges: [body] as an event of [path] through the queue, as the tracking methods send it —
+     * `push`, `push/custom`, `track/stories`, `track/slider`, `popup/showed` and the push events
+     * `track/delivered`, `track/opened`, `track/clicked`, `track/closed`. The queue adds the common fields
+     * and, on `/push`, the stored source when the event goes.
+     *
+     * [listener] hears once, on the main thread: [SdkResult.Success] once the event is accepted — written
+     * to disk, the way the contract's tracking methods complete — or [SdkResult.Failure] with
+     * [SdkError.InvalidArgument] for another path, [SdkError.NotInitialized], or [SdkError.ShopBlocked]. On
+     * the legacy core, which has no queue, the event goes at once and [listener] hears the server's answer.
+     */
+    @BridgeApi
+    fun queueEvent(path: String, body: JSONObject, listener: CompletionListener<Unit>) {
+        val core = core
+        val error = when {
+            path !in CoreV2.EVENT_PATHS -> SdkError.InvalidArgument("$path is not an event of the queue")
+            core == null || released -> SdkError.NotInitialized
+            else -> null
+        }
+        if (error != null || core == null) {
+            calls.launch { complete(listener, SdkResult.Failure(error ?: SdkError.NotInitialized)) }
+            return
+        }
+        val copy = JSONObject(body.toString())
+        if (core is CoreV2) {
+            core.accept(path, copy) { refused ->
+                calls.launch { complete(listener, if (refused == null) SdkResult.Success(Unit) else SdkResult.Failure(refused)) }
+            }
+            return
+        }
+        sendNetworkMethodUseCase.postAsync(path, copy, BridgeErrors.listener { result ->
+            calls.launch { complete(listener, if (result is SdkResult.Failure) result else SdkResult.Success(Unit)) }
+        })
     }
 
     companion object {

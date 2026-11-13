@@ -2,6 +2,7 @@ package com.personalization.core.internal
 
 import com.personalization.LogLevel
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,17 +25,21 @@ internal class LegacyDelivery(
             }
         } catch (e: Exception) {
             log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "onSuccess of a request threw", e)
-            failure(listener, LegacyErrors.NO_ANSWER, e.message)
+            failure(listener, LegacyErrors.NO_ANSWER, e.message, SdkError.Decoding)
         }
     }
 
-    fun failure(listener: OnApiCallbackListener, code: Int, message: String?) {
+    /**
+     * Calls `onError(code, message)`; while it runs, [error] is the thread's [CurrentError], so a bridge's
+     * listener — or a listener the SDK wrapped around it and forwards from — can read the whole error.
+     */
+    fun failure(listener: OnApiCallbackListener, code: Int, message: String?, error: SdkError? = null) {
         try {
-            listener.onError(code, message)
+            CurrentError.with(error) { listener.onError(code, message) }
         } catch (e: Exception) {
             log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "onError of a request threw", e)
         }
     }
 
-    fun failure(listener: OnApiCallbackListener, error: LegacyError) = failure(listener, error.code, error.message)
+    fun failure(listener: OnApiCallbackListener, error: LegacyError) = failure(listener, error.code, error.message, error.error)
 }

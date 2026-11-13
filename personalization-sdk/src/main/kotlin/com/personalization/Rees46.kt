@@ -5,9 +5,12 @@ import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
+import com.personalization.core.BridgeApi
+import com.personalization.core.BridgePushListener
 import com.personalization.core.PushCallbacks
 import com.personalization.core.PushEvent
 import com.personalization.core.PushPayload
+import com.personalization.core.PushTokenListener
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.PushHub
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
@@ -336,6 +339,22 @@ object Rees46 {
     fun setPushCallbacks(callbacks: PushCallbacks?) {
         PushHub.callbacks = callbacks
     }
+
+    /**
+     * For the bridges: [listener] hears every push event the SDK handles, of every shop, on the main
+     * thread, beside the app's [PushCallbacks] and whatever they are. Once per event of a message, like
+     * them. Until the handle is cancelled.
+     */
+    @BridgeApi
+    fun onPushEvent(listener: BridgePushListener): Cancellable = PushHub.addEventSink(listener)
+
+    /**
+     * For the bridges: [listener] hears every new push token the SDK gets from FCM or HMS, once per token
+     * and provider in a process, on the main thread, beside the app's `onToken`. Until the handle is
+     * cancelled.
+     */
+    @BridgeApi
+    fun onPushToken(listener: PushTokenListener): Cancellable = PushHub.addTokenSink(listener)
 
     /**
      * Resolves the push target as ([InstanceResolver.Resolution] to shopId), or null when the push

@@ -156,9 +156,11 @@ internal class CorePushTokens(
             }
 
             override fun onError(code: Int, msg: String?) {
+                // The whole error, while this runs on the funnel's thread.
+                val error = CurrentError.get()
                 landed(failed = true) { waiting ->
                     log(LogLevel.WARNING, LogCodes.PUSH_TOKEN_FAILED, "Push token was not sent", mapOf("provider" to provider.id, "status" to code))
-                    waiting.forEach { delivery.failure(it, code, msg) }
+                    waiting.forEach { delivery.failure(it, code, msg, error) }
                 }
             }
 

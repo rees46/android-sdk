@@ -98,6 +98,20 @@ internal class CoreV2(
         sendNow(method, params, answer)
     }
 
+    /**
+     * Takes an event of [path] for the queue without an answer listener: [accepted] hears, once, null when
+     * it is written to disk (or, when the disk refused it, sent once as a request), otherwise why it was
+     * refused — `notInitialized` after [release], `shopBlocked` for a refused shop.
+     */
+    fun accept(path: String, params: JSONObject, accepted: (SdkError?) -> Unit) {
+        val queue = queue
+        if (released || queue == null) {
+            endings.launch { accepted(SdkError.NotInitialized) }
+            return
+        }
+        queue.accept(path, params, listener = null, accepted = accepted)
+    }
+
     /** Sends an event the queue's disk would not take, once, as a request. */
     internal fun sendDirectly(path: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val answered = AtomicBoolean(false)
@@ -190,11 +204,11 @@ internal class CoreV2(
         /** The paths whose events go through the queue. */
         val EVENT_PATHS: Set<String> get() = EventQueue.PATHS
 
-        private val CLEARED = LegacyError(LegacyErrors.NO_ANSWER, "The event was deleted with the customer's data")
+        private val CLEARED = LegacyError(LegacyErrors.NO_ANSWER, "The event was deleted with the customer's data", SdkError.Cancelled)
     }
 
     private fun deliver(listener: OnApiCallbackListener, result: HttpResult) = when (result) {
         is HttpResult.Success -> delivery.success(listener, result.body)
-        is HttpResult.Failure -> LegacyErrors.of(result.error, result.errorBody).let { delivery.failure(listener, it.code, it.message) }
+        is HttpResult.Failure -> delivery.failure(listener, LegacyErrors.of(result.error, result.errorBody))
     }
 }

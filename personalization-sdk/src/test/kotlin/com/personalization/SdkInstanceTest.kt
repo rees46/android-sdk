@@ -9,6 +9,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
 import com.personalization.core.SdkState
+import com.personalization.core.BridgeApi
 import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.HeldMain
@@ -456,6 +457,7 @@ class SdkInstanceTest {
         assertTrue(logged.any { it.code == LogCodes.DEVICE_ID_RESET && it.context["reason"] == "need_reinitialization" })
     }
 
+    @OptIn(BridgeApi::class)
     @Test
     fun `on the new core the session is the server's and the bridges hear it on the main thread`() {
         val heard = CopyOnWriteArrayList<Pair<String, Boolean>>()

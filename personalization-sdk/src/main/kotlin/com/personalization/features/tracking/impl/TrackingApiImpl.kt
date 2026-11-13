@@ -11,6 +11,7 @@ import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.putSource
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.SdkError
 import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
@@ -51,7 +52,7 @@ internal class TrackingApiImpl @Inject constructor(
         if (value.isNotBlank() || !checksArguments()) return false
         val message = "$name is empty"
         SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A tracking call was refused: $message", null, mapOf("reason" to "empty_$name"))
-        listener?.let { refusals.launch { delivery.failure(it, LegacyErrors.NO_ANSWER, message) } }
+        listener?.let { refusals.launch { delivery.failure(it, LegacyErrors.NO_ANSWER, message, SdkError.InvalidArgument(message)) } }
         return true
     }
 

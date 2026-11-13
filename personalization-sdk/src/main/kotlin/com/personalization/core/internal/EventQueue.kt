@@ -660,8 +660,8 @@ internal class EventQueue(
         private val REPEATED_4XX = setOf(408, 410, 417, 426, 429)
         private val RETRY_AFTER_CODES = setOf(429, 503)
 
-        private val EXPIRED = LegacyError(LegacyErrors.NO_ANSWER, "The event expired in the queue")
-        private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full")
-        private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk")
+        private val EXPIRED = LegacyError(LegacyErrors.NO_ANSWER, "The event expired in the queue", SdkError.Timeout)
+        private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full", SdkError.Cancelled)
+        private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk", SdkError.Decoding)
     }
 }
