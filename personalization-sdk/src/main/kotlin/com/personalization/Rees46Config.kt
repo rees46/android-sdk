@@ -21,8 +21,9 @@ package com.personalization
  * @property coreV2 runs the instance on the new core; off by default. The process has one core: the
  * first [Rees46.initialize] or [Rees46.registerShops] decides it, and an instance that asks for the
  * other one runs on the process's and logs `core_flag_mismatch`. So far the new core differs in its
- * network client only: OkHttp, a request without a network fails at once, `release()` cancels the
- * instance's requests.
+ * network client only: requests go through OkHttp, a request without a network fails at once,
+ * `release()` cancels the instance's requests, and a failure without an answer is `onError(-1)` (no
+ * connection used to be `504`), as is a `2xx` whose body is not JSON (it used to succeed empty).
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.

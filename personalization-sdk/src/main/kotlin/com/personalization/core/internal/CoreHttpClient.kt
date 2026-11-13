@@ -143,7 +143,7 @@ internal class CoreHttpClient(
     )
 
     private suspend fun Call.exchange(phase: Phase): Exchange = suspendCancellableCoroutine { continuation ->
-        continuation.invokeOnCancellation { cancel() }
+        continuation.invokeOnCancellation { this@exchange.cancel() }
         enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 continuation.resume(Exchange(HttpResult.Failure(noAnswer(call, phase)), failure = e))
