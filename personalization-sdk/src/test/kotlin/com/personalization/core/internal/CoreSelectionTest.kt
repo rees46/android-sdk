@@ -58,4 +58,16 @@ class CoreSelectionTest {
         assertEquals("b", warning.shopId)
         assertEquals(mapOf("requested" to true, "process" to false), warning.context)
     }
+
+    @Test
+    fun `a registration and the instance it makes later warn once`() {
+        CoreSelection.resolve(requested = false, shopId = "a")
+
+        // Rees46.register asks for the shop, and its instance asks again when it is made.
+        CoreSelection.resolve(requested = true, shopId = "b")
+        CoreSelection.resolve(requested = true, shopId = "b")
+        CoreSelection.resolve(requested = true, shopId = "c")
+
+        assertEquals(listOf("b", "c"), received.map { it.shopId })
+    }
 }

@@ -10,6 +10,9 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class ImageView @JvmOverloads constructor(
     context: Context,
@@ -31,7 +34,7 @@ class ImageView @JvmOverloads constructor(
                             target: Target<Drawable>,
                             isFirstResource: Boolean
                         ): Boolean {
-                            exception?.printStackTrace()
+                            exception?.let { failed("The popup image failed to load", it) }
                             return false
                         }
 
@@ -48,7 +51,11 @@ class ImageView @JvmOverloads constructor(
                 )
                 .into(this)
         } catch (exception: Exception) {
-            exception.printStackTrace()
+            failed("The popup image could not be requested", exception)
         }
     }
+
+    /** The class of the failure only: its text carries the image's URL. */
+    private fun failed(message: String, throwable: Throwable) =
+        SdkLogs.log(LogLevel.WARNING, LogCodes.UI, message, throwable = throwable)
 }

@@ -13,6 +13,9 @@ import com.personalization.features.notification.service.mapper.toNotificationDa
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_DATA_ERROR
 import com.personalization.resources.NotificationResources.NOTIFICATION_LOADING_IMAGE_ERROR
 import com.personalization.sdk.data.models.dto.notification.NotificationData
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -124,7 +127,8 @@ class NotificationService : Service() {
                         /* resId = */ NOTIFICATION_LOADING_IMAGE_ERROR
                     )
                 )
-                ioException.printStackTrace()
+                // The class only: the text names the image's URL.
+                SdkLogs.log(LogLevel.WARNING, LogCodes.PUSH, "A notification image failed to load", throwable = ioException)
             } finally {
                 stopSelf(startId)
             }

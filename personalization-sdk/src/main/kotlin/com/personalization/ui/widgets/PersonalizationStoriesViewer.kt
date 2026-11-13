@@ -631,7 +631,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(intent)
         } catch (_: android.content.ActivityNotFoundException) {
-            SDK.error("PersonalizationStoriesViewer: no app can open the link")
+            logError("PersonalizationStoriesViewer: no app can open the link")
         }
     }
 
@@ -659,7 +659,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(chooser)
         } catch (throwable: RuntimeException) {
-            SDK.error("PersonalizationStoriesViewer: the link could not be shared", throwable)
+            logError("PersonalizationStoriesViewer: the link could not be shared", throwable)
             endShare()
             return
         }
@@ -910,7 +910,7 @@ class PersonalizationStoriesViewer(
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            SDK.error("PersonalizationStoriesViewer: video failed", error)
+            logError("PersonalizationStoriesViewer: video failed", error)
             playerSlide?.let(::onMediaFailed)
         }
 
@@ -974,6 +974,10 @@ class PersonalizationStoriesViewer(
         if (url.isEmpty() || imageLoader != null) return
         com.bumptech.glide.Glide.with(hostContext.applicationContext).load(url).preload()
     }
+
+    /** An error of the viewer under its shop, so the shop's log level applies. */
+    private fun logError(message: String, throwable: Throwable? = null) =
+        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, message, sdk?.logShopId ?: shopId, throwable = throwable)
 
     private inner class StoriesAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
         override fun getItemCount(): Int = stories.size

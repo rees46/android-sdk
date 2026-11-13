@@ -33,7 +33,7 @@ internal class CoreV2(
 
     /** Nothing a request does may reach the app's process as an exception. */
     private val uncaught = CoroutineExceptionHandler { _, throwable ->
-        SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "A request of the core failed unexpectedly", shopId, throwable = throwable)
+        SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, "A request of the core failed unexpectedly", shopId, throwable = throwable)
     }
 
     /** The instance's requests; [release] cancels them all. */

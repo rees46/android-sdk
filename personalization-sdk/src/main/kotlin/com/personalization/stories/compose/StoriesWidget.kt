@@ -1,5 +1,8 @@
 package com.personalization.stories.compose
 
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -51,7 +54,7 @@ fun StoriesWidget(
         val handle = try {
             Rees46.awaitInstance(shopId) { value = it }
         } catch (throwable: Throwable) {
-            SDK.error("StoriesWidget: cannot resolve an SDK for shopId=$shopId", throwable)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "StoriesWidget: cannot resolve an SDK for shopId=$shopId", shopId, throwable = throwable)
             Cancellable.NOOP
         }
         awaitDispose { handle.cancel() }

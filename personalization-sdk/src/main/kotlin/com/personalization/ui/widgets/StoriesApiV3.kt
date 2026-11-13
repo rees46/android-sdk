@@ -112,8 +112,8 @@ internal object StoriesApiV3 {
         runCatching { sdk.storiesManager.setTrackingSourceUseCase(StoriesManager.STORIES_SOURCE_TYPE, code) }
         whenDid(sdk) {
             val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId)
-            val response = post(eventsUrl(domain, code), body, sdk.logShopId)
-            if (response.code !in 200..299) SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES_V3, "stories v3: $event failed: ${response.code}", sdk.logShopId)
+            // A failed answer is logged by the call itself, as request_failed.
+            post(eventsUrl(domain, code), body, sdk.logShopId)
         }
     }
 

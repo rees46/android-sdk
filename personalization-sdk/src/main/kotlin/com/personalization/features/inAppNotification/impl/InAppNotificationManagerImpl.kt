@@ -340,7 +340,8 @@ class InAppNotificationManagerImpl @Inject constructor(
             }
             context.startActivity(intent)
         } catch (exception: Exception) {
-            exception.printStackTrace()
+            // The class only: the text names the link.
+            log(LogLevel.WARNING, LogCodes.UI, "No app opened the popup's link", throwable = exception)
         }
     }
 
