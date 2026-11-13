@@ -24,7 +24,7 @@ class HmsMessagingService : HmsMessageService() {
             // lazily-registered shop the push targets, so a cold-process push (app not running) reaches
             // the second shop instead of being dropped for not being live yet.
             if (data.isNotEmpty()) {
-                SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "HMS data message", data["shop_id"], mapOf("keys" to data.keys.sorted()))
+                SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH, "HMS data message", data["shop_id"], mapOf("keys" to data.keys.sorted()))
                 Rees46.handlePush(data, PushEventType.RECEIVED)
             }
         } catch (throwable: Throwable) {

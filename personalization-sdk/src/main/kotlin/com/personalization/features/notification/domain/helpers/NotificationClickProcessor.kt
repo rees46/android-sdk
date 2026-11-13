@@ -3,6 +3,7 @@ package com.personalization.features.notification.domain.helpers
 import android.os.Bundle
 import com.personalization.LogLevel
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.notification.domain.data.NotificationDataSender
@@ -40,12 +41,14 @@ class NotificationClickProcessor @Inject constructor(
     }
 
     private fun handleError(errorMessage: String, extras: Bundle?) {
-        // Not the extras themselves: they carry the push's content.
+        // Every SDK push has a type and a code: a click without them is another sender's notification,
+        // which an app that hands every click to the SDK passes on as well. Not the extras themselves:
+        // they carry the push's content.
         SdkLogs.log(
-            LogLevel.WARNING,
+            LogLevel.DEBUG,
             LogCodes.PUSH_DROPPED,
             "$errorMessage: the clicked push has no type or code",
-            context = mapOf("keys" to extras?.keySet()?.sorted())
+            context = mapOf("reason" to LogReasons.NOT_SDK_PUSH, "keys" to extras?.keySet()?.sorted())
         )
     }
 }

@@ -4,6 +4,7 @@ import com.personalization.LogLevel
 import com.personalization.SDK
 import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
@@ -97,7 +98,9 @@ internal class CoreHttpClient(
     /** Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. */
     suspend fun send(method: NetworkMethod, params: JSONObject): HttpResult {
         if (!connectivity.isConnected) {
-            log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") { context(method, error = ERROR_NETWORK) }
+            log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") {
+                context(method) + ("reason" to LogReasons.OFFLINE)
+            }
             return HttpResult.Failure(SdkError.Network)
         }
         val phase = Phase()
@@ -212,6 +215,8 @@ internal class CoreHttpClient(
                         context(method, status, name)
                     }
                 }
+                SdkError.Cancelled ->
+                    log(LogLevel.DEBUG, LogCodes.REQUEST_CANCELLED, "${line(method)}: cancelled") { context(method) }
                 else -> Unit
             }
         }

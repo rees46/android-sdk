@@ -51,8 +51,11 @@ internal class CoreV2(
 
     override fun send(method: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         val answered = AtomicBoolean(false)
+        // Delivers the result unless the request has had its answer; true when this one was it.
         val answer = { result: HttpResult ->
-            if (answered.compareAndSet(false, true) && listener != null) deliver(listener, result)
+            answered.compareAndSet(false, true).also { first ->
+                if (first && listener != null) deliver(listener, result)
+            }
         }
         if (released) {
             endings.launch { answer(HttpResult.Failure(SdkError.NotInitialized)) }
@@ -73,7 +76,12 @@ internal class CoreV2(
         }
         // Cancelled before or while it ran: the request still gets its one answer.
         request.invokeOnCompletion { cause ->
-            if (cause != null) endings.launch { answer(HttpResult.Failure(SdkError.Cancelled)) }
+            if (cause != null) endings.launch {
+                if (answer(HttpResult.Failure(SdkError.Cancelled))) {
+                    SdkLogs.log(LogLevel.DEBUG, LogCodes.REQUEST_CANCELLED, "${method.type} ${method.method}: cancelled", shopId,
+                        mapOf("method" to method.type, "path" to method.method))
+                }
+            }
         }
     }
 

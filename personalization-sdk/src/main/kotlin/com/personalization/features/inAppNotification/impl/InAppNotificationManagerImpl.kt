@@ -2,6 +2,7 @@ package com.personalization.features.inAppNotification.impl
 
 import com.personalization.logs.SdkLogs
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.LogLevel
 import android.app.Activity
 import android.content.Context
@@ -100,7 +101,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     return
                 }
                 if (activity == null) {
-                    log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id, "reason" to "listener"))
+                    log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id, "reason" to LogReasons.APP_DECLINED))
                     return
                 }
                 activity.supportFragmentManager.takeIf { it.canShowDialog() }
@@ -109,7 +110,7 @@ class InAppNotificationManagerImpl @Inject constructor(
             presentation.autoPresentation -> defaultTarget()
 
             else -> {
-                log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id, "reason" to "auto_presentation_off"))
+                log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id, "reason" to LogReasons.AUTO_PRESENTATION_OFF))
                 return
             }
         }

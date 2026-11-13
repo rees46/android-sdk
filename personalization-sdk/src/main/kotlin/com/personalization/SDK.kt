@@ -6,6 +6,7 @@ import androidx.core.util.Consumer
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
@@ -1214,7 +1215,7 @@ open class SDK {
         if (!isSdkInitialized) {
             log(
                 LogLevel.WARNING,
-                LogCodes.SDK_LOG,
+                LogCodes.PUSH,
                 "notificationReceived() called before SDK.initialize(); ignoring. " +
                     "Initialize SDK.instance in Application.onCreate so push delivery works in a cold process."
             )
@@ -1370,18 +1371,22 @@ open class SDK {
          * @param data the push data payload (title/body/icon/…)
          */
         fun onMessage(data: Map<String, String>) {
-            val shopId = PushTargetResolver.resolve(
-                payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD],
-                liveShopIds = SdkRegistry.shopIds()
-            )
+            val payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD]
+            val liveShopIds = SdkRegistry.shopIds()
+            val shopId = PushTargetResolver.resolve(payloadShopId = payloadShopId, liveShopIds = liveShopIds)
             val target = shopId?.let { SdkRegistry.byShopId(it) }
             if (target == null || shopId == null) {
-                warn(
-                    "onMessage: push dropped — no shop resolves it " +
-                        "(shop_id=${data[PreferencesPartition.SHOP_ID_FIELD]}, live=${SdkRegistry.shopIds()})."
+                val reason = if (payloadShopId == null && liveShopIds.size > 1) LogReasons.AMBIGUOUS_SHOP else LogReasons.UNKNOWN_SHOP
+                SdkLogs.log(
+                    LogLevel.WARNING,
+                    LogCodes.PUSH_DROPPED,
+                    "onMessage: push dropped — no shop resolves it",
+                    payloadShopId,
+                    mapOf("reason" to reason, "live" to liveShopIds.size)
                 )
                 return
             }
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to "received"))
             // Show via the process-global listener, then track received on the instance.
             SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
             target.receiveMessage(data = data)

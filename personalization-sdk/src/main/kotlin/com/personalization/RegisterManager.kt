@@ -90,7 +90,7 @@ class RegisterManager @Inject constructor(
 
     private fun init(knownDevice: Boolean = false) {
         if (isTestDevice) {
-            log(LogLevel.WARNING, LogCodes.SDK_LOG, "/init is not sent on a Google Play pre-launch report device")
+            log(LogLevel.INFO, LogCodes.INIT_SKIPPED, "/init is not sent on a Google Play pre-launch report device", mapOf("reason" to "pre_launch_report"))
             return
         }
 

@@ -112,6 +112,8 @@ class PushTokenManager @Inject constructor(
      */
     fun onTokenReceived(token: String, provider: PushProvider) {
         if (token.isEmpty() || !::context.isInitialized) return
+        // Never the token itself.
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_RECEIVED, "Push token received", logShopId, mapOf("provider" to provider.id))
 
         val currentDate = Date().time
         if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {

@@ -169,11 +169,14 @@ class CoreHttpClientTest {
 
     @Test
     fun `without a network a request fails at once and is never sent`() {
+        SdkLogs.register("shop", LogLevel.DEBUG, "CoreTag")
         connectivity.set(false)
         reply(200, "{}")
 
         assertEquals(SdkError.Network, send().error())
         assertEquals(0, server.requestCount)
+        val log = ShadowLog.getLogsForTag("CoreTag").joinToString("\n") { it.msg }
+        assertTrue(log, log.contains("[request_failed] GET products/get: no network {method=GET, path=products/get, reason=offline}"))
     }
 
     @Test

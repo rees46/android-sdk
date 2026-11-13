@@ -1,6 +1,7 @@
 package com.personalization
 
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
@@ -204,6 +205,7 @@ object Rees46 {
 
     private fun receivePush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
+        logHandedOver(shopId, PushEventType.RECEIVED)
         // Show first — the process-global listener needs no instance, so a pending shop's push still
         // appears. Then track the delivery on the shop's own network (light bring-up if it isn't live);
         // a tracking/init failure must never undo the shown notification.
@@ -214,6 +216,7 @@ object Rees46 {
 
     private fun clickPush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
+        logHandedOver(shopId, PushEventType.CLICKED)
         runCatching { targetInstance(resolution, shopId)?.notificationClicked(payload.toBundle()) }
             .onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
     }
@@ -232,18 +235,29 @@ object Rees46 {
         return when (resolution) {
             is InstanceResolver.Resolution.Existing -> resolution to resolution.shopId
             is InstanceResolver.Resolution.Pending -> resolution to resolution.shopId
-            InstanceResolver.Resolution.Ambiguous,
+            InstanceResolver.Resolution.Ambiguous -> {
+                logDropped(payloadShopId, LogReasons.AMBIGUOUS_SHOP)
+                null
+            }
             InstanceResolver.Resolution.NotRegistered -> {
-                SdkLogs.log(
-                    LogLevel.WARNING,
-                    LogCodes.PUSH_DROPPED,
-                    "handlePush: push dropped — no shop resolves it",
-                    payloadShopId,
-                    mapOf("live" to SdkRegistry.shopIds().size, "pending" to pending.size)
-                )
+                logDropped(payloadShopId, LogReasons.UNKNOWN_SHOP)
                 null
             }
         }
+    }
+
+    private fun logDropped(payloadShopId: String?, reason: String) {
+        SdkLogs.log(
+            LogLevel.WARNING,
+            LogCodes.PUSH_DROPPED,
+            "handlePush: push dropped — no shop resolves it",
+            payloadShopId,
+            mapOf("reason" to reason, "live" to SdkRegistry.shopIds().size, "pending" to pending.size)
+        )
+    }
+
+    private fun logHandedOver(shopId: String, event: PushEventType) {
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to event.name.lowercase()))
     }
 
     /** The live instance, or a pending shop brought up with a light push-context init. */

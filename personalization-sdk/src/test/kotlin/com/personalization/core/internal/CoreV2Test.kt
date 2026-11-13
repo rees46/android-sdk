@@ -1,6 +1,11 @@
 package com.personalization.core.internal
 
+import com.personalization.LogLevel
+import com.personalization.SdkLogHandler
+import com.personalization.SdkLogMessage
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
@@ -21,6 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 
 /** The new core behind the old callbacks: one answer per request, the old codes, and release. */
@@ -48,7 +54,11 @@ class CoreV2Test {
     fun tearDown() {
         core.release()
         server.close()
+        SdkLogs.reset()
+        SdkLogs.handlerExecutor = defaultExecutor
     }
+
+    private val defaultExecutor = SdkLogs.handlerExecutor
 
     @Test
     fun `answers come back as the old callbacks get them`() {
@@ -98,6 +108,27 @@ class CoreV2Test {
         core.send(NetworkMethod.GET("products/get"), JSONObject(), after)
         assertEquals(listOf("error:-1"), after.await().map { it.substringBefore(":The") })
         assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `a request release cancels is logged at debug by method and path`() {
+        val logged = CopyOnWriteArrayList<SdkLogMessage>()
+        SdkLogs.handlerExecutor = Executor { it.run() }
+        SdkLogs.register("shop", LogLevel.DEBUG, "SDK")
+        SdkLogs.handler = SdkLogHandler { logged += it }
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+        val inFlight = Recorder()
+        core.send(NetworkMethod.GET("products/get"), JSONObject().put("email", "a@example.com"), inFlight)
+        server.takeRequest(5, TimeUnit.SECONDS)
+
+        core.release()
+        inFlight.await()
+
+        val cancelled = logged.filter { it.code == LogCodes.REQUEST_CANCELLED }
+        assertEquals(1, cancelled.size)
+        assertEquals(LogLevel.DEBUG, cancelled.single().level)
+        assertEquals(mapOf("method" to "GET", "path" to "products/get"), cancelled.single().context)
+        assertTrue(logged.none { "a@example.com" in it.message || "a@example.com" in it.context.toString() })
     }
 
     @Test

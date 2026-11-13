@@ -140,9 +140,16 @@ internal object LogCodes {
     /** A request got an answer (`debug`); context: method, path, status. */
     const val REQUEST = "request"
 
-    /** An answer outside `2xx` or none (`error` on `4xx`, otherwise `warning`); context: method, path, status. */
+    /**
+     * An answer outside `2xx` or none (`error` on `4xx`, otherwise `warning`); context: method, path, status.
+     * A request refused at once for want of a network has [LogReasons.OFFLINE].
+     */
     const val REQUEST_FAILED = "request_failed"
     const val REQUEST_BUILD_FAILED = "request_build_failed"
+
+    /** A request cancelled by `release()` (`debug`); context: method, path. */
+    const val REQUEST_CANCELLED = "request_cancelled"
+
     const val INVALID_ARGUMENT = "invalid_argument"
     const val INVALID_CONFIG = "invalid_config"
     const val DECODING_FAILED = "decoding_failed"
@@ -155,15 +162,28 @@ internal object LogCodes {
     /** `/init` failed (`error` on `4xx`, otherwise `warning`). */
     const val INIT_FAILED = "init_failed"
 
+    /** `/init` deliberately not sent (`info`), as on a Google Play pre-launch report device; context: reason. */
+    const val INIT_SKIPPED = "init_skipped"
+
     /** The shop refused and the core is in the `refused` state; the legacy path has no such state. */
     const val INIT_REFUSED = "init_refused"
     const val DEVICE_ID_RESET = "device_id_reset"
     const val STORAGE_FAILED = "storage_failed"
     const val QUEUE_DROPPED = "queue_dropped"
 
+    /** A push handed to its shop (`debug`); the steps before that go under [PUSH]. */
     const val PUSH_RECEIVED = "push_received"
+
+    /**
+     * A push not handled; context: reason. `debug` for one that is not the SDK's ([LogReasons.NOT_SDK_PUSH]),
+     * `warning` for one no shop takes ([LogReasons.UNKNOWN_SHOP], [LogReasons.AMBIGUOUS_SHOP]).
+     */
     const val PUSH_DROPPED = "push_dropped"
     const val PUSH_FAILED = "push_failed"
+
+    /** A push token came from FCM or HMS (`debug`), without the token itself. */
+    const val PUSH_TOKEN_RECEIVED = "push_token_received"
+
     const val PUSH_PERMISSION = "push_permission"
     const val PUSH_PERMISSION_FAILED = "push_permission_failed"
     const val PUSH_TOKEN_SENT = "push_token_sent"
@@ -172,6 +192,10 @@ internal object LogCodes {
     const val ADVERTISING_ID_SENT = "advertising_id_sent"
     const val ADVERTISING_ID_FAILED = "advertising_id_failed"
 
+    /**
+     * A popup not shown; context: reason. `debug` when the app kept it back ([LogReasons.APP_DECLINED],
+     * [LogReasons.AUTO_PRESENTATION_OFF]), otherwise `warning`.
+     */
     const val POPUP_NOT_SHOWN = "popup_not_shown"
     const val CORE_FLAG_MISMATCH = "core_flag_mismatch"
 
@@ -181,8 +205,19 @@ internal object LogCodes {
     const val STORIES = "stories"
     const val STORIES_V3 = "stories_v3"
     const val POPUPS_V3 = "popups_v3"
+    const val PUSH = "push"
 
     /** The level of a failed request or `/init` by its HTTP code: `error` on `4xx`, otherwise `warning`. */
     fun failureLevel(status: Int?): LogLevel =
         if (status != null && status in 400..499) LogLevel.ERROR else LogLevel.WARNING
+}
+
+/** Values of `context.reason` that the logging spec names. */
+internal object LogReasons {
+    const val OFFLINE = "offline"
+    const val NOT_SDK_PUSH = "not_sdk_push"
+    const val UNKNOWN_SHOP = "unknown_shop"
+    const val AMBIGUOUS_SHOP = "ambiguous_shop"
+    const val APP_DECLINED = "app_declined"
+    const val AUTO_PRESENTATION_OFF = "auto_presentation_off"
 }
