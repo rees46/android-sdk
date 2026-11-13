@@ -32,6 +32,11 @@ internal class FakeConnectivity(connected: Boolean = true) : ConnectivityMonitor
         isConnected = connected
         listeners.forEach { it(connected) }
     }
+
+    /** A change nobody hears of, as when the system's callback does not come. */
+    fun setQuietly(connected: Boolean) {
+        isConnected = connected
+    }
 }
 
 /** Foreground or background, switched by the test; listeners hear each switch. */

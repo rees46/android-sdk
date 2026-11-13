@@ -17,6 +17,7 @@ import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUs
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -125,7 +126,7 @@ class ShopStorageTest {
         val queue = storage.queueDirectory()
         File(queue, "event-1").writeText("{}")
 
-        assertTrue(LegacyCore(mockk<UserSettingsRepository>(relaxed = true)) { "" }.deleteUserCredentials(storage))
+        assertTrue(runBlocking { LegacyCore(mockk<UserSettingsRepository>(relaxed = true)) { "" }.deleteUserCredentials(storage) })
 
         val left = storage.preferences.all
         listOf(
@@ -165,7 +166,7 @@ class ShopStorageTest {
         File(queue, "event-1").writeText("{}")
         val core = CoreV2(CoreHttpClient({ "https://example.invalid/" }, mockk(relaxed = true), FakeConnectivity(), SHOP), SHOP)
 
-        assertTrue(core.deleteUserCredentials(storage))
+        assertTrue(runBlocking { core.deleteUserCredentials(storage) })
         core.release()
 
         assertFalse(queue?.exists() == true)

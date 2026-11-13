@@ -10,6 +10,7 @@ import com.personalization.core.SdkError
 import com.personalization.core.SdkException
 import com.personalization.core.SdkResult
 import com.personalization.core.SdkState
+import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.LegacyCore
@@ -25,11 +26,13 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -258,17 +261,20 @@ class SdkStorageTest {
             context.getSharedPreferences(StorageLayout(SHOP, null).partitionName, Context.MODE_PRIVATE).edit().clear().commit()
             val sdk = Rees46.initialize(context, config(coreV2 = coreV2))
             awaitReady(sdk, "did-1")
-            val scheduler = TestCoroutineScheduler()
-            sdk.dispatchers = testCoreDispatchers(scheduler)
+            // The io thread is busy until the test lets it go: the wipe waits there.
+            val busy = CountDownLatch(1)
+            val io = Executors.newSingleThreadExecutor()
+            io.execute { busy.await() }
+            sdk.dispatchers = CoreDispatchers(io = io.asCoroutineDispatcher(), main = { Dispatchers.Unconfined })
 
-            // The caller goes as soon as the wipe is handed to the io dispatcher.
             val caller = CoroutineScope(Dispatchers.Unconfined).launch { sdk.deleteUserCredentials() }
             assertEquals(SdkState.INITIALIZING, sdk.state)
             caller.cancel()
-            scheduler.advanceUntilIdle()
+            busy.countDown()
 
-            assertTrue(caller.isCancelled)
             awaitReady(sdk, "did-2")
+            assertTrue(caller.isCancelled)
+            io.shutdown()
             assertEquals("core v2: $coreV2", listOf("", ""), inits)
         }
     }
