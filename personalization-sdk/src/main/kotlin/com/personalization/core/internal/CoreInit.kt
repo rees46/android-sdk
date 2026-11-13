@@ -206,6 +206,12 @@ internal class CoreInit(
         if (becameReady) markUsable(start)
     }
 
+    /**
+     * Waits without a limit until the instance is ready, or never will be: null once it is (it has a
+     * `did`), otherwise `shopBlocked` or `notInitialized`. The push token waits here (`core/push.md`).
+     */
+    internal suspend fun ready(): SdkError? = errorOf(gate.first { it != Gate.WAIT })
+
     /** For a request with a result: [usable] within [timeoutMs]. */
     suspend fun awaitUsable(timeoutMs: Long): SdkError? {
         val verdict = withTimeoutOrNull(timeoutMs) { Verdict(usable()) } ?: return SdkError.Timeout

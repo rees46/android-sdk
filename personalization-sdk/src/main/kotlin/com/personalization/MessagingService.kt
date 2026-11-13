@@ -24,7 +24,7 @@ class MessagingService : FirebaseMessagingService() {
                 // Route through the facade so a lazily-registered shop the push targets is materialized
                 // on demand — the cold process FCM starts to deliver a data-only message only has the
                 // eagerly-initialized shops live, so a lazy shop would otherwise be dropped at routing.
-                Rees46.handlePush(remoteMessage.data, PushEventType.RECEIVED)
+                Rees46.receivePush(remoteMessage.data)
             }
 
             // SDK pushes are data messages; one with only a notification payload is not the SDK's.

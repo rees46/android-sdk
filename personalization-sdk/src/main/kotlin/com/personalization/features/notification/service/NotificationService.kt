@@ -104,7 +104,7 @@ class NotificationService : Service() {
                     context = applicationContext,
                     urls = data.image
                 )
-                notificationHelper.createNotification(
+                notificationHelper.redraw(
                     context = this@NotificationService,
                     data = NotificationData(
                         id = data.id,

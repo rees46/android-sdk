@@ -40,7 +40,8 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
 
 /**
  * The new core's event queue (`core/queue.md`, decision 0002): `/push`, `/push/custom`, `track/stories`,
- * `track/slider` and `popup/showed` go through it, in order, and survive no network and a restart.
+ * `track/slider`, `popup/showed` and the push events (`track/delivered`, `track/opened`, `track/clicked`,
+ * `track/closed`) go through it, in order, and survive no network and a restart.
  *
  * - **Accepting.** [accept] answers a released instance with `notInitialized`, a refused shop with
  *   `shopBlocked` and fields JSON cannot hold with `invalidArgument`, at once; otherwise it moves the
@@ -635,8 +636,11 @@ internal class EventQueue(
         const val PATH_PUSH = "push"
         const val PATH_CUSTOM = "push/custom"
 
-        /** What the queue takes; the push events (`track/delivered` and the others) join with stage 6. */
-        val PATHS: Set<String> = setOf(PATH_PUSH, PATH_CUSTOM, "track/stories", "track/slider", "popup/showed")
+        /** The push events (decision 0004): the server reads no `sid` in them, and none goes. */
+        val PUSH_EVENT_PATHS: Set<String> = setOf("track/delivered", "track/opened", "track/clicked", "track/closed")
+
+        /** What the queue takes. */
+        val PATHS: Set<String> = setOf(PATH_PUSH, PATH_CUSTOM, "track/stories", "track/slider", "popup/showed") + PUSH_EVENT_PATHS
 
         const val TTL_MS = 7 * 24 * 60 * 60 * 1000L
         const val CAP = 1_000

@@ -21,6 +21,10 @@
             </intent-filter>
         </service>
         <service android:name=".features.notification.service.NotificationService" />
+        <!-- A notification the SDK drew and the user dismissed: track/closed. -->
+        <receiver
+            android:name="com.personalization.push.PushDismissReceiver"
+            android:exported="false" />
 
         <service
             android:name="com.personalization.HmsMessagingService"

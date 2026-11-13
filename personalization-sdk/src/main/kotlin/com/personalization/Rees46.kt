@@ -5,7 +5,11 @@ import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
+import com.personalization.core.PushCallbacks
+import com.personalization.core.PushEvent
+import com.personalization.core.PushPayload
 import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.PushHub
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import java.util.concurrent.ConcurrentHashMap
@@ -205,21 +209,81 @@ object Rees46 {
     }
 
     /**
-     * Routes a push to the shop it belongs to. The target is the payload's `shop_id`; with no `shop_id`
-     * a single registered shop still resolves, but an unknown shop — or an absent `shop_id` while
-     * several shops are registered — drops the push instead of delivering it to the wrong one.
+     * Hands a push to the shop it belongs to and returns that shop's id, or null when it is not the SDK's
+     * or no shop takes it. Never throws. The SDK's messaging services call it, and so does an app that has
+     * its own `FirebaseMessagingService` or `HmsMessageService`, or draws and handles the notifications
+     * itself.
+     *
+     * 1. A push of the SDK has a `type` and an `id`, the message's code (a tap's intent extras
+     *    `NOTIFICATION_TYPE` and `NOTIFICATION_ID` are read too); without them it is not the SDK's
+     *    (`push_dropped`, `not_sdk_push`).
+     * 2. The shop is the push's `shop_id`; without one, the only registered shop. An unknown shop, or no
+     *    `shop_id` while several shops are registered, drops the push (`push_dropped`) instead of handing it
+     *    to the wrong shop. A shop registered without `eagerInit` is brought up just to send the event: the
+     *    app may have been started by the push itself.
+     * 3. The event goes to the shop. On the new core ([Rees46Config.coreV2]) through its queue to
+     *    `track/delivered`, `track/opened`, `track/clicked` or `track/closed`, once per message in a process:
+     *    a repeat sends nothing and still returns the shop. A tap also sets the tracking source for 48 hours,
+     *    which the `/push` events carry as `source`. The legacy core sends a delivery to `track/received`
+     *    and a tap to `track/clicked`, as before.
+     * 4. The shop's callback of the event runs on the main thread: the one of [SDK.setPushCallbacks], or
+     *    else the one of [setPushCallbacks]. For [PushEvent.DELIVERED] the old listeners
+     *    ([setOnMessageListener], [SDK.setOnMessageListener]) hear the push too, as before.
+     */
+    fun handlePush(payload: Map<String, String>, event: PushEvent): String? = try {
+        route(payload, event)
+    } catch (e: Exception) {
+        SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the push could not be handled", payload[PreferencesPartition.SHOP_ID_FIELD], throwable = e)
+        null
+    }
+
+    private fun route(data: Map<String, String>, event: PushEvent): String? {
+        val parsed = PushPayload.parse(data)
+        if (parsed == null) {
+            // Not the values: they carry the push's content.
+            SdkLogs.log(
+                LogLevel.DEBUG,
+                LogCodes.PUSH_DROPPED,
+                "handlePush: the push has no id or type, it is not a push of the SDK",
+                data[PreferencesPartition.SHOP_ID_FIELD],
+                mapOf("reason" to LogReasons.NOT_SDK_PUSH, "keys" to data.keys.sorted()),
+            )
+            return null
+        }
+        val (resolution, shopId) = resolvePushTarget(data[PreferencesPartition.SHOP_ID_FIELD]) ?: return null
+        logHandedOver(shopId, event.name)
+        // Shown first, as before: the process-global listener needs no instance.
+        if (event == PushEvent.DELIVERED) SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
+        val target = targetInstance(resolution, shopId)
+        if (target == null) {
+            logDropped(shopId, LogReasons.UNKNOWN_SHOP)
+            return null
+        }
+        val fresh = when (event) {
+            PushEvent.DELIVERED -> target.onPushReceived(data)
+            else -> target.pushEvent(event, parsed.code, parsed.type)
+        }
+        if (fresh) PushHub.event(event, parsed.withShop(shopId), target.pushCallbacks)
+        return shopId
+    }
+
+    /**
+     * The form of [handlePush] before [PushEvent]: [PushEventType.RECEIVED] is [PushEvent.DELIVERED] and
+     * [PushEventType.CLICKED] is [PushEvent.CLICKED].
      *
      * A `RECEIVED` push is **shown first, with no initialization**: the parsed notification is dispatched
      * to the process-global listener ([setOnMessageListener]) so it appears even for a shop that is
      * registered but not yet initialized — the cold-process case, where FCM/HMS start the app just to
-     * deliver a data-only message and only eagerly-initialized shops are live. Tracking the delivery
-     * (`track/received`) then runs on the shop's own network, bringing a pending shop up with a light
-     * init ([materializeForPush]): no `/init` round-trip, no push-token re-registration, no profile
-     * call. A failure to track never undoes the shown notification.
-     *
-     * This is the router the SDK's own messaging services use; a host that owns its messaging service
-     * calls it directly.
+     * deliver a data-only message and only eagerly-initialized shops are live. As before, any push the
+     * shop resolves reaches that listener, one without `id` and `type` too. Tracking the delivery then runs
+     * on the shop's own network, bringing a pending shop up with a light init ([materializeForPush]); a
+     * failure to track never undoes the shown notification. The legacy core sends it to `track/received`,
+     * the new core to `track/delivered`.
      */
+    @Deprecated(
+        message = "Use handlePush(payload, PushEvent): it returns the shop that took the push, and knows OPENED and CLOSED.",
+        replaceWith = ReplaceWith("Rees46.handlePush(payload, com.personalization.core.PushEvent.DELIVERED)", "com.personalization.Rees46"),
+    )
     fun handlePush(payload: Map<String, String>, event: PushEventType) {
         when (event) {
             PushEventType.RECEIVED -> receivePush(payload)
@@ -227,22 +291,50 @@ object Rees46 {
         }
     }
 
-    private fun receivePush(payload: Map<String, String>) {
+    /** A push the SDK's messaging services got: [handlePush] with [PushEventType.RECEIVED]. */
+    internal fun receivePush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
-        logHandedOver(shopId, PushEventType.RECEIVED)
+        logHandedOver(shopId, PushEventType.RECEIVED.name)
         // Show first — the process-global listener needs no instance, so a pending shop's push still
         // appears. Then track the delivery on the shop's own network (light bring-up if it isn't live);
         // a tracking/init failure must never undo the shown notification.
         SdkRegistry.dispatchMessage(shopId = shopId, data = payload.toNotificationData())
-        runCatching { targetInstance(resolution, shopId)?.onPushReceived(payload) }
-            .onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
+        runCatching {
+            val target = targetInstance(resolution, shopId) ?: return@runCatching
+            val fresh = target.onPushReceived(payload)
+            val parsed = PushPayload.parse(payload)
+            if (fresh && parsed != null) PushHub.event(PushEvent.DELIVERED, parsed.withShop(shopId), target.pushCallbacks)
+        }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
+    /**
+     * A tap in the old form: the legacy core tracks it from the payload's `NOTIFICATION_TYPE` and
+     * `NOTIFICATION_ID`, as before; the new core as [handlePush] with [PushEvent.CLICKED].
+     */
     private fun clickPush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
-        logHandedOver(shopId, PushEventType.CLICKED)
-        runCatching { targetInstance(resolution, shopId)?.notificationClicked(payload.toBundle()) }
-            .onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
+        logHandedOver(shopId, PushEventType.CLICKED.name)
+        runCatching {
+            val target = targetInstance(resolution, shopId) ?: return@runCatching
+            val parsed = PushPayload.parse(payload)
+            val fresh = if (parsed != null && target.core?.isV2 == true) {
+                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type)
+            } else {
+                target.notificationClicked(payload.toBundle())
+                true
+            }
+            if (fresh && parsed != null) PushHub.event(PushEvent.CLICKED, parsed.withShop(shopId), target.pushCallbacks)
+        }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
+    }
+
+    /**
+     * The app's callbacks on the pushes of every shop, the registered and not yet created among them:
+     * [PushPayload.shopId] tells the shop. A shop's own callback of an event ([SDK.setPushCallbacks]) wins
+     * over the one here. Replaces the callbacks set before; null clears them. [setOnMessageListener] keeps
+     * working beside them.
+     */
+    fun setPushCallbacks(callbacks: PushCallbacks?) {
+        PushHub.callbacks = callbacks
     }
 
     /**
@@ -280,8 +372,8 @@ object Rees46 {
         )
     }
 
-    private fun logHandedOver(shopId: String, event: PushEventType) {
-        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to event.name.lowercase()))
+    private fun logHandedOver(shopId: String, event: String) {
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to event.lowercase()))
     }
 
     /** The live instance, or a pending shop brought up with a light push-context init. */

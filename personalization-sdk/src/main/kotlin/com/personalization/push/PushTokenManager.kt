@@ -7,6 +7,10 @@ import android.content.Context
 import com.personalization.OnPushTokenListener
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.PushCallbacks
+import com.personalization.core.PushToken
+import com.personalization.core.internal.CorePushTokens
+import com.personalization.core.internal.PushHub
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
@@ -29,6 +33,10 @@ import javax.inject.Singleton
  * device. Until the device has a `did` (a new install before `/init` answers, or the window after
  * `deleteUserCredentials()`) the request waits in the instance's queue and goes once the `did` is
  * stored; the host's listener hears of the token at once all the same.
+ *
+ * On the new core the rules of `core/push.md` are [CorePushTokens]'s: the token is the device's, each shop
+ * sends a new one at once and the same one at most once a week, after the instance is ready. Either way
+ * the app's `PushCallbacks.onToken` hears each new token once ([PushHub]).
  */
 @Singleton
 class PushTokenManager @Inject constructor(
@@ -44,6 +52,17 @@ class PushTokenManager @Inject constructor(
     /** The shop of the instance, so the token's log lines pass that shop's level. */
     @Volatile
     internal var logShopId: String? = null
+
+    /** The new core's rules for this shop's token; null on the legacy core. */
+    @Volatile
+    internal var core: CorePushTokens? = null
+
+    /** The instance's own push callbacks, for `onToken`. */
+    @Volatile
+    internal var callbacks: () -> PushCallbacks? = { null }
+
+    /** The tokens the instance's own `onToken` heard of, by provider. */
+    private val reported = ConcurrentHashMap<PushProvider, String>()
 
     /**
      * Tokens whose request is already on the wire, as `provider:token`.
@@ -80,9 +99,9 @@ class PushTokenManager @Inject constructor(
         this.listener = listener
     }
 
-    /** Last token known for [provider] from the local cache, or null if none. */
+    /** Last token known for [provider] from the local cache, or null if none: on the new core the device's. */
     fun getToken(provider: PushProvider): String? =
-        getPreferencesValueUseCase.getPushToken(provider).takeIf { it.isNotEmpty() }
+        core?.token(provider) ?: getPreferencesValueUseCase.getPushToken(provider).takeIf { it.isNotEmpty() }
 
     /**
      * Detects available providers and proactively fetches their tokens. Tokens that are only
@@ -91,6 +110,8 @@ class PushTokenManager @Inject constructor(
     fun initialize(context: Context, autoSendPushToken: Boolean) {
         this.context = context
         this.autoSendPushToken = autoSendPushToken
+        // The new core: what the device has goes once it is due, before a fetch brings it again.
+        core?.sendStored()
 
         sources.filter { it.isAvailable(context) }.forEach { source ->
             source.fetchToken(context) { result ->
@@ -116,22 +137,34 @@ class PushTokenManager @Inject constructor(
      * `onNewToken`). Sends to the backend when changed, then always notifies the host listener.
      */
     fun onTokenReceived(token: String, provider: PushProvider) {
-        if (token.isEmpty() || !::context.isInitialized) return
+        val v2 = core
+        if (token.isEmpty() || (v2 == null && !::context.isInitialized)) return
         // Never the token itself.
         SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_RECEIVED, "Push token received", logShopId, mapOf("provider" to provider.id))
 
-        val currentDate = Date().time
-        if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {
-            sendTokenToServer(token, provider, currentDate, external = null)
+        if (v2 != null) {
+            // Kept for the device and sent once the instance is ready, even before it is.
+            v2.received(token, provider)
+        } else {
+            val currentDate = Date().time
+            if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {
+                sendTokenToServer(token, provider, currentDate, external = null)
+            }
         }
         listener?.onPushToken(token, provider)
+        PushHub.token(PushToken(token, provider), logShopId, callbacks(), reported)
     }
 
     /**
      * Manual registration entry point ([com.personalization.SDK.setPushToken]). Always sends to
-     * the backend regardless of [autoSendPushToken], because the host asked for it explicitly.
+     * the backend regardless of [autoSendPushToken], because the host asked for it explicitly. On the
+     * new core it waits for the instance and keeps the week like any token ([CorePushTokens.set]).
      */
     fun sendToken(token: String, provider: PushProvider, listener: OnApiCallbackListener?) {
+        core?.let {
+            it.set(token, provider, listener)
+            return
+        }
         if (token.isEmpty()) return
         sendTokenToServer(token, provider, Date().time, external = listener)
     }

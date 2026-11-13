@@ -6,7 +6,9 @@ import android.content.Intent
 import com.personalization.features.notification.domain.model.NotificationConstants.CURRENT_IMAGE_INDEX
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_BODY
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_IMAGE
+import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_PARAM_ID
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_TITLE
+import com.personalization.features.notification.domain.model.NotificationConstants.TYPE_PARAM
 import com.personalization.features.notification.service.NotificationService
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import java.util.concurrent.atomic.AtomicInteger
@@ -28,6 +30,9 @@ object NotificationNavigationHelper {
             putExtra(NOTIFICATION_TITLE, data.title)
             putExtra(NOTIFICATION_BODY, data.body)
             putExtra(NOTIFICATION_IMAGE, data.image)
+            // The push it is, so the notification drawn again still reports its dismissal.
+            putExtra(NOTIFICATION_PARAM_ID, data.id)
+            putExtra(TYPE_PARAM, data.type)
         }
 
         return PendingIntent.getService(
@@ -47,6 +52,8 @@ object NotificationNavigationHelper {
             putExtra(NOTIFICATION_IMAGE, data.image)
             putExtra(NOTIFICATION_TITLE, data.title)
             putExtra(NOTIFICATION_BODY, data.body)
+            putExtra(NOTIFICATION_PARAM_ID, data.id)
+            putExtra(TYPE_PARAM, data.type)
         }
         return PendingIntent.getService(
             context,

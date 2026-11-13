@@ -73,7 +73,8 @@ internal object CoreHttp {
  * back with the failure, for the caller that repeats ([CoreInit]).
  *
  * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
- * device), and no `segment`.
+ * device), and no `segment`. A push event (`track/delivered` and the others) carries no `sid` or `seance`
+ * and no empty field.
  */
 internal class CoreHttpClient(
     private val baseUrl: () -> String,
@@ -134,6 +135,12 @@ internal class CoreHttpClient(
             INIT_OPTIONAL_FIELDS.forEach { key -> if (fields.optString(key).isEmpty()) fields.remove(key) }
             // `/init` does not read the A/B group (core/init.md): it is the events' field.
             fields.remove(UserBasicParams.SEGMENT)
+        }
+        if (method.method in EventQueue.PUSH_EVENT_PATHS) {
+            // The server reads no sid in a push event (core/push.md), and core-v2 refuses an empty field.
+            fields.remove(UserBasicParams.SID)
+            fields.remove(UserBasicParams.SEANCE)
+            fields.keys().asSequence().toList().forEach { key -> if (fields.opt(key) == "") fields.remove(key) }
         }
         val url = (baseUrl() + method.method).toHttpUrl()
         val builder = Request.Builder()

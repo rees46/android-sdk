@@ -25,7 +25,7 @@ class HmsMessagingService : HmsMessageService() {
             // the second shop instead of being dropped for not being live yet.
             if (data.isNotEmpty()) {
                 SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH, "HMS data message", data["shop_id"], mapOf("keys" to data.keys.sorted()))
-                Rees46.handlePush(data, PushEventType.RECEIVED)
+                Rees46.receivePush(data)
             }
         } catch (throwable: Throwable) {
             SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "An HMS message could not be handled", throwable = throwable)

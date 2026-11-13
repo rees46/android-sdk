@@ -6,7 +6,10 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
+import com.personalization.Rees46
+import com.personalization.core.PushEvent
 import com.personalization.features.notification.domain.model.NotificationConstants.NOTIFICATION_CHANNEL
+import com.personalization.push.PushDismissReceiver
 import com.personalization.resources.NotificationResources
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import javax.inject.Inject
@@ -15,12 +18,41 @@ class NotificationHelper @Inject constructor(
     private val notificationManager: NotificationManager
 ) {
 
+    /** The shop of the instance this helper belongs to: the notifications it draws are that shop's. */
+    @Volatile
+    internal var shopId: String? = null
+
+    /**
+     * Draws [data] as a notification. When it is a push of the SDK — it has an `id` and a `type` — the SDK
+     * reports it as shown (`Rees46.handlePush(push, PushEvent.OPENED)`: `track/opened` and the `onOpened`
+     * callback), and a dismissal without a tap as closed (`track/closed`, `onClosed`), for the shop of the
+     * instance whose helper this is.
+     */
     fun createNotification(
         context: Context,
         data: NotificationData,
         images: List<Bitmap>?,
         currentImageIndex: Int = 0,
         hasError: Boolean = false
+    ) = show(context, data, images, currentImageIndex, hasError, shopId ?: shopOf(data.id), reportShown = true)
+
+    /** The same push drawn again, with another picture of its carousel: not shown once more. */
+    internal fun redraw(
+        context: Context,
+        data: NotificationData,
+        images: List<Bitmap>?,
+        currentImageIndex: Int,
+        hasError: Boolean,
+    ) = show(context, data, images, currentImageIndex, hasError, shopOf(data.id), reportShown = false)
+
+    private fun show(
+        context: Context,
+        data: NotificationData,
+        images: List<Bitmap>?,
+        currentImageIndex: Int,
+        hasError: Boolean,
+        shopId: String?,
+        reportShown: Boolean,
     ) {
         val view = RemoteViews(
             /* packageName = */ context.packageName,
@@ -58,10 +90,28 @@ class NotificationHelper @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
 
+        val notificationId = (data.title + data.body).hashCode()
+        val push = pushOf(data, shopId)
+        push?.let { notificationBuilder.setDeleteIntent(PushDismissReceiver.intent(context, notificationId, it)) }
+
         notificationManager.notify(
-            /* id = */ (data.title + data.body).hashCode(),
+            /* id = */ notificationId,
             /* notification = */ notificationBuilder.build()
         )
+        if (push == null) return
+        if (shopId != null) remember(push.getValue(FIELD_ID), shopId)
+        if (reportShown) Rees46.handlePush(push, PushEvent.OPENED)
+    }
+
+    /** What reports the push of [data]: its code, type and shop; null when it is not a push of the SDK. */
+    private fun pushOf(data: NotificationData, shopId: String?): Map<String, String>? {
+        val code = data.id?.takeIf { it.isNotBlank() } ?: return null
+        val type = data.type?.takeIf { it.isNotBlank() } ?: return null
+        return buildMap {
+            put(FIELD_ID, code)
+            put(FIELD_TYPE, type)
+            shopId?.let { put(FIELD_SHOP_ID, it) }
+        }
     }
 
     /**
@@ -84,6 +134,23 @@ class NotificationHelper @Inject constructor(
     }
 
     private companion object {
+        const val FIELD_ID = "id"
+        const val FIELD_TYPE = "type"
+        const val FIELD_SHOP_ID = "shop_id"
+        private const val SHOPS_LIMIT = 100
+
+        /**
+         * The shop of each push drawn in this process, by its code: the carousel's service draws a push
+         * again without an instance, and its dismissal still belongs to the shop.
+         */
+        private val shops = object : LinkedHashMap<String, String>() {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > SHOPS_LIMIT
+        }
+
+        fun remember(code: String, shopId: String) = synchronized(shops) { shops[code] = shopId }
+
+        fun shopOf(code: String?): String? = code?.let { synchronized(shops) { shops[it] } }
+
         // De-facto standard meta-data hosts use to declare a dedicated push notification icon.
         const val META_DATA_NOTIFICATION_ICON =
             "com.google.firebase.messaging.default_notification_icon"

@@ -91,7 +91,7 @@ internal class CoreV2(
             return
         }
         val queue = queue
-        if (queue != null && method is NetworkMethod.POST && method.method in EventQueue.PATHS) {
+        if (queue != null && method is NetworkMethod.POST && method.method in EVENT_PATHS) {
             queue.accept(method.method, params, listener)
             return
         }
@@ -186,8 +186,11 @@ internal class CoreV2(
         return queue.clear(LogReasons.DELETE_USER_CREDENTIALS, CLEARED) { storage.deleteUserCredentials(includeQueue = true) }
     }
 
-    private companion object {
-        val CLEARED = LegacyError(LegacyErrors.NO_ANSWER, "The event was deleted with the customer's data")
+    internal companion object {
+        /** The paths whose events go through the queue. */
+        val EVENT_PATHS: Set<String> get() = EventQueue.PATHS
+
+        private val CLEARED = LegacyError(LegacyErrors.NO_ANSWER, "The event was deleted with the customer's data")
     }
 
     private fun deliver(listener: OnApiCallbackListener, result: HttpResult) = when (result) {
