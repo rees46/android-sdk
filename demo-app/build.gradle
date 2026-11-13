@@ -38,8 +38,8 @@ android {
 
     defaultConfig {
         applicationId "com.personalization.demo"
-        // Compose requires 21. The SDK keeps minSdk 19 — it takes Compose as compileOnly.
-        minSdkVersion 21
+        // The SDK's minimum.
+        minSdkVersion 23
         targetSdkVersion 34
         versionCode 1
         versionName "1.0"

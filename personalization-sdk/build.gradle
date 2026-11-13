@@ -28,7 +28,8 @@ android {
         }
     }
     defaultConfig {
-        minSdkVersion 19
+        // Android 6.0: what current Firebase Messaging and media3 need (decision 0003).
+        minSdkVersion 23
         targetSdkVersion 34
         buildConfigField "String", "VERSION_NAME", "\"" + version + "\""
         multiDexEnabled true
@@ -128,8 +129,7 @@ dependencies {
     // compileOnly mirrors the Huawei setup above: Compose stays off every consumer's classpath and
     // out of the published POM, so a View-based app pulls none of it. A host that wants the wrapper
     // already has Compose and declares it as `implementation` itself. compileOnly artifacts take no
-    // part in manifest merging either, which keeps the SDK's minSdk 19 intact even though Compose
-    // itself requires 21.
+    // part in manifest merging either.
     compileOnly platform('androidx.compose:compose-bom:2024.06.00')
     compileOnly 'androidx.compose.ui:ui'
     compileOnly 'androidx.compose.foundation:foundation'
