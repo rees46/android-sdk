@@ -56,7 +56,8 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *   stamped reaches the disk.
  * - **Sending.** One event at a time, oldest first, once the instance is ready and the session alive
  *   (a session whose window ended gets its `/init` first), by the one process of the app that holds the
- *   queue's file lock. An event cleared while it waited (the customer's deletion) does not go. Sending
+ *   queue's file lock. A push's event needs only the `did`: it neither waits for a session nor starts one.
+ *   The queue of an instance brought up only for a push sends the push events alone. An event cleared while it waited (the customer's deletion) does not go. Sending
  *   starts on [SdkState.READY], on the app's foreground and background, on the network's return, on
  *   [flush] and on a timer.
  * - **Answers.** `2xx` removes the event. No network waits for it and a timeout repeats it after a pause,
@@ -99,6 +100,11 @@ internal class EventQueue(
     private val waitMs: Long = 10_000,
     /** At most this many events wait; tests make it small. */
     private val cap: Int = CAP,
+    /**
+     * The queue of an instance brought up only for a push ([InitSetup.pushOnly]): it sends the push events
+     * and leaves the others on disk for the app's own instance, which starts their session.
+     */
+    private val pushEventsOnly: Boolean = false,
 ) {
 
     private val handler = CoroutineExceptionHandler { _, throwable ->
@@ -503,7 +509,7 @@ internal class EventQueue(
             if (!store.lockForSending()) return Outcome.Waiting
             val generation = store.generation
             val unreadable = ArrayList<QueueStore.Waiting>()
-            val head = store.head(unreadable)
+            val head = store.head(unreadable) { event -> pushEventsOnly && event.path !in PUSH_EVENT_PATHS }
             unreadable.forEach { delivery.failure(it.listener, UNREADABLE) }
             val event = when (head) {
                 QueueStore.Head.Empty -> return Outcome.Idle
@@ -516,8 +522,14 @@ internal class EventQueue(
                 continue
             }
             if (!connectivity.isConnected) return Outcome.Offline
-            // Ready, and when the session's window ended, the /init of a new one first.
-            if (init.awaitUsable(waitMs) != null || !init.session.isAlive()) return Outcome.Waiting
+            if (event.path in PUSH_EVENT_PATHS) {
+                // A push's event needs a did and no session: the server reads no sid in it. One that came
+                // after the window ended starts no /init.
+                if (init.awaitReady(waitMs) != null) return Outcome.Waiting
+            } else {
+                // Ready, and when the session's window ended, the /init of a new one first.
+                if (init.awaitUsable(waitMs) != null || !init.session.isAlive()) return Outcome.Waiting
+            }
             // Cleared while it waited (the customer was deleted): it does not go under the next one.
             val body = store.ifCurrent(generation, event.id) { stamped(event) } ?: continue
             val sentAt = clock.nowMillis()

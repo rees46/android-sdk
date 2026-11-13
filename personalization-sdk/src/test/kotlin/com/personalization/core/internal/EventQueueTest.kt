@@ -127,10 +127,13 @@ class EventQueueTest {
     private fun ok(did: String = "D1", sid: String = "S1") = HttpResult.Success(JSONObject().put("did", did).put("seance", sid))
     private fun http(code: Int, retryAfterMs: Long? = null) = HttpResult.Failure(SdkError.Http(code), """{"status":"error"}""", retryAfterMs)
 
-    /** An instance as an app starts it: its `/init`, then its queue over the shop's files. */
-    private fun start(cap: Int = EventQueue.CAP): EventQueue {
+    /**
+     * An instance as an app starts it: its `/init`, then its queue over the shop's files. [pushOnly]: as
+     * `Rees46.handlePush` brings up a shop registered but not created.
+     */
+    private fun start(cap: Int = EventQueue.CAP, pushOnly: Boolean = false): EventQueue {
         val init = CoreInit(
-            setup = InitSetup(SHOP),
+            setup = InitSetup(SHOP, pushOnly = pushOnly),
             send = {
                 initsSent++
                 if (holdInit) CompletableDeferred<HttpResult>().also { initCalls += it }.await() else initAnswer()
@@ -174,6 +177,7 @@ class EventQueueTest {
             clock = clock,
             backoff = Backoff(random = { 0.5 }),
             cap = cap,
+            pushEventsOnly = pushOnly,
         ).also { queues += it }
         queue.start()
         init.start()
@@ -915,6 +919,58 @@ class EventQueueTest {
 
         assertEquals(listOf("S1", "S2"), sent.map { it.sid })
         assertEquals(2, initsSent)
+    }
+
+    // After the review of stages 6 and 7.
+
+    @Test
+    fun `a push's event after the session's window ended goes with the did and starts no init`() {
+        val queue = start()
+        assertEquals(1, initsSent)
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        assertFalse(inits.single().session.isAlive())
+
+        queue.accept("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+
+        assertEquals(listOf("track/delivered"), sent.map { it.path })
+        assertEquals("no /init for a push's event", 1, initsSent)
+        assertFalse(inits.single().session.isAlive())
+
+        // An event of the session asks for a new one first.
+        event(queue, "1")
+        run()
+        assertEquals(2, initsSent)
+        assertEquals("push", sent.last().path)
+    }
+
+    @Test
+    fun `the queue of an instance brought up for a push sends its push events alone, ready on the stored did, and asks the server nothing`() {
+        settings.updateDid("STORED")
+        val queue = start(pushOnly = true)
+        assertEquals(SdkState.READY, state.current)
+        event(queue, "1")
+        queue.accept("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+
+        assertEquals(listOf("track/delivered"), sent.map { it.path })
+        assertEquals("STORED", sent.single().body.getString("did"))
+        assertEquals("the app's instance sends the other events", 1, files().size)
+
+        // A refusal to a push's event: no check of the shop, the event waits for the app's instance.
+        eventAnswers += http(404)
+        queue.accept("track/clicked", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+        after(CoreInit.CHECK_SHOP_INTERVAL_MS - 1)
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        lifecycle.set(false)
+        lifecycle.set(true)
+        run()
+        assertEquals(0, initsSent)
+        assertEquals(listOf("track/delivered", "track/clicked"), sent.map { it.path })
+        after(1)
+        assertEquals(listOf("track/delivered", "track/clicked", "track/clicked"), sent.map { it.path })
+        assertEquals(0, initsSent)
     }
 
     // After the review of stages 4 and 5.

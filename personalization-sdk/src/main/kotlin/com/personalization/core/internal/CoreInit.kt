@@ -39,6 +39,12 @@ internal class InitSetup(
     val extraParams: () -> Map<String, String> = { emptyMap() },
     /** True on a Google Play pre-launch report device, where `/init` is not sent. */
     val skipInit: () -> Boolean = { false },
+    /**
+     * Brought up only to send a push's event (`Rees46.handlePush` for a shop registered but not created):
+     * `/init` never goes. The instance is ready on the stored `did`, and a new session, a check of the shop
+     * or the foreground ask nothing of the server: the app's own instance of the shop does.
+     */
+    val pushOnly: Boolean = false,
 )
 
 /** What the instance does with `/init`. Called on a background thread; an exception is logged. */
@@ -72,6 +78,8 @@ internal interface InitHooks {
  *   foreground; and on [checkShop]. A refused shop is not asked again before the next launch.
  * - **Session.** `/init` carries the `sid` only while its window is alive; the `seance` of the answer is
  *   the session from then on. The core never makes a `sid` of its own.
+ * - **Push only** ([InitSetup.pushOnly]). `/init` never goes: the instance is ready on the stored `did`,
+ *   and neither a new session, a check of the shop nor the foreground sends one.
  *
  * Requests with a result wait in [awaitUsable]: for the instance to be ready and, when the window
  * ended, for the `/init` of a new session. A stale answer (an `/init` of a start [restart] or [release]
@@ -122,6 +130,9 @@ internal class CoreInit(
     /** Storage prepared for the first `/init`; none goes before. */
     private var prepared = false
 
+    /** Completed once the start's storage is prepared, or the instance released; for tests. */
+    private val preparedSignal = CompletableDeferred<Unit>()
+
     /** `/init` is not sent on this device (a Google Play pre-launch report device). */
     @Volatile
     private var skipped = false
@@ -169,6 +180,9 @@ internal class CoreInit(
         synchronized(lock) { job }?.join()
     }
 
+    /** Returns once [start] prepared the storage, and with it decided whether `/init` goes; for tests. */
+    internal suspend fun awaitPrepared() = preparedSignal.await()
+
     /** Read once and reused: the advertising id goes with every `/init` of the launch. */
     @Volatile
     private var advertisingIdValue: String? = null
@@ -211,15 +225,19 @@ internal class CoreInit(
 
     /** On [CoreDispatchers.io]: the disk work of the start, then the first `/init`. */
     private fun prepare(start: Int) {
-        val becameReady = synchronized(lock) {
-            if (released) return
-            // A deletion that began meanwhile has the customer forgotten: nothing of theirs comes back.
-            if (start == generation) prepareStorage()
-            prepared = true
-            val ready = state.current == SdkState.INITIALIZING && !held && settings.getDid().isNotEmpty()
-            if (ready) publish(SdkState.READY)
-            launchLocked()
-            ready
+        val becameReady = try {
+            synchronized(lock) {
+                if (released) return
+                // A deletion that began meanwhile has the customer forgotten: nothing of theirs comes back.
+                if (start == generation) prepareStorage()
+                prepared = true
+                val ready = state.current == SdkState.INITIALIZING && !held && settings.getDid().isNotEmpty()
+                if (ready) publish(SdkState.READY)
+                launchLocked()
+                ready
+            }
+        } finally {
+            preparedSignal.complete(Unit)
         }
         if (becameReady) markUsable(start)
     }
@@ -229,6 +247,15 @@ internal class CoreInit(
      * `did`), otherwise `shopBlocked` or `notInitialized`. The push token waits here (`core/push.md`).
      */
     internal suspend fun ready(): SdkError? = errorOf(gate.first { it != Gate.WAIT })
+
+    /**
+     * [ready] within [timeoutMs]: what a push's event waits for. It needs a `did` and no session — the
+     * server reads no `sid` in it — so it never starts one. `timeout` when the wait runs out.
+     */
+    internal suspend fun awaitReady(timeoutMs: Long): SdkError? {
+        val verdict = withTimeoutOrNull(timeoutMs) { Verdict(ready()) } ?: return SdkError.Timeout
+        return verdict.error
+    }
 
     /** For a request with a result: [usable] within [timeoutMs]. */
     suspend fun awaitUsable(timeoutMs: Long): SdkError? {
@@ -265,7 +292,7 @@ internal class CoreInit(
      * instance works on what it has and nobody waits; a refused or released instance renews nothing.
      */
     internal fun renewSession(): Boolean = synchronized(lock) {
-        if (released || skipped || state.current == SdkState.REFUSED || session.isAlive()) return false
+        if (released || skipped || setup.pushOnly || state.current == SdkState.REFUSED || session.isAlive()) return false
         session.forgetIfEnded()
         launchLocked()
         // Before the storage is prepared the start's own /init is about to go: that is the one to wait for.
@@ -311,6 +338,8 @@ internal class CoreInit(
         synchronized(lock) {
             if (released) return ShopCheck.Released
             if (state.current == SdkState.REFUSED) return ShopCheck.Refused
+            // Only the app's own instance asks the server: the event waits for it.
+            if (setup.pushOnly) return ShopCheck.Unknown(CHECK_SHOP_INTERVAL_MS)
             seen = answers.value
             seenSuccesses = successes
             val went = checkShop()
@@ -402,6 +431,7 @@ internal class CoreInit(
         }
         listening?.cancel()
         scope.cancel()
+        preparedSignal.complete(Unit)
     }
 
     private fun generation(): Int = synchronized(lock) { generation }
@@ -432,7 +462,7 @@ internal class CoreInit(
      * a deletion holds the instance; true when it went.
      */
     private fun launchLocked(): Boolean {
-        if (released || held || !prepared || job?.isActive == true) return false
+        if (released || held || !prepared || setup.pushOnly || job?.isActive == true) return false
         val start = generation
         job = scope.launch { run(start) }
         return true

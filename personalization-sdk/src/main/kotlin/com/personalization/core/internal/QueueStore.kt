@@ -230,11 +230,11 @@ internal class QueueStore private constructor(private val directory: File, priva
     }
 
     /**
-     * The oldest event. A file that is not an event (it does not parse) is dropped (`queue_dropped`,
-     * `unreadable`) and its listener goes to [unreadable], to hear an error; a file the disk cannot read
-     * now stays, and the head is [Head.Unavailable].
+     * The oldest event that is not [skipped]. A file that is not an event (it does not parse) is dropped
+     * (`queue_dropped`, `unreadable`) and its listener goes to [unreadable], to hear an error; a file the
+     * disk cannot read now stays, and the head is [Head.Unavailable].
      */
-    fun head(unreadable: MutableList<Waiting>): Head = synchronized(files) {
+    fun head(unreadable: MutableList<Waiting>, skipped: (QueuedEvent) -> Boolean = { false }): Head = synchronized(files) {
         for (id in ids()) {
             val file = File(directory, id + EXTENSION)
             val text = try {
@@ -249,7 +249,10 @@ internal class QueueStore private constructor(private val directory: File, priva
                 return Head.Unavailable
             }
             val event = QueuedEvent.parse(id, text)
-            if (event != null) return Head.Event(patched[id] ?: event)
+            if (event != null) {
+                if (skipped(event)) continue
+                return Head.Event(patched[id] ?: event)
+            }
             file.delete()
             patched -= id
             synchronized(listenersLock) { listeners.remove(id) }?.let { unreadable += it }

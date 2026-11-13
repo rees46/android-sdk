@@ -229,6 +229,9 @@ internal object LogReasons {
     const val ALREADY_INITIALIZED = "already_initialized"
     const val NOT_READY = "not_ready"
 
+    /** A shop brought up only for a push has no `did`: its event cannot go (`push_dropped`). */
+    const val NO_DID = "no_did"
+
     // Why the queue dropped events (`queue_dropped`).
     /** Older than the queue keeps an event (7 days). */
     const val EXPIRED = "expired"

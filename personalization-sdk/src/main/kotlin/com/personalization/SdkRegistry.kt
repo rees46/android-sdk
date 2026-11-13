@@ -64,7 +64,8 @@ internal object SdkRegistry {
                 instances.remove(previous)
             }
             current = sdk
-            toNotify = takeMatchingAwaiters(shopId)
+            // An instance brought up only for a push is not the one they wait for: the app's own is.
+            toNotify = if (sdk.pushOnly) emptyList() else takeMatchingAwaiters(shopId)
         }
         toNotify.forEach { it.onReady(sdk) }
     }
@@ -89,7 +90,7 @@ internal object SdkRegistry {
         val alreadyLive: SDK?
         val awaiter: Awaiter?
         synchronized(lock) {
-            alreadyLive = if (shopId != null) byShop[shopId] else current
+            alreadyLive = (if (shopId != null) byShop[shopId] else current)?.takeUnless { it.pushOnly }
             if (alreadyLive == null) {
                 awaiter = Awaiter(shopId, onReady)
                 awaiting.add(awaiter)

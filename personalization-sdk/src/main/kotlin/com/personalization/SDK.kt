@@ -495,10 +495,12 @@ open class SDK {
     )
 
     /**
-     * Light bring-up for handling a push in a (possibly cold) background process: does not re-register
-     * the push token (it is already on the server — that is why the push arrived) and skips the GAID +
-     * profile/set call. Just enough to track the delivery and reach the message listener. Used by
-     * [Rees46.handlePush] to materialize a lazily-registered shop without the full startup work.
+     * Light bring-up for handling a push in a (possibly cold) background process, used by
+     * [Rees46.handlePush] for a shop registered but not created. On both cores it never sends `/init`: the
+     * instance is ready on the shop's stored `did` and sends the push's event with it. It shows no popup and
+     * sends neither the push token nor the profile. Without a stored `did` the event is dropped
+     * (`push_dropped`, `no_did`). The app's first [Rees46.instance] or [Rees46.initialize] of the shop puts a
+     * full instance in its place, and an initialize of this object makes it one.
      */
     internal fun initializeForPush(context: Context, config: Rees46Config) = start(
         context,
@@ -516,16 +518,31 @@ open class SDK {
         pushOnly: Boolean,
     ): Unit = synchronized(initLock) {
         val current = this.config
-        if (current != null && isLive && current.shopId == config.shopId) {
+        val sameShop = current != null && isLive && current.shopId == config.shopId
+        // Brought up for a push and now started by the app: it becomes a full instance, and the push's
+        // events in flight finish.
+        val upgrade = sameShop && this.pushOnly && !pushOnly
+        if (sameShop && !upgrade) {
             keepConfig(config)
             return
         }
         enableAutoPopupPresentation = config.enableAutoPopupPresentation
         logLevel = config.logLevel
         coreV2Requested = config.coreV2
-        initializeInternal(context, config, autoSendPushToken, needReInitialization, pushOnly = pushOnly)
+        // Before the instance registers: a push-only one wakes nobody waiting for the shop's instance.
         this.pushOnly = pushOnly
+        initializeInternal(context, config, autoSendPushToken, needReInitialization, pushOnly = pushOnly, cancelRequests = !upgrade)
         this.config = config
+    }
+
+    /**
+     * A push-only instance ([initializeForPush]) without a stored `did` cannot send a push's event: true
+     * when this is one, and the push is dropped (`push_dropped`, `no_did`).
+     */
+    internal fun dropsPushWithoutDid(): Boolean {
+        if (!pushOnly || deviceId != null) return false
+        log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "The push's event is dropped: the shop has no did yet", mapOf("reason" to LogReasons.NO_DID))
+        return true
     }
 
     /** Initialized and not released. */
@@ -548,13 +565,15 @@ open class SDK {
         config: Rees46Config,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
-        // The push-context bring-up: no GAID + profile/set call and, on the new core, no push token.
+        // The push-context bring-up: no /init, no GAID + profile/set call and no push token.
         pushOnly: Boolean,
+        // False when a push-only instance becomes a full one: the push's events in flight finish.
+        cancelRequests: Boolean = true,
     ) {
         val sendProfileOnInit = !pushOnly
         val shopId = config.shopId
         // Initialized before (another shop, or released): the old start sends and takes nothing more.
-        stopCurrent()
+        stopCurrent(cancelRequests)
 
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
@@ -638,13 +657,14 @@ open class SDK {
                     source = ::trackingSource,
                     sendDirectly = core::sendDirectly,
                     dispatchers = dispatchers,
+                    pushEventsOnly = pushOnly,
                 ).also { it.start() }
             }
             this.core = core
             init.start()
         } else {
             core = networkRepository.core
-            startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
+            if (pushOnly) startLegacyForPush(config, storage) else startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
         }
 
         // Register this instance so pushes delivered to the (process-global) messaging services are
@@ -721,6 +741,15 @@ open class SDK {
         )
     }
 
+    /**
+     * The legacy path brought up only for a push: no `/init`, no session of its own, no popup, no token.
+     * Ready on the stored `did`, with which the push's event goes; without one it stays initializing.
+     */
+    private fun startLegacyForPush(config: Rees46Config, storage: ShopStorage) {
+        storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
+        instanceState.set(if (userSettingsRepository.getDid().isNotEmpty()) SdkState.READY else SdkState.INITIALIZING)
+    }
+
     /** The new core's `/init` and state ([CoreInit]); requests wait for it in [CoreV2]. Started by the caller. */
     private fun createCoreInit(
         core: CoreV2,
@@ -742,6 +771,7 @@ open class SDK {
                 advertisingId = if (config.sendAdvertisingId) ::readAdvertisingId else null,
                 extraParams = ::popupsV3InitParams,
                 skipInit = { RegisterManager.isPreLaunchDevice(contentResolver) },
+                pushOnly = pushOnly,
             ),
             send = { params -> core.client.send(NetworkMethod.GET(CoreHttpClient.INIT_PATH), params) },
             settings = userSettingsRepository,
@@ -2037,6 +2067,7 @@ open class SDK {
             payload?.let(PushHub::remember)
             // Show via the process-global listener, then track the delivery on the instance.
             SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
+            if (target.dropsPushWithoutDid()) return
             val fresh = target.receiveMessage(data = data)
             if (fresh && payload != null) PushHub.event(PushEvent.DELIVERED, payload, target.pushCallbacks)
         }

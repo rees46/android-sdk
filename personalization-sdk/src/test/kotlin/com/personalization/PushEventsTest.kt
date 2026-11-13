@@ -26,6 +26,7 @@ import com.personalization.features.notification.service.mapper.toNotificationDa
 import com.personalization.push.PushDismissReceiver
 import com.personalization.push.PushExtras
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.models.dto.notification.NotificationData
 import kotlinx.coroutines.flow.first
@@ -67,6 +68,9 @@ class PushEventsTest {
     private lateinit var context: Context
     private var server = MockWebServer()
     private val requests = LinkedBlockingQueue<Pair<String, JSONObject>>()
+
+    /** Every request the server got, in order, whatever the test took from [requests]. */
+    private val seen = CopyOnWriteArrayList<Pair<String, JSONObject>>()
     private val logged = CopyOnWriteArrayList<SdkLogMessage>()
     private val threads = TrackingThreads()
     private val defaultExecutor = SdkLogs.handlerExecutor
@@ -102,6 +106,7 @@ class PushEventsTest {
         LegacyCore.threads = threads
         server = MockWebServer()
         requests.clear()
+        seen.clear()
         logged.clear()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -110,6 +115,7 @@ class PushEventsTest {
                 val body = if (request.method == "POST") JSONObject(request.body.readUtf8())
                 else JSONObject().apply { url.queryParameterNames.forEach { put(it, url.queryParameter(it)) } }
                 requests += path to body
+                seen += path to body
                 if (path == "init") {
                     holdInit?.await(5, TimeUnit.SECONDS)
                     return MockResponse().setBody("""{"did":"D1","seance":"S1"}""")
@@ -281,17 +287,104 @@ class PushEventsTest {
         assertEquals(LogLevel.DEBUG, notOurs.level)
     }
 
+    /** The partition of [shop], where an earlier launch left its did. */
+    private fun partition(shop: String = SHOP) =
+        context.getSharedPreferences(StorageLayout(shop, null).partitionName, Context.MODE_PRIVATE)
+
     @Test
-    fun `a shop registered but not created takes its push with its stored did`() {
-        sdk(SHOP).release()
-        requests.clear()
-        Rees46.register(context, listOf(config(SHOP)))
+    fun `a shop registered but not created sends its push with its stored did and no init, and becomes a full instance on use`() {
+        // An earlier launch's did; the server would hand out another one.
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP).copy(autoSendPushToken = true)))
         assertFalse(Rees46.isInitialized(SHOP))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
-        val (path, body) = next("track/delivered") ?: throw AssertionError("no track/delivered")
-        assertEquals("track/delivered", path)
-        assertEquals("D1", body.getString("did"))
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertTrue(light.pushOnly)
+        assertEquals(SdkState.READY, light.state)
+        val init = (light.core as com.personalization.core.internal.CoreV2).init ?: throw AssertionError("no init")
+        runBlocking { withTimeout(5_000) { init.awaitPrepared() } }
+        flush(light)
+
+        assertEquals("STORED", next("track/delivered")?.second?.getString("did"))
+        assertEquals("no /init went, nor will", 0, init.sent)
+        assertFalse(init.isRunning)
+        assertEquals(emptyList<String>(), drained().map { it.first }.filter { it in listOf("init", "mobile_push_tokens", "profile/set") })
+
+        // The app's first use: a full instance with a full start takes its place.
+        val full = Rees46.instance(SHOP)
+        assertTrue(full !== light)
+        assertFalse(full.pushOnly)
+        assertEquals(SdkState.NOT_INITIALIZED, light.state)
+        assertEquals("STORED", next("init")?.second?.getString("did"))
+        assertTrue(Rees46.instance(SHOP) === full)
+    }
+
+    @Test
+    fun `initializing the instance brought up for a push makes it a full one, and its push still goes`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+
+        light.initializeWith(context, config(SHOP))
+
+        assertFalse(light.pushOnly)
+        assertTrue(SdkRegistry.byShopId(SHOP) === light)
+        assertEquals("STORED", next("init")?.second?.getString("did"))
+        flush(light)
+        assertEquals(listOf("cold"), seen.filter { it.first == "track/delivered" }.map { it.second.getString("code") })
+    }
+
+    @Test
+    fun `a push live two hours after the last event goes without an init`() {
+        val sdk = sdk()
+        val init = (sdk.core as com.personalization.core.internal.CoreV2).init ?: throw AssertionError("no init")
+        runBlocking { withTimeout(5_000) { init.awaitIdle() } }
+        assertEquals(1, init.sent)
+        // The app sat in the background past the session's window.
+        partition().edit().putLong("sid_last_act", System.currentTimeMillis() - com.personalization.core.internal.SessionWindow.WINDOW_MS - 1).commit()
+        assertNull(sdk.sessionId)
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "late"), PushEvent.DELIVERED))
+        flush(sdk)
+
+        assertEquals("D1", next("track/delivered")?.second?.getString("did"))
+        assertEquals(1, init.sent)
+        assertFalse(init.isRunning)
+        assertFalse(drained().any { it.first == "init" })
+    }
+
+    @Test
+    fun `a shop registered but not created and without a did drops its push`() {
+        Rees46.register(context, listOf(config(SHOP)))
+
+        assertNull(Rees46.handlePush(push(code = "no-did"), PushEvent.DELIVERED))
+        val dropped = logged.last { it.code == LogCodes.PUSH_DROPPED }
+        assertEquals(LogReasons.NO_DID, dropped.context["reason"])
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        val init = (light.core as com.personalization.core.internal.CoreV2).init ?: throw AssertionError("no init")
+        runBlocking { withTimeout(5_000) { init.awaitPrepared() } }
+        assertEquals(0, init.sent)
+        assertEquals(SdkState.INITIALIZING, light.state)
+    }
+
+    @Test
+    fun `on the legacy core a shop registered but not created sends its push with its stored did and no init`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
+        assertEquals("STORED", next("track/received")?.second?.getString("did"))
+        // The legacy /init goes out on the caller's thread: had it gone, the server has it by now.
+        threads.awaitIdle()
+        assertFalse(drained().any { it.first in listOf("init", "mobile_push_tokens", "profile/set") })
+        assertEquals(SdkState.READY, SdkRegistry.byShopId(SHOP)?.state)
+
+        // Without a did the push is dropped.
+        Rees46.register(context, listOf(config(OTHER, coreV2 = false)))
+        assertNull(Rees46.handlePush(push(code = "cold", shop = OTHER), PushEvent.DELIVERED))
+        assertEquals(LogReasons.NO_DID, logged.last { it.code == LogCodes.PUSH_DROPPED }.context["reason"])
     }
 
     // Callbacks.

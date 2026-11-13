@@ -128,7 +128,7 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing ->
-                SdkRegistry.byShopId(resolution.shopId)
+                SdkRegistry.byShopId(resolution.shopId)?.let(::upgraded)
                     ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
 
             is InstanceResolver.Resolution.Pending -> materialize(resolution.shopId)
@@ -176,7 +176,7 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing -> {
-                SdkRegistry.byShopId(resolution.shopId)?.let(onReady)
+                SdkRegistry.byShopId(resolution.shopId)?.let { onReady(upgraded(it)) }
                 Cancellable.NOOP
             }
 
@@ -265,6 +265,7 @@ object Rees46 {
             logDropped(shopId, LogReasons.UNKNOWN_SHOP)
             return null
         }
+        if (target.dropsPushWithoutDid()) return null
         val fresh = when {
             event == PushEvent.DELIVERED -> target.onPushReceived(data)
             // The legacy core's tap, as it always went: from the extras of a tap's intent.
@@ -315,6 +316,7 @@ object Rees46 {
         SdkRegistry.dispatchMessage(shopId = shopId, data = payload.toNotificationData())
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
+            if (target.dropsPushWithoutDid()) return@runCatching
             val fresh = target.onPushReceived(payload)
             if (fresh && parsed != null) PushHub.event(PushEvent.DELIVERED, parsed, target.pushCallbacks)
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
@@ -329,6 +331,7 @@ object Rees46 {
         logHandedOver(shopId, PushEventType.CLICKED.name)
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
+            if (target.dropsPushWithoutDid()) return@runCatching
             val parsed = PushPayload.parse(payload)?.withShop(shopId)
             parsed?.let(PushHub::remember)
             val fresh = if (parsed != null && target.core?.isV2 == true) {
@@ -414,15 +417,25 @@ object Rees46 {
         }
 
     /**
-     * Brings up a registered-but-pending shop just enough to track a push, via [SDK.initializeForPush]:
-     * no `/init` round-trip, no push-token re-registration, no profile call. A shop that was never
-     * initialized has no did and the backend never sent it a push, so this is not reached for real
-     * deliveries.
+     * Brings up a registered-but-pending shop just enough to send a push's event, via
+     * [SDK.initializeForPush]: no `/init`, no push token, no profile, no popup; the event goes with the shop's
+     * stored `did`. The app's first [instance] or [initialize] of the shop puts a full instance in its place.
      */
     private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
         SdkRegistry.byShopId(shopId)?.let { return it }
         val pendingInit = pending[shopId] ?: return null
         SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
+    }
+
+    /**
+     * The app's own instance of [sdk]'s shop: [sdk] itself, or, for an instance brought up only for a push
+     * ([SDK.initializeForPush]), a full one with a full start (`/init`, the push token, everything) that
+     * takes its place while the push's events in flight finish.
+     */
+    private fun upgraded(sdk: SDK): SDK {
+        if (!sdk.pushOnly) return sdk
+        val config = sdk.config ?: return sdk
+        return initialize(sdk.context, config)
     }
 
     /**
