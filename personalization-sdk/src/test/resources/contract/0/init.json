@@ -1,0 +1,52 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "новое устройство получает did и sid",
+      "response": { "status": 200, "body": { "did": "AbCdEf1234", "seance": "XyZ0987654" } },
+      "expect": { "state": "ready", "deviceId": "AbCdEf1234", "sessionId": "XyZ0987654" }
+    },
+    {
+      "name": "2xx без did",
+      "response": { "status": 200, "body": {} },
+      "expect": { "state": "retrying" }
+    },
+    {
+      "name": "402 — отказ магазина",
+      "response": { "status": 402, "body": { "status": "error", "message": "Your store is in Restricted Mode." } },
+      "expect": { "state": "refused" }
+    },
+    {
+      "name": "403 — отказ магазина",
+      "response": { "status": 403, "body": null },
+      "expect": { "state": "refused" }
+    },
+    {
+      "name": "404 — нет магазина",
+      "response": { "status": 404, "body": { "status": "error", "message": "Shop not found" } },
+      "expect": { "state": "refused" }
+    },
+    {
+      "name": "503 — повтор",
+      "response": { "status": 503, "body": null },
+      "expect": { "state": "retrying" }
+    },
+    {
+      "name": "нет ответа и нет сохранённого ответа",
+      "response": { "status": null },
+      "expect": { "state": "retrying" }
+    },
+    {
+      "name": "нет ответа, есть сохранённый ответ",
+      "saved": { "did": "Saved00001", "seance": "OldSeance1" },
+      "response": { "status": null },
+      "expect": { "state": "retrying", "deviceId": "Saved00001", "methodsWorkAsReady": true }
+    },
+    {
+      "name": "402 при сохранённом ответе — сохранённый не используется",
+      "saved": { "did": "Saved00001", "seance": "OldSeance1" },
+      "response": { "status": 402, "body": null },
+      "expect": { "state": "refused" }
+    }
+  ]
+}

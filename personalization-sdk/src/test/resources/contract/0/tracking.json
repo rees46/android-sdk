@@ -1,0 +1,85 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "productView",
+      "call": { "namespace": "tracking", "method": "productView", "args": { "itemId": "37" } },
+      "request": { "method": "POST", "path": "push", "body": { "event": "view", "items": [ { "id": "37" } ] } }
+    },
+    {
+      "name": "productView с источником",
+      "call": { "namespace": "tracking", "method": "productView",
+                "args": { "itemId": "37", "source": { "type": "instantSearch", "code": "q-1" } } },
+      "request": { "method": "POST", "path": "push",
+                   "body": { "event": "view", "items": [ { "id": "37" } ],
+                             "recommended_by": "instant_search", "recommended_code": "q-1" } }
+    },
+    {
+      "name": "productView с пустым itemId",
+      "call": { "namespace": "tracking", "method": "productView", "args": { "itemId": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "categoryView",
+      "call": { "namespace": "tracking", "method": "categoryView", "args": { "categoryId": "146" } },
+      "request": { "method": "POST", "path": "push", "body": { "event": "category", "category_id": "146" } }
+    },
+    {
+      "name": "addToCart с ценой и размером",
+      "call": { "namespace": "tracking", "method": "addToCart",
+                "args": { "item": { "id": "37", "quantity": 2, "price": 999.5, "fashionSize": "M" } } },
+      "request": { "method": "POST", "path": "push",
+                   "body": { "event": "cart",
+                             "items": [ { "id": "37", "amount": 2, "price": 999.5, "fashion_size": "M" } ] } }
+    },
+    {
+      "name": "syncCart с пустой корзиной",
+      "call": { "namespace": "tracking", "method": "syncCart", "args": { "items": [] } },
+      "request": { "method": "POST", "path": "push", "body": { "event": "cart", "full_cart": true, "items": [] } }
+    },
+    {
+      "name": "syncFavorites",
+      "call": { "namespace": "tracking", "method": "syncFavorites", "args": { "itemIds": [ "37", "42" ] } },
+      "request": { "method": "POST", "path": "push",
+                   "body": { "event": "wish", "full_wish": true, "items": [ { "id": "37" }, { "id": "42" } ] } }
+    },
+    {
+      "name": "purchase",
+      "call": { "namespace": "tracking", "method": "purchase",
+                "args": { "request": { "orderId": "A-1001", "orderPrice": 2599.0, "isTaxFree": true,
+                                       "items": [ { "id": "37", "amount": 2, "price": 999.0 },
+                                                  { "id": "42", "amount": 1, "price": 601.0 } ] } } },
+      "request": { "method": "POST", "path": "push",
+                   "body": { "event": "purchase", "order_id": "A-1001", "order_price": 2599.0, "tax_free": true,
+                             "items": [ { "id": "37", "amount": 2, "price": 999.0 },
+                                        { "id": "42", "amount": 1, "price": 601.0 } ] } }
+    },
+    {
+      "name": "purchase без товаров",
+      "call": { "namespace": "tracking", "method": "purchase",
+                "args": { "request": { "orderId": "A-1001", "orderPrice": 0, "items": [] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "storyView",
+      "call": { "namespace": "tracking", "method": "storyView",
+                "args": { "storyId": "12", "slideId": "34", "code": "main_stories" } },
+      "request": { "method": "POST", "path": "track/stories",
+                   "body": { "event": "view", "story_id": 12, "slide_id": "34", "code": "main_stories" } }
+    },
+    {
+      "name": "custom с полями",
+      "call": { "namespace": "tracking", "method": "custom",
+                "args": { "event": "added_to_compare", "category": "catalog", "customFields": { "sku": "37" } } },
+      "request": { "method": "POST", "path": "push/custom",
+                   "body": { "event": "added_to_compare", "category": "catalog", "sku": "37",
+                             "payload": { "sku": "37" } } }
+    },
+    {
+      "name": "custom со служебным ключом в customFields",
+      "call": { "namespace": "tracking", "method": "custom",
+                "args": { "event": "e", "customFields": { "did": "x" } } },
+      "error": { "type": "invalidArgument" }
+    }
+  ]
+}
