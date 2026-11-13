@@ -18,6 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -71,11 +72,15 @@ internal fun interface ReadyGate {
  *   until the server answers.
  * - **Without an answer** an instance with a `did` works as [SdkState.READY] (`init_saved_answer`); one
  *   without waits for the network instead of failing again.
- * - **Later `/init`.** On coming back to the foreground more than two hours after the last activity, and
- *   on [checkShop]. A refused shop is not asked again before the next launch.
+ * - **Later `/init`.** When the session's window ended ([SessionWindow], `core/session.md`): found by
+ *   a request ([awaitUsable]), by the queue before an event ([renewSession]) or on coming back to the
+ *   foreground; and on [checkShop]. A refused shop is not asked again before the next launch.
+ * - **Session.** `/init` carries the `sid` only while its window is alive; the `seance` of the answer is
+ *   the session from then on. The core never makes a `sid` of its own.
  *
- * Requests with a result wait in [awaitReady]. A stale answer (an `/init` of a start [restart] or
- * [release] ended) is dropped, and while [holdForRestart] holds the instance no `/init` goes at all.
+ * Requests with a result wait in [awaitUsable]: for the instance to be ready and, when the window
+ * ended, for the `/init` of a new session. A stale answer (an `/init` of a start [restart] or [release]
+ * ended) is dropped, and while [holdForRestart] holds the instance no `/init` goes at all.
  *
  * Disk work stays off the caller's thread: [start] decides the first state from what the preferences
  * already hold (a stored `did` is ready at once) and prepares the rest of the storage on [CoreDispatchers.io]
@@ -95,6 +100,8 @@ internal class CoreInit(
     private val clock: Clock = Clock.SYSTEM,
     private val backoff: Backoff = Backoff(),
     private val timeZone: () -> TimeZone = { TimeZone.getDefault() },
+    /** The shop's session; the instance's other parts read it too. */
+    internal val session: SessionWindow = SessionWindow(settings, storage, clock),
 ) : ReadyGate {
 
     /** Whether a request may go: computed from the state on every change. */
@@ -108,6 +115,9 @@ internal class CoreInit(
 
     private val gate = MutableStateFlow(Gate.WAIT)
 
+    /** How many answers to `/init` were taken: a wait for the next one watches it. */
+    private val answers = MutableStateFlow(0L)
+
     /** Guards the fields below and every write an answer makes, so a restart never lets a stale one in. */
     private val lock = Any()
     private var job: Job? = null
@@ -116,6 +126,10 @@ internal class CoreInit(
 
     /** Storage prepared for the first `/init`; none goes before. */
     private var prepared = false
+
+    /** `/init` is not sent on this device (a Google Play pre-launch report device). */
+    @Volatile
+    private var skipped = false
 
     /** Held by [holdForRestart] until [restart]: the customer is being deleted, no `/init` goes. */
     private var held = false
@@ -132,6 +146,11 @@ internal class CoreInit(
     /** Whether an `/init` is on its way or waits for its next attempt; for tests. */
     internal val isRunning: Boolean
         get() = synchronized(lock) { job?.isActive == true }
+
+    /** Returns once the `/init` running now, if any, has ended; for tests. */
+    internal suspend fun awaitIdle() {
+        synchronized(lock) { job }?.join()
+    }
 
     /** Read once and reused: the advertising id goes with every `/init` of the launch. */
     @Volatile
@@ -188,6 +207,69 @@ internal class CoreInit(
 
     /** Waits without a limit until a request may go or may not; the caller sets the deadline. */
     internal suspend fun ready(): SdkError? = errorOf(gate.first { it != Gate.WAIT })
+
+    /** For a request with a result: [usable] within [timeoutMs]. */
+    suspend fun awaitUsable(timeoutMs: Long): SdkError? {
+        val verdict = withTimeoutOrNull(timeoutMs) { Verdict(usable()) } ?: return SdkError.Timeout
+        return verdict.error
+    }
+
+    private class Verdict(val error: SdkError?)
+
+    /**
+     * Waits, without a limit (the caller sets the deadline), until a request may go: the instance is
+     * ready, and when the session's window has ended, the `/init` of a new session ([renewSession]) has
+     * answered. The request then goes with the new `sid`, or, when that `/init` failed and the instance
+     * works on what it has, without one (decision 1). Null when it may go; otherwise `shopBlocked` or
+     * `notInitialized`.
+     */
+    internal suspend fun usable(): SdkError? {
+        var renewed = false
+        while (true) {
+            errorOf(gate.first { it != Gate.WAIT })?.let { return it }
+            if (renewed || session.isAlive()) return null
+            val seen = answers.value
+            if (!renewSession()) return null
+            // The answer, or the gate closing (a release, a deletion's hold) ends the wait.
+            combine(answers, gate) { count, current -> count > seen || current != Gate.OPEN }.first { it }
+            renewed = true
+        }
+    }
+
+    /**
+     * Starts a new session when the window of the current one has ended: its `sid` is forgotten and
+     * `/init` goes, unless one is on its way. True when a caller should wait for the answer: the instance
+     * is [SdkState.READY] and `/init` is out. While `/init` is being repeated ([SdkState.RETRYING]) the
+     * instance works on what it has and nobody waits; a refused or released instance renews nothing.
+     */
+    internal fun renewSession(): Boolean = synchronized(lock) {
+        if (released || skipped || state.current == SdkState.REFUSED || session.isAlive()) return false
+        session.forgetIfEnded()
+        launchLocked()
+        // Before the storage is prepared the start's own /init is about to go: that is the one to wait for.
+        state.current == SdkState.READY && (job?.isActive == true || !prepared)
+    }
+
+    /**
+     * Asks the server about the shop after a `402`, `403` or `404` to an event ([checkShop]), and waits
+     * up to [timeoutMs] for the answer of the `/init` that went, or of the one already on its way. The
+     * state after it: [SdkState.READY] when the shop is fine, [SdkState.REFUSED] when it is not, anything
+     * else when the answer did not tell. Without an `/init` to wait for (one went less than 10 minutes
+     * ago) the state is as that one left it.
+     */
+    internal suspend fun checkShopAndAwait(timeoutMs: Long): SdkState {
+        val seen: Long
+        synchronized(lock) {
+            if (released) return SdkState.NOT_INITIALIZED
+            seen = answers.value
+            checkShop()
+            if (job?.isActive != true) return state.current
+        }
+        withTimeoutOrNull(timeoutMs) {
+            combine(answers, gate) { count, current -> count > seen || current == Gate.CLOSED }.first { it }
+        }
+        return state.current
+    }
 
     /** Null for an open gate, otherwise why a request may not go; [Gate.WAIT] is never decided. */
     private fun errorOf(decided: Gate): SdkError? = when (decided) {
@@ -289,9 +371,12 @@ internal class CoreInit(
     }
 
     private suspend fun run(start: Int) {
-        if (setup.skipInit()) {
-            log(LogLevel.INFO, LogCodes.INIT_SKIPPED, "/init is not sent on a Google Play pre-launch report device",
-                mapOf("reason" to LogReasons.PRE_LAUNCH_REPORT))
+        if (skipped || setup.skipInit()) {
+            if (!skipped) {
+                skipped = true
+                log(LogLevel.INFO, LogCodes.INIT_SKIPPED, "/init is not sent on a Google Play pre-launch report device",
+                    mapOf("reason" to LogReasons.PRE_LAUNCH_REPORT))
+            }
             return
         }
         var attempt = 0
@@ -305,7 +390,7 @@ internal class CoreInit(
             val step = synchronized(lock) {
                 // An answer to a start that restart() or release() ended belongs to nobody.
                 if (start != generation || released) return
-                take(result, attempt)
+                take(result, attempt).also { answers.value = answers.value + 1 }
             }
             when (step) {
                 Step.Done -> return
@@ -364,7 +449,9 @@ internal class CoreInit(
     /** Must hold [lock]. */
     private fun succeed(answer: JSONObject, did: String) {
         if (settings.getDid().isEmpty()) settings.updateDid(did)
-        answer.optString(UserBasicParams.SEANCE).takeIf { it.isNotEmpty() }?.let(settings::updateSid)
+        // The server's sid replaces whatever went: a sid an earlier release made goes out only once.
+        val seance = answer.optString(UserBasicParams.SEANCE)
+        if (seance.isNotEmpty()) session.start(seance) else session.extend()
         storage.saveInitAnswer(answer)
         // The answer on disk is the new customer's now.
         if (storage.isWiped) storage.isWiped = false
@@ -439,8 +526,7 @@ internal class CoreInit(
 
     /** A `sid` whose window ended (two hours without activity) is not sent: the server starts a new session. */
     private fun forgetStaleSession() {
-        if (settings.getSid().isEmpty()) return
-        if (clock.nowMillis() - settings.getSidLastActTime() > SESSION_WINDOW_MS) storage.forgetSession()
+        session.forgetIfEnded()
     }
 
     /** Heard on the main thread; handled on [CoreDispatchers.io], where waiting for [lock] blocks nothing. */
@@ -449,12 +535,9 @@ internal class CoreInit(
         scope.launch { onForeground() }
     }
 
+    /** Coming back after the window ended starts a new session. */
     private fun onForeground() {
-        synchronized(lock) {
-            if (released || state.current == SdkState.REFUSED || job?.isActive == true) return
-            if (clock.nowMillis() - settings.getSidLastActTime() <= SESSION_WINDOW_MS) return
-            launchLocked()
-        }
+        renewSession()
     }
 
     /** The fields of `/init` beside the common ones: `tz`, the advertising id, the extras. */
@@ -526,8 +609,8 @@ internal class CoreInit(
         SdkLogs.log(level, code, message, shopId, context, throwable)
 
     internal companion object {
-        /** Two hours without activity end a session. */
-        const val SESSION_WINDOW_MS = 2 * 60 * 60 * 1000L
+        /** Two hours without activity end a session ([SessionWindow.WINDOW_MS]). */
+        const val SESSION_WINDOW_MS = SessionWindow.WINDOW_MS
 
         /** [checkShop] asks the server at most this often. */
         const val CHECK_SHOP_INTERVAL_MS = 10 * 60 * 1000L

@@ -194,7 +194,10 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?,
     ) {
-        userSettingsRepository.updateSidLastActTime()
+        val core = core
+        // The legacy session moves with every request. On the new core only /init and the queue's
+        // events move it (core/session.md): a request with a result does not.
+        if (!core.isV2) userSettingsRepository.updateSidLastActTime()
         core.send(networkMethod, params, listener)
     }
 }

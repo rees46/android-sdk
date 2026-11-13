@@ -22,9 +22,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The new core: the instance's requests go through [CoreHttpClient], and its `/init` and state are
- * [CoreInit]'s. A request waits for the instance to be ready within its own read timeout: a refused
- * shop fails it with `shopBlocked` (the old callbacks get `402`), a wait that runs out with `timeout`.
- * The session and the queue stay the legacy ones until the core takes them over.
+ * [CoreInit]'s, its session [SessionWindow]'s. A request waits for the instance to be ready within its
+ * own read timeout, and for the `/init` of a new session when the window of the last one ended: a
+ * refused shop fails it with `shopBlocked` (the old callbacks get `402`), a wait that runs out with
+ * `timeout`. A request with a result does not extend the session. The queue stays the legacy one until
+ * the core takes it over.
  *
  * Every request ends in exactly one callback, on a background thread as today: the answer, or the
  * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [release] cancels the requests in
@@ -117,13 +119,14 @@ internal class CoreV2(
     }
 
     /**
-     * Waits, within the read timeout, for the instance's `/init` to be set and for the instance to be
-     * ready; then the request gets its own full timeout. Null when it may go.
+     * Waits, within the read timeout, for the instance's `/init` to be set, for the instance to be ready
+     * and, when the session's window ended, for the `/init` of a new session ([CoreInit.usable]); then
+     * the request gets its own full timeout. Null when it may go.
      */
     private suspend fun awaitInstance(): SdkError? {
         val waited = withTimeoutOrNull(readyWaitMs) {
             val current = initFlow.filterNotNull().first()
-            Verdict(current.ready())
+            Verdict(current.usable())
         }
         return if (waited == null) SdkError.Timeout else waited.error
     }

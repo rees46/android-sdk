@@ -10,9 +10,8 @@ import org.json.JSONObject
  * `SendNetworkMethodUseCase`) hands every request to the instance's core, so the namespaces are the
  * same code for both cores.
  *
- * [LegacyCore] keeps today's paths. [CoreV2] is the new core, chosen by `Rees46Config.coreV2`; for now
- * it has only the new client, while `/init`, the session and the requests waiting for a `did` stay the
- * legacy ones for both cores.
+ * [LegacyCore] keeps today's paths. [CoreV2] is the new core, chosen by `Rees46Config.coreV2`: its own
+ * client, `/init` ([CoreInit]) and session ([SessionWindow]).
  */
 internal interface Core {
 

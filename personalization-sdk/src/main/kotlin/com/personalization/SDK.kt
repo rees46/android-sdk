@@ -43,6 +43,7 @@ import com.personalization.core.internal.InitHooks
 import com.personalization.core.internal.InitSetup
 import com.personalization.core.internal.InstanceState
 import com.personalization.core.internal.ProcessAppLifecycle
+import com.personalization.core.internal.SessionWindow
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
@@ -84,6 +85,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
@@ -251,9 +253,43 @@ open class SDK {
     val deviceId: String?
         get() = if (::userSettingsRepository.isInitialized) userSettingsRepository.getDid().ifEmpty { null } else null
 
-    /** The `sid` of the current session; null while there is none, or before initialization. */
+    /**
+     * The `sid` of the current session; null while there is none, or before initialization. On the new
+     * core it is the server's (the `seance` of `/init`), and a session two hours without events ends:
+     * the next request or event starts a new one with `/init` first.
+     */
     val sessionId: String?
         get() = if (::userSettingsRepository.isInitialized) userSettingsRepository.getSid().ifEmpty { null } else null
+
+    /** The bridges' listeners of a new `sid` ([onSessionChange]). */
+    private val sessionListeners = CopyOnWriteArrayList<(String) -> Unit>()
+
+    /**
+     * For the bridges (stage 7): [listener] hears every new `sid` of the new core, on the main thread,
+     * until the handle is cancelled — instead of asking [sessionId] on a timer. The legacy core does not
+     * call it. May be set before the instance is initialized.
+     */
+    internal fun onSessionChange(listener: (sessionId: String) -> Unit): Cancellable {
+        sessionListeners += listener
+        return Cancellable { sessionListeners -= listener }
+    }
+
+    /** Tells the bridges' listeners about [sid] on the main thread; one that throws is logged. */
+    private fun sessionChanged(sid: String) {
+        val targets = sessionListeners.toList()
+        if (targets.isEmpty()) return
+        calls.launch {
+            withContext(dispatchers.main) {
+                targets.forEach { listener ->
+                    try {
+                        listener(sid)
+                    } catch (e: Exception) {
+                        log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "A session listener threw", throwable = e)
+                    }
+                }
+            }
+        }
+    }
 
     /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
     internal var logLevel: LogLevel = LogLevel.WARNING
@@ -623,6 +659,9 @@ open class SDK {
             state = instanceState,
             connectivity = connectivity,
             lifecycle = ProcessAppLifecycle(),
+            session = SessionWindow(userSettingsRepository, storage).also { session ->
+                session.addListener { sid, changed -> if (changed) sessionChanged(sid) }
+            },
             hooks = object : InitHooks {
                 override fun onAnswer(answer: JSONObject, fresh: Boolean) {
                     val response = answer.mapToSdkInitResponse()
