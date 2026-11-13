@@ -110,20 +110,8 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
             preferences.edit().putBoolean(StorageKeys.CREDENTIALS_WIPED, value).apply()
         }
 
-    /** Where the shop's event queue lives ([queueDirectory] creates it). */
+    /** Where the shop's event queue lives; [QueueStore] creates it with its first event. */
     val queuePath: File get() = File(directory, QUEUE_DIRECTORY)
-
-    /** The directory of the shop's event queue, created if needed; null when the disk refused it. */
-    fun queueDirectory(): File? {
-        val queue = File(directory, QUEUE_DIRECTORY)
-        if (queue.isDirectory) return queue
-        return try {
-            if (queue.mkdirs() || queue.isDirectory) queue else null.also { failed(OP_CREATE_QUEUE, null) }
-        } catch (e: SecurityException) {
-            failed(OP_CREATE_QUEUE, e)
-            null
-        }
-    }
 
     /**
      * Forgets the customer: [StorageKeys.USER_CREDENTIALS] and the saved `/init` answer, and with
@@ -228,7 +216,6 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
 
         const val OP_READ_INIT_ANSWER = "read_init_answer"
         const val OP_WRITE_INIT_ANSWER = "write_init_answer"
-        const val OP_CREATE_QUEUE = "create_queue_directory"
         const val OP_DELETE_CREDENTIALS = "delete_user_credentials"
         const val OP_DELETE_INIT_ANSWER = "delete_init_answer"
         const val OP_DELETE_QUEUE = "delete_queue"

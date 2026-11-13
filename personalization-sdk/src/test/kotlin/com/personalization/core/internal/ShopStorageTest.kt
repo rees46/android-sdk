@@ -103,17 +103,14 @@ class ShopStorageTest {
     }
 
     @Test
-    fun `the queue has a directory of the shop, made on first use`() {
-        val queue = storage().queueDirectory()
+    fun `the queue has a directory of the shop`() {
+        val queue = storage().queuePath
 
-        assertNotNull(queue)
-        assertTrue(queue?.isDirectory == true)
         assertEquals(File(context.noBackupFilesDir, "personalization_sdk/personalization_sdk_shop-1/queue"), queue)
-        assertEquals(queue, storage().queueDirectory())
         // Another shop, another directory.
         assertEquals(
             File(context.noBackupFilesDir, "personalization_sdk/host_personalization_sdk_shop-1/queue"),
-            ShopStorage(context, StorageLayout(SHOP, "host")).queueDirectory()
+            ShopStorage(context, StorageLayout(SHOP, "host")).queuePath
         )
     }
 
@@ -123,7 +120,7 @@ class ShopStorageTest {
         val storage = storage()
         storage.saveInitAnswer(JSONObject("""{"did":"did-1"}"""))
         storage.isRefused = true
-        val queue = storage.queueDirectory()
+        val queue = storage.queuePath.also { it.mkdirs() }
         File(queue, "event-1").writeText("{}")
 
         assertTrue(runBlocking { LegacyCore(mockk<UserSettingsRepository>(relaxed = true)) { "" }.deleteUserCredentials(storage) })
@@ -162,7 +159,7 @@ class ShopStorageTest {
     fun `on the new core the queue goes with the customer`() {
         seedShop()
         val storage = storage()
-        val queue = storage.queueDirectory()
+        val queue = storage.queuePath.also { it.mkdirs() }
         File(queue, "event-1").writeText("{}")
         val core = CoreV2(CoreHttpClient({ "https://example.invalid/" }, mockk(relaxed = true), FakeConnectivity(), SHOP), SHOP)
 

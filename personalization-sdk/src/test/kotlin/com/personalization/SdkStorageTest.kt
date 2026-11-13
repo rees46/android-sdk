@@ -401,7 +401,7 @@ class SdkStorageTest {
     @Test
     fun `on the new core the deletion takes the queue too`() {
         val sdk = Rees46.initialize(context, config(coreV2 = true))
-        val queue = sdk.storage?.queueDirectory()
+        val queue = sdk.storage?.queuePath?.also { it.mkdirs() }
         File(queue, "event").writeText("{}")
 
         runBlocking { sdk.deleteUserCredentials() }

@@ -994,8 +994,9 @@ open class SDK {
     /**
      * Sends the events waiting in the queue now, without waiting for the queue's own triggers, and
      * returns once each of them was tried: sent, dropped, or held — by no network, by the instance not
-     * being ready yet, or by a server that asked to wait (`Retry-After`). It does not repeat a failed
-     * event at once and promises no delivery. On the legacy core, which has no queue, it returns at once.
+     * being ready yet, or by a server that asked to wait (`Retry-After`). An event waiting out the pause
+     * after a failure goes again at once; it promises no delivery. On the legacy core, which has no queue,
+     * it returns at once.
      *
      * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
      * was released, with [SdkError.ShopBlocked] when the shop refused the SDK.

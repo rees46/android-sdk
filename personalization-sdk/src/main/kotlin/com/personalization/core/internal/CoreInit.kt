@@ -52,12 +52,6 @@ internal interface InitHooks {
     fun onUsable()
 }
 
-/** Holds a request until the instance may send it. */
-internal fun interface ReadyGate {
-    /** Null once the request may go; otherwise why it may not: `shopBlocked`, `notInitialized` or `timeout`. */
-    suspend fun awaitReady(timeoutMs: Long): SdkError?
-}
-
 /**
  * The new core's `/init` (`core/init.md`, decision 0002) and the [SdkState] it gives the instance.
  *
@@ -102,7 +96,7 @@ internal class CoreInit(
     private val timeZone: () -> TimeZone = { TimeZone.getDefault() },
     /** The shop's session; the instance's other parts read it too. */
     internal val session: SessionWindow = SessionWindow(settings, storage, clock),
-) : ReadyGate {
+) {
 
     /** Whether a request may go: computed from the state on every change. */
     private enum class Gate { WAIT, OPEN, BLOCKED, CLOSED }
@@ -211,14 +205,6 @@ internal class CoreInit(
         }
         if (becameReady) markUsable(start)
     }
-
-    override suspend fun awaitReady(timeoutMs: Long): SdkError? {
-        val decided = withTimeoutOrNull(timeoutMs) { gate.first { it != Gate.WAIT } } ?: return SdkError.Timeout
-        return errorOf(decided)
-    }
-
-    /** Waits without a limit until a request may go or may not; the caller sets the deadline. */
-    internal suspend fun ready(): SdkError? = errorOf(gate.first { it != Gate.WAIT })
 
     /** For a request with a result: [usable] within [timeoutMs]. */
     suspend fun awaitUsable(timeoutMs: Long): SdkError? {

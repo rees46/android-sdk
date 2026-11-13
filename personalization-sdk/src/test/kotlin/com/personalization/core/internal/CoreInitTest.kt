@@ -793,7 +793,7 @@ class CoreInitTest {
     }
 
     private fun waitReady(init: CoreInit, timeoutMs: Long) =
-        CoroutineScope(StandardTestDispatcher(scheduler)).async { init.awaitReady(timeoutMs) }.also { scheduler.runCurrent() }
+        CoroutineScope(StandardTestDispatcher(scheduler)).async { init.awaitUsable(timeoutMs) }.also { scheduler.runCurrent() }
 
     private fun awaitReady(init: CoreInit, timeoutMs: Long): SdkError? {
         val waiting = waitReady(init, timeoutMs)
