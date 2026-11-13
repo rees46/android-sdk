@@ -390,7 +390,11 @@ internal class CoreInit(
             val step = synchronized(lock) {
                 // An answer to a start that restart() or release() ended belongs to nobody.
                 if (start != generation || released) return
-                take(result, attempt).also { answers.value = answers.value + 1 }
+                take(result, attempt).also { step ->
+                    answers.value = answers.value + 1
+                    // What follows an answer is the instance's work, not /init: a new one may go meanwhile.
+                    if (step !is Step.Retry) job = null
+                }
             }
             when (step) {
                 Step.Done -> return
