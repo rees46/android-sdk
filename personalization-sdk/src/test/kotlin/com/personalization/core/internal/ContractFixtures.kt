@@ -1,4 +1,4 @@
-package com.personalization.core
+package com.personalization.core.internal
 
 import org.json.JSONArray
 import org.json.JSONObject

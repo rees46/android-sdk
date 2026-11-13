@@ -1,4 +1,4 @@
-package com.personalization.core
+package com.personalization.core.internal
 
 /**
  * The time the core reads: the session window, retry pauses, the queue's limits, the source's

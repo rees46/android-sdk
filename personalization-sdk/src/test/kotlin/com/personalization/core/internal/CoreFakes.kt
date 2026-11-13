@@ -1,4 +1,4 @@
-package com.personalization.core
+package com.personalization.core.internal
 
 import com.personalization.Cancellable
 import kotlinx.coroutines.ExperimentalCoroutinesApi

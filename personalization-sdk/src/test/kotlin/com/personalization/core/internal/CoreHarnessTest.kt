@@ -1,4 +1,4 @@
-package com.personalization.core
+package com.personalization.core.internal
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

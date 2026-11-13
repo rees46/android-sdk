@@ -1,4 +1,4 @@
-package com.personalization.core
+package com.personalization.core.internal
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
