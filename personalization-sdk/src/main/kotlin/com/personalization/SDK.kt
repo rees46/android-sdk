@@ -1387,9 +1387,15 @@ open class SDK {
         val instance: SDK
             get() = SdkRegistry.currentOrLazy()
 
-        fun userAgent(): String {
-            return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
-        }
+        fun userAgent(): String = userAgent(BuildConfig.FLAVOR, BuildConfig.VERSION_NAME)
+
+        /**
+         * The flavor is upper-cased without the device's locale: under Turkish or Azerbaijani the `i`
+         * of `personaclick` would become `İ`, which no HTTP header may carry, and every request of the
+         * new client would fail.
+         */
+        internal fun userAgent(flavor: String, version: String): String =
+            PERSONALIZATION_SDK + flavor.uppercase(Locale.ROOT) + ", v" + version
 
         /**
          * Writes [message] to the SDK's log at [LogLevel.DEBUG] (see [Rees46Config.logLevel]).
