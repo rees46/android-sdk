@@ -71,7 +71,8 @@ internal object CoreHttp {
  * method, the path and the code, never the query, a body or the answer. An answer's `Retry-After` comes
  * back with the failure, for the caller that repeats ([CoreInit]).
  *
- * `/init` carries `did`, `sid` and `seance` only when they have a value: an empty `did` is not a device.
+ * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
+ * device), and no `segment`.
  */
 internal class CoreHttpClient(
     private val baseUrl: () -> String,
@@ -126,6 +127,8 @@ internal class CoreHttpClient(
         val fields = CommonFields.addTo(params, settings)
         if (method.method == INIT_PATH) {
             INIT_OPTIONAL_FIELDS.forEach { key -> if (fields.optString(key).isEmpty()) fields.remove(key) }
+            // `/init` does not read the A/B group (core/init.md): it is the events' field.
+            fields.remove(UserBasicParams.SEGMENT)
         }
         val url = (baseUrl() + method.method).toHttpUrl()
         val builder = Request.Builder()

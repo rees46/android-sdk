@@ -209,7 +209,7 @@ class CoreHttpClientTest {
     }
 
     @Test
-    fun `init leaves out a did and a session it does not have, and carries the stream of the config`() {
+    fun `init leaves out a did and a session it does not have and the segment, and carries the stream of the config`() {
         every { settings.getDid() } returns ""
         every { settings.getSid() } returns ""
         every { settings.getStream() } returns "flutter"
@@ -218,8 +218,18 @@ class CoreHttpClientTest {
         send(NetworkMethod.GET("init"), JSONObject().put("tz", "3"))
 
         val url = checkNotNull(server.takeRequest().requestUrl)
-        assertEquals(setOf("tz", "shop_id", "segment", "stream"), url.queryParameterNames)
+        assertEquals(setOf("tz", "shop_id", "stream"), url.queryParameterNames)
         assertEquals("flutter", url.queryParameter("stream"))
+    }
+
+    @Test
+    fun `init carries a did and a session it has, still without the segment`() {
+        reply(200, "{}")
+
+        send(NetworkMethod.GET("init"), JSONObject())
+
+        val url = checkNotNull(server.takeRequest().requestUrl)
+        assertEquals(setOf("shop_id", "did", "sid", "seance", "stream"), url.queryParameterNames)
     }
 
     @Test
