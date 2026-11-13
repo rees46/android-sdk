@@ -63,9 +63,6 @@ class RegisterManager @Inject constructor(
         this.autoSendPushToken = autoSendPushToken
 
         val did = getUserSettingsValueUseCase.getDid()
-        if (did.isNotEmpty() && needReInitialization) {
-            log(LogLevel.INFO, LogCodes.DEVICE_ID_RESET, "needReInitialization: /init asks for a new did")
-        }
         when {
             did.isEmpty() || needReInitialization -> initializeNewDevice()
             else -> {

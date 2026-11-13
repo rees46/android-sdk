@@ -31,6 +31,8 @@ import androidx.fragment.app.FragmentActivity
 import com.personalization.InternalPersonalizationV3Api
 import com.personalization.R
 import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.popups.popupsV3Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
@@ -727,7 +729,7 @@ internal class PopupV3ActionHandler(
             val handled = try {
                 handler(link)
             } catch (throwable: Throwable) {
-                popupsV3Log(sdk, LogLevel.ERROR, "popups v3: the link handler threw", throwable = throwable)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "popups v3: the link handler threw", sdk.logShopId, throwable = throwable)
                 false
             }
             if (handled) {
@@ -826,7 +828,7 @@ internal class PopupV3ActionHandler(
             val handled = try {
                 handler(product)
             } catch (throwable: Throwable) {
-                popupsV3Log(sdk, LogLevel.ERROR, "popups v3: product handler failed on ${product.id}", throwable = throwable)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "popups v3: the product handler threw", sdk.logShopId, mapOf("product" to product.id), throwable)
                 false
             }
             if (handled) {

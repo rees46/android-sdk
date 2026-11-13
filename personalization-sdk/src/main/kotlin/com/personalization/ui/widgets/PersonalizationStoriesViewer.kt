@@ -36,6 +36,9 @@ import com.bumptech.glide.request.transition.Transition
 import com.personalization.InternalPersonalizationV3Api
 import com.personalization.OnClickListener
 import com.personalization.SDK
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.stories.models.Story
 import com.personalization.ui.widgets.StoriesViewerState.Pause
 import java.lang.ref.WeakReference
@@ -643,7 +646,7 @@ class PersonalizationStoriesViewer(
         track("share")
         val shared = shareUrlTransform?.let { transform ->
             runCatching { transform(url) }.getOrElse {
-                SDK.error("PersonalizationStoriesViewer: shareUrlTransform threw, the link is shared as it is", it)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "PersonalizationStoriesViewer: shareUrlTransform threw, the link is shared as it is", sdk?.logShopId, throwable = it)
                 url
             }
         } ?: url
