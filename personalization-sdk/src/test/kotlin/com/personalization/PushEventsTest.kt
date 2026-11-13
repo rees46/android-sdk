@@ -211,6 +211,9 @@ class PushEventsTest {
     @Test
     fun `the old forms go to the new paths on the new core, never track received`() {
         val sdk = sdk()
+        // A request the core sends directly passes the funnel first: none is a delivery's track/received.
+        val handed = CopyOnWriteArrayList<String>()
+        sdk.networkRepository.onRequest = { handed += it }
         @Suppress("DEPRECATION")
         Rees46.handlePush(push(code = "a"), PushEventType.RECEIVED)
         sdk.notificationReceived(push(code = "b"))
@@ -227,7 +230,9 @@ class PushEventsTest {
             listOf("track/delivered" to "a", "track/delivered" to "b", "track/clicked" to "c", "track/clicked" to "d"),
             got.map { it?.first to it?.second?.getString("code") },
         )
-        assertNull(next("track/received", timeoutMs = 300))
+        // Flushed: every event of the queue went, and nothing went around it.
+        assertFalse(seen.any { it.first == "track/received" })
+        assertFalse(handed.contains("track/received"))
     }
 
     @Test
@@ -246,9 +251,8 @@ class PushEventsTest {
         assertEquals(SHOP, Rees46.handlePush(push(code = "m-1"), PushEvent.CLOSED))
         flush(sdk)
 
-        assertEquals("track/clicked", next("track/clicked", "track/closed")?.first)
-        assertEquals("track/closed", next("track/clicked", "track/closed")?.first)
-        assertNull(next("track/clicked", timeoutMs = 300))
+        // Flushed: every event of the queue went.
+        assertEquals(listOf("track/clicked", "track/closed"), seen.map { it.first }.filter { it == "track/clicked" || it == "track/closed" })
         assertEquals(listOf("m-1"), clicked)
     }
 
@@ -510,7 +514,7 @@ class PushEventsTest {
                 answered += "error:$code"
             }
         })
-        assertNull("no token without a did", next("mobile_push_tokens", timeoutMs = 300))
+        assertEquals(SdkState.INITIALIZING, sdk.state)
 
         hold.countDown()
         val body = next("mobile_push_tokens")?.second ?: throw AssertionError("no token")
@@ -519,7 +523,10 @@ class PushEventsTest {
         assertEquals("firebase", body.getString("push_provider"))
         assertEquals("android", body.getString("platform"))
         assertEquals("success", answered.poll(5, TimeUnit.SECONDS))
-        assertNull("once", next("mobile_push_tokens", timeoutMs = 300))
+        // Nothing of the token waits or is on its way any more: every send it made reached the server, once,
+        // and none of them before the did.
+        runBlocking { withTimeout(5_000) { sdk.pushTokenManager.core?.awaitIdle() } }
+        assertEquals(listOf("D1"), seen.filter { it.first == "mobile_push_tokens" }.map { it.second.optString("did") })
         assertEquals("tok", sdk.getPushToken(PushProvider.FCM))
         assertEquals(listOf("tok"), heardTokens)
     }
