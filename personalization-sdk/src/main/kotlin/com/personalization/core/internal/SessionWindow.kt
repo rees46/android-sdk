@@ -20,8 +20,10 @@ import java.util.concurrent.CopyOnWriteArrayList
  * - Only `/init` ([start]) and the events of the queue ([extend]) move the last activity; requests with
  *   a result do not, as the server does not extend its own session on them either.
  *
- * Listeners hear every `sid` `/init` brings, and whether it differs from the one before ("the session
- * changed", for the bridges). They are called on the thread that stored it and must not block.
+ * Listeners hear every `/init` that answers: the `sid` it brings and whether it differs from the one
+ * before ("the session changed", for the bridges), or, from an answer without a `seance`, the `sid` kept
+ * (empty when none) and `changed` false — a queue waiting for the session goes on at once either way.
+ * They are called on the thread that stored it and must not block.
  */
 internal class SessionWindow(
     private val settings: UserSettingsRepository,
@@ -69,14 +71,17 @@ internal class SessionWindow(
 
     /**
      * `/init` answered without a `seance`: a session alive from now, keeping the `sid` it has if its window
-     * is alive, and without one otherwise. Listeners hear nothing: no `sid` came.
+     * is alive, and without one otherwise. Listeners hear the `sid` kept, not as a change: no `sid` came,
+     * but whoever waits for the session may go on.
      */
     fun startWithoutSid() {
-        synchronized(lock) {
+        val kept = synchronized(lock) {
             val now = clock.nowMillis()
             if (settings.getSid().isEmpty() || !alive(now)) withoutSid = true
             storage.preferences.edit().putLong(StorageKeys.SID_LAST_ACT, now).apply()
+            settings.getSid()
         }
+        tell(kept, changed = false)
     }
 
     /** `/init` answered with [sid]: the session is [sid] and its last activity now. */
@@ -89,6 +94,10 @@ internal class SessionWindow(
                 .apply()
             (sid != lastKnown).also { lastKnown = sid }
         }
+        tell(sid, changed)
+    }
+
+    private fun tell(sid: String, changed: Boolean) {
         listeners.forEach { listener ->
             try {
                 listener(sid, changed)
@@ -98,7 +107,7 @@ internal class SessionWindow(
         }
     }
 
-    /** Calls [listener] with each `sid` `/init` brings until the handle is cancelled. */
+    /** Calls [listener] on each answer of `/init` ([start], [startWithoutSid]) until the handle is cancelled. */
     fun addListener(listener: (sid: String, changed: Boolean) -> Unit): Cancellable {
         listeners += listener
         return Cancellable { listeners -= listener }

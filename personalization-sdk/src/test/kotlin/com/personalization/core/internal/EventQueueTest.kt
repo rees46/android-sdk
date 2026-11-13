@@ -974,6 +974,24 @@ class EventQueueTest {
     }
 
     @Test
+    fun `an init answer without a seance wakes the queue that waits for the session at once`() {
+        val queue = start()
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        holdInit = true
+        event(queue, "1")
+        run()
+        assertEquals("the new session's /init is on its way", 1, initCalls.size)
+        // The wait for the instance runs out: the queue waits for a trigger or its timer.
+        after(10_000)
+        assertTrue(sent.isEmpty())
+
+        initCalls.single().complete(HttpResult.Success(JSONObject().put("did", "D1")))
+        run()
+
+        assertEquals("at once, not on the timer", listOf("1"), ids())
+    }
+
+    @Test
     fun `a flush ends however the pass it waits for ends, a release that cuts it off or an exception in it`() {
         val queue = start()
         holdEvents = true
