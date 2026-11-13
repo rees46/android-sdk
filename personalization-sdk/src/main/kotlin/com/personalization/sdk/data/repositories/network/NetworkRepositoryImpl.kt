@@ -6,11 +6,8 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.data.utils.QueryParamsUtils.addMultipleParams
 import com.personalization.sdk.domain.models.NetworkMethod
-import com.personalization.sdk.domain.models.NotificationSource
 import com.personalization.sdk.domain.repositories.NetworkRepository
-import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import com.personalization.utils.TimeUtils
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -30,7 +27,6 @@ import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
     private val userSettingsRepository: UserSettingsRepository,
-    private val notificationRepository: NotificationRepository,
 ) : NetworkRepository {
 
     private lateinit var baseUrl: String
@@ -167,14 +163,8 @@ class NetworkRepositoryImpl @Inject constructor(
     ) {
         userSettingsRepository.updateSidLastActTime()
 
-        val notificationSource =
-            notificationRepository.getNotificationSource(TimeUtils.TWO_DAYS.inWholeMilliseconds)
-
         try {
-            val newParams = addBasicQueryParams(
-                params = params,
-                notificationSource = notificationSource,
-            )
+            val newParams = addBasicQueryParams(params = params)
 
             executeMethod(networkMethod, newParams, listener)
         } catch (e: JSONException) {
@@ -182,15 +172,12 @@ class NetworkRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun addBasicQueryParams(
-        params: JSONObject,
-        notificationSource: NotificationSource?
-    ): JSONObject {
-        // A request with its own `from` or `code` (a story event, a push event) keeps them: the
-        // clicked push would replace that code and pair its `from` with someone else's code.
-        val pushSource = notificationSource?.takeUnless {
-            params.has(UserBasicParams.SOURCE_FROM) || params.has(UserBasicParams.SOURCE_CODE)
-        }
+    /**
+     * The common fields of every request. A clicked push is not among them: `from` and `code` on
+     * `/init` record one more click of the mailing on every launch, so the click travels as the
+     * `source` of `/push` events instead ([com.personalization.handlers.notifications.NotificationHandler]).
+     */
+    private fun addBasicQueryParams(params: JSONObject): JSONObject {
         addMultipleParams(
             params = params,
             paramsToAdd = mapOf(
@@ -208,8 +195,6 @@ class NetworkRepositoryImpl @Inject constructor(
                     key = UserBasicParams.STREAM,
                     repoValue = userSettingsRepository.getStream(),
                 ),
-                UserBasicParams.SOURCE_FROM to pushSource?.type,
-                UserBasicParams.SOURCE_CODE to pushSource?.id
             )
         )
         return params
