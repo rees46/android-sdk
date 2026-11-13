@@ -272,16 +272,16 @@ class NetworkRepositoryImpl @Inject constructor(
                     }
                     responseBodyForLog = error
                     // Without the body: an error answer often repeats the request's data.
-                    log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "Request failed", networkMethod, responseCode)
+                    log(LogCodes.failureLevel(responseCode), LogCodes.REQUEST_FAILED, "Request failed", networkMethod, responseCode)
                     Outcome.Failure(responseCode, error)
                 }
             } catch (e: ConnectException) {
-                log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "No connection to the server", networkMethod, throwable = e)
+                log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "No connection to the server", networkMethod, throwable = e)
                 errorForLog = e.message
                 responseCode = 504
                 Outcome.Failure(504, e.message)
             } catch (e: Exception) {
-                log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "Request ended without an answer", networkMethod, throwable = e)
+                log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "Request ended without an answer", networkMethod, throwable = e)
                 errorForLog = e.message
                 Outcome.Failure(-1, e.message)
             } finally {

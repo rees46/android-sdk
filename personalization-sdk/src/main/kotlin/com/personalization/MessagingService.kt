@@ -26,9 +26,9 @@ class MessagingService : FirebaseMessagingService() {
                 Rees46.handlePush(remoteMessage.data, PushEventType.RECEIVED)
             }
 
-            // Check if message contains a notification payload.
-            if (remoteMessage.notification != null) {
-                SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "FCM message with a notification payload")
+            // SDK pushes are data messages; one with only a notification payload is not the SDK's.
+            if (remoteMessage.data.isEmpty() && remoteMessage.notification != null) {
+                SdkLogs.log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "FCM message with only a notification payload is not an SDK push")
             }
         } catch (throwable: Throwable) {
             SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "An FCM message could not be handled", throwable = throwable)

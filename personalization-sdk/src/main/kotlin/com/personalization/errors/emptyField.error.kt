@@ -11,6 +11,6 @@ class EmptyFieldError(
 ) {
 
     fun logError() {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.INVALID_ARGUMENT, "Field is empty or null in $functionName : $message")
+        SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "Field is empty or null in $functionName : $message")
     }
 }

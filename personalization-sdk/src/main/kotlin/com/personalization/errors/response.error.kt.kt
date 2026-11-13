@@ -50,6 +50,6 @@ class JsonResponseErrorHandler(
         message: String? = this.message,
         exception: Exception? = null
     ) {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.DECODING_FAILED, message ?: "Response is null or incorrect", throwable = exception)
+        SdkLogs.log(LogLevel.WARNING, LogCodes.DECODING_FAILED, message ?: "Response is null or incorrect", throwable = exception)
     }
 }

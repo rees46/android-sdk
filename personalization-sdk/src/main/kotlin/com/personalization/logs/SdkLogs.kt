@@ -126,32 +126,57 @@ internal object SdkLogs {
     }
 }
 
-/** Stable codes of the SDK's log events. */
+/**
+ * Stable codes of the SDK's log events: the table "Коды" of the core's logging spec, the same on Android
+ * and iOS. A code is used only at its level in that table; a new code goes into the table first.
+ */
 internal object LogCodes {
-    /** A free-text message written through [SDK.debug], [SDK.warn] or [SDK.error]. */
-    const val SDK_LOG = "sdk_log"
-
+    /** A request got an answer (`debug`); context: method, path, status. */
     const val REQUEST = "request"
+
+    /** An answer outside `2xx` or none (`error` on `4xx`, otherwise `warning`); context: method, path, status. */
     const val REQUEST_FAILED = "request_failed"
     const val REQUEST_BUILD_FAILED = "request_build_failed"
-    const val DECODING_FAILED = "decoding_failed"
-    const val CALLBACK_FAILED = "callback_failed"
     const val INVALID_ARGUMENT = "invalid_argument"
     const val INVALID_CONFIG = "invalid_config"
+    const val DECODING_FAILED = "decoding_failed"
+    const val CALLBACK_FAILED = "callback_failed"
 
+    const val INIT_SUCCEEDED = "init_succeeded"
+    const val INIT_SAVED_ANSWER = "init_saved_answer"
     const val INIT_RETRY = "init_retry"
-    const val INIT_REFUSED = "init_refused"
+
+    /** `/init` failed (`error` on `4xx`, otherwise `warning`). */
     const val INIT_FAILED = "init_failed"
 
+    /** The shop refused and the core is in the `refused` state; the legacy path has no such state. */
+    const val INIT_REFUSED = "init_refused"
+    const val DEVICE_ID_RESET = "device_id_reset"
+    const val STORAGE_FAILED = "storage_failed"
+    const val QUEUE_DROPPED = "queue_dropped"
+
     const val PUSH_RECEIVED = "push_received"
-    const val PUSH_FAILED = "push_failed"
     const val PUSH_DROPPED = "push_dropped"
+    const val PUSH_FAILED = "push_failed"
+    const val PUSH_PERMISSION = "push_permission"
+    const val PUSH_PERMISSION_FAILED = "push_permission_failed"
     const val PUSH_TOKEN_SENT = "push_token_sent"
+    const val PUSH_TOKEN_SKIPPED = "push_token_skipped"
     const val PUSH_TOKEN_FAILED = "push_token_failed"
+    const val ADVERTISING_ID_SENT = "advertising_id_sent"
+    const val ADVERTISING_ID_FAILED = "advertising_id_failed"
 
     const val POPUP_NOT_SHOWN = "popup_not_shown"
-    const val POPUPS_V3 = "popups_v3"
+    const val CORE_FLAG_MISMATCH = "core_flag_mismatch"
+
+    /** Lines of the older code without an event of their own go under the code of their area. */
+    const val SDK_LOG = "sdk_log"
+    const val UI = "ui"
     const val STORIES = "stories"
     const val STORIES_V3 = "stories_v3"
-    const val UI = "ui"
+    const val POPUPS_V3 = "popups_v3"
+
+    /** The level of a failed request or `/init` by its HTTP code: `error` on `4xx`, otherwise `warning`. */
+    fun failureLevel(status: Int?): LogLevel =
+        if (status != null && status in 400..499) LogLevel.ERROR else LogLevel.WARNING
 }

@@ -385,14 +385,14 @@ open class SDK {
                         .toJson(),
                     listener = object : OnApiCallbackListener() {
                         override fun onSuccess(response: JSONObject?) {
-                            SdkLogs.log(LogLevel.DEBUG, LogCodes.REQUEST, "Advertising id sent", shopId)
+                            SdkLogs.log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent", shopId)
                         }
 
                         override fun onError(code: Int, msg: String?) {
                             // Without the answer's body: an error answer often repeats the request's data.
                             SdkLogs.log(
                                 LogLevel.WARNING,
-                                LogCodes.REQUEST_FAILED,
+                                LogCodes.ADVERTISING_ID_FAILED,
                                 "Advertising id was not sent",
                                 shopId,
                                 mapOf("status" to code)

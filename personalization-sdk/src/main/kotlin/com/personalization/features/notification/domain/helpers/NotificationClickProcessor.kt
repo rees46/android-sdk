@@ -1,8 +1,9 @@
 package com.personalization.features.notification.domain.helpers
 
 import android.os.Bundle
-import com.personalization.errors.EmptyFieldError
-import com.personalization.errors.ParsingJsonError
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.features.notification.domain.data.NotificationDataExtractor
 import com.personalization.features.notification.domain.data.NotificationDataSender
 import javax.inject.Inject
@@ -34,25 +35,17 @@ class NotificationClickProcessor @Inject constructor(
             )
             onResult(type, code)
         } catch (e: JSONException) {
-            ParsingJsonError(
-                tag = this@NotificationClickProcessor.javaClass.name,
-                functionName = "processClick",
-                message = e.javaClass.simpleName
-            ).logError()
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "The click of a push could not be sent", throwable = e)
         }
     }
 
     private fun handleError(errorMessage: String, extras: Bundle?) {
-        EmptyFieldError(
-            tag = TAG,
-            functionName = FUNCTION_NAME,
-            // Not the extras themselves: they carry the push's content.
-            message = "$errorMessage; extras keys: ${extras?.keySet()?.sorted()}"
-        ).logError()
-    }
-
-    companion object {
-        private const val TAG = "NotificationClickProcessor"
-        private const val FUNCTION_NAME = "processClick"
+        // Not the extras themselves: they carry the push's content.
+        SdkLogs.log(
+            LogLevel.WARNING,
+            LogCodes.PUSH_DROPPED,
+            "$errorMessage: the clicked push has no type or code",
+            context = mapOf("keys" to extras?.keySet()?.sorted())
+        )
     }
 }

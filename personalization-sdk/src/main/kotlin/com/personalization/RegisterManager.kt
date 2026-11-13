@@ -7,7 +7,6 @@ import android.content.Context
 import android.provider.Settings
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
-import com.personalization.errors.BaseInfoError
 import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.push.PushTokenManager
 import com.personalization.sdk.data.mappers.SdkInitializationMapper.mapToSdkInitResponse
@@ -64,6 +63,9 @@ class RegisterManager @Inject constructor(
         this.autoSendPushToken = autoSendPushToken
 
         val did = getUserSettingsValueUseCase.getDid()
+        if (did.isNotEmpty() && needReInitialization) {
+            log(LogLevel.INFO, LogCodes.DEVICE_ID_RESET, "needReInitialization: /init asks for a new did")
+        }
         when {
             did.isEmpty() || needReInitialization -> initializeNewDevice()
             else -> {
@@ -89,10 +91,7 @@ class RegisterManager @Inject constructor(
 
     private fun init(knownDevice: Boolean = false) {
         if (isTestDevice) {
-            BaseInfoError(
-                tag = TAG,
-                message = "Disable working on Google Play Pre-Launch report devices"
-            ).logError()
+            log(LogLevel.WARNING, LogCodes.SDK_LOG, "/init is not sent on a Google Play pre-launch report device")
             return
         }
 
@@ -117,7 +116,7 @@ class RegisterManager @Inject constructor(
                 }
             )
         } catch (e: Exception) {
-            log(LogLevel.ERROR, LogCodes.INIT_FAILED, "/init could not be sent", throwable = e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "/init could not be built", throwable = e)
         }
     }
 
@@ -138,6 +137,7 @@ class RegisterManager @Inject constructor(
         if (!errorHandler.validateResponse()) {
             return
         }
+        log(LogLevel.INFO, LogCodes.INIT_SUCCEEDED, "/init succeeded")
         val initResponse = response?.mapToSdkInitResponse()
         val popUpData = initResponse?.popupDto
         if (popUpData != null) {
@@ -182,7 +182,7 @@ class RegisterManager @Inject constructor(
                 }
             } else {
                 log(
-                    LogLevel.ERROR,
+                    LogCodes.failureLevel(code),
                     LogCodes.INIT_FAILED,
                     "/init failed after all retries",
                     mapOf("status" to code, "attempts" to attempt + 1)
@@ -191,7 +191,8 @@ class RegisterManager @Inject constructor(
             }
         } else {
             if (knownDevice) notifyInitFinished(popupsV3 = false)
-            log(LogLevel.ERROR, LogCodes.INIT_REFUSED, "The shop refused /init", mapOf("status" to code))
+            // A 4xx is a failed /init, not a refused shop: the legacy path has no refused state.
+            log(LogCodes.failureLevel(code), LogCodes.INIT_FAILED, "/init failed", mapOf("status" to code))
         }
     }
 

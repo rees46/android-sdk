@@ -11,6 +11,6 @@ class ParsingJsonError(
 ) {
 
     fun logError() {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.DECODING_FAILED, "Error caught in $functionName: $message")
+        SdkLogs.log(LogLevel.WARNING, LogCodes.DECODING_FAILED, "Error caught in $functionName: $message")
     }
 }

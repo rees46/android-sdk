@@ -7,7 +7,6 @@ import android.content.Context
 import com.personalization.OnPushTokenListener
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.errors.BaseInfoError
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
@@ -94,10 +93,14 @@ class PushTokenManager @Inject constructor(
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { token -> onTokenReceived(token, source.provider) }
                 result.exceptionOrNull()?.let { error ->
-                    BaseInfoError(
-                        tag = TAG,
-                        message = "${source.provider.id} token fetch error: ${error.javaClass.simpleName}"
-                    ).logError()
+                    SdkLogs.log(
+                        LogLevel.WARNING,
+                        LogCodes.PUSH_TOKEN_FAILED,
+                        "Push token could not be fetched",
+                        logShopId,
+                        mapOf("provider" to source.provider.id),
+                        error
+                    )
                 }
             }
         }
@@ -176,7 +179,7 @@ class PushTokenManager @Inject constructor(
                     tokensInFlight.remove(inFlightKey(provider, token))
                     // Without the answer's body: an error answer often repeats the request's data.
                     SdkLogs.log(
-                        LogLevel.ERROR,
+                        LogLevel.WARNING,
                         LogCodes.PUSH_TOKEN_FAILED,
                         "Push token was not sent",
                         logShopId,

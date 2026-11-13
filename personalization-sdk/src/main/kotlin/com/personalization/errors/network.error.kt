@@ -10,6 +10,6 @@ class NetworkError(
 ) {
 
     fun logError() {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "Error caught in $functionName : Network connection issue ")
+        SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "Error caught in $functionName : Network connection issue ")
     }
 }

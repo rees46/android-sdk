@@ -183,11 +183,19 @@ internal object StoriesApiV3 {
         val response = try {
             http.send(method, url, body)
         } catch (throwable: Throwable) {
+            SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "$method ${pathOf(url)}", shopId, mapOf("method" to method, "path" to pathOf(url)), throwable)
             SDK.networkLogger?.onHttpCall(method, url, body, -1, null, System.currentTimeMillis() - started, throwable.message)
             throw throwable
         }
         // Method and path only: the query and the body carry did, the session and the user's answers.
-        SdkLogs.log(LogLevel.DEBUG, LogCodes.SDK_LOG, "${response.code}: $method ${pathOf(url)}", shopId)
+        val success = response.code in 200..299
+        SdkLogs.log(
+            if (success) LogLevel.DEBUG else LogCodes.failureLevel(response.code),
+            if (success) LogCodes.REQUEST else LogCodes.REQUEST_FAILED,
+            "${response.code}: $method ${pathOf(url)}",
+            shopId,
+            mapOf("method" to method, "path" to pathOf(url), "status" to response.code)
+        )
         SDK.networkLogger?.onHttpCall(method, url, body, response.code, response.body, System.currentTimeMillis() - started, null)
         return response
     }

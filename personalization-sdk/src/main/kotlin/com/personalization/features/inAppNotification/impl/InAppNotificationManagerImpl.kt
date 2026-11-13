@@ -100,7 +100,7 @@ class InAppNotificationManagerImpl @Inject constructor(
                     return
                 }
                 if (activity == null) {
-                    log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id))
+                    log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id, "reason" to "listener"))
                     return
                 }
                 activity.supportFragmentManager.takeIf { it.canShowDialog() }
@@ -109,18 +109,18 @@ class InAppNotificationManagerImpl @Inject constructor(
             presentation.autoPresentation -> defaultTarget()
 
             else -> {
-                log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id))
+                log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id, "reason" to "auto_presentation_off"))
                 return
             }
         }
         if (target == null) {
-            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id))
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id, "reason" to "no_activity"))
             return
         }
         try {
             showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
-            log(LogLevel.ERROR, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id), throwable = exception)
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id, "reason" to "exception"), throwable = exception)
             return
         }
 
@@ -262,7 +262,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         target: FragmentManager?
     ) {
         if (target == null) {
-            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in")
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in", context = mapOf("reason" to "no_activity"))
             return
         }
 
