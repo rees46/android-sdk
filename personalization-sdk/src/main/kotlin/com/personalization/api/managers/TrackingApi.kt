@@ -8,7 +8,7 @@ import com.personalization.api.models.tracking.TrackingSource
 /**
  * Standard tracking events — the `tracking` namespace of the SDK.
  *
- * Reached through an SDK instance: `Rees46.getInstance().tracking.productView("sku-1")`.
+ * Reached through an SDK instance: `Rees46.instance().tracking.productView("sku-1")`.
  */
 interface TrackingApi {
 

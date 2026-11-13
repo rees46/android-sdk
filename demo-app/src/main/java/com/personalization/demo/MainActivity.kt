@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         // The shop is initialized once in DemoApplication.onCreate (Application) so it is ready in
         // every process — including the cold process FCM/HMS starts to deliver a push. Reach that same
         // registered instance by its shopId (do NOT create a new SDK()).
-        sdk = Rees46.getInstance(BuildConfig.SHOP_ID)
+        sdk = Rees46.instance(BuildConfig.SHOP_ID)
         // Show the registered push provider(s) + token (FCM and/or HMS) in the header.
         observePushTokens()
 

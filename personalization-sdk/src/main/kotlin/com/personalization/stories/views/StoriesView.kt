@@ -144,7 +144,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         // resolve the instance for this view's shop as soon as it is available and load. The
         // subscription fires immediately when the instance already exists, or later otherwise.
         //
-        // A direct Rees46.getInstance/awaitInstance keeps its fail-fast contract, but here the resolve
+        // A direct Rees46.instance/awaitInstance keeps its fail-fast contract, but here the resolve
         // happens inside a lifecycle callback the host cannot wrap: a misconfigured view (e.g. no
         // app:shop_id while several shops are registered → AmbiguousShopException) must log and
         // render nothing, not crash the screen.

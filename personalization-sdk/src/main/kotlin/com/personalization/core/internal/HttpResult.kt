@@ -12,7 +12,8 @@ internal sealed interface HttpResult {
 
     /**
      * [errorBody] is the body of an answer outside `2xx`, kept only for the old callbacks, which got it
-     * as their message. It is never written to the log.
+     * as their message. It is never written to the log. [retryAfterMs] is the answer's `Retry-After`, in
+     * milliseconds from now, when it had one.
      */
-    class Failure(val error: SdkError, val errorBody: String? = null) : HttpResult
+    class Failure(val error: SdkError, val errorBody: String? = null, val retryAfterMs: Long? = null) : HttpResult
 }

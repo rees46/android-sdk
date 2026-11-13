@@ -41,10 +41,22 @@ public class Rees46ConfigJavaTest {
     }
 
     @Test
-    public void theStorageKeyIsTheLastParameter() {
+    public void theStorageKeyKeepsItsPlace() {
         Rees46Config config = new Rees46Config(
                 "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, false, "host");
 
         assertEquals("host", config.getStorageKey());
+        assertNull(config.getDeviceId());
+        assertFalse(config.getSendAdvertisingId());
+    }
+
+    @Test
+    public void theDeviceIdAndTheAdvertisingIdComeLast() {
+        Rees46Config config = new Rees46Config(
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, false, null,
+                "did-from-rn", true);
+
+        assertEquals("did-from-rn", config.getDeviceId());
+        assertTrue(config.getSendAdvertisingId());
     }
 }

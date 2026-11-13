@@ -56,7 +56,7 @@ class ShopActivity : AppCompatActivity() {
         statusBar.onSystemBars { top, _ -> statusBar.updateLayoutParams { height = top } }
         shop = DemoShop(
             context = this,
-            sdk = Rees46.getInstance(BuildConfig.SHOP_ID),
+            sdk = Rees46.instance(BuildConfig.SHOP_ID),
             shopId = BuildConfig.SHOP_ID,
             storiesCode = getString(R.string.shop_stories_code),
             container = container

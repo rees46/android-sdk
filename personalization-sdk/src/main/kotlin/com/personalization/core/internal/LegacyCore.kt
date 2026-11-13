@@ -4,6 +4,7 @@ import android.net.Uri
 import com.personalization.LogLevel
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.models.NetworkMethod
@@ -26,7 +27,8 @@ import java.nio.charset.StandardCharsets
 /**
  * Today's request path, unchanged: `HttpURLConnection` on a thread per request. Any `2xx` is a
  * success, an empty answer or one that is not JSON succeeds with an empty object, no connection is
- * `504` and a failure without an answer `-1`. It cannot cancel a request, so [release] does nothing.
+ * `504` and a failure without an answer `-1`. It cannot cancel a request in flight; after [release] a
+ * request fails at once with `notInitialized` (`onError(-1)`).
  */
 internal class LegacyCore(
     private val settings: UserSettingsRepository,
@@ -41,7 +43,18 @@ internal class LegacyCore(
 
     private val delivery = LegacyDelivery { level, code, message, throwable -> log(level, code, message, throwable = throwable) }
 
+    @Volatile
+    private var released = false
+
     override fun send(method: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+        if (released) {
+            // Off the caller's thread, as every answer of this path.
+            if (listener != null) {
+                val error = LegacyErrors.of(SdkError.NotInitialized)
+                Thread { delivery.failure(listener, error.code, error.message) }.start()
+            }
+            return
+        }
         try {
             executeMethod(method, CommonFields.addTo(params, settings), listener)
         } catch (e: JSONException) {
@@ -49,7 +62,9 @@ internal class LegacyCore(
         }
     }
 
-    override fun release() = Unit
+    override fun release() {
+        released = true
+    }
 
     /** The legacy path has no queue: the partition's credentials and the saved answer go. */
     override fun deleteUserCredentials(storage: ShopStorage): Boolean = storage.deleteUserCredentials(includeQueue = false)

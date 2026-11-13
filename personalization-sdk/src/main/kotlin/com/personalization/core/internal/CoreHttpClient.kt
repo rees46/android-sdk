@@ -6,6 +6,7 @@ import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
 import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
+import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -67,7 +68,10 @@ internal object CoreHttp {
  * - a request cancelled with the instance is `cancelled`.
  *
  * Without a network a request fails at once with `network`. The client never retries; the log gets the
- * method, the path and the code, never the query, a body or the answer.
+ * method, the path and the code, never the query, a body or the answer. An answer's `Retry-After` comes
+ * back with the failure, for the caller that repeats ([CoreInit]).
+ *
+ * `/init` carries `did`, `sid` and `seance` only when they have a value: an empty `did` is not a device.
  */
 internal class CoreHttpClient(
     private val baseUrl: () -> String,
@@ -75,7 +79,7 @@ internal class CoreHttpClient(
     private val connectivity: ConnectivityMonitor,
     private val shopId: String?,
     shared: OkHttpClient = CoreHttp.shared,
-    timeouts: CoreTimeouts = CoreTimeouts(),
+    internal val timeouts: CoreTimeouts = CoreTimeouts(),
     private val clock: Clock = Clock.SYSTEM,
 ) {
 
@@ -120,6 +124,9 @@ internal class CoreHttpClient(
 
     private fun build(method: NetworkMethod, params: JSONObject, phase: Phase): Built {
         val fields = CommonFields.addTo(params, settings)
+        if (method.method == INIT_PATH) {
+            INIT_OPTIONAL_FIELDS.forEach { key -> if (fields.optString(key).isEmpty()) fields.remove(key) }
+        }
         val url = (baseUrl() + method.method).toHttpUrl()
         val builder = Request.Builder()
             .header(USER_AGENT, SDK.userAgent())
@@ -175,7 +182,8 @@ internal class CoreHttpClient(
             } catch (e: IOException) {
                 null
             }
-            return Exchange(HttpResult.Failure(SdkError.Http(status), errorBody), status, errorBody)
+            val failure = HttpResult.Failure(SdkError.Http(status), errorBody, retryAfterMs(response))
+            return Exchange(failure, status, errorBody)
         }
         // OkHttp gives every answer it hands over a body; without one the answer is empty.
         val text = response.body?.string().orEmpty()
@@ -187,6 +195,14 @@ internal class CoreHttpClient(
         }
         val result = if (json is JSONObject || json is JSONArray) HttpResult.Success(json) else HttpResult.Failure(SdkError.Decoding)
         return Exchange(result, status, text)
+    }
+
+    /** `Retry-After` in seconds or as an HTTP date, as milliseconds from now; null without one or when it does not parse. */
+    private fun retryAfterMs(response: Response): Long? {
+        val value = response.header(RETRY_AFTER)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        value.toLongOrNull()?.let { seconds -> return if (seconds < 0) null else seconds * 1_000 }
+        val date = response.headers.getDate(RETRY_AFTER) ?: return null
+        return (date.time - clock.nowMillis()).coerceAtLeast(0)
     }
 
     /** No answer: cancelled with the instance, `timeout` once the request reached the server, `network` before. */
@@ -262,6 +278,10 @@ internal class CoreHttpClient(
     internal companion object {
         const val INIT_PATH = "init"
         private const val USER_AGENT = "User-Agent"
+        private const val RETRY_AFTER = "Retry-After"
+
+        /** Fields `/init` leaves out while they are empty. */
+        private val INIT_OPTIONAL_FIELDS = listOf(UserBasicParams.DID, UserBasicParams.SID, UserBasicParams.SEANCE)
         private const val NO_STATUS = -1
         private const val ERROR_NETWORK = "network"
         private const val ERROR_TIMEOUT = "timeout"

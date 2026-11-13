@@ -134,6 +134,27 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         return editor.commit()
     }
 
+    /**
+     * Forgets the device for `needReInitialization`: the `did`, the session and the saved `/init`
+     * answer, so the next `/init` gets a new `did`. False when part of it did not reach the disk.
+     */
+    fun forgetDevice(): Boolean {
+        val complete = attempt(OP_FORGET_DEVICE) {
+            preferences.edit().remove(StorageKeys.DID).remove(StorageKeys.SID).remove(StorageKeys.SEANCE).remove(StorageKeys.SID_LAST_ACT).commit()
+        }
+        return attempt(OP_DELETE_INIT_ANSWER) {
+            synchronized(fileLock) {
+                initAnswerFile.delete()
+                !initAnswerFile.baseFile.exists()
+            }
+        } && complete
+    }
+
+    /** Ends the session: its `sid` and the time of its last activity go, so `/init` asks for a new one. */
+    fun forgetSession() {
+        preferences.edit().remove(StorageKeys.SID).remove(StorageKeys.SID_LAST_ACT).apply()
+    }
+
     /** Runs [block]; a false result or an exception is logged under [op]. */
     private inline fun attempt(op: String, block: () -> Boolean): Boolean {
         val done = try {
@@ -169,5 +190,6 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         const val OP_DELETE_INIT_ANSWER = "delete_init_answer"
         const val OP_DELETE_QUEUE = "delete_queue"
         const val OP_DELETE_SOURCE_CREDENTIALS = "delete_old_storage_credentials"
+        const val OP_FORGET_DEVICE = "forget_device"
     }
 }

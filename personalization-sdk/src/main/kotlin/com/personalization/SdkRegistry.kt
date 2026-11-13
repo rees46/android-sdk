@@ -11,7 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * public surface: it simply owns the static routing state that used to live in [SDK]'s companion
  * (`currentInstance` + `activeInstances`), so the single-instance behaviour is unchanged while the
  * plumbing for resolving an instance by `shop_id` is in place and tested. The public
- * `Rees46.initialize/getInstance/registerShops` API will be layered on top later.
+ * `Rees46.initialize/instance/register` API will be layered on top later.
  *
  * Two pieces of state, matching what [SDK] needs:
  *  - an ordered list of initialized instances, for fanning a push token out to each ([all]);

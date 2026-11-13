@@ -4,6 +4,7 @@ import com.personalization.LogLevel
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.models.NetworkMethod
 import kotlinx.coroutines.CancellationException
@@ -16,20 +17,29 @@ import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * The new core. For now it sends the instance's requests through [CoreHttpClient]; `/init`, the session
- * and the requests waiting for a `did` stay the legacy ones until the core takes them over.
+ * The new core: the instance's requests go through [CoreHttpClient], and its `/init` and state are
+ * [CoreInit]'s. A request waits for the instance to be ready within its own read timeout: a refused
+ * shop fails it with `shopBlocked` (the old callbacks get `402`), a wait that runs out with `timeout`.
+ * The session and the queue stay the legacy ones until the core takes them over.
  *
  * Every request ends in exactly one callback, on a background thread as today: the answer, or the
  * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [release] cancels the requests in
- * flight (`cancelled`), and a request made after it fails with `notInitialized`.
+ * flight (`cancelled`) and stops `/init`, and a request made after it fails with `notInitialized`.
  */
 internal class CoreV2(
-    private val client: CoreHttpClient,
+    internal val client: CoreHttpClient,
     private val shopId: String?,
     dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
 ) : Core {
 
     override val isV2: Boolean = true
+
+    /** The instance's `/init`, once it started; a request waits on it. */
+    @Volatile
+    internal var init: CoreInit? = null
+
+    /** How long a request waits for the instance to be ready: its own read timeout. */
+    private val readyWaitMs: Long = client.timeouts.readMs
 
     /** Nothing a request does may reach the app's process as an exception. */
     private val uncaught = CoroutineExceptionHandler { _, throwable ->
@@ -62,6 +72,15 @@ internal class CoreV2(
             return
         }
         val request = requests.launch {
+            val waited = init?.awaitReady(readyWaitMs)
+            if (waited != null) {
+                if (waited == SdkError.Timeout) {
+                    SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: the SDK is not ready", shopId,
+                        mapOf("method" to method.type, "path" to method.method, "reason" to LogReasons.NOT_READY))
+                }
+                answer(HttpResult.Failure(waited))
+                return@launch
+            }
             val result = try {
                 client.send(method, params)
             } catch (e: CancellationException) {
@@ -88,6 +107,7 @@ internal class CoreV2(
     override fun release() {
         released = true
         requests.cancel()
+        init?.release()
     }
 
     /** The events in the queue were the customer's: its directory goes with the credentials. */

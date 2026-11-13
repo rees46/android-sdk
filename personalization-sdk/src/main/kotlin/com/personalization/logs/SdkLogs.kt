@@ -222,4 +222,7 @@ internal object LogReasons {
     const val AUTO_PRESENTATION_OFF = "auto_presentation_off"
     const val DELETE_USER_CREDENTIALS = "delete_user_credentials"
     const val PRE_LAUNCH_REPORT = "pre_launch_report"
+    const val NEED_REINITIALIZATION = "need_reinitialization"
+    const val ALREADY_INITIALIZED = "already_initialized"
+    const val NOT_READY = "not_ready"
 }

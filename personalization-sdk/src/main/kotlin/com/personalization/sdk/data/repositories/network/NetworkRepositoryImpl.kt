@@ -15,8 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The funnel every request of an instance goes through: the namespaces call it, it holds the requests
- * that wait for a `did` and hands each request to the instance's [Core], legacy or new.
+ * The funnel every request of an instance goes through: the namespaces call it and it hands each
+ * request to the instance's [Core], legacy or new. On the legacy core it holds the requests that wait
+ * for a `did`; the new core holds a request until the instance is ready itself.
  */
 @Singleton
 class NetworkRepositoryImpl @Inject constructor(
@@ -53,10 +54,7 @@ class NetworkRepositoryImpl @Inject constructor(
         this.baseUrl = baseUrl
     }
 
-    /**
-     * Sends this instance's requests through the new client from now on. `/init`, the session and the
-     * requests waiting for a `did` keep the legacy behaviour until the core takes them over.
-     */
+    /** Sends this instance's requests through the new core from now on. */
     internal fun useCoreV2(
         shopId: String,
         connectivity: ConnectivityMonitor,
@@ -67,7 +65,7 @@ class NetworkRepositoryImpl @Inject constructor(
             connectivity = connectivity,
             shopId = shopId,
         ),
-    ): Core = CoreV2(client, shopId, dispatchers).also { core = it }
+    ): CoreV2 = CoreV2(client, shopId, dispatchers).also { core = it }
 
     override fun post(
         method: String,
@@ -138,6 +136,11 @@ class NetworkRepositoryImpl @Inject constructor(
     }
 
     private fun sendAsync(sendFunction: () -> Unit) {
+        // The new core waits for the instance to be ready itself, within the request's timeout.
+        if (core.isV2) {
+            sendFunction()
+            return
+        }
         val thread = Thread(sendFunction)
         val startNow = synchronized(queueLock) {
             if (userSettingsRepository.getDid().isNotEmpty()) {
@@ -159,6 +162,15 @@ class NetworkRepositoryImpl @Inject constructor(
 
     override fun addTaskToQueue(thread: Thread) {
         synchronized(queueLock) { queue.add(thread) }
+    }
+
+    /**
+     * Stops the instance's core. The requests still waiting for a `did` are let go and fail with
+     * `notInitialized`, as every request made after this does.
+     */
+    internal fun release() {
+        core.release()
+        executeQueueTasks()
     }
 
     private fun sendMethod(

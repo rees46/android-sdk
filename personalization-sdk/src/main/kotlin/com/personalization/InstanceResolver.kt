@@ -1,7 +1,7 @@
 package com.personalization
 
 /**
- * Pure decision logic behind [Rees46.getInstance]: given the requested `shopId` (or none) and the
+ * Pure decision logic behind [Rees46.instance]: given the requested `shopId` (or none) and the
  * sets of live and pending shops, decides which instance to return, whether one must be lazily
  * materialized, or which error to raise. Kept side-effect-free so the resolution rules can be tested
  * without constructing or initializing an SDK.

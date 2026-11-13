@@ -44,7 +44,7 @@ class DemoApplication : MultiDexApplication() {
         // Official initialization (per docs): initialize the shop once in Application.onCreate through
         // the Rees46 entry point so it is registered and ready in every process start — including the
         // cold process FCM starts just to deliver a push. Reach it anywhere with
-        // Rees46.getInstance(shopId).
+        // Rees46.instance(shopId).
         try {
             sdk = Rees46.initialize(
                 context = applicationContext,
@@ -55,7 +55,7 @@ class DemoApplication : MultiDexApplication() {
             // Second shop for the Multi-instance tab: registered but not initialized here. It comes
             // to life lazily the first time that tab resolves it (getInstance / a StoriesWidget with
             // its shopId) — demonstrating per-shop lazy materialization alongside the eager default.
-            Rees46.registerShops(
+            Rees46.register(
                 context = applicationContext,
                 configs = listOf(Rees46Config(shopId = BuildConfig.SHOP_ID_2)),
                 eagerInit = false,

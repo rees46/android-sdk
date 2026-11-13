@@ -31,7 +31,7 @@ import com.personalization.stories.views.StoriesView
  *
  * @param code the stories block code configured for the shop.
  * @param shopId the shop whose instance loads the block. `null` uses the single default instance
- *   (see [Rees46.getInstance]); pass an explicit id in a multi-shop app.
+ *   (see [Rees46.instance]); pass an explicit id in a multi-shop app.
  * @param needOpeningWebView whether the SDK opens tapped links itself. Mirrors the
  *   `app:need_opening_web_view` attribute; pass `false` to route every link in the host.
  * @param productBannerTapDefaultMessage toast shown when a promocode is copied.

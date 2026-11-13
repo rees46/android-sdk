@@ -8,6 +8,7 @@ import android.content.Context
 import android.provider.Settings
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.core.SdkState
 import com.personalization.errors.JsonResponseErrorHandler
 import com.personalization.push.PushTokenManager
 import com.personalization.sdk.data.mappers.SdkInitializationMapper.mapToSdkInitResponse
@@ -45,6 +46,17 @@ class RegisterManager @Inject constructor(
     /** Extra query parameters of `/init` (popups v3 test mode). */
     internal var extraInitParams: (() -> Map<String, String>)? = null
 
+    /**
+     * The instance's state on the legacy path: [SdkState.READY] once the device has its did and session
+     * (at once for a known device, after `/init` for a new one), [SdkState.INITIALIZING] before. A
+     * failed `/init` leaves it where it is; the legacy path is never retrying or refused.
+     */
+    internal var onStateChange: ((SdkState) -> Unit)? = null
+
+    /** Set by [stop]: nothing more goes out and no answer is taken. */
+    @Volatile
+    private var stopped = false
+
     private lateinit var context: Context
     private lateinit var contentResolver: ContentResolver
 
@@ -63,10 +75,7 @@ class RegisterManager @Inject constructor(
     private val answerLock = Any()
 
     private val isTestDevice: Boolean
-        get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
-            contentResolver,
-            FIREBASE_TEST_LAB
-        )
+        get() = isPreLaunchDevice(contentResolver)
 
     fun initialize(
         context: Context,
@@ -80,9 +89,13 @@ class RegisterManager @Inject constructor(
 
         val did = getUserSettingsValueUseCase.getDid()
         when {
-            did.isEmpty() || needReInitialization -> initializeNewDevice()
+            did.isEmpty() || needReInitialization -> {
+                state(SdkState.INITIALIZING)
+                initializeNewDevice()
+            }
             else -> {
                 initializeSdk(null)
+                state(SdkState.READY)
                 // A known device asks the server too, on every launch as the iOS and React Native SDKs
                 // do: the /init answer is where the server hands out the popup for the visit. Only the
                 // popup is taken from it — the did and the session stay as stored, so nobody is
@@ -96,7 +109,11 @@ class RegisterManager @Inject constructor(
      * Begins a new start before `deleteUserCredentials()` wipes the did: from now on an answer to an
      * `/init` sent before is dropped. Returns the start for [restartAsNewDevice].
      */
-    internal fun beginRestart(): Int = synchronized(answerLock) { generation.incrementAndGet() }
+    internal fun beginRestart(): Int = synchronized(answerLock) {
+        // The did is about to go: requests and the state wait for the next one from now on.
+        state(SdkState.INITIALIZING)
+        generation.incrementAndGet()
+    }
 
     /**
      * Starts over as a device the server has not seen, once the did is wiped: `/init` goes out without
@@ -105,7 +122,8 @@ class RegisterManager @Inject constructor(
      * before [initialize], or when a later [beginRestart] took over from [start].
      */
     internal fun restartAsNewDevice(start: Int) {
-        if (!::context.isInitialized || start != generation.get()) return
+        if (stopped || !::context.isInitialized || start != generation.get()) return
+        state(SdkState.INITIALIZING)
         initializeSdk(seance = null, releaseQueue = false, fetchPushTokens = false)
         init(start = start)
     }
@@ -131,8 +149,20 @@ class RegisterManager @Inject constructor(
         sendInitRequestWithRetry(knownDevice = knownDevice, start = start)
     }
 
+    /** The instance was released: no `/init` goes out any more and no answer is taken. */
+    internal fun stop() {
+        synchronized(answerLock) {
+            stopped = true
+            generation.incrementAndGet()
+        }
+    }
+
+    private fun state(state: SdkState) {
+        if (!stopped) onStateChange?.invoke(state)
+    }
+
     private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false, start: Int) {
-        if (start != generation.get()) return
+        if (stopped || start != generation.get()) return
         try {
             val params = buildInitParams()
             sendNetworkMethodUseCase.get(
@@ -193,6 +223,8 @@ class RegisterManager @Inject constructor(
             if (start != generation.get()) return
             updateUserSettingsValueUseCase.updateDid(did)
             updateUserSettingsValueUseCase.updateSid(value = seance)
+            // Under the lock: a restart beginning right after this cannot be overtaken by it.
+            state(SdkState.READY)
         }
         sessionStarted(releaseQueue = true, fetchPushTokens = true)
         notifyInitFinished(popupsV3)
@@ -281,6 +313,13 @@ class RegisterManager @Inject constructor(
 
     companion object {
         private const val TAG = "RegisterManager"
+
+        /** A Google Play pre-launch report device (Firebase Test Lab): `/init` is not sent there. */
+        internal fun isPreLaunchDevice(contentResolver: ContentResolver): Boolean = try {
+            IS_TEST_DEVICE_FIELD == Settings.System.getString(contentResolver, FIREBASE_TEST_LAB)
+        } catch (e: Exception) {
+            false
+        }
 
         private const val SOURCE = "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         private const val FIREBASE_TEST_LAB = "firebase.test.lab"

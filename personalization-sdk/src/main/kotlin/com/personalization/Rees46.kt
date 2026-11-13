@@ -14,16 +14,16 @@ import java.util.concurrent.ConcurrentHashMap
  * Public entry point for the SDK — the unified, multi-instance API.
  *
  * A host no longer keeps its own reference to the SDK: initialize (or register) shops here and reach
- * them by `shopId` through [getInstance]. One instance per shop, each with isolated storage and state.
+ * them by `shopId` through [instance]. One instance per shop, each with isolated storage and state.
  *
  * ```kotlin
  * // Single shop:
  * Rees46.initialize(context, Rees46Config(shopId = "SHOP_ID"))
- * Rees46.getInstance().track(...)
+ * Rees46.instance().tracking.productView("37")
  *
  * // Several shops, initialized lazily on first use:
- * Rees46.registerShops(context, listOf(Rees46Config("shop-a"), Rees46Config("shop-b")))
- * Rees46.getInstance("shop-a").track(...)
+ * Rees46.register(context, listOf(Rees46Config("shop-a"), Rees46Config("shop-b")))
+ * Rees46.instance("shop-a").tracking.productView("37")
  * ```
  */
 object Rees46 {
@@ -32,39 +32,42 @@ object Rees46 {
 
     private val pending = ConcurrentHashMap<String, PendingInit>()
 
+    /** Making an instance takes it: two calls for a shop never make two instances. */
+    private val lock = Any()
+
     /**
-     * Initializes an SDK instance for [config] immediately and returns it. The instance is registered,
-     * so it is also reachable via [getInstance]. Any pending registration for the same shop is cleared.
+     * Initializes an SDK instance for [config] and returns it at once; `/init` goes in the background
+     * and [SDK.state] follows it. The instance is registered, so it is also reachable via [instance].
+     * Any pending registration for the same shop is cleared.
+     *
+     * A shop that has a live instance gets that instance back, not a second one; when [config] differs
+     * from the one it was made with, `invalid_config` (`already_initialized`) is logged and the instance
+     * keeps its own. After [SDK.release] a call makes a fresh instance. Calls from several threads at
+     * once make one instance.
      */
-    @Suppress("DEPRECATION")
-    fun initialize(context: Context, config: Rees46Config): SDK {
+    fun initialize(context: Context, config: Rees46Config): SDK = synchronized(lock) {
+        val existing = SdkRegistry.byShopId(config.shopId)
+        if (existing != null && !existing.pushOnly) {
+            existing.keepConfig(config)
+            pending.remove(config.shopId)
+            return existing
+        }
         val sdk = SDK()
-        sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
-        sdk.logLevel = config.logLevel
-        sdk.coreV2Requested = config.coreV2
-        sdk.initialize(
-            context = context,
-            shopId = config.shopId,
-            apiDomain = config.apiDomain,
-            tag = config.tag,
-            // The prefix of the shop's partition; a file of the same name is read once as its old data.
-            preferencesKey = config.storageKey ?: PreferencesPartition.LEGACY_KEY,
-            stream = config.stream,
-            autoSendPushToken = config.autoSendPushToken,
-            needReInitialization = config.needReInitialization,
-            addTrailingSlash = config.addTrailingSlash
-        )
+        sdk.initializeWith(context, config)
+        // A shop brought up only to track a push gives way to the full instance.
+        if (existing != null && existing !== sdk) existing.release()
+        // Removed once the instance is registered: a lookup meanwhile still finds the shop.
         pending.remove(config.shopId)
-        return sdk
+        sdk
     }
 
     /**
      * Registers [configs] without initializing them. Initialization happens lazily on the first
-     * [getInstance] for a shop — the region case, where only the current region is needed. Pass
+     * [instance] for a shop — the region case, where only the current region is needed. Pass
      * [eagerInit] = true to initialize every shop up front — the super-shop case, where instances must
      * stay consistent.
      */
-    fun registerShops(
+    fun register(
         context: Context,
         configs: List<Rees46Config>,
         eagerInit: Boolean = false
@@ -84,6 +87,24 @@ object Rees46 {
         }
     }
 
+    /** The former name of [register]. */
+    @Deprecated(
+        message = "Renamed to register.",
+        replaceWith = ReplaceWith("Rees46.register(context, configs, eagerInit)", "com.personalization.Rees46")
+    )
+    fun registerShops(
+        context: Context,
+        configs: List<Rees46Config>,
+        eagerInit: Boolean = false
+    ) = register(context, configs, eagerInit)
+
+    /** The former name of [instance]. */
+    @Deprecated(
+        message = "Renamed to instance.",
+        replaceWith = ReplaceWith("Rees46.instance(shopId)", "com.personalization.Rees46")
+    )
+    fun getInstance(shopId: String? = null): SDK = instance(shopId)
+
     /**
      * Returns the SDK instance for [shopId], initializing a pending registration on first use. With no
      * [shopId], returns the single instance when exactly one shop is registered.
@@ -91,7 +112,7 @@ object Rees46 {
      * @throws AmbiguousShopException when [shopId] is null and more than one shop is registered.
      * @throws UnknownShopIdException when the shop is unknown — nothing registered, or no such shop.
      */
-    fun getInstance(shopId: String? = null): SDK {
+    fun instance(shopId: String? = null): SDK {
         val resolution = InstanceResolver.resolve(
             requestedShopId = shopId,
             liveShopIds = SdkRegistry.shopIds(),
@@ -108,12 +129,12 @@ object Rees46 {
                 if (shopId != null) {
                     missingMessage(shopId)
                 } else {
-                    "No shop has been registered. Call Rees46.initialize(...) or Rees46.registerShops(...) first."
+                    "No shop has been registered. Call Rees46.initialize(...) or Rees46.register(...) first."
                 }
             )
 
             InstanceResolver.Resolution.Ambiguous -> throw AmbiguousShopException(
-                "More than one shop is registered — call Rees46.getInstance(shopId) with an explicit id. " +
+                "More than one shop is registered — call Rees46.instance(shopId) with an explicit id. " +
                     "Registered: ${registeredShopIds()}."
             )
         }
@@ -173,7 +194,7 @@ object Rees46 {
                         LogCodes.INVALID_ARGUMENT,
                         "Rees46.awaitInstance: no shop with this id is initialized or registered. " +
                             "Waiting for it to register — if it never is (typo, or a missing " +
-                            "Rees46.initialize/registerShops), onReady will never fire.",
+                            "Rees46.initialize/register), onReady will never fire.",
                         shopId
                     )
                 }
@@ -225,7 +246,7 @@ object Rees46 {
 
     /**
      * Resolves the push target as ([InstanceResolver.Resolution] to shopId), or null when the push
-     * should be dropped. Mirrors [getInstance] resolution (live wins over pending; a single registered
+     * should be dropped. Mirrors [instance] resolution (live wins over pending; a single registered
      * shop resolves with no `shop_id`) but drops instead of throwing on an unknown or ambiguous target.
      */
     private fun resolvePushTarget(payloadShopId: String?): Pair<InstanceResolver.Resolution, String>? {
@@ -275,9 +296,10 @@ object Rees46 {
      * initialized has no did and the backend never sent it a push, so this is not reached for real
      * deliveries.
      */
-    private fun materializeForPush(shopId: String): SDK? {
-        val pendingInit = pending.remove(shopId) ?: return SdkRegistry.byShopId(shopId)
-        return SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }
+    private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
+        SdkRegistry.byShopId(shopId)?.let { return it }
+        val pendingInit = pending[shopId] ?: return null
+        SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
     }
 
     /**
@@ -307,20 +329,16 @@ object Rees46 {
     private fun Map<String, String>.toBundle(): Bundle =
         Bundle().also { bundle -> forEach { (key, value) -> bundle.putString(key, value) } }
 
-    /** Initializes a pending registration for [shopId], tolerating a lost race with another caller. */
-    private fun materialize(shopId: String): SDK {
-        val pendingInit = pending.remove(shopId)
-        return if (pendingInit != null) {
-            initialize(pendingInit.context, pendingInit.config)
-        } else {
-            SdkRegistry.byShopId(shopId)
-                ?: throw UnknownShopIdException(missingMessage(shopId))
-        }
+    /** Initializes a pending registration for [shopId]; one that another caller initialized meanwhile is returned. */
+    private fun materialize(shopId: String): SDK = synchronized(lock) {
+        SdkRegistry.byShopId(shopId)?.let { return it }
+        val pendingInit = pending[shopId] ?: throw UnknownShopIdException(missingMessage(shopId))
+        initialize(pendingInit.context, pendingInit.config)
     }
 
     private fun missingMessage(shopId: String): String =
         "No shop is registered for shopId=$shopId. " +
-            "Call Rees46.initialize(...) or Rees46.registerShops(...) first."
+            "Call Rees46.initialize(...) or Rees46.register(...) first."
 
     private fun registeredShopIds(): List<String> =
         (SdkRegistry.shopIds() + pending.keys).sorted()

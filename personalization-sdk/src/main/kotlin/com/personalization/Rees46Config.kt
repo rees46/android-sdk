@@ -3,12 +3,12 @@ package com.personalization
 /**
  * Configuration for one SDK instance (one shop).
  *
- * The unified initialization input shared by [Rees46.initialize] and [Rees46.registerShops]. Mirrors
+ * The unified initialization input shared by [Rees46.initialize] and [Rees46.register]. Mirrors
  * the parameters of the legacy `SDK.initialize`, minus the Android `Context` (passed separately); its
  * `preferencesKey` is [storageKey] here. Storage is partitioned per [shopId] automatically — see
  * [PreferencesPartition].
  *
- * @property shopId the shop key; also the partition key and the id used by [Rees46.getInstance].
+ * @property shopId the shop key; also the partition key and the id used by [Rees46.instance].
  * @property apiDomain API host the instance talks to (a region points here).
  * @property stream traffic stream label sent with every request.
  * @property autoSendPushToken whether the SDK registers push tokens with the backend on its own.
@@ -20,11 +20,24 @@ package com.personalization
  * @property logLevel how much this shop's instance writes to the log; [LogLevel.WARNING] by default.
  * Messages that pass it also reach [Rees46.setLogHandler].
  * @property coreV2 runs the instance on the new core; off by default. The process has one core: the
- * first [Rees46.initialize] or [Rees46.registerShops] decides it, and an instance that asks for the
- * other one runs on the process's and logs `core_flag_mismatch`. So far the new core differs in its
- * network client only: requests go through OkHttp, a request without a network fails at once,
- * `release()` cancels the instance's requests, and a failure without an answer is `onError(-1)` (no
- * connection used to be `504`), as is a `2xx` whose body is not JSON (it used to succeed empty).
+ * first [Rees46.initialize] or [Rees46.register] decides it, and an instance that asks for the other
+ * one runs on the process's and logs `core_flag_mismatch`. The new core differs in:
+ * - its network client: requests go through OkHttp, a request without a network fails at once,
+ *   `release()` cancels the instance's requests, and a failure without an answer is `onError(-1)` (no
+ *   connection used to be `504`), as is a `2xx` whose body is not JSON (it used to succeed empty);
+ * - its `/init`: repeated with growing pauses until it gets an answer; a shop that answers `402`,
+ *   `403`, `404` or another `4xx` is refused ([com.personalization.core.SdkState.REFUSED]) until a
+ *   later launch's `/init` succeeds, and every request of a refused shop fails with `onError(402)`;
+ * - a request waits until the instance is ready, within its own read timeout, instead of going out
+ *   without a `did`: a new device's first requests fail with `onError(-1)` if `/init` does not answer
+ *   in time;
+ * - [needReInitialization] really gives the device a new `did`; [stream] goes with `/init` too; the
+ *   advertising id is read and sent only with [sendAdvertisingId].
+ * @property deviceId a `did` the app already keeps, from another SDK or an earlier version of it: taken
+ * only while the shop has no `did` of its own, and sent with the next `/init`. Ignored with
+ * [needReInitialization].
+ * @property sendAdvertisingId sends the advertising id with `/init`; off by default, and then the new
+ * core does not read it. The legacy core keeps sending it as before, whatever this says.
  * @property storageKey a prefix for the shop's storage, when the app needs its own split of it: the
  * shop's `SharedPreferences` file becomes `<storageKey>_personalization_sdk_<shopId>` instead of
  * `personalization_sdk_<shopId>`. A file named exactly [storageKey] (the whole store of
@@ -52,4 +65,6 @@ data class Rees46Config @JvmOverloads constructor(
     val logLevel: LogLevel = LogLevel.WARNING,
     val coreV2: Boolean = false,
     val storageKey: String? = null,
+    val deviceId: String? = null,
+    val sendAdvertisingId: Boolean = false,
 )

@@ -84,22 +84,19 @@ class CoreFunnelTest {
     }
 
     @Test
-    fun `requests waiting for a did go through the new core once it comes`() {
+    fun `on the new core a request without a did waits for the instance, not for the did queue`() {
         repository.useCoreV2("shop", FakeConnectivity(connected = true))
         did.set("")
         server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         val answered = CountDownLatch(1)
+
+        // Without an init to wait on the request goes at once: the did queue no longer holds it.
         repository.getAsync("products/get", JSONObject(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) = answered.countDown()
         })
-        Thread.sleep(200)
-        assertEquals(0, server.requestCount)
-
-        did.set("did-2")
-        repository.executeQueueTasks()
 
         assertTrue(answered.await(5, TimeUnit.SECONDS))
-        assertEquals("did-2", checkNotNull(server.takeRequest().requestUrl).queryParameter("did"))
+        assertEquals(1, server.requestCount)
     }
 
     @Test
