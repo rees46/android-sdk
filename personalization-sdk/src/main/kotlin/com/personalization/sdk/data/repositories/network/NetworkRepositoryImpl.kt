@@ -22,7 +22,6 @@ import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
-import java.util.Collections
 import javax.inject.Inject
 
 class NetworkRepositoryImpl @Inject constructor(
@@ -34,7 +33,13 @@ class NetworkRepositoryImpl @Inject constructor(
     /** How long a request may wait for the next bytes of an answer; tests shorten it. */
     internal var readTimeoutMs: Int = READ_TIMEOUT_MS
 
-    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
+    /**
+     * Requests made before the device has a `did`. Guarded by [queueLock] together with the `did`
+     * check in [sendAsync]: a request either sees the `did` or lands here before [executeQueueTasks]
+     * drains, so none is left behind and none starts twice.
+     */
+    private val queueLock = Any()
+    private val queue = ArrayList<Thread>()
 
     override fun initialize(
         baseUrl: String
@@ -124,24 +129,26 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private fun sendAsync(sendFunction: () -> Unit) {
         val thread = Thread(sendFunction)
-        if (userSettingsRepository.getDid()
-                .isNotEmpty()
-        ) {
-            thread.start()
-        } else {
-            addTaskToQueue(thread)
+        val startNow = synchronized(queueLock) {
+            if (userSettingsRepository.getDid().isNotEmpty()) {
+                true
+            } else {
+                queue.add(thread)
+                false
+            }
         }
+        if (startNow) thread.start()
     }
 
     override fun executeQueueTasks() {
-        for (thread in queue) {
-            thread.start()
+        val tasks = synchronized(queueLock) {
+            ArrayList(queue).also { queue.clear() }
         }
-        queue.clear()
+        tasks.forEach { it.start() }
     }
 
     override fun addTaskToQueue(thread: Thread) {
-        queue.add(thread)
+        synchronized(queueLock) { queue.add(thread) }
     }
 
     private fun sendSecretMethod(
