@@ -2,6 +2,7 @@ package com.personalization;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -31,10 +32,19 @@ public class Rees46ConfigJavaTest {
     }
 
     @Test
-    public void theNewCoreIsTheLastParameter() {
+    public void theNewCoreKeepsItsPlace() {
         Rees46Config config = new Rees46Config(
                 "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, true);
 
         assertTrue(config.getCoreV2());
+        assertNull(config.getStorageKey());
+    }
+
+    @Test
+    public void theStorageKeyIsTheLastParameter() {
+        Rees46Config config = new Rees46Config(
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, false, "host");
+
+        assertEquals("host", config.getStorageKey());
     }
 }
