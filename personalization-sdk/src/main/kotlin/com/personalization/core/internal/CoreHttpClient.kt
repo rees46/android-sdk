@@ -321,7 +321,8 @@ internal class CoreHttpClient(
  * `Int` and throws on a larger number, on its own thread, which would end the app's process. For those
  * two codes the header is moved to [COPY] (empty without one), where the client reads it, and
  * `Retry-After: 1` takes its place: OkHttp hands the answer over as it is, and the core decides about
- * repeats (decision 0002).
+ * repeats (decision 0002). A header OkHttp would refuse to build (text outside ASCII) is copied as it is,
+ * and dropped if even that fails: the guard itself never throws.
  */
 internal object RetryAfterGuard : Interceptor {
     const val COPY = "X-Sdk-Retry-After"
@@ -333,10 +334,14 @@ internal object RetryAfterGuard : Interceptor {
         if (response.code !in CODES) return response
         // Empty when the server sent none: the client then reads no Retry-After, not this "1".
         val original = response.header(RETRY_AFTER).orEmpty()
-        return response.newBuilder()
-            .header(COPY, original)
-            .header(RETRY_AFTER, "1")
-            .build()
+        val headers = response.headers.newBuilder().removeAll(COPY).removeAll(RETRY_AFTER)
+        try {
+            headers.addUnsafeNonAscii(COPY, original)
+        } catch (e: IllegalArgumentException) {
+            // Not even a header OkHttp keeps: the answer goes without its Retry-After.
+        }
+        headers.add(RETRY_AFTER, "1")
+        return response.newBuilder().headers(headers.build()).build()
     }
 }
 

@@ -285,6 +285,21 @@ class CoreHttpClientTest {
     }
 
     @Test
+    fun `a Retry-After outside ASCII on a 408 or a 503 neither throws nor repeats`() {
+        server.enqueue(MockResponse().setResponseCode(503).addHeaderLenient("Retry-After", "5 сек"))
+        server.enqueue(MockResponse().setResponseCode(408).addHeaderLenient("Retry-After", "ünf"))
+
+        val first = send(NetworkMethod.POST("push"))
+        val second = send(NetworkMethod.POST("push"))
+
+        assertEquals(SdkError.Http(503), first.error())
+        assertEquals(SdkError.Http(408), second.error())
+        // Not a number of seconds nor a date: no pause of the server's.
+        assertNull((first as HttpResult.Failure).retryAfterMs)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
     fun `a POST carries the common fields in its JSON body`() {
         reply(200, "{}")
 
