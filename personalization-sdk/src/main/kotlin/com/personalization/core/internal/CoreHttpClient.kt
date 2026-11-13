@@ -14,6 +14,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Dispatcher
 import okhttp3.EventListener
+import okhttp3.Interceptor
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -90,6 +91,7 @@ internal class CoreHttpClient(
         .readTimeout(timeouts.readMs, TimeUnit.MILLISECONDS)
         .writeTimeout(timeouts.writeMs, TimeUnit.MILLISECONDS)
         .eventListenerFactory(PhaseListener)
+        .addNetworkInterceptor(RetryAfterGuard)
         .build()
 
     internal val initClient: OkHttpClient = client.newBuilder()
@@ -200,11 +202,31 @@ internal class CoreHttpClient(
         return Exchange(result, status, text)
     }
 
-    /** `Retry-After` in seconds or as an HTTP date, as milliseconds from now; null without one or when it does not parse. */
+    /**
+     * `Retry-After` in seconds or as an HTTP date, as milliseconds from now; null without one or when it
+     * does not parse. Read from the copy [RetryAfterGuard] keeps. Whatever the server writes, nothing
+     * throws: a number of seconds may be fractional, negative or `NaN` (`0`: [Backoff] waits a second)
+     * or too large for milliseconds or `inf` ([Long.MAX_VALUE]: [Backoff] waits five minutes); a date
+     * already past is `0`.
+     */
     private fun retryAfterMs(response: Response): Long? {
-        val value = response.header(RETRY_AFTER)?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        value.toLongOrNull()?.let { seconds -> return if (seconds < 0) null else seconds * 1_000 }
-        val date = response.headers.getDate(RETRY_AFTER) ?: return null
+        val value = (response.header(RetryAfterGuard.COPY) ?: response.header(RETRY_AFTER))?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        if (value.all { it in '0'..'9' }) {
+            val seconds = value.toLongOrNull() ?: return Long.MAX_VALUE
+            return if (seconds > Long.MAX_VALUE / 1_000) Long.MAX_VALUE else seconds * 1_000
+        }
+        value.toDoubleOrNull()?.let { seconds ->
+            return when {
+                seconds.isNaN() || seconds <= 0 -> 0
+                seconds >= Long.MAX_VALUE / 1_000.0 -> Long.MAX_VALUE
+                else -> (seconds * 1_000).toLong()
+            }
+        }
+        val date = try {
+            okhttp3.Headers.headersOf(RETRY_AFTER, value).getDate(RETRY_AFTER)
+        } catch (e: IllegalArgumentException) {
+            null
+        } ?: return null
         return (date.time - clock.nowMillis()).coerceAtLeast(0)
     }
 
@@ -290,6 +312,31 @@ internal class CoreHttpClient(
         private const val ERROR_TIMEOUT = "timeout"
         private val HTTP_SUCCESS = 200..299
         private val JSON = "application/json; charset=utf-8".toMediaType()
+    }
+}
+
+/**
+ * Keeps OkHttp from repeating an answered request by itself. OkHttp sends a `408` again at once (unless
+ * its `Retry-After` is positive) and a `503` whose `Retry-After` is `0`; it also parses that header as an
+ * `Int` and throws on a larger number, on its own thread, which would end the app's process. For those
+ * two codes the header is moved to [COPY] (empty without one), where the client reads it, and
+ * `Retry-After: 1` takes its place: OkHttp hands the answer over as it is, and the core decides about
+ * repeats (decision 0002).
+ */
+internal object RetryAfterGuard : Interceptor {
+    const val COPY = "X-Sdk-Retry-After"
+    private const val RETRY_AFTER = "Retry-After"
+    private val CODES = setOf(408, 503)
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val response = chain.proceed(chain.request())
+        if (response.code !in CODES) return response
+        // Empty when the server sent none: the client then reads no Retry-After, not this "1".
+        val original = response.header(RETRY_AFTER).orEmpty()
+        return response.newBuilder()
+            .header(COPY, original)
+            .header(RETRY_AFTER, "1")
+            .build()
     }
 }
 

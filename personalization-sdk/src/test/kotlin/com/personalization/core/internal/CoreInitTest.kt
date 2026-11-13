@@ -278,6 +278,29 @@ class CoreInitTest {
         assertEquals(4, sent.size)
     }
 
+    @Test
+    fun `a Retry-After waits at least a second and at most five minutes`() {
+        started()
+        // 0, or a date already past: a second.
+        answer(http(503, retryAfterMs = 0))
+        after(999)
+        assertEquals(1, sent.size)
+        after(1)
+        assertEquals(2, sent.size)
+
+        // An hour, or a number too large for milliseconds: five minutes.
+        answer(http(429, retryAfterMs = 3_600_000))
+        after(299_999)
+        assertEquals(2, sent.size)
+        after(1)
+        assertEquals(3, sent.size)
+
+        answer(http(503, retryAfterMs = Long.MAX_VALUE))
+        after(300_000)
+        assertEquals(4, sent.size)
+        assertEquals(listOf(1_000L, 300_000L, 300_000L), codes(LogCodes.INIT_RETRY).map { it.context["delay_ms"] })
+    }
+
     // The refused state across launches.
 
     @Test

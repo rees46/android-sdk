@@ -234,16 +234,54 @@ class CoreHttpClientTest {
 
     @Test
     fun `the Retry-After of an answer comes back with it, in seconds or as a date`() {
-        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "30"))
-        server.enqueue(MockResponse().setResponseCode(429).setHeader("Retry-After", "Wed, 21 Oct 2015 07:28:00 GMT"))
-        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "soon"))
-        server.enqueue(MockResponse().setResponseCode(500))
-        val clock = FakeClock(now = 1_445_412_420_000L) // a minute before the date above
+        val values = listOf(
+            503 to "30",
+            429 to "Wed, 21 Oct 2015 07:28:00 GMT",
+            503 to "soon",
+            500 to null,
+            503 to "0",
+            503 to "Wed, 21 Oct 2015 07:26:00 GMT",
+            503 to "9223372036854776",
+            503 to "99999999999999999999999",
+            503 to "-5",
+            503 to "NaN",
+            503 to "Infinity",
+            503 to "1.5",
+        )
+        values.forEach { (code, header) ->
+            server.enqueue(MockResponse().setResponseCode(code).apply { if (header != null) setHeader("Retry-After", header) })
+        }
+        val clock = FakeClock(now = 1_445_412_420_000L) // a minute before the first date above
         val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, "shop", clock = clock)
 
-        val results = List(4) { send(NetworkMethod.GET("init"), client = client) as HttpResult.Failure }
+        val results = values.map { send(NetworkMethod.GET("init"), client = client) as HttpResult.Failure }
 
-        assertEquals(listOf(30_000L, 60_000L, null, null), results.map { it.retryAfterMs })
+        // A date already past, a negative number and NaN are now; a number too large for milliseconds
+        // does not wrap around. Nothing throws.
+        assertEquals(
+            listOf(30_000L, 60_000L, null, null, 0L, 0L, Long.MAX_VALUE, Long.MAX_VALUE, 0L, 0L, Long.MAX_VALUE, 1_500L),
+            results.map { it.retryAfterMs },
+        )
+        assertEquals(values.size, server.requestCount)
+        val backoff = Backoff(random = { 0.5 })
+        assertEquals(
+            listOf(30_000L, 60_000L, 1_000L, 1_000L, 300_000L, 300_000L, 1_000L, 1_000L, 300_000L, 1_500L),
+            listOf(0, 1, 4, 5, 6, 7, 8, 9, 10, 11).map { backoff.delayMs(0, results[it].retryAfterMs) },
+        )
+    }
+
+    @Test
+    fun `OkHttp does not repeat a 408 or a 503 that says to come back at once`() {
+        server.enqueue(MockResponse().setResponseCode(408))
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "0"))
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "99999999999"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        assertEquals(SdkError.Http(408), send(NetworkMethod.POST("push")).error())
+        assertEquals(SdkError.Http(503), send(NetworkMethod.POST("push")).error())
+        assertEquals(SdkError.Http(503), send(NetworkMethod.POST("push")).error())
+
+        assertEquals(3, server.requestCount)
     }
 
     @Test
