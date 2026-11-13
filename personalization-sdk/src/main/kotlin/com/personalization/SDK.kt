@@ -1381,7 +1381,8 @@ open class SDK {
     }
 
     /**
-     * Custom event tracking.
+     * Custom event tracking. On the new core the event goes through the queue and [listener] is kept until
+     * it is sent, up to 7 days ([TrackingApi]).
      *
      * @param event Event key
      * @param time Optional UNIX time in seconds
