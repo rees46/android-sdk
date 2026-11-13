@@ -5,7 +5,6 @@ import com.personalization.LogLevel
 import com.personalization.SDK
 import com.personalization.SdkLogHandler
 import com.personalization.SdkLogMessage
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -22,8 +21,13 @@ internal object SdkLogs {
     /** One live instance of a shop and the level it asked for. */
     private class Registration(val owner: Any, val level: LogLevel, val tag: String)
 
-    /** The live instances of each shop, the latest last. */
-    private val shops = ConcurrentHashMap<String, List<Registration>>()
+    /**
+     * The live instances of each shop, the latest last: an immutable snapshot that writers replace
+     * under [lock] and readers take without it. (`ConcurrentHashMap.compute` would need Android 7.0.)
+     */
+    @Volatile
+    private var shops: Map<String, List<Registration>> = emptyMap()
+    private val lock = Any()
 
     @Volatile
     var handler: SdkLogHandler? = null
@@ -39,20 +43,22 @@ internal object SdkLogs {
      * are live, the shop logs at the most detailed of their levels, under the tag of the latest one.
      */
     fun register(shopId: String, level: LogLevel, tag: String, owner: Any = shopId) {
-        shops.compute(shopId) { _, current ->
-            current.orEmpty().filterNot { it.owner == owner } + Registration(owner, level, tag)
+        synchronized(lock) {
+            val registrations = shops[shopId].orEmpty().filterNot { it.owner == owner } + Registration(owner, level, tag)
+            shops = shops + (shopId to registrations)
         }
     }
 
     /** [owner] is gone; the shop keeps a level while another of its instances is live. */
     fun unregister(shopId: String, owner: Any = shopId) {
-        shops.computeIfPresent(shopId) { _, current ->
-            current.filterNot { it.owner == owner }.takeIf { it.isNotEmpty() }
+        synchronized(lock) {
+            val remaining = shops[shopId]?.filterNot { it.owner == owner } ?: return
+            shops = if (remaining.isEmpty()) shops - shopId else shops + (shopId to remaining)
         }
     }
 
     internal fun reset() {
-        shops.clear()
+        synchronized(lock) { shops = emptyMap() }
         handler = null
     }
 

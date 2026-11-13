@@ -77,7 +77,7 @@ internal class AndroidConnectivityMonitor(context: Context) : ConnectivityMonito
         val connected = isConnected
         if (lastKnown == connected) return
         lastKnown = connected
-        listeners.forEach { listener ->
+        for (listener in listeners) {
             try {
                 listener(connected)
             } catch (e: Exception) {
