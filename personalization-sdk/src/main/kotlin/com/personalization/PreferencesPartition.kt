@@ -30,5 +30,8 @@ internal object PreferencesPartition {
      * Stable, filename-safe SharedPreferences name for [shopId]'s partition. Stable forever:
      * changing the scheme would orphan every existing install's storage.
      */
-    fun keyFor(shopId: String): String = PREFIX + shopId.replace(UNSAFE_FILENAME_CHARS, "_")
+    fun keyFor(shopId: String): String = PREFIX + sanitize(shopId)
+
+    /** [value] as a part of a file name: every character but letters, digits, `_` and `-` becomes `_`. */
+    fun sanitize(value: String): String = value.replace(UNSAFE_FILENAME_CHARS, "_")
 }

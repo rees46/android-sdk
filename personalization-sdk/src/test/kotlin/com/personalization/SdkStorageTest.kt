@@ -6,13 +6,18 @@ import androidx.test.core.app.ApplicationProvider
 import com.personalization.core.CompletionListener
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
+import com.personalization.core.SdkResult
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
+import com.personalization.core.internal.testCoreDispatchers
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
+import com.personalization.ui.widgets.RecentSearches
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -38,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * Storage through the SDK as an app starts it: the partition [Rees46Config.storageKey] picks, the old
  * `preferencesKey` file read into it, and [SDK.deleteUserCredentials] with the `/init` that follows.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class SdkStorageTest {
@@ -185,17 +191,28 @@ class SdkStorageTest {
     @Test
     fun `the listener form ends once on the main thread`() {
         val sdk = Rees46.initialize(context, config())
-        val ends = CopyOnWriteArrayList<Pair<SdkError?, Boolean>>()
+        val scheduler = TestCoroutineScheduler()
+        sdk.dispatchers = testCoreDispatchers(scheduler)
+        val ends = mutableListOf<Pair<SdkResult<Unit>, Boolean>>()
 
-        sdk.deleteUserCredentials(CompletionListener { error -> ends += error to (Looper.myLooper() == Looper.getMainLooper()) })
+        sdk.deleteUserCredentials(CompletionListener { result -> ends += result to (Looper.myLooper() == Looper.getMainLooper()) })
+        scheduler.advanceUntilIdle()
 
-        val deadline = System.currentTimeMillis() + 5_000
-        while (ends.isEmpty() && System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
-        }
-        shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf<Pair<SdkError?, Boolean>>(null to true), ends)
+        assertEquals(listOf<Pair<SdkResult<Unit>, Boolean>>(SdkResult.Success(Unit) to true), ends)
+    }
+
+    @Test
+    fun `a listener that throws is logged and called once`() {
+        val sdk = Rees46.initialize(context, config())
+        val scheduler = TestCoroutineScheduler()
+        sdk.dispatchers = testCoreDispatchers(scheduler)
+        var calls = 0
+
+        sdk.deleteUserCredentials(CompletionListener { calls++; throw IllegalStateException("app") })
+        scheduler.advanceUntilIdle()
+
+        assertEquals(1, calls)
+        assertEquals(LogLevel.ERROR, logged.single { it.code == LogCodes.CALLBACK_FAILED }.level)
     }
 
     @Test
@@ -207,14 +224,81 @@ class SdkStorageTest {
             assertEquals(SdkError.NotInitialized, e.error)
         }
 
-        val ends = CopyOnWriteArrayList<SdkError?>()
-        SDK().deleteUserCredentials(CompletionListener { ends += it })
-        val deadline = System.currentTimeMillis() + 5_000
-        while (ends.isEmpty() && System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(10)
+        val scheduler = TestCoroutineScheduler()
+        val ends = mutableListOf<SdkResult<Unit>>()
+        SDK().apply { dispatchers = testCoreDispatchers(scheduler) }.deleteUserCredentials(CompletionListener { ends += it })
+        scheduler.advanceUntilIdle()
+
+        assertEquals(listOf<SdkResult<Unit>>(SdkResult.Failure(SdkError.NotInitialized)), ends)
+    }
+
+    @Test
+    fun `the forgotten did is wiped from the store of older releases and does not come back`() {
+        // A 2.4x install: the store all shops shared, with the app's segment beside the customer.
+        context.getSharedPreferences(PreferencesPartition.LEGACY_KEY, Context.MODE_PRIVATE).edit()
+            .putString("shop_id", SHOP).putString("did", "legacy-did").putString("sid", "legacy-sid")
+            .putString("seance", "legacy-seance").putString("segment_ab_testing", "B").commit()
+        val sdk = Rees46.initialize(context, config())
+        assertEquals("legacy-did", sdk.getDid())
+
+        runBlocking { sdk.deleteUserCredentials() }
+
+        val legacy = context.getSharedPreferences(PreferencesPartition.LEGACY_KEY, Context.MODE_PRIVATE)
+        assertEquals(setOf("shop_id", "segment_ab_testing"), legacy.all.keys)
+        // A restore that brought the old store back but not the partition: the start reads nothing old.
+        val partition = context.getSharedPreferences(StorageLayout(SHOP, null).partitionName, Context.MODE_PRIVATE)
+        partition.edit().clear().commit()
+        StorageMigrations.run(context, StorageLayout(SHOP, null))
+        assertEquals(null, partition.getString("did", null))
+        assertEquals("B", partition.getString("segment_ab_testing", null))
+    }
+
+    @Test
+    fun `the old preferencesKey file gives the SDK's keys only and loses only the customer`() {
+        context.getSharedPreferences(HOST_KEY, Context.MODE_PRIVATE).edit()
+            .putString("did", "host-did").putString("sid", "host-sid").putString("app_theme", "dark").commit()
+        val sdk = Rees46.initialize(context, config(storageKey = HOST_KEY))
+        assertEquals(null, sdk.storage?.preferences?.getString("app_theme", null))
+
+        runBlocking { sdk.deleteUserCredentials() }
+
+        assertEquals(mapOf("app_theme" to "dark"), context.getSharedPreferences(HOST_KEY, Context.MODE_PRIVATE).all)
+    }
+
+    @Test
+    fun `deleting the customer forgets the shop's recent searches and keeps another shop's`() {
+        RecentSearches(context, SHOP, 10).add("red shoes")
+        RecentSearches(context, "other-shop", 10).add("blue hat")
+        val sdk = Rees46.initialize(context, config())
+
+        runBlocking { sdk.deleteUserCredentials() }
+
+        assertEquals(emptyList<String>(), RecentSearches(context, SHOP, 10).load())
+        assertEquals(listOf("blue hat"), RecentSearches(context, "other-shop", 10).load())
+        RecentSearches(context, "other-shop", 10).clear()
+    }
+
+    @Test
+    fun `a wipe that does not reach the disk is storage_failed, not device_id_reset, and still ends`() {
+        val sdk = Rees46.initialize(context, config())
+        val storage = checkNotNull(sdk.storage)
+        storage.saveInitAnswer(JSONObject().put("did", "d"))
+        // The answer's file cannot be deleted from a directory the SDK may not write.
+        assertTrue(storage.directory.setWritable(false))
+        try {
+            val scheduler = TestCoroutineScheduler()
+            sdk.dispatchers = testCoreDispatchers(scheduler)
+            val ends = mutableListOf<SdkResult<Unit>>()
+
+            sdk.deleteUserCredentials(CompletionListener { ends += it })
+            scheduler.advanceUntilIdle()
+
+            assertEquals(listOf<SdkResult<Unit>>(SdkResult.Success(Unit)), ends)
+            assertTrue(logged.none { it.code == LogCodes.DEVICE_ID_RESET })
+            assertTrue(logged.any { it.code == LogCodes.STORAGE_FAILED && it.level == LogLevel.ERROR })
+        } finally {
+            storage.directory.setWritable(true)
         }
-        assertEquals(listOf<SdkError?>(SdkError.NotInitialized), ends)
     }
 
     @Test

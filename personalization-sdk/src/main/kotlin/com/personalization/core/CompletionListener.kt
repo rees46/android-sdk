@@ -1,10 +1,10 @@
 package com.personalization.core
 
 /**
- * The end of a call that returns nothing, for Java and for code outside coroutines. Called once, on the
- * main thread.
+ * The end of a call for Java and for code outside coroutines: the second form of a suspending method,
+ * with this listener as its last, required parameter. Called once, on the main thread; an exception it
+ * throws is logged as `callback_failed` and goes no further.
  */
-fun interface CompletionListener {
-    /** [error] is null when the call succeeded. */
-    fun onComplete(error: SdkError?)
+fun interface CompletionListener<T> {
+    fun onComplete(result: SdkResult<T>)
 }

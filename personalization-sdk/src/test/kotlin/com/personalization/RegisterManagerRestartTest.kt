@@ -53,7 +53,7 @@ class RegisterManagerRestartTest {
         verify(exactly = 1) { pushTokens.initialize(any(), true) }
 
         every { get.getDid() } returns ""
-        manager.restartAsNewDevice()
+        manager.restartAsNewDevice(manager.beginRestart())
 
         // Without a did nothing waiting goes out, and the token is not fetched.
         assertEquals(2, inits.size)
@@ -71,7 +71,7 @@ class RegisterManagerRestartTest {
     fun `an answer to the init sent before the restart is dropped`() {
         every { get.getDid() } returns ""
         manager.initialize(context, context.contentResolver, autoSendPushToken = false)
-        manager.restartAsNewDevice()
+        manager.restartAsNewDevice(manager.beginRestart())
 
         inits[0].onSuccess(JSONObject("""{"did":"stale-did","seance":"S1"}"""))
         inits[0].onError(500, null)
@@ -83,9 +83,49 @@ class RegisterManagerRestartTest {
         assertEquals(2, inits.size)
     }
 
+    /**
+     * The window of `deleteUserCredentials()`: the restart begins, an answer to the earlier `/init`
+     * lands while the did is being wiped, and only then is `/init` sent again. The late answer must not
+     * write the forgotten did back.
+     */
+    @Test
+    fun `an answer landing between the start of a restart and its init writes nothing`() {
+        every { get.getDid() } returns ""
+        manager.initialize(context, context.contentResolver, autoSendPushToken = false)
+
+        val start = manager.beginRestart()
+        inits[0].onSuccess(JSONObject("""{"did":"stale-did","seance":"S1"}"""))
+        // The wipe runs here.
+        manager.restartAsNewDevice(start)
+        inits[1].onSuccess(JSONObject("""{"did":"fresh-did","seance":"S2"}"""))
+
+        verify(exactly = 0) { update.updateDid("stale-did") }
+        verify(exactly = 0) { update.updateSid("S1") }
+        verify(exactly = 1) { update.updateDid("fresh-did") }
+    }
+
+    @Test
+    fun `two restarts never share a start, and only the later one asks init`() {
+        every { get.getDid() } returns ""
+        manager.initialize(context, context.contentResolver, autoSendPushToken = false)
+
+        val starts = java.util.Collections.synchronizedSet(HashSet<Int>())
+        val threads = List(8) { Thread { repeat(50) { starts += manager.beginRestart() } } }
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+        assertEquals(400, starts.size)
+
+        val first = manager.beginRestart()
+        val second = manager.beginRestart()
+        manager.restartAsNewDevice(first)
+        assertEquals(1, inits.size)
+        manager.restartAsNewDevice(second)
+        assertEquals(2, inits.size)
+    }
+
     @Test
     fun `a restart before initialize does nothing`() {
-        manager.restartAsNewDevice()
+        manager.restartAsNewDevice(manager.beginRestart())
 
         assertEquals(0, inits.size)
     }

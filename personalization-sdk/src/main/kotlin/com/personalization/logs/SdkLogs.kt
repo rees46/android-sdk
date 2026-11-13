@@ -220,4 +220,6 @@ internal object LogReasons {
     const val AMBIGUOUS_SHOP = "ambiguous_shop"
     const val APP_DECLINED = "app_declined"
     const val AUTO_PRESENTATION_OFF = "auto_presentation_off"
+    const val DELETE_USER_CREDENTIALS = "delete_user_credentials"
+    const val PRE_LAUNCH_REPORT = "pre_launch_report"
 }

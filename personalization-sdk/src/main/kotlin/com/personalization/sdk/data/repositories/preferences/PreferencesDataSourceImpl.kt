@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import com.personalization.LogLevel
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.StorageKeys
-import com.personalization.core.internal.StorageMigrations
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import javax.inject.Inject
@@ -25,20 +24,10 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
     override fun initialize(
         context: Context,
         preferencesKey: String,
-        legacyPreferencesKey: String?,
         shopId: String?
     ) {
+        // The data of older releases is read into the partition before this, by StorageMigrations.
         val preferences = context.getSharedPreferences(preferencesKey, Context.MODE_PRIVATE)
-        if (legacyPreferencesKey != null && shopId != null) {
-            // One-time copy of the pre-partitioning shared file, so an existing single-instance
-            // install keeps its did/sid/segment/tokens; see StorageMigrations for the guards.
-            try {
-                StorageMigrations.migrateLegacyFile(context, legacyPreferencesKey, preferences, shopId)
-            } catch (e: Exception) {
-                SdkLogs.log(LogLevel.WARNING, LogCodes.STORAGE_FAILED, "Storage operation failed: ${StorageMigrations.OP_MIGRATE_LEGACY_FILE}",
-                    shopId, mapOf("op" to StorageMigrations.OP_MIGRATE_LEGACY_FILE), e)
-            }
-        }
         this.sharedPreferences = preferences
         this.preferencesKey = preferencesKey
         this.device = DeviceStorage(context)

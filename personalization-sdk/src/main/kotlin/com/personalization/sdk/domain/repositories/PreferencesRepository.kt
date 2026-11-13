@@ -7,7 +7,6 @@ interface PreferencesRepository {
     fun initialize(
         context: Context,
         preferencesKey: String,
-        legacyPreferencesKey: String? = null,
         shopId: String? = null
     )
 

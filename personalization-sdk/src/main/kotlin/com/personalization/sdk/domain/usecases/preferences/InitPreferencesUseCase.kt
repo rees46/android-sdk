@@ -11,13 +11,11 @@ class InitPreferencesUseCase @Inject constructor(
     fun invoke(
         context: Context,
         preferencesKey: String,
-        legacyPreferencesKey: String? = null,
         shopId: String? = null
     ) {
         preferencesRepository.initialize(
             context = context,
             preferencesKey = preferencesKey,
-            legacyPreferencesKey = legacyPreferencesKey,
             shopId = shopId
         )
     }

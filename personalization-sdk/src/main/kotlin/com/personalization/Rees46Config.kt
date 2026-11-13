@@ -29,10 +29,13 @@ package com.personalization
  * shop's `SharedPreferences` file becomes `<storageKey>_personalization_sdk_<shopId>` instead of
  * `personalization_sdk_<shopId>`. A file named exactly [storageKey] (the whole store of
  * `SDK.initialize(preferencesKey = …)` in earlier releases) is read into it once and left as it is,
- * so an app moving its `preferencesKey` here keeps its customers. The device-level data (A/B group,
- * push token, advertising id) is the app's and has no prefix. Android's Auto Backup restores these
- * files on the user's new device, the `did` among them; see [SDK.deleteUserCredentials] for the files
- * an app excludes from its backup rules to avoid that.
+ * so an app moving its `preferencesKey` here keeps its customers; only the SDK's own keys are taken
+ * from that file, which may be the app's own preferences. Set on an install that already runs the SDK
+ * without it, or changed later, it opens a new, empty partition: every customer becomes a new device
+ * with a new `did`, unless the value equals the `preferencesKey` the app passed before. The
+ * device-level data (A/B group, push token, advertising id) is the app's and has no prefix. Android's
+ * Auto Backup restores these files on the user's new device, the `did` among them; see
+ * [SDK.deleteUserCredentials] for the files an app excludes from its backup rules to avoid that.
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.

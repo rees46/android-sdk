@@ -20,6 +20,9 @@ internal object StorageKeys {
     const val TRACKING_SOURCE_CODE = "tracking_source_code"
     const val TRACKING_SOURCE_SAVED_AT = "tracking_source_saved_at"
 
+    /** The old name of the `sid`, which some stores of older releases and other SDKs kept. */
+    const val SEANCE = "seance"
+
     /** The push token of a provider (`fcm`, `hms`) as last sent from this shop. */
     fun pushToken(provider: String): String = "push_token_$provider"
 
@@ -52,6 +55,25 @@ internal object StorageKeys {
     val MIGRATION_FLAGS: Set<String> = setOf(MIGRATED_NAMED_FILE, MIGRATED_LEGACY_FILE, MIGRATED_DEVICE_LEVEL)
 
     /**
+     * Every key the SDK has kept in a shop's store: what a migration may take from a file that may be
+     * the app's own preferences (the old `preferencesKey`), leaving the app's keys where they are.
+     */
+    val SDK_KEYS: Set<String> = buildSet {
+        addAll(listOf(DID, SID, SID_LAST_ACT, SHOP_ID, SEGMENT, STREAM, ADVERTISING_ID))
+        addAll(listOf(TRACKING_SOURCE_TYPE, TRACKING_SOURCE_CODE, TRACKING_SOURCE_SAVED_AT))
+        PUSH_PROVIDERS.forEach { add(pushToken(it)); add(pushTokenDate(it)) }
+        addAll(LEGACY_PUSH_TOKEN.values)
+        addAll(LEGACY_PUSH_TOKEN_DATE.values)
+    }
+
+    /**
+     * What `deleteUserCredentials()` wipes from the stores a migration reads (the store of releases
+     * before partitions, the old `preferencesKey` file): the customer's identity and session, and
+     * nothing else of those files.
+     */
+    val SOURCE_CREDENTIALS: List<String> = listOf(DID, SID, SEANCE)
+
+    /**
      * What `deleteUserCredentials()` wipes from the partition: the customer's identity and session,
      * the source `tracking.setSource` set, the dates the push token was sent (so the token goes to the
      * next customer), and the refused state. The A/B group, the push tokens, the advertising id, the
@@ -60,6 +82,7 @@ internal object StorageKeys {
     val USER_CREDENTIALS: List<String> = buildList {
         add(DID)
         add(SID)
+        add(SEANCE)
         add(SID_LAST_ACT)
         add(TRACKING_SOURCE_TYPE)
         add(TRACKING_SOURCE_CODE)

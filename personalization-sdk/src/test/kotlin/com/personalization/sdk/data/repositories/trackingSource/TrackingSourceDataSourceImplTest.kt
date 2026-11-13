@@ -115,7 +115,6 @@ class TrackingSourceDataSourceImplTest {
         override fun initialize(
             context: android.content.Context,
             preferencesKey: String,
-            legacyPreferencesKey: String?,
             shopId: String?
         ) = Unit
 

@@ -11,12 +11,10 @@ class PreferencesRepositoryImpl @Inject constructor(
     override fun initialize(
         context: Context,
         preferencesKey: String,
-        legacyPreferencesKey: String?,
         shopId: String?
     ) = preferencesDataSource.initialize(
         context = context,
         preferencesKey = preferencesKey,
-        legacyPreferencesKey = legacyPreferencesKey,
         shopId = shopId
     )
 

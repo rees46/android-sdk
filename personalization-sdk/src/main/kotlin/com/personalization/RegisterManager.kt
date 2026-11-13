@@ -1,6 +1,7 @@
 package com.personalization
 
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import android.content.ContentResolver
 import android.content.Context
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.security.SecureRandom
 import java.util.TimeZone
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 class RegisterManager @Inject constructor(
@@ -47,11 +49,18 @@ class RegisterManager @Inject constructor(
     private lateinit var contentResolver: ContentResolver
 
     /**
-     * Which start the `/init` in flight belongs to. [restartAsNewDevice] begins a new one, and an
-     * answer to an `/init` of an earlier start is dropped: it carries the forgotten customer's did.
+     * Which start the `/init` in flight belongs to. [beginRestart] begins a new one, and an answer to an
+     * `/init` of an earlier start is dropped: it carries the forgotten customer's did. Each restart
+     * gets a number of its own.
      */
-    @Volatile
-    private var generation: Int = 0
+    private val generation = AtomicInteger(0)
+
+    /**
+     * Held while an answer writes the did and the session, and while a restart begins: an answer
+     * either lands before the restart (and the wipe after it removes what it wrote) or sees the new
+     * start and writes nothing.
+     */
+    private val answerLock = Any()
 
     private val isTestDevice: Boolean
         get() = IS_TEST_DEVICE_FIELD == Settings.System.getString(
@@ -84,16 +93,21 @@ class RegisterManager @Inject constructor(
     }
 
     /**
-     * Starts over as a device the server has not seen, after `deleteUserCredentials()` wiped the did:
-     * `/init` goes out without a did and the server hands out a new one, which the requests waiting
-     * for a did then carry. The push token waits for it too: sent before, it would be registered
-     * without a did. An answer to an `/init` sent before is ignored. Nothing happens before [initialize].
+     * Begins a new start before `deleteUserCredentials()` wipes the did: from now on an answer to an
+     * `/init` sent before is dropped. Returns the start for [restartAsNewDevice].
      */
-    internal fun restartAsNewDevice() {
-        if (!::context.isInitialized) return
-        generation++
+    internal fun beginRestart(): Int = synchronized(answerLock) { generation.incrementAndGet() }
+
+    /**
+     * Starts over as a device the server has not seen, once the did is wiped: `/init` goes out without
+     * a did and the server hands out a new one, which the requests waiting for a did then carry. The
+     * push token waits for it too: sent before, it would be registered without a did. Nothing happens
+     * before [initialize], or when a later [beginRestart] took over from [start].
+     */
+    internal fun restartAsNewDevice(start: Int) {
+        if (!::context.isInitialized || start != generation.get()) return
         initializeSdk(seance = null, releaseQueue = false, fetchPushTokens = false)
-        init()
+        init(start = start)
     }
 
     private fun initializeNewDevice() {
@@ -108,17 +122,17 @@ class RegisterManager @Inject constructor(
         init()
     }
 
-    private fun init(knownDevice: Boolean = false) {
+    private fun init(knownDevice: Boolean = false, start: Int = generation.get()) {
         if (isTestDevice) {
-            log(LogLevel.INFO, LogCodes.INIT_SKIPPED, "/init is not sent on a Google Play pre-launch report device", mapOf("reason" to "pre_launch_report"))
+            log(LogLevel.INFO, LogCodes.INIT_SKIPPED, "/init is not sent on a Google Play pre-launch report device", mapOf("reason" to LogReasons.PRE_LAUNCH_REPORT))
             return
         }
 
-        sendInitRequestWithRetry(knownDevice = knownDevice)
+        sendInitRequestWithRetry(knownDevice = knownDevice, start = start)
     }
 
-    private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false, start: Int = generation) {
-        if (start != generation) return
+    private fun sendInitRequestWithRetry(attempt: Int = 0, knownDevice: Boolean = false, start: Int) {
+        if (start != generation.get()) return
         try {
             val params = buildInitParams()
             sendNetworkMethodUseCase.get(
@@ -126,12 +140,12 @@ class RegisterManager @Inject constructor(
                 params = params,
                 listener = object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        if (start == generation) handleInitSuccess(response, knownDevice)
+                        if (start == generation.get()) handleInitSuccess(response, knownDevice, start)
                     }
 
                     // The answer's body stays out of the log: a server often repeats the request's data in it.
                     override fun onError(code: Int, msg: String?) {
-                        if (start == generation) handleInitError(code, attempt, knownDevice, start)
+                        if (start == generation.get()) handleInitError(code, attempt, knownDevice, start)
                     }
                 }
             )
@@ -148,7 +162,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    private fun handleInitSuccess(response: JSONObject?, knownDevice: Boolean) {
+    private fun handleInitSuccess(response: JSONObject?, knownDevice: Boolean, start: Int) {
         val errorHandler = JsonResponseErrorHandler(
             tag = TAG,
             response = response
@@ -174,8 +188,13 @@ class RegisterManager @Inject constructor(
         val did = errorHandler.getRequiredField(fieldName = "did") ?: return
         val seance = errorHandler.getRequiredField(fieldName = "seance") ?: return
 
-        updateUserSettingsValueUseCase.updateDid(did)
-        initializeSdk(seance)
+        synchronized(answerLock) {
+            // A restart that began while this answer was on its way: the did belongs to the forgotten customer.
+            if (start != generation.get()) return
+            updateUserSettingsValueUseCase.updateDid(did)
+            updateUserSettingsValueUseCase.updateSid(value = seance)
+        }
+        sessionStarted(releaseQueue = true, fetchPushTokens = true)
         notifyInitFinished(popupsV3)
     }
 
@@ -236,6 +255,10 @@ class RegisterManager @Inject constructor(
     private fun initializeSdk(seance: String?, releaseQueue: Boolean = true, fetchPushTokens: Boolean = true) {
         val finalSeance = seance ?: generateOrRetrieveSeance()
         updateUserSettingsValueUseCase.updateSid(value = finalSeance)
+        sessionStarted(releaseQueue, fetchPushTokens)
+    }
+
+    private fun sessionStarted(releaseQueue: Boolean, fetchPushTokens: Boolean) {
         if (releaseQueue) executeQueueTasksUseCase.invoke()
         if (fetchPushTokens) pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
     }

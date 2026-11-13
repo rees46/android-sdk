@@ -21,17 +21,11 @@ internal class StorageLayout(val shopId: String, storageKey: String?) {
 
     /** The name of the shop's `SharedPreferences` file. */
     val partitionName: String =
-        prefix?.let { sanitize(it) + "_" + PreferencesPartition.keyFor(shopId) } ?: PreferencesPartition.keyFor(shopId)
+        prefix?.let { PreferencesPartition.sanitize(it) + "_" + PreferencesPartition.keyFor(shopId) } ?: PreferencesPartition.keyFor(shopId)
 
     /** The old full-name file, read once into the partition. */
     val namedFile: String? = prefix?.takeIf { it != partitionName }
 
     /** The file of the releases before partitions, read once into a default partition. */
     val legacyFile: String? = if (prefix == null) PreferencesPartition.LEGACY_KEY else null
-
-    private companion object {
-        val UNSAFE_FILENAME_CHARS = Regex("[^A-Za-z0-9_-]")
-
-        fun sanitize(value: String): String = value.replace(UNSAFE_FILENAME_CHARS, "_")
-    }
 }

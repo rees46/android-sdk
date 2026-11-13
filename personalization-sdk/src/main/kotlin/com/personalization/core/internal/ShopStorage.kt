@@ -93,12 +93,19 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
      * [includeQueue] the queue's directory. The A/B group, the push tokens, the advertising id, the
      * stories' state and the migration flags stay. Written with `commit()`: a crash right after must
      * not bring the customer back. False when part of it did not reach the disk.
+     *
+     * The stores a migration reads lose the customer too ([StorageKeys.SOURCE_CREDENTIALS], nothing
+     * else of them): a partition restored without its migration flags, or lost, would otherwise read
+     * the forgotten `did` back from them.
      */
     fun deleteUserCredentials(includeQueue: Boolean): Boolean {
         var complete = attempt(OP_DELETE_CREDENTIALS) {
             val editor = preferences.edit()
             StorageKeys.USER_CREDENTIALS.forEach { editor.remove(it) }
             editor.commit()
+        }
+        listOfNotNull(layout.namedFile, layout.legacyFile).forEach { name ->
+            complete = attempt(OP_DELETE_SOURCE_CREDENTIALS) { forgetInSource(name) } && complete
         }
         complete = attempt(OP_DELETE_INIT_ANSWER) {
             synchronized(fileLock) {
@@ -114,6 +121,17 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
             } && complete
         }
         return complete
+    }
+
+    /** Removes the customer's identity from the store [name] of an older release, when it is this shop's. */
+    private fun forgetInSource(name: String): Boolean {
+        val source = appContext.getSharedPreferences(name, Context.MODE_PRIVATE)
+        // The store of releases before partitions may be another shop's: its customer is not this one.
+        if (name == layout.legacyFile && !StorageMigrations.belongsTo(source, layout.shopId)) return true
+        if (StorageKeys.SOURCE_CREDENTIALS.none(source::contains)) return true
+        val editor = source.edit()
+        StorageKeys.SOURCE_CREDENTIALS.forEach { editor.remove(it) }
+        return editor.commit()
     }
 
     /** Runs [block]; a false result or an exception is logged under [op]. */
@@ -150,5 +168,6 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         const val OP_DELETE_CREDENTIALS = "delete_user_credentials"
         const val OP_DELETE_INIT_ANSWER = "delete_init_answer"
         const val OP_DELETE_QUEUE = "delete_queue"
+        const val OP_DELETE_SOURCE_CREDENTIALS = "delete_old_storage_credentials"
     }
 }

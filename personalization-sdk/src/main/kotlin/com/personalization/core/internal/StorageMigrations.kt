@@ -9,11 +9,13 @@ import com.personalization.logs.SdkLogs
 /**
  * The one-shot migrations of a shop's partition, run on every start before `/init`. Each runs at most
  * once per shop: it marks itself with a flag in the partition ([StorageKeys.MIGRATION_FLAGS]), in the
- * same write as what it copied. The sources are only read, never changed or deleted.
+ * same write as what it copied. The sources are only read here; `deleteUserCredentials()` later wipes
+ * the customer's identity from them ([StorageKeys.SOURCE_CREDENTIALS]), so it cannot come back.
  *
  * 1. **The old full-name file** ([StorageLayout.namedFile]): what `SDK.initialize(preferencesKey = …)`
  *    used as the whole store. Read into a partition that has no data yet, whatever shop it last
- *    belonged to: two shops that shared such a file shared its `did`, and keep sharing it.
+ *    belonged to: two shops that shared such a file shared its `did`, and keep sharing it. Only the
+ *    SDK's own keys ([StorageKeys.SDK_KEYS]) are taken: the app may have named its own preferences.
  * 2. **The file shared by every shop before partitions** ([StorageLayout.legacyFile]): read into a
  *    default partition that has no data yet, when it belongs to the shop or names no shop at all (a
  *    very old install). A file without a shop goes to each shop that starts with an empty partition,
@@ -33,19 +35,21 @@ internal object StorageMigrations {
         val partition = open(context, layout.partitionName, shopId, OP_OPEN_PARTITION) ?: return
         layout.namedFile?.let { name ->
             step(shopId, OP_MIGRATE_NAMED_FILE) {
-                copyOnce(context, name, partition, StorageKeys.MIGRATED_NAMED_FILE, shopId, belongsTo = { true })
+                copyOnce(context, name, partition, StorageKeys.MIGRATED_NAMED_FILE, shopId, keys = StorageKeys.SDK_KEYS, belongsTo = { true })
             }
         }
         layout.legacyFile?.let { name -> step(shopId, OP_MIGRATE_LEGACY_FILE) { migrateLegacyFile(context, name, partition, shopId) } }
         step(shopId, OP_MIGRATE_DEVICE_LEVEL) { adoptDeviceLevel(partition, device) }
     }
 
-    /** Step 2 alone, for a [partition] opened by name ([com.personalization.sdk.data.repositories.preferences.PreferencesDataSource]). */
-    fun migrateLegacyFile(context: Context, legacyName: String, partition: SharedPreferences, shopId: String) {
-        copyOnce(context, legacyName, partition, StorageKeys.MIGRATED_LEGACY_FILE, shopId) { source ->
-            val owner = source.getString(StorageKeys.SHOP_ID, "").orEmpty()
-            owner.isEmpty() || owner == shopId
-        }
+    private fun migrateLegacyFile(context: Context, legacyName: String, partition: SharedPreferences, shopId: String) {
+        copyOnce(context, legacyName, partition, StorageKeys.MIGRATED_LEGACY_FILE, shopId, keys = null) { source -> belongsTo(source, shopId) }
+    }
+
+    /** Whether the store of releases before partitions is [shopId]'s: it names that shop, or no shop at all. */
+    internal fun belongsTo(source: SharedPreferences, shopId: String): Boolean {
+        val owner = source.getString(StorageKeys.SHOP_ID, "").orEmpty()
+        return owner.isEmpty() || owner == shopId
     }
 
     /** Whether [partition] holds anything besides migration flags. */
@@ -58,6 +62,8 @@ internal object StorageMigrations {
         partition: SharedPreferences,
         flag: String,
         shopId: String,
+        /** The keys to take; null takes the whole file, the SDK's own. */
+        keys: Set<String>?,
         belongsTo: (SharedPreferences) -> Boolean,
     ) {
         if (partition.getBoolean(flag, false)) return
@@ -66,7 +72,9 @@ internal object StorageMigrations {
         if (!hasData(partition)) {
             val source = open(context, sourceName, shopId, OP_OPEN_SOURCE)
             if (source != null && belongsTo(source)) {
-                source.all.forEach { (key, value) -> if (key !in StorageKeys.MIGRATION_FLAGS) editor.putAny(key, value) }
+                source.all.forEach { (key, value) ->
+                    if (key !in StorageKeys.MIGRATION_FLAGS && (keys == null || key in keys)) editor.putAny(key, value)
+                }
             }
         }
         editor.putBoolean(flag, true).apply()

@@ -3,6 +3,8 @@ package com.personalization
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -63,16 +65,17 @@ class SdkUpgradeMigrationTest {
         editor.commit()
     }
 
-    /** The real migration into [shop]'s partition, the exact call `SDK.initialize` makes for the default. */
-    private fun migratedPartition(shop: String): PreferencesDataSourceImpl =
-        PreferencesDataSourceImpl().apply {
+    /** The real migration into [shop]'s partition and the partition opened, as `SDK.initialize` does for the default. */
+    private fun migratedPartition(shop: String): PreferencesDataSourceImpl {
+        StorageMigrations.run(context, StorageLayout(shop, null))
+        return PreferencesDataSourceImpl().apply {
             initialize(
                 context = context,
                 preferencesKey = PreferencesPartition.keyFor(shop),
-                legacyPreferencesKey = legacyKey,
                 shopId = shop
             )
         }
+    }
 
     @Test
     fun `a single-shop upgrade keeps did and sid at the settings layer the SDK reads`() {

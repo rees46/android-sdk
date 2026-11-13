@@ -64,8 +64,18 @@ internal class RecentSearches(context: Context, private val shopKey: String, pri
         return items
     }
 
-    private companion object {
-        const val FILE = "personalization_ui_recent_searches"
+    companion object {
+        private const val FILE = "personalization_ui_recent_searches"
+
+        /**
+         * Forgets the recent searches of [shopKey] (`deleteUserCredentials()`): they are the
+         * customer's. False when the disk refused it.
+         */
+        internal fun forget(context: Context, shopKey: String): Boolean {
+            val preferences = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            if (!preferences.contains(shopKey)) return true
+            return preferences.edit().remove(shopKey).commit()
+        }
     }
 }
 
