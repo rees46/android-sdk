@@ -150,6 +150,8 @@ class SdkInstanceTest {
     private fun assertOneInit(sdk: SDK) {
         threads.awaitIdle()
         (sdk.core as? CoreV2)?.init?.let { init ->
+            // The answer may still be handled after the state turned ready.
+            runBlocking { withTimeout(5_000) { init.awaitIdle() } }
             assertFalse("an /init is on its way", init.isRunning)
             assertEquals(1, init.sent)
         }
@@ -450,6 +452,25 @@ class SdkInstanceTest {
         awaitState(sdk, SdkState.READY)
         assertEquals("fresh-did", sdk.deviceId)
         assertTrue(logged.any { it.code == LogCodes.DEVICE_ID_RESET && it.context["reason"] == "need_reinitialization" })
+    }
+
+    @Test
+    fun `on the new core the session is the server's and the bridges hear it on the main thread`() {
+        val heard = CopyOnWriteArrayList<Pair<String, Boolean>>()
+        val sdk = SDK()
+        sdk.onSessionChange { heard += it to (Looper.myLooper() == Looper.getMainLooper()) }
+        sdk.initializeWith(context, config(coreV2 = true))
+        nextRequest("init")
+        awaitState(sdk, SdkState.READY)
+        // Handed to the main thread from the io dispatcher: run the main looper until it arrives.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (heard.isEmpty() && System.currentTimeMillis() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(5)
+        }
+
+        assertEquals("S", sdk.sessionId)
+        assertEquals(listOf("S" to true), heard)
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.json.JSONObject
@@ -101,6 +102,20 @@ class CoreFunnelTest {
 
         assertTrue(answered.await(5, TimeUnit.SECONDS))
         assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `a request moves the legacy session's last activity, not the new core's`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        await { repository.get("products/get", JSONObject(), it) }
+        verify(exactly = 1) { settings.updateSidLastActTime() }
+
+        repository.useCoreV2("shop", FakeConnectivity(connected = true)) {
+            it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings)
+        }
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        await { repository.get("products/get", JSONObject(), it) }
+        verify(exactly = 1) { settings.updateSidLastActTime() }
     }
 
     @Test
