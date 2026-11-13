@@ -331,7 +331,7 @@ class SdkInstanceTest {
         awaitState(sdk, SdkState.READY)
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(listOf(SdkState.INITIALIZING to true, SdkState.READY to true), heard)
+        assertEquals(listOf(SdkState.NOT_INITIALIZED to true, SdkState.INITIALIZING to true, SdkState.READY to true), heard)
         assertEquals("new-did", sdk.deviceId)
         assertEquals("S", sdk.sessionId)
         assertEquals(SHOP, sdk.shopId)

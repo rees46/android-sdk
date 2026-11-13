@@ -227,10 +227,10 @@ open class SDK {
         get() = instanceState.current
 
     /**
-     * Calls [listener] on the main thread with every later change of [state], once per change, until
-     * the returned handle is cancelled. May be set before the instance is initialized. An exception
-     * the listener throws is logged as `callback_failed`. [release] tells it [SdkState.NOT_INITIALIZED]
-     * and drops it.
+     * Calls [listener] on the main thread with the current [state] at once, then with every change of
+     * it, once per change, until the returned handle is cancelled. May be set before the instance is
+     * initialized (it hears [SdkState.NOT_INITIALIZED] first). An exception the listener throws is logged
+     * as `callback_failed`. [release] tells it [SdkState.NOT_INITIALIZED] and drops it.
      */
     fun onStateChange(listener: (SdkState) -> Unit): Cancellable = instanceState.addListener(listener)
 

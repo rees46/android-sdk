@@ -18,9 +18,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  * The [SdkState] of one instance and the app's listeners of it, for both cores: the legacy path moves
  * it from `RegisterManager`, the new core from [CoreInit].
  *
- * Each change reaches every listener once, on the main thread, in the order the changes happened. A
- * listener that throws is logged as `callback_failed` and keeps its later changes; a cancelled one
- * gets nothing more.
+ * A new listener hears the current state at once, then each change once, on the main thread, in the
+ * order the changes happened. A listener that throws is logged as `callback_failed` and keeps its
+ * later changes; a cancelled one gets nothing more.
  */
 internal class InstanceState(
     private val shopId: () -> String?,
@@ -31,7 +31,7 @@ internal class InstanceState(
     private val flow = MutableStateFlow(SdkState.NOT_INITIALIZED)
     private val listeners = CopyOnWriteArrayList<Subscription>()
 
-    /** Created on the first change with a listener: a process without one never loads the main dispatcher. */
+    /** Created with the first listener: a process without one never loads the main dispatcher. */
     private val delivery: CoroutineScope by lazy {
         CoroutineScope(SupervisorJob() + dispatchers.main + CoroutineExceptionHandler { _, throwable ->
             SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "A state listener could not be called", shopId(), throwable = throwable)
@@ -54,10 +54,18 @@ internal class InstanceState(
         true
     }
 
-    /** Calls [listener] on the main thread with every later change until the handle is cancelled. */
+    /**
+     * Calls [listener] on the main thread with the current state at once, then with every later change
+     * until the handle is cancelled. The current state is scheduled under the lock a change takes, so
+     * a change made meanwhile arrives after it, never before.
+     */
     fun addListener(listener: (SdkState) -> Unit): Cancellable {
         val subscription = Subscription(listener)
-        listeners += subscription
+        synchronized(lock) {
+            listeners += subscription
+            val current = flow.value
+            delivery.launch { subscription.deliver(current) }
+        }
         return Cancellable {
             subscription.active = false
             listeners -= subscription
