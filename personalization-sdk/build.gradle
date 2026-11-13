@@ -89,13 +89,6 @@ android {
         enable = false
     }
 
-    lint {
-        // The Compose runtime's lint check reads Kotlin metadata only up to 2.0 and crashes on the
-        // kotlin-stdlib 2.2 that OkHttp 5 brings; the SDK's one Compose file (StoriesWidget) launches
-        // no coroutine during composition.
-        disable 'CoroutineCreationDuringComposition'
-    }
-
     namespace 'com.personalization'
 }
 
@@ -119,10 +112,11 @@ dependencies {
     // through lifecycle-process; declared because the SDK now relies on it directly.
     implementation 'androidx.startup:startup-runtime:1.1.1'
     implementation 'com.google.code.gson:gson:2.11.0'
-    // The new core's HTTP client (Rees46Config.coreV2): one connection pool for the process. 5.3 is the
-    // last line that compiles against any compileSdk: 5.4 asks apps for compileSdk 36, 5.5 for 37. Its
-    // kotlin-stdlib 2.2 is why apps and this SDK need a Kotlin compiler of 2.1 or later.
-    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
+    // The new core's HTTP client (Rees46Config.coreV2): one connection pool for the process. 4.12, not 5:
+    // OkHttp 5 brings kotlin-stdlib 2.2, which asks apps for a Kotlin compiler of 2.1 or later, and adds an
+    // androidx.startup initializer to their manifest. 4.12 brings neither: its kotlin-stdlib is older than
+    // the SDK's own.
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
 
@@ -148,7 +142,7 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'androidx.media3:media3-exoplayer:1.4.1'
     implementation 'androidx.media3:media3-ui:1.4.1'
-    implementation 'com.google.dagger:dagger:2.57.2'
+    implementation 'com.google.dagger:dagger:2.51.1'
 
     // Instrumented tests only: as `implementation` they reached every host app's release build.
     androidTestImplementation("androidx.test:core:1.6.1")
@@ -157,14 +151,14 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-ads-identifier:17.0.0")
 
-    kapt 'com.google.dagger:dagger-compiler:2.57.2'
+    kapt 'com.google.dagger:dagger-compiler:2.48'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'io.mockk:mockk:1.13.11'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4'
     testImplementation 'androidx.test:core:1.6.1'
     testImplementation 'org.robolectric:robolectric:4.12.1'
-    testImplementation 'com.squareup.okhttp3:mockwebserver3:5.3.2'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
     // compileOnly dependencies are absent from the unit test classpath, and the Compose compiler
     // plugin refuses to compile the test variant without the runtime it can see. These mirror the
     // compileOnly declarations above and stay confined to tests, so the published POM is unaffected.

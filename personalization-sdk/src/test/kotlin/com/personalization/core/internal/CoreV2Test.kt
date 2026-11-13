@@ -5,9 +5,9 @@ import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.SocketEffect
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -52,10 +52,10 @@ class CoreV2Test {
 
     @Test
     fun `answers come back as the old callbacks get them`() {
-        server.enqueue(MockResponse.Builder().code(200).body("""{"id":1}""").build())
-        server.enqueue(MockResponse.Builder().code(200).body("[1]").build())
-        server.enqueue(MockResponse.Builder().code(404).body("""{"message":"no such product"}""").build())
-        server.enqueue(MockResponse.Builder().code(200).body("<html/>").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"id":1}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("[1]"))
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"message":"no such product"}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("<html/>"))
 
         assertEquals(listOf("""success:{"id":1}"""), call())
         assertEquals(listOf("success:[1]"), call())
@@ -73,7 +73,7 @@ class CoreV2Test {
 
     @Test
     fun `a failing onSuccess ends in one onError and nothing escapes`() {
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
 
         val recorder = Recorder(throwOnSuccess = true)
         core.send(NetworkMethod.GET("products/get"), JSONObject(), recorder)
@@ -83,7 +83,7 @@ class CoreV2Test {
 
     @Test
     fun `release cancels the requests in flight and fails the ones after it`() {
-        server.enqueue(MockResponse.Builder().onResponseStart(SocketEffect.Stall).build())
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
         val inFlight = Recorder()
         core.send(NetworkMethod.GET("products/get"), JSONObject(), inFlight)
         server.takeRequest(5, TimeUnit.SECONDS)
@@ -102,7 +102,7 @@ class CoreV2Test {
 
     @Test
     fun `a request without a listener still goes`() {
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
 
         core.send(NetworkMethod.POST("push"), JSONObject().put("event", "view"), null)
 

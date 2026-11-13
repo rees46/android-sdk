@@ -168,13 +168,14 @@ internal class CoreHttpClient(
         if (status !in HTTP_SUCCESS) {
             // The status is the answer: a body that fails to arrive does not replace it.
             val errorBody = try {
-                response.body.string()
+                response.body?.string()
             } catch (e: IOException) {
                 null
             }
             return Exchange(HttpResult.Failure(SdkError.Http(status), errorBody), status, errorBody)
         }
-        val text = response.body.string()
+        // OkHttp gives every answer it hands over a body; without one the answer is empty.
+        val text = response.body?.string().orEmpty()
         if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject()), status, text)
         val json = try {
             JSONTokener(text).nextValue()

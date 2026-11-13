@@ -12,8 +12,8 @@ import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -71,14 +71,14 @@ class CoreFunnelTest {
     @Test
     fun `the funnel sends through the legacy core until the instance takes the new one`() {
         assertFalse(repository.core.isV2)
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         await { repository.get("products/get", JSONObject(), it) }
         // HttpURLConnection on the JVM asks for no compression; OkHttp asks for gzip.
         assertEquals(null, server.takeRequest().headers["Accept-Encoding"])
 
         repository.useCoreV2("shop", FakeConnectivity(connected = true))
         assertTrue(repository.core.isV2)
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         await { repository.get("products/get", JSONObject(), it) }
         assertEquals("gzip", server.takeRequest().headers["Accept-Encoding"])
     }
@@ -87,7 +87,7 @@ class CoreFunnelTest {
     fun `requests waiting for a did go through the new core once it comes`() {
         repository.useCoreV2("shop", FakeConnectivity(connected = true))
         did.set("")
-        server.enqueue(MockResponse.Builder().code(200).body("{}").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
         val answered = CountDownLatch(1)
         repository.getAsync("products/get", JSONObject(), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) = answered.countDown()
@@ -99,12 +99,12 @@ class CoreFunnelTest {
         repository.executeQueueTasks()
 
         assertTrue(answered.await(5, TimeUnit.SECONDS))
-        assertEquals("did-2", server.takeRequest().url.queryParameter("did"))
+        assertEquals("did-2", checkNotNull(server.takeRequest().requestUrl).queryParameter("did"))
     }
 
     @Test
     fun `an instance made with coreV2 runs on the new core, its requests on the new client`() {
-        server.enqueue(MockResponse.Builder().code(200).body("""{"did":"server-did","seance":"S"}""").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"did":"server-did","seance":"S"}"""))
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         // Robolectric's default network has no internet capability: give it one, as a device's has.
         val manager = context.getSystemService(ConnectivityManager::class.java)
@@ -125,15 +125,15 @@ class CoreFunnelTest {
         assertTrue(sdk.core is CoreV2)
         val init = server.takeRequest(5, TimeUnit.SECONDS)
         assertNotNull(init)
-        assertEquals("/init", init?.url?.encodedPath)
-        assertEquals("core-shop", init?.url?.queryParameter("shop_id"))
+        assertEquals("/init", init?.requestUrl?.encodedPath)
+        assertEquals("core-shop", init?.requestUrl?.queryParameter("shop_id"))
         assertEquals("gzip", init?.headers?.get("Accept-Encoding"))
         sdk.release()
     }
 
     @Test
     fun `an instance made without the flag keeps the legacy core`() {
-        server.enqueue(MockResponse.Builder().code(200).body("""{"did":"server-did","seance":"S"}""").build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"did":"server-did","seance":"S"}"""))
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
         val sdk: SDK = Rees46.initialize(
@@ -143,7 +143,7 @@ class CoreFunnelTest {
 
         assertFalse(sdk.core?.isV2 ?: true)
         val init = server.takeRequest(5, TimeUnit.SECONDS)
-        assertEquals("/init", init?.url?.encodedPath)
+        assertEquals("/init", init?.requestUrl?.encodedPath)
         sdk.release()
     }
 

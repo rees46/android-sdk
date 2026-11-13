@@ -8,9 +8,9 @@ import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
-import mockwebserver3.MockResponse
-import mockwebserver3.MockWebServer
-import mockwebserver3.SocketEffect
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -64,7 +64,7 @@ class CoreHttpClientTest {
     ): HttpResult = runBlocking { client.send(method, params) }
 
     private fun reply(code: Int, body: String = "") {
-        server.enqueue(MockResponse.Builder().code(code).body(body).build())
+        server.enqueue(MockResponse().setResponseCode(code).setBody(body))
     }
 
     private fun HttpResult.error(): SdkError = (this as HttpResult.Failure).error
@@ -106,11 +106,10 @@ class CoreHttpClientTest {
     @Test
     fun `a body that breaks off midway is a timeout, not a success with part of it`() {
         server.enqueue(
-            MockResponse.Builder()
-                .code(200)
-                .body("""{"did":"abc","popup":{"id":7,"components":"${"x".repeat(4_000)}"}}""")
-                .onResponseBody(SocketEffect.ShutdownConnection)
-                .build()
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"did":"abc","popup":{"id":7,"components":"${"x".repeat(4_000)}"}}""")
+                .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY)
         )
 
         assertEquals(SdkError.Timeout, send().error())
@@ -118,7 +117,7 @@ class CoreHttpClientTest {
 
     @Test
     fun `an answer that does not come within the read timeout is a timeout`() {
-        server.enqueue(MockResponse.Builder().onResponseStart(SocketEffect.Stall).build())
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
 
         val started = System.nanoTime()
         val result = send(client = client(CoreTimeouts(readMs = 300)))
@@ -130,7 +129,7 @@ class CoreHttpClientTest {
     @Test
     fun `init reads with its own timeout, other requests keep theirs`() {
         val client = client(CoreTimeouts(readMs = 60_000, initReadMs = 300))
-        server.enqueue(MockResponse.Builder().onResponseStart(SocketEffect.Stall).build())
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
 
         val started = System.nanoTime()
         assertEquals(SdkError.Timeout, send(NetworkMethod.GET("init"), client = client).error())
@@ -180,7 +179,7 @@ class CoreHttpClientTest {
     @Test
     fun `the client does not retry`() {
         reply(500, "{}")
-        server.enqueue(MockResponse.Builder().code(200).body("{\"a\":\"${"x".repeat(4_000)}\"}").onResponseBody(SocketEffect.ShutdownConnection).build())
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{\"a\":\"${"x".repeat(4_000)}\"}").setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
         reply(200, "{}")
 
         assertEquals(SdkError.Http(500), send().error())
@@ -195,7 +194,7 @@ class CoreHttpClientTest {
 
         send(NetworkMethod.GET("products/get"), JSONObject().put("item_id", "42"))
 
-        val url = server.takeRequest().url
+        val url = checkNotNull(server.takeRequest().requestUrl)
         assertEquals("/products/get", url.encodedPath)
         assertEquals("shop", url.queryParameter("shop_id"))
         assertEquals("did-1", url.queryParameter("did"))
@@ -214,9 +213,9 @@ class CoreHttpClientTest {
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
-        assertNull(request.url.query)
+        assertNull(request.requestUrl?.query)
         assertTrue(request.headers["Content-Type"].orEmpty().startsWith("application/json"))
-        val body = JSONObject(request.body?.utf8().orEmpty())
+        val body = JSONObject(request.body.readUtf8())
         assertEquals(
             setOf("event", "shop_id", "did", "sid", "seance", "segment", "stream"),
             body.keys().asSequence().toSet()
