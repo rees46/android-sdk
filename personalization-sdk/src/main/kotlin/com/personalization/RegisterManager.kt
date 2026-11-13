@@ -1,5 +1,7 @@
 package com.personalization
 
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import android.content.ContentResolver
 import android.content.Context
 import android.provider.Settings
@@ -114,7 +116,7 @@ class RegisterManager @Inject constructor(
                 }
             )
         } catch (e: Exception) {
-            SDK.error(e.message, e)
+            log(LogLevel.ERROR, LogCodes.INIT_FAILED, "/init could not be sent", throwable = e)
         }
     }
 
@@ -160,27 +162,48 @@ class RegisterManager @Inject constructor(
         try {
             onInitFinished?.invoke(popupsV3)
         } catch (e: Exception) {
-            SDK.error("Popups v3 failed to start: ${e.message}", e)
+            log(LogLevel.ERROR, LogCodes.POPUPS_V3, "Popups v3 failed to start", throwable = e)
         }
     }
 
-    private fun handleInitError(code: Int, msg: String?, attempt: Int, knownDevice: Boolean) {
+    // The answer's body stays out of the log: a server often repeats the request's data in it.
+    private fun handleInitError(code: Int, @Suppress("UNUSED_PARAMETER") msg: String?, attempt: Int, knownDevice: Boolean) {
         if (code in 500..Int.MAX_VALUE || code <= 0) {
             if (attempt < MAX_INIT_RETRIES) {
+                log(
+                    LogLevel.WARNING,
+                    LogCodes.INIT_RETRY,
+                    "/init failed, retrying",
+                    mapOf("status" to code, "attempt" to attempt + 1)
+                )
                 CoroutineScope(Dispatchers.Main).launch {
                     delay(RETRY_DELAY_MILLISECONDS * (attempt + 1))
                     sendInitRequestWithRetry(attempt + 1, knownDevice)
                 }
-            } else if (knownDevice) {
-                notifyInitFinished(popupsV3 = false)
+            } else {
+                log(
+                    LogLevel.ERROR,
+                    LogCodes.INIT_FAILED,
+                    "/init failed after all retries",
+                    mapOf("status" to code, "attempts" to attempt + 1)
+                )
+                if (knownDevice) notifyInitFinished(popupsV3 = false)
             }
         } else {
             if (knownDevice) notifyInitFinished(popupsV3 = false)
-            BaseInfoError(
-                TAG,
-                message = "Init error: code: $code, message: $msg"
-            ).logError()
+            log(LogLevel.ERROR, LogCodes.INIT_REFUSED, "The shop refused /init", mapOf("status" to code))
         }
+    }
+
+    private fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) {
+        val shopId = runCatching { getUserSettingsValueUseCase.getShopId() }.getOrNull()?.takeIf { it.isNotEmpty() }
+        SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
     private fun initializeSdk(seance: String?) {

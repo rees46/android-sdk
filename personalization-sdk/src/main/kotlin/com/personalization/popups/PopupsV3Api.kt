@@ -1,5 +1,8 @@
 package com.personalization.popups
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.content.Context
 import android.content.SharedPreferences
 import com.personalization.PreferencesPartition
@@ -60,7 +63,8 @@ internal class PopupsV3Api(
                         null -> null
                     }
                 } else {
-                    SDK.debug("popups v3: popup $id request failed: ${response.code} ${message(response.body)}")
+                    // Without the answer's body: an error answer often repeats the request's data.
+                    SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUPS_V3, "Popup request failed", context = mapOf("popup" to id, "status" to response.code))
                     null
                 }
             } catch (throwable: Throwable) {
@@ -113,7 +117,7 @@ internal class PopupsV3Api(
                 }
 
                 override fun onError(code: Int, msg: String?) {
-                    SDK.debug("popups v3: promo code of list $listId failed: $code $msg")
+                    SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUPS_V3, "Promo code request failed", context = mapOf("list" to listId, "status" to code))
                     MainThread.run { callback(null) }
                 }
             }

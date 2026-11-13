@@ -1,6 +1,8 @@
 package com.personalization.features.trackEvent.impl
 
-import android.util.Log
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import com.personalization.SDK
 import com.personalization.SdkRegistry
 import com.personalization.Params
@@ -235,7 +237,7 @@ internal class TrackEventManagerImpl @Inject constructor(
                     .put(SOURCE_CODE_PARAMETER, source.code)
             )
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 

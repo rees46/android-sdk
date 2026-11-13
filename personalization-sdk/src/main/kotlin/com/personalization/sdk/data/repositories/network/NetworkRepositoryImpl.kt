@@ -1,5 +1,8 @@
 package com.personalization.sdk.data.repositories.network
 
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import android.net.Uri
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
@@ -175,7 +178,7 @@ class NetworkRepositoryImpl @Inject constructor(
 
             executeMethod(networkMethod, newParams, listener)
         } catch (e: JSONException) {
-            SDK.error(e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "A request could not be built", networkMethod, throwable = e)
         }
     }
 
@@ -252,7 +255,7 @@ class NetworkRepositoryImpl @Inject constructor(
                 responseCode = connection.responseCode
 
                 // Method and path only: the query string and the body carry the user's data.
-                SDK.debug("$responseCode: ${networkMethod.type} ${networkMethod.method}")
+                log(LogLevel.DEBUG, LogCodes.REQUEST, "Request answered", networkMethod, responseCode)
 
                 if (responseCode in HTTP_SUCCESS) {
                     // A body the read timeout cuts short throws here and ends in onError.
@@ -269,16 +272,16 @@ class NetworkRepositoryImpl @Inject constructor(
                     }
                     responseBodyForLog = error
                     // Without the body: an error answer often repeats the request's data.
-                    SDK.error("$responseCode: ${networkMethod.type} ${networkMethod.method}")
+                    log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "Request failed", networkMethod, responseCode)
                     Outcome.Failure(responseCode, error)
                 }
             } catch (e: ConnectException) {
-                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}")
+                log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "No connection to the server", networkMethod, throwable = e)
                 errorForLog = e.message
                 responseCode = 504
                 Outcome.Failure(504, e.message)
             } catch (e: Exception) {
-                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}", e)
+                log(LogLevel.ERROR, LogCodes.REQUEST_FAILED, "Request ended without an answer", networkMethod, throwable = e)
                 errorForLog = e.message
                 Outcome.Failure(-1, e.message)
             } finally {
@@ -294,7 +297,7 @@ class NetworkRepositoryImpl @Inject constructor(
                         error = errorForLog
                     )
                 } catch (e: Exception) {
-                    SDK.error("NetworkLogger failed: ${e.message}", e)
+                    log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "The app's NetworkLogger threw", networkMethod, throwable = e)
                 }
             }
 
@@ -333,7 +336,7 @@ class NetworkRepositoryImpl @Inject constructor(
                     else -> listener.onSuccess(body as JSONObject)
                 }
             } catch (e: Exception) {
-                SDK.error("onSuccess of a request failed: ${e.message}", e)
+                log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "onSuccess of a request threw", throwable = e)
                 fail(listener, -1, e.message)
             }
             is Outcome.Failure -> fail(listener, outcome.code, outcome.message)
@@ -344,7 +347,7 @@ class NetworkRepositoryImpl @Inject constructor(
         try {
             listener.onError(code, message)
         } catch (e: Exception) {
-            SDK.error("onError of a request failed: ${e.message}", e)
+            log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "onError of a request threw", throwable = e)
         }
     }
 
@@ -406,6 +409,23 @@ class NetworkRepositoryImpl @Inject constructor(
         BufferedReader(InputStreamReader(inputStream)).use { reader ->
             buildString { reader.forEachLine { append(it) } }
         }
+
+    /** Writes to the log by method and path only: the query and the body carry the user's data. */
+    private fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        method: NetworkMethod? = null,
+        status: Int? = null,
+        throwable: Throwable? = null,
+    ) {
+        val context = buildMap<String, Any?> {
+            method?.let { put("method", it.type); put("path", it.method) }
+            status?.let { put("status", it) }
+        }
+        val shopId = runCatching { userSettingsRepository.getShopId() }.getOrNull()?.takeIf { it.isNotEmpty() }
+        SdkLogs.log(level, code, message, shopId, context, throwable)
+    }
 
     private companion object {
         const val CONNECT_TIMEOUT_MS = 5_000

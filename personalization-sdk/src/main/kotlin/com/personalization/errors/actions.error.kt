@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class ActionsError(
     private val tag: String,
@@ -10,9 +12,6 @@ class ActionsError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */ "Error caught in $functionName : $message $actionName"
-        )
+        SdkLogs.log(LogLevel.ERROR, LogCodes.UI, "Error caught in $functionName : $message $actionName")
     }
 }

@@ -1,7 +1,9 @@
 package com.personalization.push
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.content.Context
-import android.util.Log
 import com.personalization.OnPushTokenListener
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
@@ -161,17 +163,21 @@ class PushTokenManager @Inject constructor(
                     // Released only after the token is persisted, so a delivery arriving in
                     // between is still deduplicated — by the cache rather than by the claim.
                     tokensInFlight.remove(inFlightKey(provider, token))
-                    Log.d(TAG, "${provider.id} push token successfully sent and saved")
+                    SdkLogs.log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", null, mapOf("provider" to provider.id))
                     external?.onSuccess(response)
                 }
 
                 override fun onError(code: Int, msg: String?) {
                     // Nothing was persisted, so free the claim and let a later delivery retry.
                     tokensInFlight.remove(inFlightKey(provider, token))
-                    BaseInfoError(
-                        tag = TAG,
-                        message = "${provider.id} push token failed. Code: $code, Message: $msg"
-                    ).logError()
+                    // Without the answer's body: an error answer often repeats the request's data.
+                    SdkLogs.log(
+                        LogLevel.ERROR,
+                        LogCodes.PUSH_TOKEN_FAILED,
+                        "Push token was not sent",
+                        null,
+                        mapOf("provider" to provider.id, "status" to code)
+                    )
                     external?.onError(code, msg)
                 }
             }

@@ -2,9 +2,11 @@
 
 package com.personalization.stories.views
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.annotation.SuppressLint
 import android.graphics.Color
-import android.util.Log
 import android.util.Pair
 import android.view.MotionEvent
 import android.view.View
@@ -223,7 +225,7 @@ internal class StoryView(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        Log.e(TAG, "player error: " + error.message + ", story: " + story?.id)
+        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Story video failed", context = mapOf("story" to story?.id), throwable = error)
         val holder = currentHolder
         holder?.storyItem?.let { storyItem ->
             storyItem.reloadLayout.visibility = VISIBLE
@@ -275,7 +277,7 @@ internal class StoryView(
                             try {
                                 storiesProgressView.resume()
                             } catch (e: IndexOutOfBoundsException) {
-                                Log.e(TAG, "Video onPrepared $e")
+                                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "Story video could not start", throwable = e)
                             }
                         }
                     }

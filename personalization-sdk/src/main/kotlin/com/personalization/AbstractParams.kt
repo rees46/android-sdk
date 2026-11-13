@@ -1,7 +1,8 @@
 package com.personalization
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
 import android.text.TextUtils
-import android.util.Log
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -19,7 +20,7 @@ abstract class AbstractParams<P : AbstractParams<P>> {
         try {
             params.put(param.value, value)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
         return this as P
     }
@@ -32,7 +33,7 @@ abstract class AbstractParams<P : AbstractParams<P>> {
         try {
             params.put(param.value, value)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
         return this as P
     }
@@ -41,7 +42,7 @@ abstract class AbstractParams<P : AbstractParams<P>> {
         try {
             params.put(param.value, value)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
         return this as P
     }
@@ -54,7 +55,7 @@ abstract class AbstractParams<P : AbstractParams<P>> {
         try {
             params.put(param.value, TextUtils.join(",", value))
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
         return this as P
     }

@@ -2,10 +2,11 @@ package com.personalization
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.core.util.Consumer
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
@@ -163,6 +164,12 @@ open class SDK {
             applyPopupPresentation()
         }
 
+    /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
+    internal var logLevel: LogLevel = LogLevel.WARNING
+
+    /** The shop this instance logs for, once it is initialized. */
+    private var logShopId: String? = null
+
     /** `popups_v3` of the last `/init` answer; null while `/init` has not answered. */
     @Volatile
     internal var popupsV3InitFlag: Boolean? = null
@@ -260,6 +267,7 @@ open class SDK {
      */
     internal fun initializeForPush(context: Context, config: Rees46Config) {
         enableAutoPopupPresentation = config.enableAutoPopupPresentation
+        logLevel = config.logLevel
         initializeInternal(
             context = context,
             shopId = config.shopId,
@@ -302,6 +310,8 @@ open class SDK {
         sdkComponent.inject(sdk = this)
         this.context = context
         TAG = tag
+        SdkLogs.register(shopId = shopId, level = logLevel, tag = tag)
+        logShopId = shopId
 
         // Before the init request goes out: its response may already carry a popup.
         ForegroundActivity.install(context)
@@ -371,11 +381,18 @@ open class SDK {
                         .toJson(),
                     listener = object : OnApiCallbackListener() {
                         override fun onSuccess(response: JSONObject?) {
-                            debug("Profile GAID sent successfully")
+                            SdkLogs.log(LogLevel.DEBUG, LogCodes.REQUEST, "Advertising id sent", shopId)
                         }
 
                         override fun onError(code: Int, msg: String?) {
-                            warn("Profile GAID send failed: $code | $msg")
+                            // Without the answer's body: an error answer often repeats the request's data.
+                            SdkLogs.log(
+                                LogLevel.WARNING,
+                                LogCodes.REQUEST_FAILED,
+                                "Advertising id was not sent",
+                                shopId,
+                                mapOf("status" to code)
+                            )
                         }
                     }
                 )
@@ -451,7 +468,7 @@ open class SDK {
                 event = event, code = code, storyId = storyId, slideId = slideId
             )
         } else {
-            Log.i(TAG, "storiesManager is not initialized")
+            SdkLogs.log(LogLevel.WARNING, LogCodes.STORIES, "storiesManager is not initialized")
         }
     }
 
@@ -626,6 +643,8 @@ open class SDK {
      */
     fun release() {
         SdkRegistry.unregister(this)
+        // Another instance of the same shop (a repeated initialize) keeps the shop's log level.
+        logShopId?.takeIf { SdkRegistry.byShopId(it) == null }?.let { SdkLogs.unregister(it) }
     }
 
     /**
@@ -944,7 +963,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE_PRICE, params, listener)
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1001,7 +1020,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE, params, listener)
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1078,7 +1097,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_MANAGE, params, listener)
             popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1143,7 +1162,7 @@ open class SDK {
             sendAsync("$SEGMENTS_FIELD/$method", params, listener)
             popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1172,7 +1191,7 @@ open class SDK {
                 sendNetworkMethodUseCase.postAsync(TRACK_RECEIVED, params)
             }
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1243,31 +1262,39 @@ open class SDK {
         }
 
         /**
+         * Writes [message] to the SDK's log at [LogLevel.DEBUG] (see [Rees46Config.logLevel]).
+         *
          * @param message Message
          */
         fun debug(message: String) {
-            Log.d(TAG, message)
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.SDK_LOG, message)
         }
 
         /**
+         * Writes [message] to the SDK's log at [LogLevel.WARNING].
+         *
          * @param message Message
          */
         fun warn(message: String?) {
-            Log.w(TAG, message.toString())
+            SdkLogs.log(LogLevel.WARNING, LogCodes.SDK_LOG, message.toString())
         }
 
         /**
+         * Writes [message] to the SDK's log at [LogLevel.ERROR].
+         *
          * @param message Error message
          */
         fun error(message: String?) {
-            Log.e(TAG, message.toString())
+            SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, message.toString())
         }
 
         /**
+         * Writes [message] and [e] to the SDK's log at [LogLevel.ERROR].
+         *
          * @param message Error message
          */
         fun error(message: String?, e: Throwable?) {
-            Log.e(TAG, message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, message.toString(), throwable = e)
         }
 
         /**

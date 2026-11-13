@@ -46,7 +46,8 @@ class NotificationClickProcessor @Inject constructor(
         EmptyFieldError(
             tag = TAG,
             functionName = FUNCTION_NAME,
-            message = errorMessage + extras
+            // Not the extras themselves: they carry the push's content.
+            message = "$errorMessage; extras keys: ${extras?.keySet()?.sorted()}"
         ).logError()
     }
 

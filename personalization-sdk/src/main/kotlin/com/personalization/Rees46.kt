@@ -1,5 +1,7 @@
 package com.personalization
 
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
@@ -36,6 +38,7 @@ object Rees46 {
     fun initialize(context: Context, config: Rees46Config): SDK {
         val sdk = SDK()
         sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
+        sdk.logLevel = config.logLevel
         sdk.initialize(
             context = context,
             shopId = config.shopId,
@@ -158,10 +161,13 @@ object Rees46 {
             // not warned about.
             InstanceResolver.Resolution.NotRegistered -> {
                 if (shopId != null) {
-                    SDK.warn(
-                        "Rees46.awaitInstance(\"$shopId\"): no shop with this id is initialized or " +
-                            "registered. Waiting for it to register — if you never register it (typo, or " +
-                            "a missing Rees46.initialize/registerShops), onReady will never fire."
+                    SdkLogs.log(
+                        LogLevel.WARNING,
+                        LogCodes.INVALID_ARGUMENT,
+                        "Rees46.awaitInstance: no shop with this id is initialized or registered. " +
+                            "Waiting for it to register — if it never is (typo, or a missing " +
+                            "Rees46.initialize/registerShops), onReady will never fire.",
+                        shopId
                     )
                 }
                 SdkRegistry.onNextRegister(shopId, onReady)
@@ -199,13 +205,13 @@ object Rees46 {
         // a tracking/init failure must never undo the shown notification.
         SdkRegistry.dispatchMessage(shopId = shopId, data = payload.toNotificationData())
         runCatching { targetInstance(resolution, shopId)?.onPushReceived(payload) }
-            .onFailure { SDK.error("handlePush: failed to track received (shop=$shopId)", it) }
+            .onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
     private fun clickPush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
         runCatching { targetInstance(resolution, shopId)?.notificationClicked(payload.toBundle()) }
-            .onFailure { SDK.error("handlePush: failed to track click (shop=$shopId)", it) }
+            .onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
     }
 
     /**
@@ -224,9 +230,12 @@ object Rees46 {
             is InstanceResolver.Resolution.Pending -> resolution to resolution.shopId
             InstanceResolver.Resolution.Ambiguous,
             InstanceResolver.Resolution.NotRegistered -> {
-                SDK.warn(
-                    "handlePush: push dropped — no shop resolves it (shop_id=$payloadShopId, " +
-                        "live=${SdkRegistry.shopIds()}, pending=${pending.keys})."
+                SdkLogs.log(
+                    LogLevel.WARNING,
+                    LogCodes.PUSH_DROPPED,
+                    "handlePush: push dropped — no shop resolves it",
+                    payloadShopId,
+                    mapOf("live" to SdkRegistry.shopIds().size, "pending" to pending.size)
                 )
                 null
             }
@@ -263,6 +272,16 @@ object Rees46 {
      */
     fun setOnMessageListener(listener: OnShopMessageListener?) {
         SdkRegistry.setMessageListener(listener)
+    }
+
+    /**
+     * Sets the process-global receiver of the SDK's log messages: each message of every shop that
+     * passes that shop's [Rees46Config.logLevel], for example to forward it to the app's crash
+     * reporter. The handler runs on a background thread; an exception it throws is caught. Messages
+     * carry no personal data. Replaces any previously set handler; pass null to clear.
+     */
+    fun setLogHandler(handler: SdkLogHandler?) {
+        SdkLogs.handler = handler
     }
 
     private fun Map<String, String>.toBundle(): Bundle =

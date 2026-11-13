@@ -168,7 +168,7 @@ class NetworkRepositoryImplTest {
 
         assertEquals(listOf("error:-1"), listener.awaitCalls(timeoutMs = 5_000))
         val log = ShadowLog.getLogs().joinToString("\n") { it.msg.orEmpty() }
-        assertTrue("the failed request is named: $log", log.contains("GET products/get:"))
+        assertTrue("the failed request is named: $log", log.contains("method=GET, path=products/get"))
     }
 
     @Test
@@ -225,7 +225,7 @@ class NetworkRepositoryImplTest {
         assertFalse(log, log.contains("79990001122"))
         assertFalse(log, log.contains("answer@example.com"))
         assertFalse(log, log.contains("79990004455"))
-        assertTrue(log, log.contains("422: POST profile/set"))
+        assertTrue(log, log.contains("method=POST, path=profile/set, status=422"))
     }
 
     /** Reads one HTTP/1.1 request from [socket], records it and writes the [handler]'s reply. */

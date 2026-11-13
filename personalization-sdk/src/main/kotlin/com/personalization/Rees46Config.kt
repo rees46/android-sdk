@@ -16,6 +16,8 @@ package com.personalization
  * @property tag log tag for this instance.
  * @property enableAutoPopupPresentation whether server popups are shown in the activity on screen
  * while no [SDK.popupPresentationListener] is set.
+ * @property logLevel how much this shop's instance writes to the log; [LogLevel.WARNING] by default.
+ * Messages that pass it also reach [Rees46.setLogHandler].
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.
@@ -28,5 +30,6 @@ data class Rees46Config @JvmOverloads constructor(
     val needReInitialization: Boolean = false,
     val addTrailingSlash: Boolean = true,
     val tag: String = "SDK",
-    val enableAutoPopupPresentation: Boolean = true
+    val enableAutoPopupPresentation: Boolean = true,
+    val logLevel: LogLevel = LogLevel.WARNING,
 )

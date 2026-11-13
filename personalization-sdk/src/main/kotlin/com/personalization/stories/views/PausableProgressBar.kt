@@ -2,7 +2,6 @@ package com.personalization.stories.views
 
 import android.content.Context
 import android.util.AttributeSet
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.animation.Animation
@@ -116,7 +115,6 @@ internal class PausableProgressBar @JvmOverloads constructor(
 
                 override fun onAnimationEnd(animation: Animation) {
                     if (!paused) {
-                        Log.d(SDK.TAG, "onAnimationEnd")
                         callback?.onFinishProgress()
                     }
                 }

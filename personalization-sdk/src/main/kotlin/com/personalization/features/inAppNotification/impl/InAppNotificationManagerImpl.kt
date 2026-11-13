@@ -1,5 +1,8 @@
 package com.personalization.features.inAppNotification.impl
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -93,11 +96,11 @@ class InAppNotificationManagerImpl @Inject constructor(
                 val activity = try {
                     listener(popupDto)
                 } catch (exception: Exception) {
-                    SDK.error("Popup ${popupDto.id} was not shown: the presentation listener failed", exception)
+                    SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "Popup was not shown: the presentation listener threw", context = mapOf("popup" to popupDto.id), throwable = exception)
                     return
                 }
                 if (activity == null) {
-                    SDK.debug("Popup ${popupDto.id} was kept back by the presentation listener")
+                    SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id))
                     return
                 }
                 activity.supportFragmentManager.takeIf { it.canShowDialog() }
@@ -106,18 +109,18 @@ class InAppNotificationManagerImpl @Inject constructor(
             presentation.autoPresentation -> defaultTarget()
 
             else -> {
-                SDK.debug("Popup ${popupDto.id} was not shown: automatic presentation is off")
+                SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id))
                 return
             }
         }
         if (target == null) {
-            SDK.warn("Popup ${popupDto.id} was not shown: no activity that can take a dialog")
+            SdkLogs.log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id))
             return
         }
         try {
             showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
-            SDK.error("Popup ${popupDto.id} was not shown: ${exception.message}", exception)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id), throwable = exception)
             return
         }
 
@@ -259,7 +262,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         target: FragmentManager?
     ) {
         if (target == null) {
-            SDK.warn("Dialog was not shown: no activity on screen to show it in")
+            SdkLogs.log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in")
             return
         }
 

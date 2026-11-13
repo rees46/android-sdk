@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class InvalidDomainError(
     private val tag: String,
@@ -11,10 +13,7 @@ class InvalidDomainError(
      * Logs the error with a specific message
      */
     fun logError(message: String) {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */ "Error caught in $functionName: $message"
-        )
+        SdkLogs.log(LogLevel.ERROR, LogCodes.INVALID_CONFIG, "Error caught in $functionName: $message")
     }
 
     /**

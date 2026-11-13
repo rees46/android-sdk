@@ -1,5 +1,7 @@
 package com.personalization.ui.widgets
 
+import com.personalization.logs.SdkLogs
+import com.personalization.LogLevel
 import android.app.Activity
 import android.graphics.Color
 import android.util.Log
@@ -254,6 +256,15 @@ class StoryPollTest {
 
     @Test
     fun `unknown kinds go to the debug log`() {
+        SdkLogs.register("log-test", LogLevel.DEBUG, "SDK")
+        try {
+            assertUnknownKindsAreLogged()
+        } finally {
+            SdkLogs.reset()
+        }
+    }
+
+    private fun assertUnknownKindsAreLogged() {
         assertNull(StoryPoll.parse(JSONObject("""{"type":"poll","poll_type":"emoji","poll":{"code":"x"}}""")))
         assertNull(StoryPoll.parse(JSONObject("""{"type":"poll","poll_type":"mini_poll","poll":{"code":"x","kind":"quiz"}}""")))
         val logs = ShadowLog.getLogs().filter { it.type == Log.DEBUG }.map { it.msg }
