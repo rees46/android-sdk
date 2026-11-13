@@ -7,6 +7,4 @@ object UserBasicParams {
     const val SID = "sid"
     const val SEGMENT = "segment"
     const val STREAM = "stream"
-    const val SOURCE_FROM = "from"
-    const val SOURCE_CODE = "code"
 }

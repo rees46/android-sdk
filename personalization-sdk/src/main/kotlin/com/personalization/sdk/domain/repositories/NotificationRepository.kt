@@ -2,14 +2,9 @@ package com.personalization.sdk.domain.repositories
 
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.responses.notifications.GetAllNotificationsResponse
-import com.personalization.sdk.domain.models.NotificationSource
 import org.json.JSONObject
 
 interface NotificationRepository {
-
-    fun getNotificationSource(timeDuration: Long): NotificationSource?
-
-    fun updateNotificationSource(type: String, id: String)
 
     fun getAllNotificationsParams(
         email: String?,

@@ -1,8 +1,6 @@
 package com.personalization.sdk.data.repositories.network
 
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.domain.models.NotificationSource
-import com.personalization.sdk.domain.repositories.NotificationRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -50,7 +48,6 @@ class NetworkRepositoryImplTest {
     private var handler: (Recorded) -> Reply? = { Reply(200, "{}") }
 
     private val release = CountDownLatch(1)
-    private val notificationRepository = mockk<NotificationRepository>()
     private val uncaught = CopyOnWriteArrayList<Throwable>()
     private var previousUncaughtHandler: Thread.UncaughtExceptionHandler? = null
     private lateinit var repository: NetworkRepositoryImpl
@@ -72,9 +69,7 @@ class NetworkRepositoryImplTest {
             every { getSegmentForABTesting() } returns "A"
             every { getStream() } returns "android"
         }
-        every { notificationRepository.getNotificationSource(any()) } returns null
-
-        repository = NetworkRepositoryImpl(settings, notificationRepository)
+        repository = NetworkRepositoryImpl(settings)
         repository.initialize("http://127.0.0.1:${server.localPort}/")
 
         previousUncaughtHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -188,31 +183,26 @@ class NetworkRepositoryImplTest {
     }
 
     @Test
-    fun `a push click does not replace the request's own code`() {
-        every { notificationRepository.getNotificationSource(any()) } returns
-            NotificationSource(type = "bulk", id = "push-1", time = System.currentTimeMillis())
-
+    fun `a request keeps its own code and gets no from`() {
         val listener = Recorder()
         repository.post("track/stories", JSONObject().put("code", "story-1"), listener)
         listener.awaitCalls()
 
         val body = JSONObject(requests.single().body)
         assertEquals("story-1", body.getString("code"))
-        assertFalse("from of the push must not pair with the story's code", body.has("from"))
+        assertFalse(body.has("from"))
     }
 
+    // `/init` with top-level `from` and `code` records a click of that mailing: they are not common
+    // fields. A clicked push travels as the `source` of `/push` events instead.
     @Test
-    fun `a push click is attributed to a request without its own code`() {
-        every { notificationRepository.getNotificationSource(any()) } returns
-            NotificationSource(type = "bulk", id = "push-1", time = System.currentTimeMillis())
-
+    fun `common fields carry no from or code`() {
         val listener = Recorder()
-        repository.post("push/attributed", JSONObject(), listener)
+        repository.post("push", JSONObject().put("event", "view"), listener)
         listener.awaitCalls()
 
         val body = JSONObject(requests.single().body)
-        assertEquals("bulk", body.getString("from"))
-        assertEquals("push-1", body.getString("code"))
+        assertEquals(setOf("event", "shop_id", "did", "sid", "seance", "segment", "stream"), body.keys().asSequence().toSet())
     }
 
     @Test

@@ -27,6 +27,9 @@ interface SearchManager {
      *
      * @param query Search phrase
      * @param locations Comma separated list of locations IDs
+     * @param excludedMerchants Merchants to leave out. Applies only together with [locations]: the
+     * server filters merchants inside the given locations, so without them the parameter is not sent.
+     * @param excludedBrands Brands to leave out
      * @param onSearchInstant Callback for search instant
      * @param onError Callback for error
      */

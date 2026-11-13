@@ -54,7 +54,9 @@ internal class SearchManagerImpl @Inject constructor(
         locations?.let {
             searchParams.put(SearchParams.Parameter.LOCATIONS, locations)
         }
-        excludedMerchants?.let {
+        // The server filters merchants inside the given locations only: without locations — or with
+        // an empty list of them — the filter matches no product, and the search comes back empty.
+        if (!locations.isNullOrBlank() && excludedMerchants != null) {
             searchParams.put(SearchParams.Parameter.EXCLUDED_MERCHANTS, excludedMerchants.joinToString(","))
         }
         excludedBrands?.let {
