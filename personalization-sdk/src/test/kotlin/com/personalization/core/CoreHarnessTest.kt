@@ -78,6 +78,17 @@ class CoreHarnessTest {
         assertFalse(lifecycle.isForeground)
     }
 
+    @Test
+    fun `the main dispatcher is looked up on first use, not when the dispatchers are made`() {
+        var lookedUp = 0
+        val dispatchers = CoreDispatchers(main = { lookedUp++; kotlinx.coroutines.Dispatchers.Unconfined })
+        assertEquals(0, lookedUp)
+
+        dispatchers.main
+        dispatchers.main
+        assertEquals(1, lookedUp)
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `test dispatchers run the core's work when the test lets them`() = runTest {

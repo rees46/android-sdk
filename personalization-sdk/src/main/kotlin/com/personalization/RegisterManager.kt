@@ -110,8 +110,9 @@ class RegisterManager @Inject constructor(
                         handleInitSuccess(response, knownDevice)
                     }
 
+                    // The answer's body stays out of the log: a server often repeats the request's data in it.
                     override fun onError(code: Int, msg: String?) {
-                        handleInitError(code, msg, attempt, knownDevice)
+                        handleInitError(code, attempt, knownDevice)
                     }
                 }
             )
@@ -166,8 +167,7 @@ class RegisterManager @Inject constructor(
         }
     }
 
-    // The answer's body stays out of the log: a server often repeats the request's data in it.
-    private fun handleInitError(code: Int, @Suppress("UNUSED_PARAMETER") msg: String?, attempt: Int, knownDevice: Boolean) {
+    private fun handleInitError(code: Int, attempt: Int, knownDevice: Boolean) {
         if (code in 500..Int.MAX_VALUE || code <= 0) {
             if (attempt < MAX_INIT_RETRIES) {
                 log(

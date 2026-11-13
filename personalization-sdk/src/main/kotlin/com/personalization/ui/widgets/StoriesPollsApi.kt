@@ -31,7 +31,7 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
         val claimed = AtomicBoolean(false)
         val timeout = Runnable {
             if (!claimed.compareAndSet(false, true)) return@Runnable
-            SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${pathOf(url)} failed: no did in ${DID_TIMEOUT_MS / 1000} s", sdk.logShopId)
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${StoriesApiV3.pathOf(url)} failed: no did in ${DID_TIMEOUT_MS / 1000} s", sdk.logShopId)
             callback(StoriesPollsResult.Failure(StoriesLoader.ERROR_CODE, "no did"))
         }
         handler.postDelayed(timeout, DID_TIMEOUT_MS)
@@ -75,11 +75,9 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
 
     // Path only, without the answer: the query carries did and sid, an error answer often repeats them.
     private fun failure(url: String, code: Int, message: String?): StoriesPollsResult {
-        SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${pathOf(url)} failed: $code", sdk.logShopId)
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${StoriesApiV3.pathOf(url)} failed: $code", sdk.logShopId)
         return StoriesPollsResult.Failure(code, message)
     }
-
-    private fun pathOf(url: String): String = runCatching { java.net.URL(url).path }.getOrDefault("")
 
     /** `message` ответа с ошибкой, иначе начало тела. */
     private fun message(body: String): String? =

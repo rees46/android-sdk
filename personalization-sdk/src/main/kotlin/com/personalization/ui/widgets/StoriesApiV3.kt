@@ -192,7 +192,8 @@ internal object StoriesApiV3 {
         return response
     }
 
-    private fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
+    /** The path of [url] without the host and the query, for a log line: the query carries did and sid. */
+    fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
 
     private fun sendHttp(method: String, url: String, body: String?): Response {
         val connection = URL(url).openConnection() as HttpURLConnection

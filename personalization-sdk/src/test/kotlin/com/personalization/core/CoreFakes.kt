@@ -57,5 +57,5 @@ internal class FakeAppLifecycle(foreground: Boolean = true) : AppLifecycle {
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun testCoreDispatchers(scheduler: TestCoroutineScheduler = TestCoroutineScheduler()): CoreDispatchers {
     val dispatcher = StandardTestDispatcher(scheduler)
-    return CoreDispatchers(io = dispatcher, main = dispatcher, default = dispatcher)
+    return CoreDispatchers(io = dispatcher, main = { dispatcher }, default = dispatcher)
 }
