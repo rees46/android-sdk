@@ -74,7 +74,7 @@ class CoreInitTest {
         context.getSharedPreferences(layout.partitionName, Context.MODE_PRIVATE).edit().clear().commit()
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
         storage = ShopStorage(context, layout)
-        settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, SHOP) })
+        settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, shopId = SHOP) })
         SdkLogs.reset()
         SdkLogs.handlerExecutor = Executor { it.run() }
         SdkLogs.register(SHOP, LogLevel.DEBUG, "SDK")

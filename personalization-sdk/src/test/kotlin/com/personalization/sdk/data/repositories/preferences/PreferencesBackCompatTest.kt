@@ -5,16 +5,18 @@ import com.personalization.sdk.domain.repositories.PreferencesRepository
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * The forms with `legacyPreferencesKey` that earlier releases had stay, deprecated: code built against
- * them keeps compiling and running, and they open the partition as the current forms do.
+ * The parameters of `initialize` and `InitPreferencesUseCase.invoke` stay those of 2.49.0
+ * (`context, preferencesKey, legacyPreferencesKey, shopId`): a call written for that release binds as it
+ * did — its third argument is the legacy key, not the shop — and opens the partition, the legacy key
+ * being ignored.
  */
-@Suppress("DEPRECATION")
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class PreferencesBackCompatTest {
@@ -22,37 +24,40 @@ class PreferencesBackCompatTest {
     private val context = mockk<Context>(relaxed = true)
 
     @Test
-    fun `the data source and the repository take the old form and open the partition`() {
+    fun `the repository's three-argument call of 2_49_0 binds its third argument to the legacy key`() {
         val source = mockk<PreferencesDataSource>(relaxed = true)
         val repository: PreferencesRepository = PreferencesRepositoryImpl(source)
 
+        repository.initialize(context, "partition", "old_key")
         repository.initialize(context, "partition", "old_key", "shop")
-        repository.initialize(context = context, preferencesKey = "partition", legacyPreferencesKey = null)
+        repository.initialize(context = context, preferencesKey = "partition", shopId = "named")
 
-        verify(exactly = 1) { source.initialize(context, "partition", "shop") }
-        verify(exactly = 1) { source.initialize(context, "partition", null) }
+        verify(exactly = 1) { source.initialize(context, "partition", null, null) }
+        verify(exactly = 1) { source.initialize(context, "partition", null, "shop") }
+        verify(exactly = 1) { source.initialize(context, "partition", null, "named") }
     }
 
     @Test
-    fun `the use case takes the old form and opens the partition`() {
+    fun `the use case takes the forms of 2_49_0`() {
         val repository = mockk<PreferencesRepository>(relaxed = true)
+        val useCase = InitPreferencesUseCase(repository)
 
-        InitPreferencesUseCase(repository).invoke(context, "partition", "old_key", "shop")
+        useCase.invoke(context, "partition", "old_key")
+        useCase.invoke(context, "partition", "old_key", "shop")
 
-        verify(exactly = 1) { repository.initialize(context, "partition", "shop") }
+        verify(exactly = 1) { repository.initialize(context, "partition", null, null) }
+        verify(exactly = 1) { repository.initialize(context, "partition", null, "shop") }
     }
 
     @Test
-    fun `the data source's old form opens the partition`() {
+    fun `the data source's three-argument call opens the partition and not a shop named like the legacy key`() {
         val source = PreferencesDataSourceImpl()
         val real = androidx.test.core.app.ApplicationProvider.getApplicationContext<Context>()
 
-        source.initialize(real, "back_compat_partition", "old_key", "shop")
+        source.initialize(real, "back_compat_partition", "old_key")
         source.saveValue("probe", "value")
 
-        org.junit.Assert.assertEquals(
-            "value",
-            real.getSharedPreferences("back_compat_partition", Context.MODE_PRIVATE).getString("probe", null),
-        )
+        assertEquals("value", real.getSharedPreferences("back_compat_partition", Context.MODE_PRIVATE).getString("probe", null))
+        assertEquals(null, real.getSharedPreferences("old_key", Context.MODE_PRIVATE).getString("probe", null))
     }
 }

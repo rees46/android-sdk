@@ -24,6 +24,7 @@ class PreferencesDataSourceImpl @Inject constructor() : PreferencesDataSource {
     override fun initialize(
         context: Context,
         preferencesKey: String,
+        legacyPreferencesKey: String?,
         shopId: String?
     ) {
         // The data of older releases is read into the partition before this, by StorageMigrations.

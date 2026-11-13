@@ -63,7 +63,7 @@ class CoreInitFixturesTest {
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
         val storage = ShopStorage(context, layout)
         case.optJSONObject("saved")?.let { storage.saveInitAnswer(it) }
-        val settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, layout.shopId) })
+        val settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, shopId = layout.shopId) })
         settings.updateShopId(layout.shopId)
 
         val response = case.getJSONObject("response")

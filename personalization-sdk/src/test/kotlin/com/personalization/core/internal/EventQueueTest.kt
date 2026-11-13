@@ -90,7 +90,7 @@ class EventQueueTest {
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
         QueueStore.reset()
         storage = ShopStorage(context, layout)
-        settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, SHOP) })
+        settings = UserSettingsRepositoryImpl(PreferencesDataSourceImpl().apply { initialize(context, layout.partitionName, shopId = SHOP) })
         state = InstanceState(shopId = { SHOP }, dispatchers = dispatchers)
         logged.clear()
         sent.clear()

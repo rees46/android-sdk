@@ -8,9 +8,15 @@ class InitPreferencesUseCase @Inject constructor(
     private val preferencesRepository: PreferencesRepository
 ) {
 
+    /**
+     * Opens the shop's partition [preferencesKey]. The parameters are those of earlier releases, so a call
+     * written for them binds as it did: [legacyPreferencesKey] is not read any more, the SDK reads the
+     * store of older releases into the shop's partition itself, once, before this is called.
+     */
     fun invoke(
         context: Context,
         preferencesKey: String,
+        legacyPreferencesKey: String? = null,
         shopId: String? = null
     ) {
         preferencesRepository.initialize(
@@ -19,19 +25,4 @@ class InitPreferencesUseCase @Inject constructor(
             shopId = shopId
         )
     }
-
-    /**
-     * The form of earlier releases. [legacyPreferencesKey] is not read any more: the SDK reads the store
-     * of older releases into the shop's partition itself, once, before this is called.
-     */
-    @Deprecated(
-        message = "legacyPreferencesKey is ignored: the SDK migrates the store of older releases itself.",
-        replaceWith = ReplaceWith("invoke(context, preferencesKey, shopId)")
-    )
-    fun invoke(
-        context: Context,
-        preferencesKey: String,
-        legacyPreferencesKey: String?,
-        shopId: String? = null
-    ) = invoke(context = context, preferencesKey = preferencesKey, shopId = shopId)
 }
