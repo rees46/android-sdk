@@ -14,6 +14,21 @@ interface PreferencesDataSource {
         shopId: String? = null
     )
 
+    /**
+     * The form of earlier releases. [legacyPreferencesKey] is not read any more: the store of older
+     * releases is read into the partition before, by the SDK's own migration.
+     */
+    @Deprecated(
+        message = "legacyPreferencesKey is ignored: the SDK migrates the store of older releases itself.",
+        replaceWith = ReplaceWith("initialize(context, preferencesKey, shopId)")
+    )
+    fun initialize(
+        context: Context,
+        preferencesKey: String,
+        legacyPreferencesKey: String?,
+        shopId: String? = null
+    ) = initialize(context = context, preferencesKey = preferencesKey, shopId = shopId)
+
     fun getPushToken(provider: String): String
 
     fun savePushToken(provider: String, value: String)
