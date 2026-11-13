@@ -85,7 +85,9 @@ class RegisterManager @Inject constructor(
         // handleInitSuccess persists the server's did. Keeps device identity consistent across
         // platforms and off Google's discouraged hardware-id APIs. Existing installs already hold a
         // non-empty did, so they keep it (this branch only runs when did is empty).
-        initializeSdk(seance = null)
+        // The requests waiting for a did stay queued: released now, they would go out with an empty
+        // did. handleInitSuccess releases them once the server's did is stored.
+        initializeSdk(seance = null, releaseQueue = false)
         init()
     }
 
@@ -209,10 +211,11 @@ class RegisterManager @Inject constructor(
         SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
-    private fun initializeSdk(seance: String?) {
+    /** Starts the session; [releaseQueue] sends the requests that waited for a did, which must be stored by now. */
+    private fun initializeSdk(seance: String?, releaseQueue: Boolean = true) {
         val finalSeance = seance ?: generateOrRetrieveSeance()
         updateUserSettingsValueUseCase.updateSid(value = finalSeance)
-        executeQueueTasksUseCase.invoke()
+        if (releaseQueue) executeQueueTasksUseCase.invoke()
         pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
     }
 

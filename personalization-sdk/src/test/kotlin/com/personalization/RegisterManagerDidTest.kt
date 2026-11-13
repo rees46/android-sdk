@@ -20,6 +20,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.json.JSONObject
 import org.junit.Before
 import org.junit.Test
@@ -77,6 +78,39 @@ class RegisterManagerDidTest {
         // The server assigns the did; a successful /init persists it verbatim.
         listener.captured.onSuccess(JSONObject("""{"did":"SERVER_DID","seance":"SRV_SEANCE"}"""))
         verify(exactly = 1) { update.updateDid("SERVER_DID") }
+    }
+
+    /**
+     * Requests made before a new device has a did wait in the network queue. Released before `/init`
+     * stored the server's did, they went out with `did=""`.
+     */
+    @Test
+    fun `a new device releases the waiting requests only after the server's did is stored`() {
+        every { get.getDid() } returns ""
+        val listener = slot<OnApiCallbackListener>()
+        every { network.get(eq("init"), any(), capture(listener)) } just Runs
+
+        manager.initialize(context, contentResolver, autoSendPushToken = false)
+        verify(exactly = 0) { queue.invoke() }
+
+        listener.captured.onSuccess(JSONObject("""{"did":"SERVER_DID","seance":"SRV_SEANCE"}"""))
+        verifyOrder {
+            update.updateDid("SERVER_DID")
+            queue.invoke()
+        }
+        verify(exactly = 1) { queue.invoke() }
+    }
+
+    @Test
+    fun `a new device whose init fails keeps the waiting requests queued`() {
+        every { get.getDid() } returns ""
+        val listener = slot<OnApiCallbackListener>()
+        every { network.get(eq("init"), any(), capture(listener)) } just Runs
+
+        manager.initialize(context, contentResolver, autoSendPushToken = false)
+        listener.captured.onError(403, null)
+
+        verify(exactly = 0) { queue.invoke() }
     }
 
     @Test
