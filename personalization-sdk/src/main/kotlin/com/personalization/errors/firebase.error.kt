@@ -10,6 +10,6 @@ class FirebaseError(
 ) {
 
     fun logError() {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_TOKEN_FAILED, "Failed to retrieve Firebase token: ${exception?.message ?: "Unknown error"}")
+        SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_TOKEN_FAILED, "Failed to retrieve Firebase token: ${exception?.javaClass?.simpleName ?: "unknown error"}")
     }
 }

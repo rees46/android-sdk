@@ -872,7 +872,7 @@ internal class PopupV3ImageView(context: Context, private val spec: PopupV3Specs
                 override fun onLoadCleared(placeholder: Drawable?) = setImageDrawable(placeholder)
 
                 override fun onLoadFailed(errorDrawable: Drawable?) {
-                    SDK.debug("popups v3: image $url failed to load")
+                    SDK.debug("popups v3: an image failed to load")
                 }
             })
     }

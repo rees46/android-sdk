@@ -11,6 +11,6 @@ class BaseInfoError(
 ) {
 
     fun logError() {
-        SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, "$message: ${exception?.message ?: "Unknown error"}")
+        SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, "$message: ${exception?.javaClass?.simpleName ?: "unknown error"}")
     }
 }

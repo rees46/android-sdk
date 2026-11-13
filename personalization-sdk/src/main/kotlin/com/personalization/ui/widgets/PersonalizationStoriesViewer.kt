@@ -628,7 +628,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(intent)
         } catch (_: android.content.ActivityNotFoundException) {
-            SDK.error("PersonalizationStoriesViewer: no app can open $url")
+            SDK.error("PersonalizationStoriesViewer: no app can open the link")
         }
     }
 
@@ -643,7 +643,7 @@ class PersonalizationStoriesViewer(
         track("share")
         val shared = shareUrlTransform?.let { transform ->
             runCatching { transform(url) }.getOrElse {
-                SDK.error("PersonalizationStoriesViewer: shareUrlTransform failed, sharing $url", it)
+                SDK.error("PersonalizationStoriesViewer: shareUrlTransform threw, the link is shared as it is", it)
                 url
             }
         } ?: url
@@ -656,7 +656,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(chooser)
         } catch (throwable: RuntimeException) {
-            SDK.error("PersonalizationStoriesViewer: cannot share $url", throwable)
+            SDK.error("PersonalizationStoriesViewer: the link could not be shared", throwable)
             endShare()
             return
         }

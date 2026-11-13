@@ -92,7 +92,7 @@ class PushTokenManager @Inject constructor(
                 result.exceptionOrNull()?.let { error ->
                     BaseInfoError(
                         tag = TAG,
-                        message = "${source.provider.id} token fetch error: ${error.message}"
+                        message = "${source.provider.id} token fetch error: ${error.javaClass.simpleName}"
                     ).logError()
                 }
             }

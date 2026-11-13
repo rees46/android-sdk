@@ -219,7 +219,7 @@ internal class PopupV3Session(
         val view = try {
             PopupV3RootView(host, popup, design, variables, state, actions, sdk, blocking, onOutside = { close(sendEvent = true) })
         } catch (throwable: Throwable) {
-            fail("render failed: ${throwable.message}")
+            fail("render failed: ${throwable.javaClass.simpleName}")
             return
         }
         try {
@@ -232,7 +232,7 @@ internal class PopupV3Session(
         } catch (throwable: Throwable) {
             dialog = null
             (view.parent as? ViewGroup)?.removeView(view)
-            if (!shown) fail("no window: ${throwable.message}") else SDK.debug("popups v3: popup ${popup.id} could not come back: ${throwable.message}")
+            if (!shown) fail("no window: ${throwable.javaClass.simpleName}") else SDK.debug("popups v3: popup ${popup.id} could not come back: ${throwable.javaClass.simpleName}")
             return
         }
         activity = WeakReference(host)
@@ -725,7 +725,7 @@ internal class PopupV3ActionHandler(
             val handled = try {
                 handler(link)
             } catch (throwable: Throwable) {
-                SDK.error("popups v3: link handler failed on $link", throwable)
+                SDK.error("popups v3: the link handler threw", throwable)
                 false
             }
             if (handled) {
@@ -739,9 +739,9 @@ internal class PopupV3ActionHandler(
         try {
             host.startActivity(intent)
         } catch (exception: ActivityNotFoundException) {
-            SDK.error("popups v3: no app can open $link")
+            SDK.error("popups v3: no app can open the link")
         } catch (exception: RuntimeException) {
-            SDK.error("popups v3: cannot open $link", exception)
+            SDK.error("popups v3: the link could not be opened", exception)
         }
     }
 

@@ -37,7 +37,7 @@ class NotificationClickProcessor @Inject constructor(
             ParsingJsonError(
                 tag = this@NotificationClickProcessor.javaClass.name,
                 functionName = "processClick",
-                message = e.message.orEmpty()
+                message = e.javaClass.simpleName
             ).logError()
         }
     }

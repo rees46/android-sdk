@@ -14,7 +14,8 @@ import java.util.concurrent.Executors
  *
  * Each shop has its own level ([register]); a message about a shop passes that level. A message that
  * is not about one shop passes the most detailed level among the shops, or [LogLevel.WARNING] while
- * there is none. Callers pass only data without personal data: method and path, codes, counts.
+ * there is none. Callers pass only data without personal data: method and path, codes, counts. An
+ * exception is written as its class name only: its message often carries an answer's values or a URL.
  */
 internal object SdkLogs {
 
@@ -60,8 +61,8 @@ internal object SdkLogs {
     ) {
         if (!levelFor(shopId).allows(level)) return
         val tag = shopId?.let { shops[it]?.tag } ?: SDK.TAG
-        val fullContext = if (throwable == null) context else context + ("exception" to throwable.javaClass.simpleName)
-        writeToLogcat(level, tag, code, message, fullContext, throwable)
+        val fullContext = if (throwable == null) context else context + ("exception" to exceptionName(throwable))
+        writeToLogcat(level, tag, code, message, fullContext)
         val handler = handler ?: return
         val entry = SdkLogMessage(level, code, message, shopId, fullContext)
         try {
@@ -69,13 +70,17 @@ internal object SdkLogs {
                 try {
                     handler.onLog(entry)
                 } catch (failure: Throwable) {
-                    Log.w(tag, "[log_handler_failed] the app's log handler threw", failure)
+                    Log.w(tag, "[log_handler_failed] the app's log handler threw ${exceptionName(failure)}")
                 }
             }
         } catch (rejected: Throwable) {
-            Log.w(tag, "[log_handler_failed] the log handler could not be scheduled", rejected)
+            Log.w(tag, "[log_handler_failed] the log handler could not be scheduled: ${exceptionName(rejected)}")
         }
     }
+
+    /** The class of [throwable], never its message or stack trace: they may carry data. */
+    fun exceptionName(throwable: Throwable): String =
+        throwable.javaClass.simpleName.ifEmpty { throwable.javaClass.name }
 
     private fun writeToLogcat(
         level: LogLevel,
@@ -83,17 +88,16 @@ internal object SdkLogs {
         code: String,
         message: String,
         context: Map<String, Any?>,
-        throwable: Throwable?,
     ) {
         val line = buildString {
             append('[').append(code).append("] ").append(message)
             if (context.isNotEmpty()) append(' ').append(context)
         }
         when (level) {
-            LogLevel.DEBUG -> Log.d(tag, line, throwable)
-            LogLevel.INFO -> Log.i(tag, line, throwable)
-            LogLevel.WARNING -> Log.w(tag, line, throwable)
-            LogLevel.ERROR -> Log.e(tag, line, throwable)
+            LogLevel.DEBUG -> Log.d(tag, line)
+            LogLevel.INFO -> Log.i(tag, line)
+            LogLevel.WARNING -> Log.w(tag, line)
+            LogLevel.ERROR -> Log.e(tag, line)
             LogLevel.NONE -> Unit
         }
     }

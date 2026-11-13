@@ -87,7 +87,7 @@ internal class StoryPoll(
         fun parse(json: JSONObject): StoryPoll? = try {
             parseOrThrow(json)
         } catch (throwable: Throwable) {
-            SDK.debug("stories poll: broken element: ${throwable.message}")
+            SDK.debug("stories poll: broken element: ${throwable.javaClass.simpleName}")
             null
         }
 
