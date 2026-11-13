@@ -229,8 +229,82 @@ class CoreSessionTest {
 
         assertNull(waiting.getCompleted())
         assertEquals("", settings.getSid())
-        assertEquals(SdkState.RETRYING, state.current)
+        // A new session's /init that fails leaves the state as the start's answer set it.
+        assertEquals(SdkState.READY, state.current)
         // While init is repeated, a request does not wait for it.
+        assertNull(request(init).getCompleted())
+    }
+
+    @Test
+    fun `an init answer without a seance starts a session without a sid, and requests do not send init after init`() {
+        val init = started()
+        answer(HttpResult.Success(JSONObject().put("did", "D1")))
+
+        assertTrue(init.session.isAlive())
+        assertEquals("", settings.getSid())
+        repeat(3) { assertNull(request(init).getCompleted()) }
+        assertEquals("one init, no storm", 1, calls.size)
+
+        // Its window ends like any session's: the next request asks for a new one.
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        assertFalse(init.session.isAlive())
+        request(init)
+        assertEquals(2, calls.size)
+    }
+
+    @Test
+    fun `a failed init of a new session keeps the state and does not act on the saved answer again`() {
+        val answers = mutableListOf<Boolean>()
+        val init = CoreInit(
+            setup = InitSetup(SHOP),
+            send = { CompletableDeferred<HttpResult>().also { calls += it }.await() },
+            settings = settings,
+            storage = storage,
+            state = state,
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            hooks = object : InitHooks {
+                override fun onAnswer(answer: JSONObject, fresh: Boolean) {
+                    answers += fresh
+                }
+
+                override fun onUsable() = Unit
+            },
+            dispatchers = dispatchers,
+            clock = clock,
+            backoff = Backoff(random = { 0.5 }),
+            session = SessionWindow(settings, storage, clock),
+        ).also {
+            inits += it
+            it.start()
+            scheduler.runCurrent()
+        }
+        answer(ok("S1"))
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+
+        request(init)
+        answer(HttpResult.Failure(SdkError.Http(503)))
+        scheduler.advanceTimeBy(1_000)
+        scheduler.runCurrent()
+        answer(HttpResult.Failure(SdkError.Network))
+
+        assertEquals(SdkState.READY, state.current)
+        assertEquals("only the start's answer, and it was fresh", listOf(true), answers)
+    }
+
+    @Test
+    fun `a relaunch more than two hours after the last event is ready at once, and offline requests fail at once`() {
+        knownDevice("OLD", lastActivity = clock.now - SessionWindow.WINDOW_MS - 1)
+        connectivity.set(false)
+        val init = started()
+
+        assertEquals(SdkState.READY, state.current)
+        // A request waits for the launch's /init, which finds no network at once: the request goes on at
+        // once too (and fails at once in the client), without waiting for a repeat.
+        val waiting = request(init)
+        assertFalse(waiting.isCompleted)
+        answer(HttpResult.Failure(SdkError.Network))
+        assertNull(waiting.getCompleted())
         assertNull(request(init).getCompleted())
     }
 

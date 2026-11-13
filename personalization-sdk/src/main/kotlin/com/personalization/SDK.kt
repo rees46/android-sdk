@@ -262,11 +262,17 @@ open class SDK {
 
     /**
      * The `sid` of the current session; null while there is none, or before initialization. On the new
-     * core it is the server's (the `seance` of `/init`), and a session two hours without events ends:
-     * the next request or event starts a new one with `/init` first.
+     * core it is the server's (the `seance` of `/init`), and a session two hours without events ends —
+     * from then on this is null — and the next request or event starts a new one with `/init` first.
      */
     val sessionId: String?
-        get() = if (::userSettingsRepository.isInitialized) userSettingsRepository.getSid().ifEmpty { null } else null
+        get() {
+            if (!::userSettingsRepository.isInitialized) return null
+            // On the new core a sid whose window ended is no session any more.
+            val session = (core as? CoreV2)?.init?.session
+            if (session != null && !session.isAlive()) return null
+            return userSettingsRepository.getSid().ifEmpty { null }
+        }
 
     /** The bridges' listeners of a new `sid` ([onSessionChange]). */
     private val sessionListeners = CopyOnWriteArrayList<(String) -> Unit>()

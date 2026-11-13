@@ -14,7 +14,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  * - The core never makes a `sid` of its own. A `sid` an earlier release made goes out once, with the
  *   `/init` of a window still alive, and the server's answer replaces it.
- * - The window is alive while there is a `sid` and the last activity is at most [windowMs] ago.
+ * - The window is alive while there is a `sid` and the last activity is at most [windowMs] ago. An `/init`
+ *   whose answer has no `seance` ([startWithoutSid]) starts a session without one: alive for its window
+ *   all the same, so requests do not send `/init` after `/init` for it.
  * - Only `/init` ([start]) and the events of the queue ([extend]) move the last activity; requests with
  *   a result do not, as the server does not extend its own session on them either.
  *
@@ -34,18 +36,22 @@ internal class SessionWindow(
     /** The last `sid` listeners heard of; a `sid` forgotten when its window ended still counts. */
     private var lastKnown: String = settings.getSid()
 
+    /** A session `/init` started without a `sid`: alive for its window though it has none. In memory only. */
+    private var withoutSid = false
+
     /** Whether the session is alive at [now]: a `sid`, and its last activity at most [windowMs] before. */
     fun isAlive(now: Long = clock.nowMillis()): Boolean = synchronized(lock) { alive(now) }
 
     private fun alive(now: Long): Boolean =
-        settings.getSid().isNotEmpty() && now - settings.getSidLastActTime() <= windowMs
+        (settings.getSid().isNotEmpty() || withoutSid) && now - settings.getSidLastActTime() <= windowMs
 
     /**
      * Ends a session whose window has passed: its `sid` and last activity go, so `/init` goes without
      * them and the server starts a new session. True when one ended.
      */
     fun forgetIfEnded(now: Long = clock.nowMillis()): Boolean = synchronized(lock) {
-        if (settings.getSid().isEmpty() || alive(now)) return false
+        if ((settings.getSid().isEmpty() && !withoutSid) || alive(now)) return false
+        withoutSid = false
         storage.forgetSession()
         true
     }
@@ -61,9 +67,22 @@ internal class SessionWindow(
         }
     }
 
+    /**
+     * `/init` answered without a `seance`: a session alive from now, keeping the `sid` it has if its window
+     * is alive, and without one otherwise. Listeners hear nothing: no `sid` came.
+     */
+    fun startWithoutSid() {
+        synchronized(lock) {
+            val now = clock.nowMillis()
+            if (settings.getSid().isEmpty() || !alive(now)) withoutSid = true
+            storage.preferences.edit().putLong(StorageKeys.SID_LAST_ACT, now).apply()
+        }
+    }
+
     /** `/init` answered with [sid]: the session is [sid] and its last activity now. */
     fun start(sid: String) {
         val changed = synchronized(lock) {
+            withoutSid = false
             storage.preferences.edit()
                 .putString(StorageKeys.SID, sid)
                 .putLong(StorageKeys.SID_LAST_ACT, clock.nowMillis())

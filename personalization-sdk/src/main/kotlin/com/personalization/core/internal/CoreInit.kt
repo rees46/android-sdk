@@ -136,6 +136,15 @@ internal class CoreInit(
     private var usable = false
     private var fallbackLogged = false
 
+    /**
+     * An `/init` of this start succeeded. A later one — a new session's, the shop's check — that fails
+     * changes nothing: the state stays, and the saved answer is not acted on again.
+     */
+    private var startAnswered = false
+
+    /** A later `/init` of this start failed and is being repeated: requests go on what the instance has meanwhile. */
+    private var laterFailing = false
+
     /** How many `/init` succeeded: [checkShopAndAwait] tells a success from another answer. */
     private var successes = 0L
     private var lastCheckAt: Long? = null
@@ -250,7 +259,8 @@ internal class CoreInit(
         session.forgetIfEnded()
         launchLocked()
         // Before the storage is prepared the start's own /init is about to go: that is the one to wait for.
-        state.current == SdkState.READY && (job?.isActive == true || !prepared)
+        // A new session's /init that failed and is repeated is not waited for: requests go on what there is.
+        state.current == SdkState.READY && !laterFailing && (job?.isActive == true || !prepared)
     }
 
     /** What [checkShopAndAwait] learnt of the shop. */
@@ -339,6 +349,8 @@ internal class CoreInit(
         job = null
         usable = false
         fallbackLogged = false
+        startAnswered = false
+        laterFailing = false
         publish(SdkState.INITIALIZING)
     }
 
@@ -489,12 +501,16 @@ internal class CoreInit(
         if (settings.getDid().isEmpty()) settings.updateDid(did)
         // The server's sid replaces whatever went: a sid an earlier release made goes out only once.
         val seance = answer.optString(UserBasicParams.SEANCE)
-        if (seance.isNotEmpty()) session.start(seance) else session.extend()
+        if (seance.isNotEmpty()) session.start(seance) else session.startWithoutSid()
         storage.saveInitAnswer(answer)
         // The answer on disk is the new customer's now.
         if (storage.isWiped) storage.isWiped = false
         if (storage.isRefused) storage.isRefused = false
+        startAnswered = true
+        laterFailing = false
         successes++
+        // A later failure of this start logs init_saved_answer again.
+        fallbackLogged = false
         publish(SdkState.READY)
         log(LogLevel.INFO, LogCodes.INIT_SUCCEEDED, "/init succeeded")
         if (advertisingIdValue != null) log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent with /init")
@@ -514,8 +530,10 @@ internal class CoreInit(
 
     /** Must hold [lock]. */
     private fun retry(attempt: Int, cause: Map<String, Any?>, retryAfterMs: Long?): Step.Retry {
-        // A shop refused at an earlier launch stays refused until the server says otherwise.
-        if (state.current != SdkState.REFUSED) publish(SdkState.RETRYING)
+        // A shop refused at an earlier launch stays refused until the server says otherwise. A failed
+        // later /init leaves the state as this start's answer set it.
+        if (state.current != SdkState.REFUSED && !startAnswered) publish(SdkState.RETRYING)
+        if (startAnswered) laterFailing = true
         val hasDid = settings.getDid().isNotEmpty()
         val waitForNetwork = !hasDid && !connectivity.isConnected
         val delayMs = backoff.delayMs(attempt, retryAfterMs)
@@ -526,7 +544,7 @@ internal class CoreInit(
             cause + mapOf("attempt" to attempt + 1) +
                 (if (waitForNetwork) mapOf("reason" to LogReasons.OFFLINE) else mapOf("delay_ms" to delayMs)),
         )
-        val fallback = state.current == SdkState.RETRYING && hasDid && !fallbackLogged
+        val fallback = !startAnswered && state.current == SdkState.RETRYING && hasDid && !fallbackLogged
         if (fallback) fallbackLogged = true
         return Step.Retry(delayMs, waitForNetwork, fallback)
     }
