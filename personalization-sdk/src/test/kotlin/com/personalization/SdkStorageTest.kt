@@ -35,6 +35,8 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -52,6 +54,7 @@ class SdkStorageTest {
     private val server = MockWebServer()
     private val inits = CopyOnWriteArrayList<String>()
     private val initCount = AtomicInteger()
+    private val tokens = LinkedBlockingQueue<JSONObject>()
     private val logged = CopyOnWriteArrayList<SdkLogMessage>()
     private val defaultExecutor = SdkLogs.handlerExecutor
 
@@ -80,6 +83,7 @@ class SdkStorageTest {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val url = request.requestUrl ?: return MockResponse().setResponseCode(400)
+                if (url.encodedPath == "/mobile_push_tokens") tokens += JSONObject(request.body.readUtf8())
                 if (url.encodedPath != "/init") return MockResponse().setBody("{}")
                 val did = url.queryParameter("did").orEmpty()
                 inits += did
@@ -299,6 +303,27 @@ class SdkStorageTest {
         } finally {
             storage.directory.setWritable(true)
         }
+    }
+
+    @Test
+    fun `after the deletion the push token waits for the new did`() {
+        val secondInit = CountDownLatch(1)
+        initAnswer = { n, _ ->
+            if (n == 2) secondInit.await(5, TimeUnit.SECONDS)
+            MockResponse().setBody("""{"did":"did-$n","seance":"S$n"}""")
+        }
+        val sdk = Rees46.initialize(context, config())
+        awaitDid(sdk, "did-1")
+
+        runBlocking { sdk.deleteUserCredentials() }
+        sdk.setPushToken("app-token", PushProvider.FCM)
+
+        // Held while the new /init has not answered: no token without a did.
+        assertEquals(null, tokens.poll(300, TimeUnit.MILLISECONDS))
+        secondInit.countDown()
+        val token = checkNotNull(tokens.poll(5, TimeUnit.SECONDS))
+        assertEquals("app-token", token.getString("token"))
+        assertEquals("did-2", token.getString("did"))
     }
 
     @Test

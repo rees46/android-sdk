@@ -24,6 +24,11 @@ import javax.inject.Singleton
  * ([onTokenReceived]), or pushed manually by the host ([sendToken]) — funnels through here:
  * it is deduplicated, persisted per provider, sent to the rees46 backend, and reported to the
  * host via [OnPushTokenListener]. Adding a provider only requires a new [PushTokenSource].
+ *
+ * A token never goes to the backend without a `did`: registered without one it would belong to no
+ * device. Until the device has a `did` (a new install before `/init` answers, or the window after
+ * `deleteUserCredentials()`) the request waits in the instance's queue and goes once the `did` is
+ * stored; the host's listener hears of the token at once all the same.
  */
 @Singleton
 class PushTokenManager @Inject constructor(
@@ -162,7 +167,8 @@ class PushTokenManager @Inject constructor(
             TOKEN_FIELD to token,
             PUSH_PROVIDER_FIELD to provider.serverValue
         )
-        sendNetworkMethodUseCase.post(
+        // Through the queue of requests that wait for a did, never straight to the network.
+        sendNetworkMethodUseCase.postAsync(
             MOBILE_PUSH_TOKENS,
             JSONObject(params),
             object : OnApiCallbackListener() {

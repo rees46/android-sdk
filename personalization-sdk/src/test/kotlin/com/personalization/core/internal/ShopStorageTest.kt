@@ -180,12 +180,12 @@ class ShopStorageTest {
 
         // Sent this week to the customer before: not sent again.
         tokens.onTokenReceived("fcm-1", PushProvider.FCM)
-        verify(exactly = 0) { network.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 0) { network.postAsync("mobile_push_tokens", any(), any()) }
 
         storage().deleteUserCredentials(includeQueue = false)
         tokens.onTokenReceived("fcm-1", PushProvider.FCM)
 
-        verify(exactly = 1) { network.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 1) { network.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     /** A shop of a running install: its customer, the device's data and the stories' state. */
