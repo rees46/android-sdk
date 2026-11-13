@@ -79,6 +79,9 @@ class EventQueueTest {
     private class Sent(val path: String, val body: JSONObject, val sid: String)
 
     private var source: JSONObject? = null
+
+    /** How many times the source throws before it answers: an unexpected failure while sending. */
+    private var sourceFailures = 0
     private val inits = mutableListOf<CoreInit>()
     private val queues = mutableListOf<EventQueue>()
     private val direct = mutableListOf<String>()
@@ -103,6 +106,7 @@ class EventQueueTest {
         holdEvents = false
         initAnswer = { ok() }
         source = null
+        sourceFailures = 0
         SdkLogs.reset()
         SdkLogs.handlerExecutor = Executor { it.run() }
         SdkLogs.register(SHOP, LogLevel.DEBUG, "SDK")
@@ -157,7 +161,14 @@ class EventQueueTest {
             },
             connectivity = connectivity,
             lifecycle = lifecycle,
-            source = { source },
+            source = {
+                if (sourceFailures > 0) {
+                    sourceFailures--
+                    throw IllegalStateException("The source failed")
+                }
+                source
+            },
+            stamp = { body -> CommonFields.addTo(body, settings) },
             sendDirectly = { path, _, _ -> direct += path },
             dispatchers = dispatchers,
             clock = clock,
@@ -183,7 +194,8 @@ class EventQueueTest {
 
     private fun ids(): List<String> = sent.map { it.body.optJSONArray("items")?.optJSONObject(0)?.optString("id").orEmpty() }
 
-    private fun files(): List<String> = storage.queuePath.list()?.sorted().orEmpty()
+    /** The events' files and leftovers, not the queue's lock. */
+    private fun files(): List<String> = storage.queuePath.list()?.filter { it != QueueStore.LOCK_FILE }?.sorted().orEmpty()
 
     private fun codes(code: String) = logged.filter { it.code == code }
 
@@ -257,17 +269,19 @@ class EventQueueTest {
         inits.forEach { it.release() }
         queues.clear()
         inits.clear()
-        // A new process: no store in memory, a temporary file a crash left, an unreadable event.
+        // A new process: no store in memory, a temporary file a crash left, an unreadable event, and a
+        // temporary file another process is writing right now.
         QueueStore.reset()
-        File(storage.queuePath, "0000000000000000099.tmp").writeText("{")
-        File(storage.queuePath, "0000000000000000000.json").writeText("not json")
+        File(storage.queuePath, "0000000000000000099.tmp").apply { writeText("{") }.setLastModified(System.currentTimeMillis() - QueueStore.STALE_TEMPORARY_MS - 1_000)
+        File(storage.queuePath, "0000000000000-000000-1-00000000.json").writeText("not json")
+        File(storage.queuePath, "9999999999999-000000-2-00000000.tmp").writeText("{")
         state = InstanceState(shopId = { SHOP }, dispatchers = dispatchers)
 
         connectivity.set(true)
         start()
 
         assertEquals(listOf("1", "2"), ids())
-        assertTrue(files().isEmpty())
+        assertEquals("another process's write stays", listOf("9999999999999-000000-2-00000000.tmp"), files())
         assertEquals("unreadable", codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
     }
 
@@ -452,19 +466,54 @@ class EventQueueTest {
     }
 
     @Test
-    fun `the check of the shop goes at most every ten minutes`() {
+    fun `the check of the shop goes at most every ten minutes, and an event waits for the next one`() {
         val queue = start()
         eventAnswers += http(404)
         eventAnswers += http(404)
         eventAnswers += http(404)
+        val heard = Heard()
         event(queue, "1")
-        event(queue, "2")
+        event(queue, "2", listener = heard)
         run()
 
-        // The first event: a 404, the check, a 404 again and it is dropped. The second: a 404 finds the
-        // shop checked less than ten minutes ago and fine, and it goes once more without another /init.
+        // The first event: a 404, the check, a 404 again and it is dropped. The second: a 404 while the
+        // shop may not be checked again yet: it is not marked checked, and it waits for the next check.
         assertEquals(2, initsSent)
+        assertEquals(listOf("1", "1", "2"), ids())
+        lifecycle.set(false)
+        lifecycle.set(true)
+        after(CoreInit.CHECK_SHOP_INTERVAL_MS - 1_000)
+        assertEquals("no trigger ends the wait", listOf("1", "1", "2"), ids())
+
+        clock.advance(CoreInit.CHECK_SHOP_INTERVAL_MS)
+        after(1_000)
         assertEquals(listOf("1", "1", "2", "2"), ids())
+        assertTrue(heard.calls.single().startsWith("success"))
+    }
+
+    @Test
+    fun `a check of the shop whose answer does not come in time does not count as the shop found fine`() {
+        val queue = start()
+        holdInit = true
+        eventAnswers += http(402)
+        eventAnswers += http(402)
+        val heard = Heard()
+        event(queue, "1", listener = heard)
+        run()
+
+        // The 402 asks the shop; /init does not answer within the queue's wait: a pause, and the event goes
+        // again unchecked — so its next 402 waits for the check again instead of dropping it.
+        after(10_000)
+        after(1_000)
+        assertEquals(listOf("1", "1"), ids())
+        assertTrue(heard.calls.isEmpty())
+
+        // The check's answer comes: the shop is fine, the event goes once more.
+        initCalls.single().complete(ok())
+        run()
+        assertEquals(listOf("1", "1", "1"), ids())
+        assertTrue(heard.calls.single().startsWith("success"))
+        assertTrue(codes(LogCodes.QUEUE_DROPPED).isEmpty())
     }
 
     @Test
@@ -756,6 +805,7 @@ class EventQueueTest {
         val queue = start()
         storage.directory.mkdirs()
         // The queue's directory is a file: nothing can be written there.
+        storage.queuePath.deleteRecursively()
         storage.queuePath.writeText("in the way")
         event(queue, "1")
         run()
@@ -823,6 +873,235 @@ class EventQueueTest {
 
         assertEquals(listOf("S1", "S2"), sent.map { it.sid })
         assertEquals(2, initsSent)
+    }
+
+    // After the review of stages 4 and 5.
+
+    @Test
+    fun `an event read before the customer was deleted does not go under the next customer's did`() {
+        val queue = start()
+        val init = inits.single()
+        // A deletion holds the instance; the event read meanwhile waits for it.
+        init.holdForRestart()
+        event(queue, "old")
+        run()
+        val cleared = CoroutineScope(StandardTestDispatcher(scheduler)).async {
+            queue.clear(LogReasons.DELETE_USER_CREDENTIALS, LegacyError(-1, "deleted")) { storage.deleteUserCredentials(includeQueue = true) }
+        }
+        run()
+        assertTrue(cleared.getCompleted())
+        initAnswer = { ok(did = "D2", sid = "S2") }
+        init.restart()
+        run()
+
+        assertTrue("the deleted customer's event does not go", sent.isEmpty())
+        event(queue, "new")
+        run()
+        assertEquals(listOf("new"), ids())
+        assertEquals("D2", sent.single().body.getString("did"))
+    }
+
+    @Test
+    fun `a disk that keeps the shop's check or a sent event pauses or skips instead of sending again at once`() {
+        val queue = start()
+        eventAnswers += http(402)
+        connectivity.set(false)
+        event(queue, "1")
+        run()
+        assertTrue(storage.queuePath.setWritable(false))
+        try {
+            connectivity.set(true)
+            run()
+            // The shop is fine, but its check could not be written: a pause, not a send at once.
+            assertEquals(1, sent.size)
+            assertTrue(codes(LogCodes.STORAGE_FAILED).isNotEmpty())
+            after(1_000)
+            assertEquals(2, sent.size)
+            // It went, but its file stays: it is not sent again.
+            lifecycle.set(false)
+            lifecycle.set(true)
+            after(EventQueue.TIMER_MS)
+            assertEquals(2, sent.size)
+            assertEquals(1, files().size)
+        } finally {
+            storage.queuePath.setWritable(true)
+        }
+        // Once the disk takes it, the file goes.
+        lifecycle.set(false)
+        run()
+        assertTrue(files().isEmpty())
+        assertEquals(2, sent.size)
+    }
+
+    @Test
+    fun `fields JSON cannot hold are refused at once, and nothing stops the writer or the sender`() {
+        val queue = start()
+        val refused = Heard()
+        queue.accept("push/custom", JSONObject(mapOf("event" to "e", "value" to Double.NaN)), refused)
+        run()
+        assertEquals(listOf("error:-1"), refused.calls)
+        assertTrue(files().isEmpty())
+        assertEquals("invalid_json", codes(LogCodes.INVALID_ARGUMENT).single().context["reason"])
+
+        // A clear whose deletion throws ends, and the writer takes the next event.
+        val cleared = CoroutineScope(StandardTestDispatcher(scheduler)).async {
+            queue.clear(LogReasons.DELETE_USER_CREDENTIALS, LegacyError(-1, "deleted")) { throw IllegalStateException("disk") }
+        }
+        run()
+        assertFalse(cleared.getCompleted())
+
+        // A send that throws: a pause, then it goes.
+        sourceFailures = 1
+        event(queue, "1")
+        run()
+        assertTrue(sent.isEmpty())
+        after(1_000)
+        assertEquals(listOf("1"), ids())
+        assertNull(flush(queue).getCompleted())
+    }
+
+    @Test
+    fun `only the process that holds the queue's lock sends, and two processes never name two events alike`() {
+        val queue = start()
+        storage.queuePath.mkdirs()
+        val channel = java.io.RandomAccessFile(File(storage.queuePath, QueueStore.LOCK_FILE), "rw").channel
+        val other = channel.lock()
+        try {
+            event(queue, "1")
+            run()
+            assertTrue("another process sends", sent.isEmpty())
+            assertEquals(1, files().size)
+        } finally {
+            other.release()
+            channel.close()
+        }
+        lifecycle.set(false)
+        run()
+        assertEquals(listOf("1"), ids())
+
+        // The same moment in two processes: names apart all the same.
+        connectivity.set(false)
+        val mine = QueueStore.of(storage.queuePath, SHOP)
+        val theirs = QueueStore.otherProcess(storage.queuePath, SHOP)
+        repeat(20) {
+            listOf(mine, theirs).forEach { store -> store.add(queue, "push", JSONObject(), clock.now, null, EventQueue.CAP, mutableListOf()) }
+        }
+        assertEquals(40, files().size)
+    }
+
+    @Test
+    fun `a flush asked before release and handled after it ends with notInitialized`() {
+        val queue = start()
+        val flushed = CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined).async {
+            try {
+                queue.flush()
+                null
+            } catch (e: SdkException) {
+                e
+            }
+        }
+        queue.release()
+        run()
+
+        assertEquals(SdkError.NotInitialized, (flushed.getCompleted() as SdkException).error)
+    }
+
+    @Test
+    fun `an event accepted by the queue made first wakes the one that sends`() {
+        val first = start()
+        start()
+        event(first, "1")
+        run()
+
+        assertEquals(listOf("1"), ids())
+    }
+
+    @Test
+    fun `nothing stamped reaches the disk, and a repeat after the source expired goes without it`() {
+        val queue = start()
+        source = JSONObject().put("from", "chain").put("code", "c1")
+        eventAnswers += http(500)
+        event(queue, "1")
+        run()
+        val stored = JSONObject(File(storage.queuePath, files().single()).readText()).getJSONObject("body")
+        listOf("source", "did", "sid", "seance", "shop_id", "segment", "stream").forEach { assertFalse(it, stored.has(it)) }
+
+        source = null
+        after(1_000)
+
+        assertEquals(listOf(true, false), sent.map { it.body.has("source") })
+        assertTrue(sent.all { it.body.getString("did") == "D1" && it.body.getString("sid") == "S1" })
+    }
+
+    @Test
+    fun `an event the disk cannot read now stays for later, and one that is not an event tells its listener`() {
+        val queue = start()
+        connectivity.set(false)
+        val later = Heard()
+        event(queue, "1", listener = later)
+        run()
+        val file = File(storage.queuePath, files().single())
+        assertTrue(file.setReadable(false))
+        try {
+            connectivity.set(true)
+            run()
+            assertTrue(sent.isEmpty())
+            assertTrue(file.exists())
+            assertTrue(later.calls.isEmpty())
+            assertTrue(codes(LogCodes.QUEUE_DROPPED).isEmpty())
+        } finally {
+            file.setReadable(true)
+        }
+        after(1_000)
+        assertEquals(listOf("1"), ids())
+
+        connectivity.set(false)
+        val broken = Heard()
+        event(queue, "2", listener = broken)
+        run()
+        File(storage.queuePath, files().single()).writeText("not json")
+        connectivity.set(true)
+        run()
+        assertEquals(listOf("error:-1"), broken.calls)
+        assertEquals("unreadable", codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
+    }
+
+    @Test
+    fun `an event the disk does not take goes with its source or its time, and accepted hears after the write`() {
+        val queue = start()
+        source = JSONObject().put("from", "chain").put("code", "c1")
+        val accepted = mutableListOf<SdkError?>()
+        val bodies = mutableListOf<JSONObject>()
+        queue.accept("push", JSONObject().put("event", "view"), null) { accepted += it }
+        assertTrue("not before the write", accepted.isEmpty())
+        run()
+        assertEquals(listOf<SdkError?>(null), accepted)
+
+        storage.queuePath.deleteRecursively()
+        storage.queuePath.writeText("in the way")
+        try {
+            val direct = EventQueue(
+                shopId = SHOP,
+                store = QueueStore.otherProcess(storage.queuePath, SHOP),
+                init = inits.single(),
+                state = state,
+                send = { _, _ -> HttpResult.Success(JSONObject()) },
+                connectivity = connectivity,
+                lifecycle = lifecycle,
+                source = { source },
+                sendDirectly = { _, body, _ -> bodies += body },
+                dispatchers = dispatchers,
+                clock = clock,
+            ).also { queues += it; it.start() }
+            direct.accept("push", JSONObject().put("event", "view"), null)
+            direct.accept("push/custom", JSONObject().put("event", "e"), null)
+            run()
+        } finally {
+            storage.queuePath.delete()
+        }
+        assertEquals("c1", bodies[0].getJSONObject("source").getString("code"))
+        assertEquals(clock.now / 1_000, bodies[1].getLong("time"))
+        assertFalse(bodies[1].has("source"))
     }
 
     private companion object {

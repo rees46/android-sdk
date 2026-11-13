@@ -135,6 +135,9 @@ internal class CoreInit(
     private var held = false
     private var usable = false
     private var fallbackLogged = false
+
+    /** How many `/init` succeeded: [checkShopAndAwait] tells a success from another answer. */
+    private var successes = 0L
     private var lastCheckAt: Long? = null
     private var foreground: Cancellable? = null
 
@@ -250,25 +253,56 @@ internal class CoreInit(
         state.current == SdkState.READY && (job?.isActive == true || !prepared)
     }
 
+    /** What [checkShopAndAwait] learnt of the shop. */
+    internal sealed interface ShopCheck {
+        /** A new `/init` succeeded: the shop is fine. */
+        object Fine : ShopCheck
+
+        /** The shop refused the SDK. */
+        object Refused : ShopCheck
+
+        /** The instance was released. */
+        object Released : ShopCheck
+
+        /**
+         * No new answer told: the check could not go yet — [retryInMs] until it may, after one less than
+         * 10 minutes ago — or its answer did not come in time or was not a success (null).
+         */
+        class Unknown(val retryInMs: Long?) : ShopCheck
+    }
+
     /**
      * Asks the server about the shop after a `402`, `403` or `404` to an event ([checkShop]), and waits
-     * up to [timeoutMs] for the answer of the `/init` that went, or of the one already on its way. The
-     * state after it: [SdkState.READY] when the shop is fine, [SdkState.REFUSED] when it is not, anything
-     * else when the answer did not tell. Without an `/init` to wait for (one went less than 10 minutes
-     * ago) the state is as that one left it.
+     * up to [timeoutMs] for the answer of the `/init` that went, or of the one already on its way. Only a
+     * new answer tells: [ShopCheck.Fine] when it was a success, [ShopCheck.Refused] when the shop refused;
+     * a wait that ends first, a failure, or a check that may not go yet is [ShopCheck.Unknown].
      */
-    internal suspend fun checkShopAndAwait(timeoutMs: Long): SdkState {
+    internal suspend fun checkShopAndAwait(timeoutMs: Long): ShopCheck {
         val seen: Long
+        val seenSuccesses: Long
         synchronized(lock) {
-            if (released) return SdkState.NOT_INITIALIZED
+            if (released) return ShopCheck.Released
+            if (state.current == SdkState.REFUSED) return ShopCheck.Refused
             seen = answers.value
-            checkShop()
-            if (job?.isActive != true) return state.current
+            seenSuccesses = successes
+            val went = checkShop()
+            if (!went && job?.isActive != true) {
+                val last = lastCheckAt
+                val wait = if (last == null) null else (CHECK_SHOP_INTERVAL_MS - (clock.nowMillis() - last)).takeIf { it > 0 }
+                return ShopCheck.Unknown(wait)
+            }
         }
         withTimeoutOrNull(timeoutMs) {
             combine(answers, gate) { count, current -> count > seen || current == Gate.CLOSED }.first { it }
         }
-        return state.current
+        return synchronized(lock) {
+            when {
+                released -> ShopCheck.Released
+                state.current == SdkState.REFUSED -> ShopCheck.Refused
+                successes > seenSuccesses -> ShopCheck.Fine
+                else -> ShopCheck.Unknown(null)
+            }
+        }
     }
 
     /** Null for an open gate, otherwise why a request may not go; [Gate.WAIT] is never decided. */
@@ -460,6 +494,7 @@ internal class CoreInit(
         // The answer on disk is the new customer's now.
         if (storage.isWiped) storage.isWiped = false
         if (storage.isRefused) storage.isRefused = false
+        successes++
         publish(SdkState.READY)
         log(LogLevel.INFO, LogCodes.INIT_SUCCEEDED, "/init succeeded")
         if (advertisingIdValue != null) log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent with /init")

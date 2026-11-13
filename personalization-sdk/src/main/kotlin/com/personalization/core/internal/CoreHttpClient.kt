@@ -102,8 +102,11 @@ internal class CoreHttpClient(
     internal fun clientFor(method: NetworkMethod): OkHttpClient =
         if (method.method == INIT_PATH) initClient else client
 
-    /** Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. */
-    suspend fun send(method: NetworkMethod, params: JSONObject): HttpResult {
+    /**
+     * Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. With
+     * [commonFields] false the fields are all there already (the queue stamps its events itself).
+     */
+    suspend fun send(method: NetworkMethod, params: JSONObject, commonFields: Boolean = true): HttpResult {
         if (!connectivity.isConnected) {
             log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") {
                 context(method) + ("reason" to LogReasons.OFFLINE)
@@ -112,7 +115,7 @@ internal class CoreHttpClient(
         }
         val phase = Phase()
         val built = try {
-            build(method, params, phase)
+            build(method, params, phase, commonFields)
         } catch (e: Exception) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "${line(method)}: the request could not be built", e) { context(method) }
             return HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
@@ -125,8 +128,8 @@ internal class CoreHttpClient(
 
     private class Built(val request: Request, val body: String?)
 
-    private fun build(method: NetworkMethod, params: JSONObject, phase: Phase): Built {
-        val fields = CommonFields.addTo(params, settings)
+    private fun build(method: NetworkMethod, params: JSONObject, phase: Phase, commonFields: Boolean): Built {
+        val fields = if (commonFields) CommonFields.addTo(params, settings) else params
         if (method.method == INIT_PATH) {
             INIT_OPTIONAL_FIELDS.forEach { key -> if (fields.optString(key).isEmpty()) fields.remove(key) }
             // `/init` does not read the A/B group (core/init.md): it is the events' field.

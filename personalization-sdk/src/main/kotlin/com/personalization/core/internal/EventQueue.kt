@@ -14,6 +14,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -41,22 +42,28 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  * The new core's event queue (`core/queue.md`, decision 0002): `/push`, `/push/custom`, `track/stories`,
  * `track/slider` and `popup/showed` go through it, in order, and survive no network and a restart.
  *
- * - **Accepting.** [accept] answers a released instance with `notInitialized` and a refused shop with
- *   `shopBlocked` at once; otherwise it moves the session's last activity and hands the event to a
- *   writer that keeps the calls' order: an event is accepted once its file is on disk ([QueueStore]).
- *   A disk that refuses it sends it once, as a request.
- * - **Stamping.** The common fields — `did`, the `sid` of the moment — go on when the event is sent,
- *   with the stored tracking source as a `source` object on `/push` only and the time it was made as
- *   `time` on `/push/custom` only (the only path that reads it), unless the call set its own.
+ * - **Accepting.** [accept] answers a released instance with `notInitialized`, a refused shop with
+ *   `shopBlocked` and fields JSON cannot hold with `invalidArgument`, at once; otherwise it moves the
+ *   session's last activity and hands the event to a writer that keeps the calls' order: an event is
+ *   accepted once its file is on disk ([QueueStore]), and the caller's `accepted` hears it then. A disk
+ *   that refuses it sends it once, as a request.
+ * - **Stamping.** The common fields — `did`, the `sid` of the moment, `segment`, `stream` — go on a copy
+ *   when the event is sent ([stamp]), with the stored tracking source as a `source` object on `/push` only
+ *   and the time it was made as `time` on `/push/custom` only (the only path that reads it), unless the
+ *   call set its own. Nothing stamped reaches the disk.
  * - **Sending.** One event at a time, oldest first, once the instance is ready and the session alive
- *   (a session whose window ended gets its `/init` first). Sending starts on [SdkState.READY], on the
- *   app's foreground and background, on the network's return, on [flush] and on a timer.
+ *   (a session whose window ended gets its `/init` first), by the one process of the app that holds the
+ *   queue's file lock. An event cleared while it waited (the customer's deletion) does not go. Sending
+ *   starts on [SdkState.READY], on the app's foreground and background, on the network's return, on
+ *   [flush] and on a timer.
  * - **Answers.** `2xx` removes the event. No network waits for it and a timeout repeats it after a pause,
  *   neither counting as an attempt. `5xx`, `408`, `410`, `417`, `426`, `429` repeat it after a pause
  *   (the `Retry-After` of a `429` or `503`), and the 10th drops it. `402`, `403`, `404` pause the queue
  *   while `/init` checks the shop ([CoreInit.checkShopAndAwait]): a refusal clears the queue, a shop
- *   found fine sends the event once more, and a second such answer drops it. Other answers drop it at
- *   once. A dropped event does not hold the others.
+ *   found fine by a new answer sends the event once more, and a second such answer drops it; a check
+ *   that may not go yet holds the event until it may. Other answers drop it at once. A dropped event
+ *   does not hold the others. A disk that fails to read or rewrite an event pauses the queue instead of
+ *   sending it again at once.
  * - **Limits.** An event older than 7 days is dropped when its turn comes; at 1000 events the oldest go.
  *   Each drop is `queue_dropped` with its reason.
  * - **Listeners.** An old-style listener hears the event's fate once: the server's answer when it went,
@@ -64,19 +71,23 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *   of being made and the app is in the foreground (decision 2).
  *
  * [release] stops sending and keeps the files for the next launch; [clear] empties the queue (the
- * customer's deletion, the shop's refusal, which the queue hears from the state by itself).
+ * customer's deletion, the shop's refusal, which the queue hears from the state by itself). Neither the
+ * writer nor the sender stops on an unexpected exception: it is logged and the next command or event goes.
  */
 internal class EventQueue(
     private val shopId: String,
     private val store: QueueStore,
     private val init: CoreInit,
     private val state: InstanceState,
+    /** Sends an event whose fields are all on it: it adds none. */
     private val send: suspend (NetworkMethod, JSONObject) -> HttpResult,
     private val connectivity: ConnectivityMonitor,
     private val lifecycle: AppLifecycle,
     /** The stored tracking source as `source` (`from`, `code`); null when there is none or it expired. */
     private val source: () -> JSONObject? = { null },
-    /** Sends an event the disk would not take, once, as a request. */
+    /** Puts the common fields on an event's copy before it goes. */
+    private val stamp: (JSONObject) -> JSONObject = { it },
+    /** Sends an event the disk would not take, once, as a request; the common fields are its to add. */
     private val sendDirectly: (path: String, body: JSONObject, listener: OnApiCallbackListener?) -> Unit = { _, _, _ -> },
     dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
     private val clock: Clock = Clock.SYSTEM,
@@ -100,6 +111,10 @@ internal class EventQueue(
     private val commands = Channel<Command>(Channel.UNLIMITED)
     private val wake = Channel<Unit>(Channel.CONFLATED)
 
+    /** The writer: while it runs, a command sent to it is handled. */
+    @Volatile
+    private var writer: Job? = null
+
     /** A trigger that may end a pause: not a new event, which waits for the pause like the others. */
     @Volatile
     private var urgent = false
@@ -121,7 +136,14 @@ internal class EventQueue(
     private val delivery = LegacyDelivery { level, code, message, throwable -> log(level, code, message, throwable = throwable) }
 
     private sealed interface Command {
-        class Accept(val path: String, val body: JSONObject, val createdAt: Long, val listener: OnApiCallbackListener?) : Command
+        class Accept(
+            val path: String,
+            val body: JSONObject,
+            val createdAt: Long,
+            val listener: OnApiCallbackListener?,
+            val accepted: ((SdkError?) -> Unit)?,
+        ) : Command
+
         class Clear(val reason: String, val error: LegacyError, val then: () -> Boolean, val done: CompletableDeferred<Boolean>?) : Command
         class Flush(val done: CompletableDeferred<Unit>) : Command
     }
@@ -130,7 +152,7 @@ internal class EventQueue(
         /** Nothing to send, or not this queue's to send: wait for a trigger. */
         object Idle : Outcome
 
-        /** The instance or its session is not there yet: wait for a trigger or the timer. */
+        /** The instance or its session is not there yet, or another process sends: wait for a trigger or the timer. */
         object Waiting : Outcome
 
         /** No network: wait for it, looking again now and then. */
@@ -152,7 +174,15 @@ internal class EventQueue(
             heard.forEach { it.cancel() }
             return
         }
-        writing.launch { for (command in commands) handle(command) }
+        writer = writing.launch {
+            try {
+                for (command in commands) handleSafely(command)
+            } finally {
+                // Ended for whatever reason: nothing sent to it later may wait for it.
+                commands.close()
+                while (true) settle(commands.tryReceive().getOrNull() ?: break, null)
+            }
+        }
         val following = working.launch {
             state.changes.collect { current ->
                 when (current) {
@@ -169,29 +199,63 @@ internal class EventQueue(
 
     /**
      * Takes an event of [path] with its own fields [params]. [listener] hears its fate once: at once
-     * when the instance was released or the shop refused, otherwise after it went or was dropped.
+     * when the instance was released, the shop refused or the fields are not JSON, otherwise after it went
+     * or was dropped. [accepted] hears, once, null as soon as the event is written (or, refused by the
+     * disk, sent once as a request), or the error that refused it. The method itself returns at once.
      */
-    fun accept(path: String, params: JSONObject, listener: OnApiCallbackListener?) {
+    fun accept(path: String, params: JSONObject, listener: OnApiCallbackListener?, accepted: ((SdkError?) -> Unit)? = null) {
+        // A copy of the fields as they are now, which also tells fields JSON cannot hold (NaN, Infinity).
+        val body = snapshot(params)
         val error = when {
             released -> SdkError.NotInitialized
             state.current == SdkState.REFUSED -> SdkError.ShopBlocked
+            body == null -> SdkError.InvalidArgument("The event's fields cannot be written as JSON")
             else -> null
         }
-        if (error != null) {
-            if (listener != null) writing.launch { LegacyErrors.of(error).let { delivery.failure(listener, it.code, it.message) } }
+        if (error != null || body == null) {
+            if (error is SdkError.InvalidArgument) {
+                log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "An event was refused: its fields are not JSON", mapOf("reason" to REASON_INVALID_JSON, "path" to path))
+            }
+            refuse(error ?: SdkError.NotInitialized, listener, accepted)
             return
         }
         val createdAt = clock.nowMillis()
         init.session.extend(createdAt)
-        if (commands.trySend(Command.Accept(path, params, createdAt, listener)).isFailure && listener != null) {
-            writing.launch { LegacyErrors.of(SdkError.NotInitialized).let { delivery.failure(listener, it.code, it.message) } }
+        if (writer?.isActive != true || commands.trySend(Command.Accept(path, body, createdAt, listener, accepted)).isFailure) {
+            refuse(SdkError.NotInitialized, listener, accepted)
+        }
+    }
+
+    private fun snapshot(params: JSONObject): JSONObject? = try {
+        // JSONObject.toString() gives null for a value JSON cannot hold.
+        val text: String? = params.toString()
+        text?.let { JSONObject(it) }
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun refuse(error: SdkError, listener: OnApiCallbackListener?, accepted: ((SdkError?) -> Unit)?) {
+        if (listener == null && accepted == null) return
+        writing.launch {
+            listener?.let { delivery.failure(it, LegacyErrors.of(error)) }
+            accepted?.let { tell(it, error) }
+        }
+    }
+
+    /** Hands [accepted] its answer; one that throws is logged. */
+    private fun tell(accepted: (SdkError?) -> Unit, error: SdkError?) {
+        try {
+            accepted(error)
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "An event's acceptance listener threw", throwable = e)
         }
     }
 
     /**
      * Sends what is in the queue now, without waiting for a trigger, and returns once each of those
      * events was tried: sent, dropped, or held by no network, the instance not being ready, the shop's
-     * check or a server's `Retry-After`.
+     * check or a server's `Retry-After`. A pause of the backoff ends: the event waiting in it goes again at
+     * once.
      *
      * @throws SdkException `notInitialized` after [release], `shopBlocked` for a refused shop.
      */
@@ -199,18 +263,20 @@ internal class EventQueue(
         if (released) throw SdkException(SdkError.NotInitialized)
         if (state.current == SdkState.REFUSED) throw SdkException(SdkError.ShopBlocked)
         val done = CompletableDeferred<Unit>()
-        if (commands.trySend(Command.Flush(done)).isFailure) throw SdkException(SdkError.NotInitialized)
+        if (writer?.isActive != true || commands.trySend(Command.Flush(done)).isFailure) throw SdkException(SdkError.NotInitialized)
         done.await()
     }
 
     /**
      * Empties the queue for [reason] and runs [then] while no event can be accepted: an event accepted
      * before this call goes, one accepted after it stays. The listeners waiting hear [error]. Returns
-     * [then]'s result.
+     * [then]'s result. Without a writer to keep the order (released) it is done here.
      */
     suspend fun clear(reason: String, error: LegacyError, then: () -> Boolean): Boolean {
         val done = CompletableDeferred<Boolean>()
-        if (released || commands.trySend(Command.Clear(reason, error, then, done)).isFailure) return clearNow(reason, error, then)
+        if (released || writer?.isActive != true || commands.trySend(Command.Clear(reason, error, then, done)).isFailure) {
+            return clearNow(reason, error, then)
+        }
         return withContext(NonCancellable) { done.await() }
     }
 
@@ -223,7 +289,8 @@ internal class EventQueue(
      * Stops sending; the events stay on disk for the next launch. With [cancel] the event in flight is
      * cancelled and the listeners of this queue's events hear `-1`; without, as when a push-only
      * instance gives way to the app's, the event in flight finishes and the listeners stay for the
-     * queue that sends next. Events accepted before are still written.
+     * queue that sends next. Events accepted before are still written; a flush asked before it and not
+     * handled yet ends with `notInitialized`.
      */
     fun release(cancel: Boolean = true) {
         val heard = synchronized(subscriptions) {
@@ -238,7 +305,7 @@ internal class EventQueue(
             cancelled = true
             working.cancel()
             val error = LegacyErrors.of(SdkError.Cancelled)
-            store.takeListeners(this).forEach { delivery.failure(it.listener, error.code, error.message) }
+            store.takeListeners(this).forEach { delivery.failure(it.listener, error) }
         } else {
             kick(urgent = true)
         }
@@ -252,7 +319,40 @@ internal class EventQueue(
         wake.trySend(Unit)
     }
 
-    private suspend fun handle(command: Command) {
+    /** One command; nothing it throws stops the writer, and whoever waits for it still hears an end. */
+    private fun handleSafely(command: Command) {
+        try {
+            handle(command)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.SDK_LOG, "A command of the event queue failed", throwable = e)
+            settle(command, e)
+        }
+    }
+
+    /** Ends [command], not handled or failed with [failure]: whoever waits for it hears. */
+    private fun settle(command: Command, failure: Exception?) {
+        when (command) {
+            is Command.Accept -> {
+                val error = if (failure == null) SdkError.NotInitialized else SdkError.InvalidArgument("The event could not be written")
+                command.listener?.let { delivery.failure(it, LegacyErrors.of(error)) }
+                command.accepted?.let { tell(it, error) }
+            }
+            // Failed midway: reported as not complete. Never handled: its work is done here.
+            is Command.Clear -> command.done?.complete(
+                failure == null && try {
+                    command.then()
+                } catch (e: Exception) {
+                    log(LogLevel.ERROR, LogCodes.STORAGE_FAILED, "The customer's data could not be deleted", throwable = e)
+                    false
+                }
+            )
+            is Command.Flush -> command.done.completeExceptionally(SdkException(SdkError.NotInitialized))
+        }
+    }
+
+    private fun handle(command: Command) {
         when (command) {
             is Command.Accept -> write(command)
             is Command.Clear -> command.done.let { done ->
@@ -260,6 +360,11 @@ internal class EventQueue(
                 done?.complete(result)
             }
             is Command.Flush -> {
+                if (released) {
+                    // Asked before the release, handled after it: nothing here sends any more.
+                    command.done.completeExceptionally(SdkException(SdkError.NotInitialized))
+                    return
+                }
                 val owner = store.owner
                 if (owner != null && owner !== this) {
                     owner.flushFromOther(command.done)
@@ -289,14 +394,17 @@ internal class EventQueue(
         val event = store.add(this, accept.path, accept.body, accept.createdAt, keepListener, cap, dropped)
         dropped.forEach { (old, waiting) -> dropped(old?.path, old?.attempts, LogReasons.OVERFLOW, waiting, OVERFLOWED) }
         if (keepListener == null && accept.listener != null) {
-            LegacyErrors.of(SdkError.Cancelled).let { delivery.failure(accept.listener, it.code, it.message) }
+            delivery.failure(accept.listener, LegacyErrors.of(SdkError.Cancelled))
         }
+        accept.accepted?.let { tell(it, null) }
         if (event == null) {
-            // Not accepted: the disk refused it (storage_failed). It goes once, as a request.
-            sendDirectly(accept.path, accept.body, accept.listener)
+            // Not accepted: the disk refused it (storage_failed). It goes once, as a request, with what
+            // the queue would have put on it.
+            sendDirectly(accept.path, withOwnFields(accept.path, JSONObject(accept.body.toString()), accept.createdAt), accept.listener)
             return
         }
-        kick(urgent = false)
+        // The queue that sends: this one, or the one made after it.
+        (store.owner ?: this).kick(urgent = false)
     }
 
     private fun clearNow(reason: String, error: LegacyError, then: () -> Boolean): Boolean {
@@ -304,15 +412,24 @@ internal class EventQueue(
         if (count > 0) {
             log(LogLevel.WARNING, LogCodes.QUEUE_DROPPED, "The queue was cleared", mapOf("reason" to reason, "count" to count))
         }
-        waiting.forEach { delivery.failure(it.listener, error.code, error.message) }
+        waiting.forEach { delivery.failure(it.listener, error) }
         return result
     }
 
     private suspend fun work() {
         while (!released) {
-            val tried = synchronized(flushLock) { flushes.toList().also { flushes.clear() } }
-            val outcome = if (store.isOwner(this)) store.sending.withLock { pass() } else Outcome.Idle
-            tried.forEach { it.complete(Unit) }
+            val outcome = try {
+                val tried = synchronized(flushLock) { flushes.toList().also { flushes.clear() } }
+                val outcome = if (store.isOwner(this)) store.sending.withLock { passHoldingLock() } else Outcome.Idle
+                tried.forEach { it.complete(Unit) }
+                outcome
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Never a tight loop: the next pass comes after a pause.
+                log(LogLevel.ERROR, LogCodes.SDK_LOG, "Sending the event queue failed", throwable = e)
+                pause(null)
+            }
             when (outcome) {
                 Outcome.Idle -> wake.receive()
                 Outcome.Waiting -> withTimeoutOrNull(TIMER_MS) { wake.receive() }
@@ -348,12 +465,33 @@ internal class EventQueue(
         done.forEach { it.complete(Unit) }
     }
 
+    /** One pass while this process holds the queue's file lock; when another process holds it, that one sends. */
+    private suspend fun passHoldingLock(): Outcome {
+        if (!store.lockForSending()) return Outcome.Waiting
+        try {
+            return pass()
+        } finally {
+            store.unlockForSending()
+        }
+    }
+
     /** Sends events oldest first until the queue is empty or cannot send now. */
     private suspend fun pass(): Outcome {
         urgent = false
         while (true) {
             if (released || !store.isOwner(this) || state.current == SdkState.REFUSED) return Outcome.Idle
-            val event = store.head() ?: return Outcome.Idle
+            // A clear gives the lock back: it is taken again for what came after it.
+            if (!store.lockForSending()) return Outcome.Waiting
+            val generation = store.generation
+            val unreadable = ArrayList<QueueStore.Waiting>()
+            val head = store.head(unreadable)
+            unreadable.forEach { delivery.failure(it.listener, UNREADABLE) }
+            val event = when (head) {
+                QueueStore.Head.Empty -> return Outcome.Idle
+                // The disk failed to read it: later, not again at once.
+                QueueStore.Head.Unavailable -> return pause(null)
+                is QueueStore.Head.Event -> head.event
+            }
             if (clock.nowMillis() - event.createdAt > TTL_MS) {
                 drop(event, LogReasons.EXPIRED, EXPIRED)
                 continue
@@ -361,26 +499,34 @@ internal class EventQueue(
             if (!connectivity.isConnected) return Outcome.Offline
             // Ready, and when the session's window ended, the /init of a new one first.
             if (init.awaitUsable(waitMs) != null || !init.session.isAlive()) return Outcome.Waiting
+            // Cleared while it waited (the customer was deleted): it does not go under the next one.
+            val body = store.ifCurrent(generation, event.id) { stamped(event) } ?: continue
             val sentAt = clock.nowMillis()
-            val result = sendOne(event)
+            val result = sendOne(event, body)
             // The answer is in: what it decides is done even if the queue is released meanwhile.
             val next = withContext(NonCancellable) { take(event, result, sentAt) }
             if (next != null) return next
         }
     }
 
-    private suspend fun sendOne(event: QueuedEvent): HttpResult {
-        val body = event.body
-        if (event.path == PATH_PUSH) source()?.let { body.put(FIELD_SOURCE, it) }
-        if (event.path == PATH_CUSTOM && !body.has(FIELD_TIME)) body.put(FIELD_TIME, event.createdAt / 1_000)
-        return try {
-            send(NetworkMethod.POST(event.path), body)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "POST ${event.path}: no answer", mapOf("method" to "POST", "path" to event.path), e)
-            HttpResult.Failure(SdkError.Network)
-        }
+    /** What goes for [event]: a copy of its fields with the queue's and the common ones. */
+    private fun stamped(event: QueuedEvent): JSONObject =
+        stamp(withOwnFields(event.path, JSONObject(event.body.toString()), event.createdAt))
+
+    /** The stored source on `/push` and the time the event was made on `/push/custom`, unless it has its own. */
+    private fun withOwnFields(path: String, body: JSONObject, createdAt: Long): JSONObject {
+        if (path == PATH_PUSH) source()?.let { body.put(FIELD_SOURCE, it) }
+        if (path == PATH_CUSTOM && !body.has(FIELD_TIME)) body.put(FIELD_TIME, createdAt / 1_000)
+        return body
+    }
+
+    private suspend fun sendOne(event: QueuedEvent, body: JSONObject): HttpResult = try {
+        send(NetworkMethod.POST(event.path), body)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "POST ${event.path}: no answer", mapOf("method" to "POST", "path" to event.path), e)
+        HttpResult.Failure(SdkError.Network)
     }
 
     /** What the answer to [event] does; null to go on with the next event. */
@@ -412,6 +558,7 @@ internal class EventQueue(
                     drop(event, LogReasons.ATTEMPTS, error, attempts)
                     return null
                 }
+                // A disk that refuses the count keeps it in memory: the pause comes all the same.
                 store.update(event.copy(attempts = attempts))
                 return pause(result.retryAfterMs.takeIf { code in RETRY_AFTER_CODES })
             }
@@ -421,15 +568,16 @@ internal class EventQueue(
                     drop(event, LogReasons.SERVICE_REFUSED, error)
                     return null
                 }
-                return when (init.checkShopAndAwait(waitMs)) {
-                    SdkState.READY -> {
-                        store.update(event.copy(shopChecked = true))
-                        null
-                    }
+                val check = init.checkShopAndAwait(waitMs)
+                // The session its /init started woke the queue: not a trigger that may end the pause below.
+                urgent = false
+                return when (check) {
+                    // A new answer found the shop fine: the event goes once more, after a pause if the disk failed.
+                    CoreInit.ShopCheck.Fine -> if (store.update(event.copy(shopChecked = true))) null else pause(null)
                     // Cleared by the state's own news; a released queue sends nothing more.
-                    SdkState.REFUSED, SdkState.NOT_INITIALIZED -> Outcome.Idle
-                    // The check told nothing yet: the event waits, the check goes again later.
-                    else -> pause(null)
+                    CoreInit.ShopCheck.Refused, CoreInit.ShopCheck.Released -> Outcome.Idle
+                    // The check may not go yet: the event waits for it. Or it told nothing: a pause.
+                    is CoreInit.ShopCheck.Unknown -> check.retryInMs?.let { Outcome.Pause(it, serverNamed = true) } ?: pause(null)
                 }
             }
             else -> {
@@ -445,7 +593,8 @@ internal class EventQueue(
     /** The event went: it leaves the queue and its listener hears the answer. */
     private fun delivered(event: QueuedEvent, body: Any, sentAt: Long): Outcome? {
         failures = 0
-        // Gone meanwhile (cleared, or dropped for room): its listener heard that already.
+        // Gone meanwhile (cleared, or dropped for room): its listener heard that already. A file the disk
+        // keeps is skipped from now on: the event is not sent again.
         val removed = store.remove(event.id) ?: return null
         val listener = removed.waiting?.listener ?: return null
         if (listener is EventAnswerListener) {
@@ -475,7 +624,7 @@ internal class EventQueue(
                 attempts?.let { put("attempts", it) }
             },
         )
-        waiting?.let { delivery.failure(it.listener, error.code, error.message) }
+        waiting?.let { delivery.failure(it.listener, error) }
     }
 
     private fun log(level: LogLevel, code: String, message: String, context: Map<String, Any?> = emptyMap(), throwable: Throwable? = null) =
@@ -501,11 +650,13 @@ internal class EventQueue(
 
         private const val FIELD_SOURCE = "source"
         private const val FIELD_TIME = "time"
+        private const val REASON_INVALID_JSON = "invalid_json"
         private val SHOP_REFUSALS = setOf(402, 403, 404)
         private val REPEATED_4XX = setOf(408, 410, 417, 426, 429)
         private val RETRY_AFTER_CODES = setOf(429, 503)
 
         private val EXPIRED = LegacyError(LegacyErrors.NO_ANSWER, "The event expired in the queue")
         private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full")
+        private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk")
     }
 }

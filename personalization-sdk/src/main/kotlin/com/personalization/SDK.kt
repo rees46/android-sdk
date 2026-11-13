@@ -32,6 +32,7 @@ import com.personalization.core.SdkException
 import com.personalization.core.SdkResult
 import com.personalization.core.SdkState
 import com.personalization.core.internal.AndroidConnectivityMonitor
+import com.personalization.core.internal.CommonFields
 import com.personalization.core.internal.ConnectivityMonitor
 import com.personalization.core.internal.Core
 import com.personalization.core.internal.CoreDispatchers
@@ -564,7 +565,9 @@ open class SDK {
                     store = QueueStore.of(storage.queuePath, shopId),
                     init = init,
                     state = instanceState,
-                    send = core.client::send,
+                    // The queue stamps the common fields on a copy of each event: nothing of them reaches its files.
+                    send = { method, body -> core.client.send(method, body, commonFields = false) },
+                    stamp = { body -> CommonFields.addTo(body, userSettingsRepository) },
                     connectivity = connectivity,
                     lifecycle = lifecycle,
                     source = ::trackingSource,

@@ -35,4 +35,6 @@ internal class LegacyDelivery(
             log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "onError of a request threw", e)
         }
     }
+
+    fun failure(listener: OnApiCallbackListener, error: LegacyError) = failure(listener, error.code, error.message)
 }

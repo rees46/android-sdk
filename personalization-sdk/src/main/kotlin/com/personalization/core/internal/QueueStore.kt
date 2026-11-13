@@ -8,16 +8,22 @@ import kotlinx.coroutines.sync.Mutex
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import java.nio.channels.OverlappingFileLockException
 import java.util.Locale
+import kotlin.random.Random
 
 /**
- * One event in a shop's queue: the request's own fields ([body], without the common ones, which go on
- * at send time), when it was made, and what its answers so far did to it.
+ * One event in a shop's queue: the request's own fields ([body], without the common ones, which go on a
+ * copy at send time and never reach the disk), when it was made, and what its answers so far did to it.
  */
 internal class QueuedEvent(
-    /** Its file's name without the extension: zero-padded, so the names sort in the queue's order. */
+    /** Its file's name without the extension: it sorts in the queue's order. */
     val id: String,
     val path: String,
     val body: JSONObject,
@@ -65,23 +71,51 @@ internal class QueuedEvent(
 
 /**
  * The files of one shop's queue, in its `queue/` directory under `noBackupFilesDir`: one JSON file per
- * event, named by a sequence so the names sort in order. One store per directory in the process, shared
- * by every [EventQueue] of the shop, so two instances of one shop never send an event twice:
+ * event, named by the time it was made, a counter, the process and a random part, so the names sort in
+ * order and two processes never pick the same one. One store per directory in the process, shared by
+ * every [EventQueue] of the shop, so two instances of one shop never send an event twice:
  * - the queue made last is the [owner] and the only one that sends; the others write what they accept
  *   and wake it;
  * - [sending] is held for an event from its send to its answer: a new owner waits for the old one's
  *   event in flight;
+ * - only the process that holds the file lock of the directory ([lockForSending]) sends: another
+ *   process of the app writes its events and leaves the sending to it;
  * - an event's old-style listener waits here, so whoever sends it calls it.
  *
  * A write goes to a temporary file first and is renamed over the event's file: a crash midway leaves
  * the old file or the new one, never a part. Disk failures are `storage_failed`; nothing here throws.
+ * An event whose file could not be rewritten keeps its new state in memory, and one whose file could
+ * not be removed after it went is skipped from then on.
+ *
+ * Three locks, never one inside another the other way round: [files] for the disk (held while a file is
+ * synced or the directory deleted), then [listenersLock]; [ownersLock] alone. The main thread takes only
+ * the last two, so it never waits for the disk.
  */
 internal class QueueStore private constructor(private val directory: File, private val shopId: String?) {
 
-    private val lock = Any()
+    private val files = Any()
+    private val listenersLock = Any()
+    private val ownersLock = Any()
+
     private val owners = ArrayList<EventQueue>()
     private val listeners = HashMap<String, Waiting>()
-    private var sequence = 0L
+
+    /** Events that went but whose file could not be removed: skipped, removed again by a later listing. */
+    private val gone = HashSet<String>()
+
+    /** The state of events whose file could not be rewritten: kept for this process. */
+    private val patched = HashMap<String, QueuedEvent>()
+
+    private var lastStamp = 0L
+    private var counter = 0
+
+    private var lockChannel: FileChannel? = null
+    private var processLock: FileLock? = null
+
+    /** Moves on each [clear]: an event read before it is the cleared customer's and does not go. */
+    @Volatile
+    var generation = 0L
+        private set
 
     /** Held from an event's send to its answer. */
     val sending = Mutex()
@@ -92,52 +126,150 @@ internal class QueueStore private constructor(private val directory: File, priva
     /** An event [remove] took off the queue, with its listener if it had one. */
     class Removed(val waiting: Waiting?)
 
+    /** What [head] found. */
+    sealed interface Head {
+        object Empty : Head
+
+        /** The oldest event could not be read now (the disk failed): it stays for a later try. */
+        object Unavailable : Head
+        class Event(val event: QueuedEvent) : Head
+    }
+
     /** [queue] becomes the owner: it sends from now on. */
-    fun claim(queue: EventQueue) = synchronized(lock) {
+    fun claim(queue: EventQueue) = synchronized(ownersLock) {
         owners -= queue
         owners += queue
     }
 
     /** [queue] stops: the queue made before it, if one is live, sends again. Returns the new owner. */
-    fun leave(queue: EventQueue): EventQueue? = synchronized(lock) {
+    fun leave(queue: EventQueue): EventQueue? = synchronized(ownersLock) {
         owners -= queue
         owners.lastOrNull()
     }
 
-    val owner: EventQueue? get() = synchronized(lock) { owners.lastOrNull() }
+    val owner: EventQueue? get() = synchronized(ownersLock) { owners.lastOrNull() }
 
-    fun isOwner(queue: EventQueue): Boolean = synchronized(lock) { owners.lastOrNull() === queue }
+    fun isOwner(queue: EventQueue): Boolean = synchronized(ownersLock) { owners.lastOrNull() === queue }
 
-    /** The ids on disk in order; a temporary file left by a crash is removed. */
+    /**
+     * Takes the directory's file lock for this process; true while it holds it. Another process of the
+     * app that holds it is the one that sends.
+     */
+    fun lockForSending(): Boolean = synchronized(files) {
+        if (processLock?.isValid == true) return true
+        if (!directory.isDirectory && !directory.mkdirs() && !directory.isDirectory) return false
+        var channel: FileChannel? = null
+        try {
+            channel = RandomAccessFile(File(directory, LOCK_FILE), "rw").channel
+            val lock = channel.tryLock()
+            if (lock == null) {
+                channel.close()
+                return false
+            }
+            lockChannel = channel
+            processLock = lock
+            true
+        } catch (e: OverlappingFileLockException) {
+            // Held through another channel of this process, which only a test does.
+            channel?.close()
+            false
+        } catch (e: Exception) {
+            channel?.close()
+            failed(OP_LOCK, e)
+            false
+        }
+    }
+
+    /** Gives the file lock back, for another process to send. */
+    fun unlockForSending() = synchronized(files) { unlockLocked() }
+
+    /** Must hold [files]. */
+    private fun unlockLocked() {
+        try {
+            processLock?.release()
+        } catch (e: Exception) {
+            // A lock on a file deleted meanwhile, or a channel closed: nothing is held any more.
+        }
+        try {
+            lockChannel?.close()
+        } catch (e: Exception) {
+            // As above.
+        }
+        processLock = null
+        lockChannel = null
+    }
+
+    /**
+     * Must hold [files]. The ids on disk in order. A temporary file is removed only once it is old: a
+     * fresh one may be another process's write in progress. An event that went but stayed on disk is
+     * removed again, and skipped while that fails.
+     */
     private fun ids(): List<String> {
         val names = directory.list() ?: return emptyList()
+        val now = System.currentTimeMillis()
         val ids = ArrayList<String>(names.size)
         for (name in names) {
             when {
-                name.endsWith(EXTENSION) -> ids += name.removeSuffix(EXTENSION)
-                name.endsWith(TEMPORARY) -> File(directory, name).delete()
+                name.endsWith(EXTENSION) -> {
+                    val id = name.removeSuffix(EXTENSION)
+                    if (id in gone) {
+                        val file = File(directory, name)
+                        if (file.delete() || !file.exists()) gone -= id
+                    } else {
+                        ids += id
+                    }
+                }
+                name.endsWith(TEMPORARY) -> File(directory, name).let { file ->
+                    if (now - file.lastModified() > STALE_TEMPORARY_MS) file.delete()
+                }
             }
         }
+        gone.retainAll { File(directory, it + EXTENSION).exists() }
         ids.sort()
         return ids
     }
 
-    /** How many events wait. */
-    fun size(): Int = synchronized(lock) { ids().size }
-
-    /** The oldest event that can be read; a file that cannot is dropped (`queue_dropped`, `unreadable`). */
-    fun head(): QueuedEvent? = synchronized(lock) {
+    /**
+     * The oldest event. A file that is not an event (it does not parse) is dropped (`queue_dropped`,
+     * `unreadable`) and its listener goes to [unreadable], to hear an error; a file the disk cannot read
+     * now stays, and the head is [Head.Unavailable].
+     */
+    fun head(unreadable: MutableList<Waiting>): Head = synchronized(files) {
         for (id in ids()) {
-            read(id)?.let { return it }
-            File(directory, id + EXTENSION).delete()
-            listeners.remove(id)
+            val file = File(directory, id + EXTENSION)
+            val text = try {
+                file.readText(Charsets.UTF_8)
+            } catch (e: FileNotFoundException) {
+                // Gone meanwhile (another process sent it), or the disk refused it.
+                if (!file.exists()) continue
+                failed(OP_READ, e)
+                return Head.Unavailable
+            } catch (e: IOException) {
+                failed(OP_READ, e)
+                return Head.Unavailable
+            }
+            val event = QueuedEvent.parse(id, text)
+            if (event != null) return Head.Event(patched[id] ?: event)
+            file.delete()
+            patched -= id
+            synchronized(listenersLock) { listeners.remove(id) }?.let { unreadable += it }
             SdkLogs.log(LogLevel.WARNING, LogCodes.QUEUE_DROPPED, "An event that could not be read was dropped", shopId,
                 mapOf("reason" to REASON_UNREADABLE))
         }
-        null
+        Head.Empty
     }
 
-    fun contains(id: String): Boolean = synchronized(lock) { File(directory, id + EXTENSION).isFile }
+    /**
+     * Runs [block] while the event [id] is still there and no [clear] came since [generation], and this
+     * process holds the file lock; null otherwise. The queue stamps an event's fields here, so a deletion
+     * of the customer either comes after them — the event goes as the deleted customer's — or before,
+     * and the event does not go.
+     */
+    fun <T> ifCurrent(generation: Long, id: String, block: () -> T): T? = synchronized(files) {
+        if (generation != this.generation || id in gone || processLock?.isValid != true) return null
+        if (!File(directory, id + EXTENSION).isFile) return null
+        block()
+    }
 
     /**
      * Writes a new event from [path], [body] and [createdAt] and keeps [listener] for it. Before, the
@@ -152,60 +284,88 @@ internal class QueueStore private constructor(private val directory: File, priva
         listener: OnApiCallbackListener?,
         cap: Int,
         dropped: MutableList<Pair<QueuedEvent?, Waiting?>>,
-    ): QueuedEvent? = synchronized(lock) {
+    ): QueuedEvent? = synchronized(files) {
         val ids = ids()
         val over = ids.size - cap + 1
         if (over > 0) {
-            ids.take(over).forEach { id -> dropped += read(id) to listeners.remove(id); File(directory, id + EXTENSION).delete() }
+            ids.take(over).forEach { id ->
+                val old = read(id)
+                File(directory, id + EXTENSION).delete()
+                patched -= id
+                dropped += old to synchronized(listenersLock) { listeners.remove(id) }
+            }
         }
-        val last = ids.lastOrNull()?.toLongOrNull() ?: 0L
-        sequence = maxOf(sequence, last) + 1
-        val event = QueuedEvent(String.format(Locale.ROOT, ID_FORMAT, sequence), path, body, createdAt)
+        val event = QueuedEvent(newId(createdAt), path, body, createdAt)
         if (!write(event)) return null
-        if (listener != null) listeners[event.id] = Waiting(queue, listener)
+        if (listener != null) synchronized(listenersLock) { listeners[event.id] = Waiting(queue, listener) }
         event
     }
 
-    /** Rewrites [event] (its attempts, its check) if it is still there; false when it is gone or the disk refused. */
-    fun update(event: QueuedEvent): Boolean = synchronized(lock) {
-        if (!File(directory, event.id + EXTENSION).isFile) return false
-        write(event)
+    /** Must hold [files]. Sorts by time and, within one millisecond of this process, by the order of the calls. */
+    private fun newId(createdAt: Long): String {
+        val stamp = maxOf(createdAt, lastStamp)
+        counter = if (stamp == lastStamp) counter + 1 else 0
+        lastStamp = stamp
+        return String.format(Locale.ROOT, ID_FORMAT, stamp, counter, PROCESS, Random.nextInt() and 0x7fffffff)
     }
 
-    /** Removes [id] with its listener; null when it was gone already (cleared, or dropped meanwhile). */
-    fun remove(id: String): Removed? = synchronized(lock) {
+    /**
+     * Rewrites [event] (its attempts, its check) if it is still there. False when it is gone or the disk
+     * refused: the new state is kept for this process all the same.
+     */
+    fun update(event: QueuedEvent): Boolean = synchronized(files) {
+        if (event.id in gone || !File(directory, event.id + EXTENSION).isFile) return false
+        patched[event.id] = event
+        if (!write(event)) return false
+        patched -= event.id
+        true
+    }
+
+    /**
+     * Removes [id] with its listener; null when it was gone already (cleared, or dropped meanwhile). A
+     * file the disk keeps is skipped from now on.
+     */
+    fun remove(id: String): Removed? = synchronized(files) {
         val file = File(directory, id + EXTENSION)
-        if (!file.isFile) return null
-        if (!file.delete() && file.exists()) failed(OP_DELETE, null)
-        Removed(listeners.remove(id))
+        if (id in gone || !file.isFile) return null
+        if (!file.delete() && file.exists()) {
+            failed(OP_DELETE, null)
+            gone += id
+        }
+        patched -= id
+        Removed(synchronized(listenersLock) { listeners.remove(id) })
     }
-
-    /** The listener [id] has, without taking it. */
-    fun listenerOf(id: String): Waiting? = synchronized(lock) { listeners[id] }
 
     /**
      * Removes every event and hands back their listeners, then runs [then] while no event can be
-     * accepted (the customer's data goes with it, `deleteUserCredentials()`). Returns how many went and
-     * [then]'s result.
+     * accepted (the customer's data goes with it, `deleteUserCredentials()`). Moves the [generation] first,
+     * so an event read before does not go, and gives back the file lock, which [then] may delete. Returns
+     * how many went and [then]'s result.
      */
-    fun <T> clear(then: () -> T): Triple<Int, List<Waiting>, T> = synchronized(lock) {
+    fun <T> clear(then: () -> T): Triple<Int, List<Waiting>, T> = synchronized(files) {
+        generation++
+        unlockLocked()
         val ids = ids()
         ids.forEach { id ->
             val file = File(directory, id + EXTENSION)
-            if (!file.delete() && file.exists()) failed(OP_DELETE, null)
+            if (!file.delete() && file.exists()) {
+                failed(OP_DELETE, null)
+                gone += id
+            }
         }
-        val waiting = listeners.values.toList()
-        listeners.clear()
+        patched.clear()
+        val waiting = synchronized(listenersLock) { listeners.values.toList().also { listeners.clear() } }
         Triple(ids.size, waiting, then())
     }
 
     /** Takes the listeners [queue] accepted: it stops, their events stay on disk for a later launch. */
-    fun takeListeners(queue: EventQueue): List<Waiting> = synchronized(lock) {
+    fun takeListeners(queue: EventQueue): List<Waiting> = synchronized(listenersLock) {
         val mine = listeners.filterValues { it.queue === queue }
         mine.keys.forEach(listeners::remove)
         mine.values.toList()
     }
 
+    /** Must hold [files]. */
     private fun read(id: String): QueuedEvent? = try {
         QueuedEvent.parse(id, File(directory, id + EXTENSION).readText(Charsets.UTF_8))
     } catch (e: IOException) {
@@ -213,7 +373,7 @@ internal class QueueStore private constructor(private val directory: File, priva
         null
     }
 
-    /** A temporary file synced to the disk, then renamed over the event's file. */
+    /** Must hold [files]. A temporary file synced to the disk, then renamed over the event's file. */
     private fun write(event: QueuedEvent): Boolean {
         if (!directory.isDirectory && !directory.mkdirs() && !directory.isDirectory) {
             failed(OP_WRITE, null)
@@ -221,8 +381,10 @@ internal class QueueStore private constructor(private val directory: File, priva
         }
         val temporary = File(directory, event.id + TEMPORARY)
         return try {
+            // JSONObject.toString() gives null for a value JSON cannot hold: not written.
+            val text: String = event.toJson().toString() ?: throw IOException("The event is not JSON")
             FileOutputStream(temporary).use { stream ->
-                stream.write(event.toJson().toString().toByteArray(Charsets.UTF_8))
+                stream.write(text.toByteArray(Charsets.UTF_8))
                 stream.fd.sync()
             }
             if (temporary.renameTo(File(directory, event.id + EXTENSION))) {
@@ -232,7 +394,7 @@ internal class QueueStore private constructor(private val directory: File, priva
                 failed(OP_WRITE, null)
                 false
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             temporary.delete()
             failed(OP_WRITE, e)
             false
@@ -246,12 +408,22 @@ internal class QueueStore private constructor(private val directory: File, priva
     internal companion object {
         private const val EXTENSION = ".json"
         private const val TEMPORARY = ".tmp"
-        private const val ID_FORMAT = "%019d"
+        const val LOCK_FILE = ".lock"
+
+        /** Time, a counter, the process and a random part: sortable, and unique across processes. */
+        private const val ID_FORMAT = "%013d-%06d-%d-%08x"
+
+        /** A temporary file older than this is a crash's leftover, not a write in progress. */
+        const val STALE_TEMPORARY_MS = 5 * 60 * 1000L
+
         const val OP_READ = "read_queued_event"
         const val OP_WRITE = "write_queued_event"
         const val OP_DELETE = "delete_queued_event"
+        const val OP_LOCK = "lock_queue"
 
         private const val REASON_UNREADABLE = "unreadable"
+
+        private val PROCESS: Int by lazy { android.os.Process.myPid() }
 
         private val stores = HashMap<String, QueueStore>()
 
@@ -261,6 +433,12 @@ internal class QueueStore private constructor(private val directory: File, priva
         }
 
         /** Forgets every store, as a new process would; for tests. */
-        internal fun reset() = synchronized(stores) { stores.clear() }
+        internal fun reset() = synchronized(stores) {
+            stores.values.forEach { it.unlockForSending() }
+            stores.clear()
+        }
+
+        /** A store of [directory] as another process has it; for tests. */
+        internal fun otherProcess(directory: File, shopId: String?): QueueStore = QueueStore(directory, shopId)
     }
 }
