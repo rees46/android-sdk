@@ -347,8 +347,11 @@ class TrackingQueueTest {
                 assertTrue("$name: $actual is no array", actual is JSONArray && actual.length() == expected.length())
                 for (index in 0 until expected.length()) assertSubset("$name[$index]", expected.get(index), (actual as JSONArray).get(index))
             }
-            // The SDK has always sent an item's amount as a string ("2"): the server reads both.
-            is Number -> assertEquals(name, expected.toDouble(), actual.toString().toDouble(), 0.0)
+            // The new core sends numbers as numbers, as the fixtures have them (the legacy one sent "2").
+            is Number -> {
+                assertTrue("$name: $actual is no number", actual is Number)
+                assertEquals(name, expected.toDouble(), (actual as Number).toDouble(), 0.0)
+            }
             else -> assertEquals(name, expected, actual)
         }
     }

@@ -855,6 +855,38 @@ class EventQueueTest {
     }
 
     @Test
+    fun `numbers the older builders put in as text go as numbers, and text that is not a plain number stays text`() {
+        val queue = start()
+        connectivity.set(false)
+        val items = org.json.JSONArray()
+            .put(JSONObject().put("id", "37").put("amount", "2").put("price", "999.50"))
+            .put(JSONObject().put("id", "38").put("amount", "0123").put("price", "1e3"))
+            .put(JSONObject().put("id", "39").put("amount", 3).put("price", "12345678.9"))
+        queue.accept("push", JSONObject().put("event", "cart").put("order_price", "2599.0").put("items", items), null)
+        queue.accept("push/custom", JSONObject().put("event", "e").put("value", "7").put("label", "8"), null)
+        queue.accept("popup/showed", JSONObject().put("popup", "42"), null)
+        queue.accept("track/stories", JSONObject().put("event", "view").put("story_id", 12).put("slide_id", "34"), null)
+        run()
+        connectivity.set(true)
+        run()
+
+        val push = sent[0].body
+        val lines = push.getJSONArray("items")
+        assertEquals(2, lines.getJSONObject(0).get("amount"))
+        assertEquals(999.5, (lines.getJSONObject(0).get("price") as Number).toDouble(), 0.0)
+        assertEquals("0123", lines.getJSONObject(1).get("amount"))
+        assertEquals("1e3", lines.getJSONObject(1).get("price"))
+        assertEquals(3, lines.getJSONObject(2).get("amount"))
+        assertEquals(12345678.9, (lines.getJSONObject(2).get("price") as Number).toDouble(), 0.0)
+        assertEquals(2599.0, (push.get("order_price") as Number).toDouble(), 0.0)
+        assertEquals(7, sent[1].body.get("value"))
+        assertEquals("8", sent[1].body.get("label"))
+        assertEquals(42, sent[2].body.get("popup"))
+        // The slide's id is text by the contract.
+        assertEquals("34", sent[3].body.get("slide_id"))
+    }
+
+    @Test
     fun `an event extends a live session, and one that waited past the window goes with a new sid after init`() {
         val queue = start()
         val firstActivity = settings.getSidLastActTime()

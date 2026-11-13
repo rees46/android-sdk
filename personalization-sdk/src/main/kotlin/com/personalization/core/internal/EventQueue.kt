@@ -50,7 +50,8 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  * - **Stamping.** The common fields — `did`, the `sid` of the moment, `segment`, `stream` — go on a copy
  *   when the event is sent ([stamp]), with the stored tracking source as a `source` object on `/push` only
  *   and the time it was made as `time` on `/push/custom` only (the only path that reads it), unless the
- *   call set its own. Nothing stamped reaches the disk.
+ *   call set its own. Numbers the older builders put in as text go as numbers ([EventNumbers]). Nothing
+ *   stamped reaches the disk.
  * - **Sending.** One event at a time, oldest first, once the instance is ready and the session alive
  *   (a session whose window ended gets its `/init` first), by the one process of the app that holds the
  *   queue's file lock. An event cleared while it waited (the customer's deletion) does not go. Sending
@@ -511,7 +512,7 @@ internal class EventQueue(
 
     /** What goes for [event]: a copy of its fields with the queue's and the common ones. */
     private fun stamped(event: QueuedEvent): JSONObject =
-        stamp(withOwnFields(event.path, JSONObject(event.body.toString()), event.createdAt))
+        stamp(withOwnFields(event.path, EventNumbers.normalize(event.path, JSONObject(event.body.toString())), event.createdAt))
 
     /** The stored source on `/push` and the time the event was made on `/push/custom`, unless it has its own. */
     private fun withOwnFields(path: String, body: JSONObject, createdAt: Long): JSONObject {
