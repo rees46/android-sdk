@@ -1,6 +1,7 @@
 package com.personalization;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -26,5 +27,14 @@ public class Rees46ConfigJavaTest {
 
         assertEquals("api.rees46.ru", config.getApiDomain());
         assertEquals("SDK", config.getTag());
+        assertFalse(config.getCoreV2());
+    }
+
+    @Test
+    public void theNewCoreIsTheLastParameter() {
+        Rees46Config config = new Rees46Config(
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, true);
+
+        assertTrue(config.getCoreV2());
     }
 }

@@ -1,0 +1,89 @@
+package com.personalization.core.internal
+
+import com.personalization.LogLevel
+import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.SdkError
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
+import com.personalization.sdk.domain.models.NetworkMethod
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * The new core. For now it sends the instance's requests through [CoreHttpClient]; `/init`, the session
+ * and the requests waiting for a `did` stay the legacy ones until the core takes them over.
+ *
+ * Every request ends in exactly one callback, on a background thread as today: the answer, or the
+ * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [release] cancels the requests in
+ * flight (`cancelled`), and a request made after it fails with `notInitialized`.
+ */
+internal class CoreV2(
+    private val client: CoreHttpClient,
+    private val shopId: String?,
+    dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
+) : Core {
+
+    override val isV2: Boolean = true
+
+    /** Nothing a request does may reach the app's process as an exception. */
+    private val uncaught = CoroutineExceptionHandler { _, throwable ->
+        SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "A request of the core failed unexpectedly", shopId, throwable = throwable)
+    }
+
+    /** The instance's requests; [release] cancels them all. */
+    private val requests = CoroutineScope(SupervisorJob() + dispatchers.io + uncaught)
+
+    /** Answers that do not come from a running request: a cancelled one, one after [release]. */
+    private val endings = CoroutineScope(SupervisorJob() + dispatchers.io + uncaught)
+
+    private val delivery = LegacyDelivery { level, code, message, throwable ->
+        SdkLogs.log(level, code, message, shopId, throwable = throwable)
+    }
+
+    @Volatile
+    private var released = false
+
+    override fun send(method: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
+        val answered = AtomicBoolean(false)
+        val answer = { result: HttpResult ->
+            if (answered.compareAndSet(false, true) && listener != null) deliver(listener, result)
+        }
+        if (released) {
+            endings.launch { answer(HttpResult.Failure(SdkError.NotInitialized)) }
+            return
+        }
+        val request = requests.launch {
+            val result = try {
+                client.send(method, params)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The client turns every failure into a result; this is the net under it.
+                SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: no answer", shopId,
+                    mapOf("method" to method.type, "path" to method.method), e)
+                HttpResult.Failure(SdkError.Network)
+            }
+            answer(result)
+        }
+        // Cancelled before or while it ran: the request still gets its one answer.
+        request.invokeOnCompletion { cause ->
+            if (cause != null) endings.launch { answer(HttpResult.Failure(SdkError.Cancelled)) }
+        }
+    }
+
+    override fun release() {
+        released = true
+        requests.cancel()
+    }
+
+    private fun deliver(listener: OnApiCallbackListener, result: HttpResult) = when (result) {
+        is HttpResult.Success -> delivery.success(listener, result.body)
+        is HttpResult.Failure -> LegacyErrors.of(result.error, result.errorBody).let { delivery.failure(listener, it.code, it.message) }
+    }
+}

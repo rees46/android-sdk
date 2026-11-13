@@ -4,6 +4,7 @@ import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
+import com.personalization.core.internal.CoreSelection
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import java.util.concurrent.ConcurrentHashMap
@@ -39,6 +40,7 @@ object Rees46 {
         val sdk = SDK()
         sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
         sdk.logLevel = config.logLevel
+        sdk.coreV2Requested = config.coreV2
         sdk.initialize(
             context = context,
             shopId = config.shopId,
@@ -69,6 +71,8 @@ object Rees46 {
         // resumed. The startup initializer covers that; this covers hosts that turned it off.
         ForegroundActivity.install(appContext)
         configs.forEach { config ->
+            // A registration decides the process's core as an initialize does.
+            CoreSelection.resolve(config.coreV2, config.shopId)
             if (eagerInit) {
                 initialize(appContext, config)
             } else {

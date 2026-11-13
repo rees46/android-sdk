@@ -18,6 +18,11 @@ package com.personalization
  * while no [SDK.popupPresentationListener] is set.
  * @property logLevel how much this shop's instance writes to the log; [LogLevel.WARNING] by default.
  * Messages that pass it also reach [Rees46.setLogHandler].
+ * @property coreV2 runs the instance on the new core; off by default. The process has one core: the
+ * first [Rees46.initialize] or [Rees46.registerShops] decides it, and an instance that asks for the
+ * other one runs on the process's and logs `core_flag_mismatch`. So far the new core differs in its
+ * network client only: OkHttp, a request without a network fails at once, `release()` cancels the
+ * instance's requests.
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.
@@ -32,4 +37,5 @@ data class Rees46Config @JvmOverloads constructor(
     val tag: String = "SDK",
     val enableAutoPopupPresentation: Boolean = true,
     val logLevel: LogLevel = LogLevel.WARNING,
+    val coreV2: Boolean = false,
 )

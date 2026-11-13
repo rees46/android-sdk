@@ -1,0 +1,290 @@
+package com.personalization.core.internal
+
+import com.personalization.LogLevel
+import com.personalization.SDK
+import com.personalization.core.SdkError
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
+import com.personalization.sdk.domain.models.NetworkMethod
+import com.personalization.sdk.domain.repositories.UserSettingsRepository
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Dispatcher
+import okhttp3.EventListener
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import org.json.JSONTokener
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+
+/** Timeouts of the new client, per request: one request's timeout never changes another's. */
+internal data class CoreTimeouts(
+    val connectMs: Long = 5_000,
+    val readMs: Long = 10_000,
+    val writeMs: Long = 10_000,
+    /** `/init` has its own, shorter read timeout: an instance waits for it before its first requests. */
+    val initReadMs: Long = 5_000,
+)
+
+/**
+ * What the process shares between the instances' clients: one connection pool and one dispatcher.
+ *
+ * The dispatcher lets 16 requests run at once to one host instead of OkHttp's 5: the old client had no
+ * limit, and a screen of recommendation blocks should not wait in line. OkHttp still recovers from a
+ * stale pooled connection by opening a new one, as `HttpURLConnection` does; that is not a retry of an
+ * answered request, which the client never makes.
+ */
+internal object CoreHttp {
+    private const val MAX_REQUESTS_PER_HOST = 16
+
+    val shared: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
+            .build()
+    }
+}
+
+/**
+ * The new core's client: one per instance, over the process's [CoreHttp.shared] pool. It adds the
+ * common fields ([CommonFields]), sends, and classifies the outcome:
+ * - any `2xx` is a success; an empty body is an empty success; a body that is not a JSON object or
+ *   array is `decoding`;
+ * - an answer outside `2xx` is `http(code)`, its body kept only for the old callbacks;
+ * - no answer is `network` when the request never reached the server (no network, no connection) and
+ *   `timeout` once it did (the answer did not come in time or broke off midway);
+ * - a request cancelled with the instance is `cancelled`.
+ *
+ * Without a network a request fails at once with `network`. The client never retries; the log gets the
+ * method, the path and the code, never the query, a body or the answer.
+ */
+internal class CoreHttpClient(
+    private val baseUrl: () -> String,
+    private val settings: UserSettingsRepository,
+    private val connectivity: ConnectivityMonitor,
+    private val shopId: String?,
+    shared: OkHttpClient = CoreHttp.shared,
+    timeouts: CoreTimeouts = CoreTimeouts(),
+    private val clock: Clock = Clock.SYSTEM,
+) {
+
+    /** This instance's client; [OkHttpClient.newBuilder] keeps the shared pool and dispatcher. */
+    internal val client: OkHttpClient = shared.newBuilder()
+        .connectTimeout(timeouts.connectMs, TimeUnit.MILLISECONDS)
+        .readTimeout(timeouts.readMs, TimeUnit.MILLISECONDS)
+        .writeTimeout(timeouts.writeMs, TimeUnit.MILLISECONDS)
+        .eventListenerFactory(PhaseListener)
+        .build()
+
+    internal val initClient: OkHttpClient = client.newBuilder()
+        .readTimeout(timeouts.initReadMs, TimeUnit.MILLISECONDS)
+        .build()
+
+    /** The client for [method]: `/init` reads with its own timeout. */
+    internal fun clientFor(method: NetworkMethod): OkHttpClient =
+        if (method.method == INIT_PATH) initClient else client
+
+    /** Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. */
+    suspend fun send(method: NetworkMethod, params: JSONObject): HttpResult {
+        if (!connectivity.isConnected) {
+            log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") { context(method, error = ERROR_NETWORK) }
+            return HttpResult.Failure(SdkError.Network)
+        }
+        val phase = Phase()
+        val built = try {
+            build(method, params, phase)
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "${line(method)}: the request could not be built", e) { context(method) }
+            return HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
+        }
+        val started = clock.nowMillis()
+        val exchange = clientFor(method).newCall(built.request).exchange(phase)
+        report(method, built, exchange, clock.nowMillis() - started)
+        return exchange.result
+    }
+
+    private class Built(val request: Request, val body: String?)
+
+    private fun build(method: NetworkMethod, params: JSONObject, phase: Phase): Built {
+        val fields = CommonFields.addTo(params, settings)
+        val url = (baseUrl() + method.method).toHttpUrl()
+        val builder = Request.Builder()
+            .header(USER_AGENT, SDK.userAgent())
+            .tag(Phase::class.java, phase)
+        return when (method) {
+            is NetworkMethod.GET -> {
+                val query = url.newBuilder()
+                fields.keys().forEach { key -> query.addQueryParameter(key, fields.getString(key)) }
+                Built(builder.url(query.build()).get().build(), null)
+            }
+            is NetworkMethod.POST -> {
+                val body = fields.toString()
+                Built(builder.url(url).post(body.toRequestBody(JSON)).build(), body)
+            }
+        }
+    }
+
+    /** The outcome of one exchange; the status and the texts are for the app's [com.personalization.NetworkLogger]. */
+    private class Exchange(
+        val result: HttpResult,
+        val status: Int = NO_STATUS,
+        val responseText: String? = null,
+        val failure: IOException? = null,
+    )
+
+    private suspend fun Call.exchange(phase: Phase): Exchange = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { cancel() }
+        enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                continuation.resume(Exchange(HttpResult.Failure(noAnswer(call, phase)), failure = e))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val exchange = try {
+                    response.use { read(it) }
+                } catch (e: IOException) {
+                    // The status came, the body broke off: no answer, not a success with part of a body.
+                    Exchange(HttpResult.Failure(noAnswer(call, phase)), response.code, failure = e)
+                } catch (e: Exception) {
+                    Exchange(HttpResult.Failure(SdkError.Decoding), response.code)
+                }
+                continuation.resume(exchange)
+            }
+        })
+    }
+
+    private fun read(response: Response): Exchange {
+        val status = response.code
+        if (status !in HTTP_SUCCESS) {
+            // The status is the answer: a body that fails to arrive does not replace it.
+            val errorBody = try {
+                response.body.string()
+            } catch (e: IOException) {
+                null
+            }
+            return Exchange(HttpResult.Failure(SdkError.Http(status), errorBody), status, errorBody)
+        }
+        val text = response.body.string()
+        if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject()), status, text)
+        val json = try {
+            JSONTokener(text).nextValue()
+        } catch (e: JSONException) {
+            null
+        }
+        val result = if (json is JSONObject || json is JSONArray) HttpResult.Success(json) else HttpResult.Failure(SdkError.Decoding)
+        return Exchange(result, status, text)
+    }
+
+    /** No answer: cancelled with the instance, `timeout` once the request reached the server, `network` before. */
+    private fun noAnswer(call: Call, phase: Phase): SdkError = when {
+        call.isCanceled() -> SdkError.Cancelled
+        phase.requestSent -> SdkError.Timeout
+        else -> SdkError.Network
+    }
+
+    /** Writes the outcome to the log by method, path and code, and hands the exchange to the app's network logger. */
+    private fun report(method: NetworkMethod, built: Built, exchange: Exchange, durationMs: Long) {
+        val status = exchange.status.takeIf { it != NO_STATUS }
+        when (val result = exchange.result) {
+            is HttpResult.Success ->
+                log(LogLevel.DEBUG, LogCodes.REQUEST, "$status: ${line(method)}") { context(method, status) }
+            is HttpResult.Failure -> when (val error = result.error) {
+                is SdkError.Http ->
+                    log(LogCodes.failureLevel(error.code), LogCodes.REQUEST_FAILED, "${error.code}: ${line(method)}") { context(method, status) }
+                SdkError.Decoding -> {
+                    log(LogLevel.DEBUG, LogCodes.REQUEST, "$status: ${line(method)}") { context(method, status) }
+                    log(LogLevel.WARNING, LogCodes.DECODING_FAILED, "The answer to ${line(method)} did not parse") { context(method, status) }
+                }
+                SdkError.Network, SdkError.Timeout -> {
+                    val name = if (error == SdkError.Timeout) ERROR_TIMEOUT else ERROR_NETWORK
+                    log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no answer", exchange.failure) {
+                        context(method, status, name)
+                    }
+                }
+                else -> Unit
+            }
+        }
+        val networkLogger = SDK.networkLogger ?: return
+        try {
+            networkLogger.onHttpCall(
+                method = method.type,
+                url = built.request.url.toString(),
+                requestBody = built.body,
+                responseCode = exchange.status,
+                responseBody = exchange.responseText,
+                durationMs = durationMs,
+                error = exchange.failure?.message
+            )
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "The app's NetworkLogger threw", e) { context(method) }
+        }
+    }
+
+    /** Method and path only: the query and the body carry the user's data. */
+    private fun line(method: NetworkMethod): String = "${method.type} ${method.method}"
+
+    private fun context(method: NetworkMethod, status: Int? = null, error: String? = null): Map<String, Any?> =
+        buildMap {
+            put("method", method.type)
+            put("path", method.method)
+            status?.let { put("status", it) }
+            error?.let { put("error", it) }
+        }
+
+    /** The level is checked before the context is built. */
+    private inline fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        throwable: Throwable? = null,
+        context: () -> Map<String, Any?>,
+    ) {
+        if (!SdkLogs.isLoggable(level, shopId)) return
+        SdkLogs.log(level, code, message, shopId, context(), throwable)
+    }
+
+    internal companion object {
+        const val INIT_PATH = "init"
+        private const val USER_AGENT = "User-Agent"
+        private const val NO_STATUS = -1
+        private const val ERROR_NETWORK = "network"
+        private const val ERROR_TIMEOUT = "timeout"
+        private val HTTP_SUCCESS = 200..299
+        private val JSON = "application/json; charset=utf-8".toMediaType()
+    }
+}
+
+/** Whether the request reached the server: a failure before it is `network`, after it `timeout`. */
+internal class Phase {
+    @Volatile
+    var requestSent: Boolean = false
+}
+
+/**
+ * Follows each request of the core through its [Phase], found in the request's tags. A new connection
+ * attempt (OkHttp recovering from a stale pooled connection) starts the phase over.
+ */
+internal object PhaseListener : EventListener.Factory {
+    override fun create(call: Call): EventListener {
+        val phase = call.request().tag(Phase::class.java) ?: return EventListener.NONE
+        return object : EventListener() {
+            override fun connectStart(call: Call, inetSocketAddress: InetSocketAddress, proxy: Proxy) {
+                phase.requestSent = false
+            }
+
+            override fun requestHeadersStart(call: Call) {
+                phase.requestSent = true
+            }
+        }
+    }
+}

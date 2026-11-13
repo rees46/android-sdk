@@ -25,6 +25,10 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
+import com.personalization.core.internal.AndroidConnectivityMonitor
+import com.personalization.core.internal.Core
+import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.CoreV2
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
@@ -38,6 +42,7 @@ import com.personalization.sdk.domain.repositories.NPSRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
@@ -167,6 +172,14 @@ open class SDK {
     /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
     internal var logLevel: LogLevel = LogLevel.WARNING
 
+    /** [Rees46Config.coreV2] of the instance; the process's core decides ([CoreSelection]). */
+    internal var coreV2Requested: Boolean = false
+
+    /** The instance's core, once it is initialized: the legacy one or [CoreV2]. */
+    @Volatile
+    internal var core: Core? = null
+        private set
+
     /** The shop this instance logs for, once it is initialized: its lines pass that shop's level. */
     @Volatile
     internal var logShopId: String? = null
@@ -200,6 +213,10 @@ open class SDK {
 
     @Inject
     lateinit var initNetworkUseCase: InitNetworkUseCase
+
+    /** The request funnel of this instance; its core is chosen at initialization. */
+    @Inject
+    internal lateinit var networkRepository: NetworkRepositoryImpl
 
     @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
@@ -270,6 +287,7 @@ open class SDK {
     internal fun initializeForPush(context: Context, config: Rees46Config) {
         enableAutoPopupPresentation = config.enableAutoPopupPresentation
         logLevel = config.logLevel
+        coreV2Requested = config.coreV2
         initializeInternal(
             context = context,
             shopId = config.shopId,
@@ -346,6 +364,11 @@ open class SDK {
         )
 
         initNetworkUseCase(url = baseUrl)
+        core = if (CoreSelection.resolve(coreV2Requested, shopId)) {
+            networkRepository.useCoreV2(shopId, AndroidConnectivityMonitor(context))
+        } else {
+            networkRepository.core
+        }
 
         // Popups v3 start from the /init answer; in their test mode /init counts test popups too.
         registerManager.onInitFinished = { flag ->
@@ -644,9 +667,14 @@ open class SDK {
      * process-global messaging services. Call this for short-lived instances to avoid leaking
      * them through the active-instances registry. Apps that keep a single long-lived instance
      * for the whole process usually do not need it.
+     *
+     * On the new core ([Rees46Config.coreV2]) the instance's requests in flight are cancelled and
+     * end in `onError(-1)`, and so does any request made through it afterwards.
      */
     fun release() {
         SdkRegistry.unregister(this)
+        // The new core cancels the instance's requests in flight; the legacy one cannot.
+        core?.release()
         // Only this instance's level goes: another live instance of the shop keeps logging at its own.
         logShopId?.let { SdkLogs.unregister(it, owner = this) }
     }
