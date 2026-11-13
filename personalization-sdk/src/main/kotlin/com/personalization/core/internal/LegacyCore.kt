@@ -23,6 +23,7 @@ import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.Executor
 
 /**
  * Today's request path, unchanged: `HttpURLConnection` on a thread per request. Any `2xx` is a
@@ -51,7 +52,7 @@ internal class LegacyCore(
             // Off the caller's thread, as every answer of this path.
             if (listener != null) {
                 val error = LegacyErrors.of(SdkError.NotInitialized)
-                Thread { delivery.failure(listener, error.code, error.message) }.start()
+                threads.execute { delivery.failure(listener, error.code, error.message) }
             }
             return
         }
@@ -74,7 +75,7 @@ internal class LegacyCore(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        val thread = Thread {
+        threads.execute {
             val startTime = System.currentTimeMillis()
             val requestBodyForLog = if (networkMethod is NetworkMethod.POST) params.toString() else null
             var logUrl = ""
@@ -148,8 +149,6 @@ internal class LegacyCore(
                 }
             }
         }
-
-        thread.start()
     }
 
     private sealed interface Outcome {
@@ -248,9 +247,15 @@ internal class LegacyCore(
         SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
-    private companion object {
-        const val CONNECT_TIMEOUT_MS = 5_000
-        const val READ_TIMEOUT_MS = 10_000
-        val HTTP_SUCCESS = 200..299
+    internal companion object {
+        private const val CONNECT_TIMEOUT_MS = 5_000
+        private const val READ_TIMEOUT_MS = 10_000
+        private val HTTP_SUCCESS = 200..299
+
+        internal val DEFAULT_THREADS = Executor { Thread(it).start() }
+
+        /** Runs each request and each answer of the path: a thread apiece. Tests pass one they can wait on. */
+        @Volatile
+        internal var threads: Executor = DEFAULT_THREADS
     }
 }

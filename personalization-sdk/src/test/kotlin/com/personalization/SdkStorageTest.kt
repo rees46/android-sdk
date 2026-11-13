@@ -9,6 +9,8 @@ import com.personalization.core.SdkException
 import com.personalization.core.SdkResult
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
+import com.personalization.core.internal.LegacyCore
+import com.personalization.core.internal.TrackingThreads
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
@@ -31,7 +33,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
@@ -53,6 +54,9 @@ class SdkStorageTest {
     private lateinit var context: Context
     private val server = MockWebServer()
     private val inits = CopyOnWriteArrayList<String>()
+
+    /** The legacy path's requests run here, so a test waits until they are answered instead of sleeping. */
+    private val threads = TrackingThreads()
     private val initCount = AtomicInteger()
     private val tokens = LinkedBlockingQueue<JSONObject>()
     private val logged = CopyOnWriteArrayList<SdkLogMessage>()
@@ -80,6 +84,7 @@ class SdkStorageTest {
             context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit()
         }
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
+        LegacyCore.threads = threads
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val url = request.requestUrl ?: return MockResponse().setResponseCode(400)
@@ -97,6 +102,7 @@ class SdkStorageTest {
     fun tearDown() {
         SdkRegistry.all().forEach { it.release() }
         server.shutdown()
+        LegacyCore.threads = LegacyCore.DEFAULT_THREADS
         CoreSelection.reset()
         SdkRegistry.reset()
         Rees46.reset()
@@ -113,15 +119,14 @@ class SdkStorageTest {
         storageKey = storageKey,
     )
 
+    /** Every `/init` sent so far has been answered and its answer handled. */
     private fun awaitInits(count: Int) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (inits.size < count && System.currentTimeMillis() < deadline) Thread.sleep(10)
-        assertTrue("expected $count /init, got $inits", inits.size >= count)
+        threads.awaitIdle()
+        assertEquals("/init sent: $inits", count, inits.size)
     }
 
     private fun awaitDid(sdk: SDK, expected: String) {
-        val deadline = System.currentTimeMillis() + 5_000
-        while (sdk.getDid() != expected && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        threads.awaitIdle()
         assertEquals(expected, sdk.getDid())
     }
 
@@ -177,19 +182,26 @@ class SdkStorageTest {
 
     @Test
     fun `an init answer for the customer before the deletion is not taken`() {
-        // A new device: its first /init is slow, and the deletion starts over before it answers.
+        // A new device: its first /init is held, and the deletion starts over before it answers.
+        val firstArrived = CountDownLatch(1)
+        val answerFirst = CountDownLatch(1)
         initAnswer = { n, _ ->
+            if (n == 1) {
+                firstArrived.countDown()
+                answerFirst.await(5, TimeUnit.SECONDS)
+            }
             val did = if (n == 1) "stale-did" else "fresh-did"
-            MockResponse().setBody("""{"did":"$did","seance":"S$n"}""").apply { if (n == 1) setHeadersDelay(1_000, TimeUnit.MILLISECONDS) }
+            MockResponse().setBody("""{"did":"$did","seance":"S$n"}""")
         }
         val sdk = Rees46.initialize(context, config())
-        awaitInits(1)
+        assertTrue(firstArrived.await(5, TimeUnit.SECONDS))
 
         runBlocking { sdk.deleteUserCredentials() }
+        answerFirst.countDown()
 
+        // Both answers handled, the late one last.
         awaitDid(sdk, "fresh-did")
-        Thread.sleep(1_500)
-        assertEquals("fresh-did", sdk.getDid())
+        assertEquals(listOf("", ""), inits)
     }
 
     @Test
@@ -246,6 +258,9 @@ class SdkStorageTest {
         assertEquals("legacy-did", sdk.getDid())
 
         runBlocking { sdk.deleteUserCredentials() }
+        // The new customer's /init is done, and nothing writes to the partition any more.
+        awaitDid(sdk, "new-did")
+        sdk.release()
 
         val legacy = context.getSharedPreferences(PreferencesPartition.LEGACY_KEY, Context.MODE_PRIVATE)
         assertEquals(setOf("shop_id", "segment_ab_testing"), legacy.all.keys)

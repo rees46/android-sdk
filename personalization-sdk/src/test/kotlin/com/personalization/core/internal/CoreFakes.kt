@@ -59,3 +59,37 @@ internal fun testCoreDispatchers(scheduler: TestCoroutineScheduler = TestCorouti
     val dispatcher = StandardTestDispatcher(scheduler)
     return CoreDispatchers(io = dispatcher, main = { dispatcher }, default = dispatcher)
 }
+
+/**
+ * Threads for the legacy path ([LegacyCore.threads]) that a test can wait on: [awaitIdle] returns once
+ * every request started so far has had its answer delivered, the requests those answers started too.
+ */
+internal class TrackingThreads : java.util.concurrent.Executor {
+    private val lock = Object()
+    private var running = 0
+
+    override fun execute(command: Runnable) {
+        synchronized(lock) { running++ }
+        Thread {
+            try {
+                command.run()
+            } finally {
+                synchronized(lock) {
+                    running--
+                    lock.notifyAll()
+                }
+            }
+        }.start()
+    }
+
+    fun awaitIdle(timeoutMs: Long = 10_000) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        synchronized(lock) {
+            while (running > 0) {
+                val left = deadline - System.currentTimeMillis()
+                check(left > 0) { "$running requests of the legacy path still running" }
+                lock.wait(left)
+            }
+        }
+    }
+}
