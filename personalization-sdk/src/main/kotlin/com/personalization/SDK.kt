@@ -496,11 +496,12 @@ open class SDK {
 
     /**
      * Light bring-up for handling a push in a (possibly cold) background process, used by
-     * [Rees46.handlePush] for a shop registered but not created. On both cores it never sends `/init`: the
-     * instance is ready on the shop's stored `did` and sends the push's event with it. It shows no popup and
-     * sends neither the push token nor the profile. Without a stored `did` the event is dropped
-     * (`push_dropped`, `no_did`). The app's first [Rees46.instance] or [Rees46.initialize] of the shop puts a
-     * full instance in its place, and an initialize of this object makes it one.
+     * [Rees46.handlePush] for a shop registered but not created. On both cores, with a stored `did`, it never
+     * sends `/init`: the instance is ready on that `did` and sends the push's event with it. It shows no
+     * popup and sends neither the push token nor the profile. Without a stored `did` the new core drops the
+     * event (`push_dropped`, `no_did`), and the legacy core starts as it always did. The app's first
+     * [Rees46.instance] or [Rees46.initialize] of the shop puts a full instance in its place, and an
+     * initialize of this object makes it one.
      */
     internal fun initializeForPush(context: Context, config: Rees46Config) = start(
         context,
@@ -536,11 +537,12 @@ open class SDK {
     }
 
     /**
-     * A push-only instance ([initializeForPush]) without a stored `did` cannot send a push's event: true
-     * when this is one, and the push is dropped (`push_dropped`, `no_did`).
+     * A push-only instance ([initializeForPush]) of the new core without a stored `did` cannot send a push's
+     * event: true when this is one, and the push is dropped (`push_dropped`, `no_did`).
      */
     internal fun dropsPushWithoutDid(): Boolean {
-        if (!pushOnly || deviceId != null) return false
+        // The legacy core asks /init for one first, as it always did.
+        if (!pushOnly || !isCoreV2 || deviceId != null) return false
         log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "The push's event is dropped: the shop has no did yet", mapOf("reason" to LogReasons.NO_DID))
         return true
     }
@@ -664,7 +666,7 @@ open class SDK {
             init.start()
         } else {
             core = networkRepository.core
-            if (pushOnly) startLegacyForPush(config, storage) else startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
+            if (pushOnly) startLegacyForPush(context, config, storage) else startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
         }
 
         // Register this instance so pushes delivered to the (process-global) messaging services are
@@ -742,12 +744,17 @@ open class SDK {
     }
 
     /**
-     * The legacy path brought up only for a push: no `/init`, no session of its own, no popup, no token.
-     * Ready on the stored `did`, with which the push's event goes; without one it stays initializing.
+     * The legacy path brought up only for a push: with a stored `did`, no `/init`, no session of its own, no
+     * popup, no token; ready on that `did`, with which the push's event goes. Without one it starts as it
+     * always did (`/init` for a `did`, which the push's event then waits for), only sending no token.
      */
-    private fun startLegacyForPush(config: Rees46Config, storage: ShopStorage) {
+    private fun startLegacyForPush(context: Context, config: Rees46Config, storage: ShopStorage) {
         storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
-        instanceState.set(if (userSettingsRepository.getDid().isNotEmpty()) SdkState.READY else SdkState.INITIALIZING)
+        if (userSettingsRepository.getDid().isEmpty()) {
+            startLegacy(context, config, storage, autoSendPushToken = false, needReInitialization = false)
+            return
+        }
+        instanceState.set(SdkState.READY)
     }
 
     /** The new core's `/init` and state ([CoreInit]); requests wait for it in [CoreV2]. Started by the caller. */

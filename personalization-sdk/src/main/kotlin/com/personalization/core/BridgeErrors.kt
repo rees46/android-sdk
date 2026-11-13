@@ -32,6 +32,18 @@ object BridgeErrors {
     }
 
     /**
+     * The error an instance in [state] gives every call: [SdkError.ShopBlocked] for a shop that refused the
+     * SDK ([SdkState.REFUSED]), [SdkError.NotInitialized] before initialization and after `release()`; null
+     * while calls may go. What a bridge reports for an `initialize` whose shop refused the SDK.
+     */
+    @JvmStatic
+    fun errorOf(state: SdkState): SdkError? = when (state) {
+        SdkState.REFUSED -> SdkError.ShopBlocked
+        SdkState.NOT_INITIALIZED -> SdkError.NotInitialized
+        SdkState.INITIALIZING, SdkState.READY, SdkState.RETRYING -> null
+    }
+
+    /**
      * An old-style listener that reports the whole result to [onResult], once, on the thread the SDK
      * answers on: [SdkResult.Success] with the answer (a [JSONObject], a [JSONArray] or null), or
      * [SdkResult.Failure] with [errorOf] the failure. Pass it to any method that takes an

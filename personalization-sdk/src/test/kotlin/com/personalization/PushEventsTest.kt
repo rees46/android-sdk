@@ -272,6 +272,8 @@ class PushEventsTest {
         while (logged.none { it.message == "The push event was not accepted" } && System.nanoTime() < deadline) Thread.sleep(10)
         assertTrue(logged.any { it.message == "The push event was not accepted" })
         assertTrue("no callback for an event the queue refused", clicked.isEmpty() && bridge.isEmpty())
+        // What a bridge reports for the initialize of a refused shop.
+        assertEquals(com.personalization.core.SdkError.ShopBlocked, com.personalization.core.BridgeErrors.errorOf(refused.state))
         refused.release()
 
         initStatus = 200
@@ -407,7 +409,7 @@ class PushEventsTest {
     }
 
     @Test
-    fun `on the legacy core a shop registered but not created sends its push with its stored did and no init`() {
+    fun `on the legacy core a shop registered but not created sends its push with its stored did and no init, and without one starts as before`() {
         partition().edit().putString("did", "STORED").commit()
         Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
 
@@ -418,10 +420,12 @@ class PushEventsTest {
         assertFalse(drained().any { it.first in listOf("init", "mobile_push_tokens", "profile/set") })
         assertEquals(SdkState.READY, SdkRegistry.byShopId(SHOP)?.state)
 
-        // Without a did the push is dropped.
+        // Without a did it starts as it always did: /init for a did, then the push's event with it.
         Rees46.register(context, listOf(config(OTHER, coreV2 = false)))
-        assertNull(Rees46.handlePush(push(code = "cold", shop = OTHER), PushEvent.DELIVERED))
-        assertEquals(LogReasons.NO_DID, logged.last { it.code == LogCodes.PUSH_DROPPED }.context["reason"])
+        assertEquals(OTHER, Rees46.handlePush(push(code = "cold", shop = OTHER), PushEvent.DELIVERED))
+        assertEquals(OTHER, next("init")?.second?.getString("shop_id"))
+        assertEquals("D1", next("track/received")?.second?.getString("did"))
+        assertFalse(logged.any { it.code == LogCodes.PUSH_DROPPED && it.context["reason"] == LogReasons.NO_DID })
     }
 
     // Callbacks.

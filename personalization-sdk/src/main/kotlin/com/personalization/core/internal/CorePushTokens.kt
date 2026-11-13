@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -32,9 +33,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - The week is taken before the request: two sends of one token at once make one request, the second
  *   hearing the first's answer. The claim is kept in the partition with its time, and the token and the
  *   date of the send only once the server took it. A failed send gives the claim back, and a claim older
- *   than [CLAIM_TTL_MS] without a send — its process died — is free.
- * - A token goes only once the instance is ready ([ready]) and never without a `did`. After each start's
- *   `/init` ([sendStored]) the shop sends the device's token if it is due.
+ *   than [CLAIM_TTL_MS] (five minutes) without a send — its process died — is free. The week, the claim and
+ *   the send are kept for each provider (FCM, HMS) on its own.
+ * - A token goes only once the instance is ready ([ready]) and never without a `did`. A token the app
+ *   passes waits for the `did` and its listener hears the answer of the send: waiting is no error. After
+ *   each start's `/init` ([sendStored]) the shop sends the device's token if it is due.
  * - A push-only instance ([sends] false) sends no token.
  * - After [release] nothing is sent or kept: [set] answers `notInitialized`, and so does one that was
  *   waiting for the instance to be ready.
@@ -118,7 +121,13 @@ internal class CorePushTokens(
         // Who answers [listener]: the send, or the release that cut it off before it went.
         val handed = AtomicBoolean(false)
         val job = launch {
-            val error = ready()
+            var error = ready()
+            // Ready, yet the did went (the customer was deleted meanwhile): the token waits for the next one
+            // and goes then; waiting for a did is no error.
+            while (error == null && !hasDid()) {
+                delay(DID_RECHECK_MS)
+                error = ready()
+            }
             if (!handed.compareAndSet(false, true)) return@launch
             if (error != null) {
                 listener?.let { delivery.failure(it, LegacyErrors.of(error)) }
@@ -289,7 +298,10 @@ internal class CorePushTokens(
         const val WEEK_MS = 7 * 24 * 60 * 60 * 1000L
 
         /** A claim this old without a send is free: the process that took it died before the answer. */
-        const val CLAIM_TTL_MS = 3 * 60 * 1000L
+        const val CLAIM_TTL_MS = 5 * 60 * 1000L
+
+        /** How often a token the app passed looks again for the did a deletion of the customer took. */
+        const val DID_RECHECK_MS = 100L
 
         const val REASON_SENT_THIS_WEEK = "sent_this_week"
         const val REASON_NO_DID = "no_did"

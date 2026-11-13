@@ -297,6 +297,13 @@ class CorePushTokensTest {
         run()
         assertEquals("a claim moments old is another process's send", 1, sent.size)
 
+        // The claim is the provider's: an HMS token goes all the same.
+        next.received("h1", PushProvider.HMS)
+        run()
+        assertEquals(listOf("t1", "h1"), sent.map { it.second.getString("token") })
+        answers.clear()
+        sent.removeAt(1)
+
         clock.advance(CorePushTokens.CLAIM_TTL_MS)
         next.sendStored()
         run()
@@ -305,7 +312,25 @@ class CorePushTokensTest {
         next.sendStored()
         run()
         assertEquals("the send that went counts the week", 2, sent.size)
-        assertEquals(listOf<Any?>(CorePushTokens.REASON_SENT_THIS_WEEK, CorePushTokens.REASON_SENT_THIS_WEEK), reasons())
+        assertEquals(CorePushTokens.REASON_SENT_THIS_WEEK, reasons().last())
+    }
+
+    @Test
+    fun `a token the app passes waits for the did and answers once it went, as no error`() {
+        did = ""
+        val tokens = tokens()
+        val heard = Heard()
+        tokens.set("t1", PushProvider.FCM, heard)
+        run()
+        assertTrue(heard.calls.isEmpty())
+        assertTrue(sent.isEmpty())
+
+        did = "D1"
+        scheduler.advanceTimeBy(CorePushTokens.DID_RECHECK_MS)
+        run()
+        assertEquals(1, sent.size)
+        ok()
+        assertEquals(listOf("success"), heard.calls)
     }
 
     private companion object {
