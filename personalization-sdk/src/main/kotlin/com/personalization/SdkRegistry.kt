@@ -101,7 +101,8 @@ internal object SdkRegistry {
             onReady(alreadyLive)
             Cancellable.NOOP
         } else {
-            val added = awaiter!!
+            // Set under the lock whenever nothing was live; the fallback is unreachable.
+            val added = awaiter ?: return Cancellable.NOOP
             Cancellable { synchronized(lock) { awaiting.remove(added) } }
         }
     }

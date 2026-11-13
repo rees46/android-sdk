@@ -74,15 +74,10 @@ internal class TrackEventManagerImpl @Inject constructor(
     }
 
     override fun trackPurchase(request: PurchaseTrackingRequest, listener: OnApiCallbackListener?) {
-        val jsonResult = PurchaseTrackingJsonBuilder.buildOrError(request)
-        if (jsonResult.isFailure) {
-            listener?.onError(
-                PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE,
-                jsonResult.exceptionOrNull()?.message,
-            )
+        val body = PurchaseTrackingJsonBuilder.buildOrError(request).getOrElse { error ->
+            listener?.onError(PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE, error.message)
             return
         }
-        val body = jsonResult.getOrNull()!!
         popups()?.onPurchase()
         if (request.recommendedBy == null) {
             val lastRecommendedBy = getRecommendedByUseCase()

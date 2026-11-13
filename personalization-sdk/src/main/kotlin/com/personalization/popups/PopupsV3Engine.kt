@@ -416,8 +416,9 @@ internal class PopupsV3Engine(
             return
         }
         showing += id
-        if (popup.needsPromoCode) {
-            promoCode(popup.promoCodeListId!!) { code ->
+        val promoCodeListId = popup.promoCodeListId.takeIf { popup.needsPromoCode }
+        if (promoCodeListId != null) {
+            promoCode(promoCodeListId) { code ->
                 if (code == null) {
                     showing -= id
                     debugLog("popup $id skipped: no promo code")

@@ -1,5 +1,7 @@
 package com.personalization
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -68,6 +70,10 @@ class SearchParams : AbstractParams<SearchParams>() {
     }
 
     fun put(param: Parameter?, value: SearchFilters): SearchParams {
-        return put(param!!, value.toString())
+        if (param == null) {
+            SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "SearchParams.put: no parameter given, the filters are left out")
+            return this
+        }
+        return put(param, value.toString())
     }
 }

@@ -255,3 +255,46 @@ tasks.register('publishToMavenCentral') {
         println "Publishing to Maven Central only"
     }
 }
+
+// No new `!!` in the SDK: a force unwrap on a path the app reaches crashes the app instead of
+// failing one call. force-unwrap-baseline.txt lists the views that still have them; it may only
+// shrink. Plain text scan, so it needs no compiler and runs as part of `check` in CI.
+tasks.register('checkForceUnwraps') {
+    group = 'verification'
+    description = 'Fails when a Kotlin source has more `!!` than force-unwrap-baseline.txt allows.'
+    def sourceRoot = file('src/main/kotlin')
+    def baseline = file('force-unwrap-baseline.txt')
+    def sources = fileTree(sourceRoot) { include '**/*.kt' }
+    inputs.files(sources)
+    inputs.file(baseline)
+    outputs.upToDateWhen { false }
+    doLast {
+        def allowed = [:]
+        baseline.eachLine { line ->
+            def entry = line.trim()
+            if (entry && !entry.startsWith('#')) {
+                def parts = entry.split(/\s+/)
+                allowed[parts[0]] = parts[1] as int
+            }
+        }
+        def violations = []
+        sources.each { File source ->
+            def path = sourceRoot.toPath().relativize(source.toPath()).toString().replace(File.separator, '/')
+            int count = 0
+            source.eachLine { line ->
+                def code = line.trim()
+                if (code.startsWith('//') || code.startsWith('*') || code.startsWith('/*')) return
+                int comment = code.indexOf('//')
+                if (comment >= 0) code = code.substring(0, comment)
+                count += code.findAll(/!!/).size()
+            }
+            int limit = allowed.getOrDefault(path, 0) as int
+            if (count > limit) violations << "${path}: ${count} `!!`, ${limit} allowed"
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException("Force unwraps (`!!`) in the SDK — handle the null instead:\n" + violations.join('\n'))
+        }
+    }
+}
+
+tasks.named('check') { dependsOn 'checkForceUnwraps' }
