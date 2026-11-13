@@ -24,8 +24,10 @@ class SearchInstantParamsTest {
     }
     private val manager = SearchManagerImpl(network)
 
+    // Without locations the server's merchant filter matches no product: an instant search with
+    // `excluded_merchants` alone comes back empty (2568 products → 0 on the demo shop).
     @Test
-    fun `excluded merchants are sent without locations`() {
+    fun `excluded merchants are not sent without locations`() {
         manager.searchInstant(
             query = "shoes",
             locations = null,
@@ -35,7 +37,7 @@ class SearchInstantParamsTest {
             onError = { _, _ -> }
         )
 
-        assertEquals("m1,m2", params.captured.getString("excluded_merchants"))
+        assertFalse(params.captured.has("excluded_merchants"))
         assertFalse(params.captured.has("locations"))
     }
 
@@ -44,13 +46,27 @@ class SearchInstantParamsTest {
         manager.searchInstant(
             query = "shoes",
             locations = "msk",
+            excludedMerchants = listOf("m1", "m2"),
+            excludedBrands = null,
+            onSearchInstant = {},
+            onError = { _, _ -> }
+        )
+
+        assertEquals("m1,m2", params.captured.getString("excluded_merchants"))
+        assertEquals("msk", params.captured.getString("locations"))
+    }
+
+    @Test
+    fun `excluded merchants are not sent with blank locations`() {
+        manager.searchInstant(
+            query = "shoes",
+            locations = " ",
             excludedMerchants = listOf("m1"),
             excludedBrands = null,
             onSearchInstant = {},
             onError = { _, _ -> }
         )
 
-        assertEquals("m1", params.captured.getString("excluded_merchants"))
-        assertEquals("msk", params.captured.getString("locations"))
+        assertFalse(params.captured.has("excluded_merchants"))
     }
 }
