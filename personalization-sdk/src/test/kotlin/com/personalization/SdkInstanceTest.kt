@@ -9,7 +9,9 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
 import com.personalization.core.SdkState
+import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.HeldMain
 import com.personalization.core.internal.CoreV2
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.LegacyCore
@@ -457,17 +459,14 @@ class SdkInstanceTest {
     @Test
     fun `on the new core the session is the server's and the bridges hear it on the main thread`() {
         val heard = CopyOnWriteArrayList<Pair<String, Boolean>>()
-        val sdk = SDK()
+        val main = HeldMain()
+        val sdk = SDK().apply { dispatchers = CoreDispatchers(main = { main }) }
         sdk.onSessionChange { heard += it to (Looper.myLooper() == Looper.getMainLooper()) }
         sdk.initializeWith(context, config(coreV2 = true))
         nextRequest("init")
         awaitState(sdk, SdkState.READY)
-        // Handed to the main thread from the io dispatcher: run the main looper until it arrives.
-        val deadline = System.currentTimeMillis() + 5_000
-        while (heard.isEmpty() && System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(5)
-        }
+        // Handed to the main thread from the io dispatcher: run it here, on the test's main thread.
+        while (heard.isEmpty() && main.runNext()) Unit
 
         assertEquals("S", sdk.sessionId)
         assertEquals(listOf("S" to true), heard)

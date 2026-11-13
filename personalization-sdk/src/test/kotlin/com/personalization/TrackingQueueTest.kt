@@ -17,6 +17,8 @@ import com.personalization.core.SdkException
 import com.personalization.core.SdkResult
 import com.personalization.core.SdkState
 import com.personalization.core.internal.ContractFixtures
+import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.HeldMain
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.LegacyCore
@@ -236,15 +238,18 @@ class TrackingQueueTest {
 
     @Test
     fun `the Java form of flush ends once on the main thread`() {
-        val sdk = sdk()
+        val main = HeldMain()
+        val sdk = SDK().apply { dispatchers = CoreDispatchers(main = { main }) }
+        sdk.initializeWith(
+            context,
+            Rees46Config(shopId = SHOP, apiDomain = server.url("/").toString().trimEnd('/'), autoSendPushToken = false, coreV2 = true),
+        )
+        runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         val ends = LinkedBlockingQueue<Pair<SdkResult<Unit>, Boolean>>()
 
         sdk.flush(CompletionListener { ends += it to (Looper.myLooper() == Looper.getMainLooper()) })
-        val deadline = System.currentTimeMillis() + 5_000
-        while (ends.isEmpty() && System.currentTimeMillis() < deadline) {
-            shadowOf(Looper.getMainLooper()).idle()
-            Thread.sleep(5)
-        }
+        // Handed to the main thread: run it here, on the test's main thread.
+        while (ends.isEmpty() && main.runNext()) Unit
 
         assertEquals(SdkResult.Success(Unit) to true, ends.single())
     }

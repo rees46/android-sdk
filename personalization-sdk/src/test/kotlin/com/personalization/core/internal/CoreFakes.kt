@@ -58,6 +58,26 @@ internal class FakeAppLifecycle(foreground: Boolean = true) : AppLifecycle {
     }
 }
 
+/**
+ * The main thread for a test that runs on it (Robolectric's): what the SDK hands to "main" waits here
+ * until the test runs it, on its own thread, with [runNext] — a wait on the work itself, not on the clock.
+ */
+internal class HeldMain : kotlinx.coroutines.CoroutineDispatcher() {
+    private val tasks = java.util.concurrent.LinkedBlockingQueue<Runnable>()
+
+    override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
+        tasks.put(block)
+    }
+
+    /** Runs what was handed over, waiting up to [timeoutMs] for the first; false when nothing came. */
+    fun runNext(timeoutMs: Long = 5_000): Boolean {
+        val first = tasks.poll(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) ?: return false
+        first.run()
+        while (true) (tasks.poll() ?: break).run()
+        return true
+    }
+}
+
 /** Every dispatcher of the core on one test scheduler: the test decides when work runs. */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun testCoreDispatchers(scheduler: TestCoroutineScheduler = TestCoroutineScheduler()): CoreDispatchers {
