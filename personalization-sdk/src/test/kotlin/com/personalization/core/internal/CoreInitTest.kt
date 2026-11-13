@@ -279,6 +279,50 @@ class CoreInitTest {
     }
 
     @Test
+    fun `an ordinary pause of init ends on the network's return, the foreground or a check of the shop`() {
+        val init = started()
+        answer(ok())
+        // The session's window ended: the new session's /init fails and waits out its pause.
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        init.renewSession()
+        scheduler.runCurrent()
+        answer(http(500))
+        after(500)
+        assertEquals(2, sent.size)
+
+        connectivity.set(false)
+        connectivity.set(true)
+        scheduler.runCurrent()
+        assertEquals("the network back sends it at once", 3, sent.size)
+
+        answer(http(500))
+        lifecycle.set(false)
+        lifecycle.set(true)
+        scheduler.runCurrent()
+        assertEquals("so does the foreground", 4, sent.size)
+
+        answer(http(500))
+        init.checkShop()
+        scheduler.runCurrent()
+        assertEquals("and a check of the shop", 5, sent.size)
+    }
+
+    @Test
+    fun `a pause the server named is waited in full whatever comes`() {
+        val init = started()
+        answer(http(503, retryAfterMs = 60_000))
+        connectivity.set(false)
+        connectivity.set(true)
+        lifecycle.set(false)
+        lifecycle.set(true)
+        init.checkShop()
+        after(59_999)
+        assertEquals(1, sent.size)
+        after(1)
+        assertEquals(2, sent.size)
+    }
+
+    @Test
     fun `a Retry-After waits at least a second and at most five minutes`() {
         started()
         // 0, or a date already past: a second.

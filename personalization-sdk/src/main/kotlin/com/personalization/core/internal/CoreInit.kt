@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -143,6 +144,13 @@ internal class CoreInit(
     private var successes = 0L
     private var lastCheckAt: Long? = null
     private var foreground: Cancellable? = null
+    private var network: Cancellable? = null
+
+    /**
+     * Ends an ordinary pause between repeats: the network coming back, the foreground, [checkShop]. A
+     * server's `Retry-After` is waited in full all the same.
+     */
+    private val wake = Channel<Unit>(Channel.CONFLATED)
 
     /** How many `/init` went out; for tests. */
     @Volatile
@@ -181,10 +189,17 @@ internal class CoreInit(
         }
         if (ready) markUsable(generation())
         val handle = lifecycle.addListener(::onForegroundChanged)
-        // A release that came meanwhile does not leave the observer behind.
-        val kept = synchronized(lock) { if (released) false else true.also { foreground = handle } }
+        val networkHandle = connectivity.addListener { connected -> if (connected) wake.trySend(Unit) }
+        // A release that came meanwhile does not leave the observers behind.
+        val kept = synchronized(lock) {
+            if (released) false else true.also {
+                foreground = handle
+                network = networkHandle
+            }
+        }
         if (!kept) {
             handle.cancel()
+            networkHandle.cancel()
             return
         }
         val start = generation()
@@ -320,7 +335,12 @@ internal class CoreInit(
      * True when `/init` went out.
      */
     internal fun checkShop(): Boolean = synchronized(lock) {
-        if (released || held || !prepared || state.current == SdkState.REFUSED || job?.isActive == true) return false
+        if (released || held || !prepared || state.current == SdkState.REFUSED) return false
+        if (job?.isActive == true) {
+            // Being repeated: an ordinary pause ends, and the next attempt's answer is the check's.
+            wake.trySend(Unit)
+            return false
+        }
         val now = clock.nowMillis()
         val last = lastCheckAt
         if (last != null && now - last < CHECK_SHOP_INTERVAL_MS) return false
@@ -362,6 +382,8 @@ internal class CoreInit(
             job?.cancel()
             job = null
             gate.value = Gate.CLOSED
+            network?.cancel()
+            network = null
             foreground.also { foreground = null }
         }
         listening?.cancel()
@@ -405,7 +427,7 @@ internal class CoreInit(
     private sealed interface Step {
         object Done : Step
         class Answered(val answer: JSONObject) : Step
-        class Retry(val delayMs: Long, val waitForNetwork: Boolean, val fallback: Boolean) : Step
+        class Retry(val delayMs: Long, val waitForNetwork: Boolean, val fallback: Boolean, val serverNamed: Boolean) : Step
     }
 
     private suspend fun run(start: Int) {
@@ -451,7 +473,7 @@ internal class CoreInit(
                     if (step.waitForNetwork) {
                         waitForNetwork()
                     } else {
-                        pause(step.delayMs)
+                        pause(step.delayMs, step.serverNamed)
                         attempt++
                     }
                 }
@@ -538,7 +560,7 @@ internal class CoreInit(
         )
         val fallback = !startAnswered && state.current == SdkState.RETRYING && hasDid && !fallbackLogged
         if (fallback) fallbackLogged = true
-        return Step.Retry(delayMs, waitForNetwork, fallback)
+        return Step.Retry(delayMs, waitForNetwork, fallback, serverNamed = retryAfterMs != null)
     }
 
     /** Must hold [lock]. */
@@ -581,6 +603,7 @@ internal class CoreInit(
     /** Heard on the main thread; handled on [CoreDispatchers.io], where waiting for [lock] blocks nothing. */
     private fun onForegroundChanged(foreground: Boolean) {
         if (!foreground) return
+        wake.trySend(Unit)
         scope.launch { onForeground() }
     }
 
@@ -612,12 +635,17 @@ internal class CoreInit(
         }
     }
 
-    /** A pause between repeats; the network coming back ends a pause it set off. */
-    private suspend fun pause(delayMs: Long) {
-        if (connectivity.isConnected) {
+    /**
+     * A pause between repeats. A server's `Retry-After` ([serverNamed]) is waited in full; an ordinary one
+     * ends when the network comes back, the app comes to the foreground or the shop is to be checked.
+     */
+    private suspend fun pause(delayMs: Long, serverNamed: Boolean) {
+        // What woke the machine before this pause began is old news.
+        while (wake.tryReceive().isSuccess) Unit
+        if (serverNamed) {
             delay(delayMs)
         } else {
-            withTimeoutOrNull(delayMs) { awaitNetwork() }
+            withTimeoutOrNull(delayMs) { wake.receive() }
         }
     }
 

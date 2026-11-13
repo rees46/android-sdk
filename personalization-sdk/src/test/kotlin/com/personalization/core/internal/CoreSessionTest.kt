@@ -253,6 +253,18 @@ class CoreSessionTest {
     }
 
     @Test
+    fun `an init answer without a seance keeps the live sid`() {
+        knownDevice("LIVE", lastActivity = clock.now - 60_000)
+        val init = started()
+        clock.advance(1_000)
+        answer(HttpResult.Success(JSONObject().put("did", "D1")))
+
+        assertEquals("LIVE", settings.getSid())
+        assertEquals(clock.now, lastActivity)
+        assertTrue(init.session.isAlive())
+    }
+
+    @Test
     fun `a failed init of a new session keeps the state and does not act on the saved answer again`() {
         val answers = mutableListOf<Boolean>()
         val init = CoreInit(
