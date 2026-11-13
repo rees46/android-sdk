@@ -209,6 +209,34 @@ class CoreHttpClientTest {
     }
 
     @Test
+    fun `init leaves out a did and a session it does not have, and carries the stream of the config`() {
+        every { settings.getDid() } returns ""
+        every { settings.getSid() } returns ""
+        every { settings.getStream() } returns "flutter"
+        reply(200, "{}")
+
+        send(NetworkMethod.GET("init"), JSONObject().put("tz", "3"))
+
+        val url = checkNotNull(server.takeRequest().requestUrl)
+        assertEquals(setOf("tz", "shop_id", "segment", "stream"), url.queryParameterNames)
+        assertEquals("flutter", url.queryParameter("stream"))
+    }
+
+    @Test
+    fun `the Retry-After of an answer comes back with it, in seconds or as a date`() {
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "30"))
+        server.enqueue(MockResponse().setResponseCode(429).setHeader("Retry-After", "Wed, 21 Oct 2015 07:28:00 GMT"))
+        server.enqueue(MockResponse().setResponseCode(503).setHeader("Retry-After", "soon"))
+        server.enqueue(MockResponse().setResponseCode(500))
+        val clock = FakeClock(now = 1_445_412_420_000L) // a minute before the date above
+        val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, "shop", clock = clock)
+
+        val results = List(4) { send(NetworkMethod.GET("init"), client = client) as HttpResult.Failure }
+
+        assertEquals(listOf(30_000L, 60_000L, null, null), results.map { it.retryAfterMs })
+    }
+
+    @Test
     fun `a POST carries the common fields in its JSON body`() {
         reply(200, "{}")
 
