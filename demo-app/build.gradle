@@ -45,7 +45,7 @@ android {
         versionName "1.0"
         multiDexEnabled true
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "com.personalization.demo.DemoTestRunner"
 
         // Add shop ID to BuildConfig
         buildConfigField "String", "SHOP_ID", "\"${shopId}\""
