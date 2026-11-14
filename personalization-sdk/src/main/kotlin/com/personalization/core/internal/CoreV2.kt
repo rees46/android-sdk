@@ -95,7 +95,7 @@ internal class CoreV2(
             queue.accept(method.method, params, listener)
             return
         }
-        sendNow(method, params, answer)
+        sendNow(method, params, answer = answer)
     }
 
     /**
@@ -112,17 +112,22 @@ internal class CoreV2(
         queue.accept(path, params, listener = null, accepted = accepted)
     }
 
-    /** Sends an event the queue's disk would not take, once, as a request. */
+    /**
+     * Sends an event the queue's disk would not take, once, as a request, by the queue's rules: a push event
+     * waits only for the instance to be ready — it neither waits for a session nor starts one, and asks
+     * `/init` nothing — and a tracking event as any request does.
+     */
     internal fun sendDirectly(path: String, params: JSONObject, listener: OnApiCallbackListener?) {
         val answered = AtomicBoolean(false)
-        sendNow(NetworkMethod.POST(path), params) { result: HttpResult ->
+        val push = path in EventQueue.PUSH_EVENT_PATHS
+        sendNow(NetworkMethod.POST(path), params, needsSession = !push) { result: HttpResult ->
             answered.compareAndSet(false, true).also { first -> if (first && listener != null) deliver(listener, result) }
         }
     }
 
-    private fun sendNow(method: NetworkMethod, params: JSONObject, answer: (HttpResult) -> Boolean) {
+    private fun sendNow(method: NetworkMethod, params: JSONObject, needsSession: Boolean = true, answer: (HttpResult) -> Boolean) {
         val request = requests.launch {
-            val waited = awaitInstance()
+            val waited = if (needsSession) awaitInstance() else awaitReady()
             if (waited != null) {
                 if (waited == SdkError.Timeout) {
                     SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: the SDK is not ready", shopId,
@@ -163,6 +168,15 @@ internal class CoreV2(
         val waited = withTimeoutOrNull(readyWaitMs) {
             val current = initFlow.filterNotNull().first()
             Verdict(current.usable())
+        }
+        return if (waited == null) SdkError.Timeout else waited.error
+    }
+
+    /** [awaitInstance] for what needs only a `did`: the instance ready, whatever its session. Null when it may go. */
+    private suspend fun awaitReady(): SdkError? {
+        val waited = withTimeoutOrNull(readyWaitMs) {
+            val current = initFlow.filterNotNull().first()
+            Verdict(current.ready())
         }
         return if (waited == null) SdkError.Timeout else waited.error
     }

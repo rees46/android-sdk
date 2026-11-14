@@ -350,8 +350,6 @@ internal class CoreInit(
         synchronized(lock) {
             if (released) return ShopCheck.Released
             if (state.current == SdkState.REFUSED) return ShopCheck.Refused
-            // Only the app's own instance asks the server: the event waits for it.
-            if (setup.pushOnly) return ShopCheck.Unknown(CHECK_SHOP_INTERVAL_MS)
             seen = answers.value
             seenSuccesses = successes
             val went = checkShop()

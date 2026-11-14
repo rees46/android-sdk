@@ -14,6 +14,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +28,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * An answer listener the SDK wraps around an event (the tracking methods): before the answer, the queue
@@ -54,21 +56,24 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *   call set its own. Numbers the older builders put in as text go as numbers ([EventNumbers]). Nothing
  *   stamped reaches the disk.
  * - **Sending.** One event at a time, by the one process of the app that holds the queue's file lock, in
- *   two lanes that each keep their order. The push events need only the `did`: they neither wait for a
- *   session nor start one. The tracking events need the instance ready and the session alive: a session
- *   whose window ended gets its `/init` first, from the foreground only, and while they wait for it the
- *   push events behind them go. The queue of an instance brought up only for a push sends the push
- *   events alone. An event cleared while it waited (the customer's deletion) does not go. Sending
- *   starts on [SdkState.READY], on the app's foreground and background, on the network's return, on
- *   [flush] and on a timer.
- * - **Answers.** `2xx` removes the event. No network waits for it and a timeout repeats it after a pause,
- *   neither counting as an attempt. `5xx`, `408`, `410`, `417`, `426`, `429` repeat it after a pause
- *   (the `Retry-After` of a `429` or `503`), and the 10th drops it. `402`, `403`, `404` pause the queue
- *   while `/init` checks the shop ([CoreInit.checkShopAndAwait]): a refusal clears the queue, a shop
- *   found fine by a new answer sends the event once more, and a second such answer drops it; a check
- *   that may not go yet holds the event until it may. Other answers drop it at once. A dropped event
- *   does not hold the others. A disk that fails to read or rewrite an event pauses the queue instead of
- *   sending it again at once.
+ *   two lanes ([QueueLane]) that each keep their order, their pause after a failure and their count of
+ *   failures: a lane that waits never holds the other. The push events need only the `did`: they neither
+ *   wait for a session nor start one, and never ask `/init` anything. The tracking events need the
+ *   instance ready and the session alive: a session whose window ended gets its `/init` first, from the
+ *   foreground only. The queue of an instance brought up only for a push sends the push events alone. An
+ *   event cleared while it waited (the customer's deletion) does not go. Sending starts on
+ *   [SdkState.READY], on the app's foreground and background, on the network's return, on [flush] and on
+ *   a timer.
+ * - **Answers.** `2xx` removes the event. No network waits for it and a timeout repeats it after its lane's
+ *   pause, neither counting as an attempt. `5xx`, `408`, `410`, `417`, `426`, `429` repeat it after its
+ *   lane's pause (the `Retry-After` of a `429` or `503`), and the 10th drops it. A push event answered `402`
+ *   or `403` is dropped as the service's refusal (`service_refused`), `404` as `rejected`. A tracking event
+ *   answered `402`, `403`, `404` holds its lane while `/init` checks the shop
+ *   ([CoreInit.checkShopAndAwait]), from the foreground only: a refusal clears the queue, a shop found fine
+ *   by a new answer sends the event once more, and a second such answer drops it; a check that may not go
+ *   yet holds the event until it may. Other answers drop it at once. A dropped event does not hold the
+ *   others. A disk that fails to read an event pauses the queue, and one that fails to rewrite one pauses
+ *   its lane, instead of sending it again at once.
  * - **Limits.** An event older than 7 days is dropped when its turn comes; at 1000 events the oldest go.
  *   Each drop is `queue_dropped` with its reason.
  * - **Listeners.** An old-style listener hears the event's fate once: the server's answer when it went,
@@ -140,8 +145,20 @@ internal class EventQueue(
     private val flushes = ArrayList<CompletableDeferred<Unit>>()
     private val subscriptions = ArrayList<Cancellable>()
 
-    /** Failures in a row since the last event went: the index of the next pause. The worker's own. */
-    private var failures = 0
+    /**
+     * Passes in a row the disk failed to read the queue or that failed unexpectedly: the index of the
+     * queue's next pause. The worker's own.
+     */
+    private var stalls = 0
+
+    private val pushLane = LanePause()
+    private val trackingLane = LanePause()
+
+    /**
+     * The tracking event answered `402`, `403` or `404` in the background, with what it was answered: the
+     * shop's check waits for the foreground. The worker's own.
+     */
+    private var checkDue: Pair<String, LegacyError>? = null
 
     private val delivery = LegacyDelivery { level, code, message, throwable -> log(level, code, message, throwable = throwable) }
 
@@ -171,7 +188,55 @@ internal class EventQueue(
         /** No network: wait for it, looking again now and then. */
         object Offline : Outcome
 
-        class Pause(val delayMs: Long, val serverNamed: Boolean) : Outcome
+        /** The disk failed to read the queue, or the pass failed unexpectedly: both lanes wait, unless an urgent trigger ends it. */
+        class Pause(val delayMs: Long) : Outcome
+    }
+
+    /** What an answer or a check did to the event's lane; [Stop] ends the pass. */
+    private sealed interface Step {
+        /** The lane goes on with its next event. */
+        object Next : Step
+
+        /** The lane waits (a pause, the shop's check): the other one goes on. */
+        object Held : Step
+
+        class Stop(val outcome: Outcome) : Step
+    }
+
+    /**
+     * One lane's pause after a failure and its failures in a row, the index of its next pause. The worker
+     * sets and ends it; the pause's own end only clears it and wakes the worker.
+     */
+    private inner class LanePause {
+        var failures = 0
+
+        private val current = AtomicReference<Job?>(null)
+
+        @Volatile
+        private var serverNamed = false
+
+        val isPaused: Boolean get() = current.get() != null
+
+        /** A pause of the backoff after one more failure, or the server's `Retry-After` ([retryAfterMs]). */
+        fun afterFailure(retryAfterMs: Long?) = pause(backoff.delayMs(failures++, retryAfterMs), serverNamed = retryAfterMs != null)
+
+        /** A pause of [delayMs]; one [serverNamed] no trigger ends. */
+        fun pause(delayMs: Long, serverNamed: Boolean) {
+            this.serverNamed = serverNamed
+            val job = working.launch(start = CoroutineStart.LAZY) { delay(delayMs) }
+            job.invokeOnCompletion { if (current.compareAndSet(job, null)) kick(urgent = false) }
+            current.getAndSet(job)?.cancel()
+            job.start()
+        }
+
+        /** An urgent trigger: a pause of the backoff ends, a server's `Retry-After` is waited in full. */
+        fun cut() {
+            if (!serverNamed) current.getAndSet(null)?.cancel()
+        }
+
+        fun succeeded() {
+            failures = 0
+        }
     }
 
     /** Takes over the shop's queue and starts listening for the triggers. */
@@ -267,8 +332,8 @@ internal class EventQueue(
     /**
      * Sends what is in the queue now, without waiting for a trigger, and returns once each of those
      * events was tried: sent, dropped, or held by no network, the instance not being ready, the shop's
-     * check or a server's `Retry-After`. A pause of the backoff ends: the event waiting in it goes again at
-     * once.
+     * check or a server's `Retry-After`. The pauses of the backoff end, in both lanes: the events waiting in
+     * them go again at once; a server's `Retry-After` does not.
      *
      * @throws SdkException `notInitialized` after [release], `shopBlocked` for a refused shop.
      */
@@ -452,7 +517,7 @@ internal class EventQueue(
             } catch (e: Exception) {
                 // Never a tight loop: the next pass comes after a pause.
                 log(LogLevel.ERROR, LogCodes.SDK_LOG, "Sending the event queue failed", throwable = e)
-                pause(null)
+                stall()
             } finally {
                 // The flushes this pass took end however it ended: done, failed, or cut off by a release.
                 tried.forEach { it.complete(Unit) }
@@ -467,16 +532,14 @@ internal class EventQueue(
     }
 
     /**
-     * Waits out a pause. An urgent trigger (the network back, the foreground, a flush, ready) ends one
-     * the backoff set; a server's `Retry-After` is waited in full, and a flush meanwhile is done at once:
-     * nothing can go before.
+     * Waits out the queue's pause after a failed pass ([stall]); an urgent trigger (the network back, the
+     * foreground, a flush, ready) ends it.
      */
     private suspend fun pause(pause: Outcome.Pause) = coroutineScope {
         val over = launch { delay(pause.delayMs) }
         try {
             while (over.isActive && !released) {
-                if (urgent && !pause.serverNamed) return@coroutineScope
-                if (pause.serverNamed) completeFlushes()
+                if (urgent) return@coroutineScope
                 select<Unit> {
                     over.onJoin {}
                     wake.onReceive {}
@@ -525,25 +588,34 @@ internal class EventQueue(
     /**
      * Sends events oldest first until the queue is empty or cannot send now, in two lanes that each keep
      * their order: the push events, which need only a `did`, and the tracking events, which need a live
-     * session. A tracking event that waits for its session does not hold the push events behind it: the
-     * pass goes on with the push lane alone.
+     * session. A lane that waits — its pause after a failure, its session, the shop's check — does not hold
+     * the other: the pass goes on with that one alone. An urgent trigger ends both lanes' pauses of the
+     * backoff first.
      */
     private suspend fun pass(hold: Hold): Outcome {
-        urgent = false
-        // What the tracking lane waits for, once its head was found unable to go now.
-        var trackingHeld: Outcome? = null
+        if (urgent) {
+            urgent = false
+            pushLane.cut()
+            trackingLane.cut()
+        }
+        var pushHeld = pushLane.isPaused
+        var trackingHeld = pushEventsOnly || trackingLane.isPaused
+        // The tracking lane waits for a session: the timer looks again.
+        var waiting = false
         while (true) {
             if (released || !store.isOwner(this) || state.current == SdkState.REFUSED) return Outcome.Idle
             // A clear gives the lock back: it is taken again for what came after it.
             if (!store.lockForSending()) return Outcome.Waiting
+            val idle = if (waiting) Outcome.Waiting else Outcome.Idle
+            if (pushHeld && trackingHeld) return idle
             val generation = store.generation
             val unreadable = ArrayList<QueueStore.Waiting>()
-            val head = store.head(unreadable) { event -> event.path !in PUSH_EVENT_PATHS && (pushEventsOnly || trackingHeld != null) }
+            val head = store.head(unreadable) { lane -> if (lane == QueueLane.PUSH) pushHeld else trackingHeld }
             unreadable.forEach { delivery.failure(it.listener, UNREADABLE) }
             val event = when (head) {
-                QueueStore.Head.Empty -> return trackingHeld ?: Outcome.Idle
+                QueueStore.Head.Empty -> return idle
                 // The disk failed to read it: later, not again at once.
-                QueueStore.Head.Unavailable -> return pause(null)
+                QueueStore.Head.Unavailable -> return stall()
                 is QueueStore.Head.Event -> head.event
             }
             if (clock.nowMillis() - event.createdAt > TTL_MS) {
@@ -551,15 +623,32 @@ internal class EventQueue(
                 continue
             }
             if (!connectivity.isConnected) return Outcome.Offline
-            if (event.path in PUSH_EVENT_PATHS) {
+            val push = event.lane == QueueLane.PUSH
+            val due = checkDue?.takeIf { it.first == event.id }
+            if (push) {
                 // A push's event needs a did and no session: the server reads no sid in it. One that came
                 // after the window ended starts no /init.
                 if (init.awaitReady(waitMs) != null) return Outcome.Waiting
+            } else if (due != null) {
+                // Answered 402, 403 or 404 in the background: the shop's check goes from the foreground only,
+                // and the tracking lane waits for it. The push lane goes meanwhile.
+                if (!lifecycle.isForeground) {
+                    trackingHeld = true
+                    continue
+                }
+                checkDue = null
+                when (val step = checkShop(event, due.second)) {
+                    Step.Next -> Unit
+                    Step.Held -> trackingHeld = true
+                    is Step.Stop -> return step.outcome
+                }
+                continue
             } else if (!init.session.isAlive()) {
                 // The session's window ended: a new one starts from the foreground only — its /init goes,
                 // and its answer wakes the queue — never from the background. The push lane goes meanwhile.
                 if (lifecycle.isForeground) init.renewSession()
-                trackingHeld = Outcome.Waiting
+                trackingHeld = true
+                waiting = true
                 continue
             } else if (init.awaitReady(waitMs) != null) {
                 // Not ready: neither lane can go.
@@ -573,8 +662,11 @@ internal class EventQueue(
             val sentAt = clock.nowMillis()
             val result = sendOne(event, body, hold)
             // The answer is in: what it decides is done even if the queue is released meanwhile.
-            val next = withContext(NonCancellable) { take(event, result, sentAt) }
-            if (next != null) return next
+            when (val step = withContext(NonCancellable) { take(event, result, sentAt) }) {
+                Step.Next -> Unit
+                Step.Held -> if (push) pushHeld = true else trackingHeld = true
+                is Step.Stop -> return step.outcome
+            }
         }
     }
 
@@ -623,79 +715,117 @@ internal class EventQueue(
         HttpResult.Failure(SdkError.Network)
     }
 
-    /** What the answer to [event] does; null to go on with the next event. */
-    private suspend fun take(event: QueuedEvent, result: HttpResult, sentAt: Long): Outcome? {
-        when (result) {
-            is HttpResult.Success -> return delivered(event, result.body, sentAt)
-            is HttpResult.Failure -> return when (val error = result.error) {
+    /** The pauses of [event]'s lane. */
+    private fun laneOf(event: QueuedEvent): LanePause = if (event.lane == QueueLane.PUSH) pushLane else trackingLane
+
+    /** What the answer to [event] does to it and to its lane. */
+    private suspend fun take(event: QueuedEvent, result: HttpResult, sentAt: Long): Step {
+        val lane = laneOf(event)
+        return when (result) {
+            is HttpResult.Success -> delivered(event, result.body, sentAt)
+            is HttpResult.Failure -> when (val error = result.error) {
                 // A 2xx whose body is not JSON: the event went all the same.
                 SdkError.Decoding -> delivered(event, JSONObject(), sentAt)
-                SdkError.Network -> if (connectivity.isConnected) pause(null) else Outcome.Offline
-                SdkError.Timeout -> pause(null)
+                SdkError.Network -> if (connectivity.isConnected) held(lane, null) else Step.Stop(Outcome.Offline)
+                SdkError.Timeout -> held(lane, null)
                 // A cancel the queue did not make (an interceptor): repeated like a timeout.
-                SdkError.Cancelled -> if (released) Outcome.Idle else pause(null)
+                SdkError.Cancelled -> if (released) Step.Stop(Outcome.Idle) else held(lane, null)
                 is SdkError.Http -> answered(event, error.code, result)
                 else -> {
                     drop(event, LogReasons.REJECTED, LegacyErrors.of(error))
-                    null
+                    Step.Next
                 }
             }
         }
     }
 
-    private suspend fun answered(event: QueuedEvent, code: Int, result: HttpResult.Failure): Outcome? {
+    /** [lane] waits out the pause after one more failure, or the server's `Retry-After` ([retryAfterMs]). */
+    private fun held(lane: LanePause, retryAfterMs: Long?): Step {
+        lane.afterFailure(retryAfterMs)
+        return Step.Held
+    }
+
+    private suspend fun answered(event: QueuedEvent, code: Int, result: HttpResult.Failure): Step {
         val error = LegacyErrors.of(SdkError.Http(code), result.errorBody)
-        when {
+        return when {
             code in 500..599 || code in REPEATED_4XX -> {
                 val attempts = event.attempts + 1
                 if (attempts >= MAX_ATTEMPTS) {
                     drop(event, LogReasons.ATTEMPTS, error, attempts)
-                    return null
+                    return Step.Next
                 }
                 // A disk that refuses the count keeps it in memory: the pause comes all the same.
                 store.update(event.copy(attempts = attempts))
-                return pause(result.retryAfterMs.takeIf { code in RETRY_AFTER_CODES })
+                held(laneOf(event), result.retryAfterMs.takeIf { code in RETRY_AFTER_CODES })
             }
-            code in SHOP_REFUSALS -> {
-                if (event.shopChecked) {
-                    // The shop is fine, this service is not (an unpaid CRM for push/custom).
+            // A push event asks /init nothing: the shop's refusal reaches the app's own instance through its
+            // own requests. 402 and 403 are the service's refusal, 404 an event the server does not take.
+            code in SHOP_REFUSALS && event.lane == QueueLane.PUSH -> {
+                drop(event, if (code == 404) LogReasons.REJECTED else LogReasons.SERVICE_REFUSED, error)
+                Step.Next
+            }
+            code in SHOP_REFUSALS -> when {
+                // The shop is fine, this service is not (an unpaid CRM for push/custom).
+                event.shopChecked -> {
                     drop(event, LogReasons.SERVICE_REFUSED, error)
-                    return null
+                    Step.Next
                 }
-                val check = init.checkShopAndAwait(waitMs)
-                // The session its /init started woke the queue: not a trigger that may end the pause below.
-                urgent = false
-                return when (check) {
-                    // A new answer found the shop fine: the event goes once more, after a pause if the disk failed.
-                    CoreInit.ShopCheck.Fine -> if (store.update(event.copy(shopChecked = true))) null else pause(null)
-                    // Found fine less than 10 minutes ago: the service refuses, not the shop.
-                    CoreInit.ShopCheck.RecentlyFine -> {
-                        drop(event, LogReasons.SERVICE_REFUSED, error)
-                        null
-                    }
-                    // Cleared by the state's own news; a released queue sends nothing more.
-                    CoreInit.ShopCheck.Refused, CoreInit.ShopCheck.Released -> Outcome.Idle
-                    // The check may not go yet: the event waits for it. Or it told nothing: a pause.
-                    is CoreInit.ShopCheck.Unknown -> check.retryInMs?.let { Outcome.Pause(it, serverNamed = true) } ?: pause(null)
+                // From the background the check would send /init: it waits for the foreground.
+                !lifecycle.isForeground -> {
+                    checkDue = event.id to error
+                    Step.Held
                 }
+                else -> checkShop(event, error)
             }
             else -> {
                 drop(event, LogReasons.REJECTED, error)
-                return null
+                Step.Next
             }
         }
     }
 
-    private fun pause(retryAfterMs: Long?): Outcome.Pause =
-        Outcome.Pause(backoff.delayMs(failures++, retryAfterMs), serverNamed = retryAfterMs != null)
+    /**
+     * The shop's check after a tracking [event] was answered `402`, `403` or `404` ([error]): `/init` asks
+     * the server ([CoreInit.checkShopAndAwait]). Called in the foreground only.
+     */
+    private suspend fun checkShop(event: QueuedEvent, error: LegacyError): Step {
+        val check = init.checkShopAndAwait(waitMs)
+        // The session its /init started woke the queue: not a trigger that may end the pause below.
+        urgent = false
+        return when (check) {
+            // A new answer found the shop fine: the event goes once more, after a pause if the disk failed.
+            CoreInit.ShopCheck.Fine -> if (store.update(event.copy(shopChecked = true))) Step.Next else held(trackingLane, null)
+            // Found fine less than 10 minutes ago: the service refuses, not the shop.
+            CoreInit.ShopCheck.RecentlyFine -> {
+                drop(event, LogReasons.SERVICE_REFUSED, error)
+                Step.Next
+            }
+            // Cleared by the state's own news; a released queue sends nothing more.
+            CoreInit.ShopCheck.Refused, CoreInit.ShopCheck.Released -> Step.Stop(Outcome.Idle)
+            // The check may not go yet: the event waits for it, which no trigger ends. Or it told nothing: a pause.
+            is CoreInit.ShopCheck.Unknown -> {
+                val wait = check.retryInMs
+                if (wait != null) {
+                    trackingLane.pause(wait, serverNamed = true)
+                    Step.Held
+                } else {
+                    held(trackingLane, null)
+                }
+            }
+        }
+    }
+
+    /** The queue's pause after the disk failed to read it, or a pass failed unexpectedly. */
+    private fun stall(): Outcome.Pause = Outcome.Pause(backoff.delayMs(stalls++, null))
 
     /** The event went: it leaves the queue and its listener hears the answer. */
-    private fun delivered(event: QueuedEvent, body: Any, sentAt: Long): Outcome? {
-        failures = 0
+    private fun delivered(event: QueuedEvent, body: Any, sentAt: Long): Step {
+        laneOf(event).succeeded()
+        stalls = 0
         // Gone meanwhile (cleared, or dropped for room): its listener heard that already. A file the disk
         // keeps is skipped from now on: the event is not sent again.
-        val removed = store.remove(event.id) ?: return null
-        val listener = removed.waiting?.listener ?: return null
+        val removed = store.remove(event.id) ?: return Step.Next
+        val listener = removed.waiting?.listener ?: return Step.Next
         if (listener is EventAnswerListener) {
             listener.popupHeldBack = when {
                 sentAt - event.createdAt > POPUP_WINDOW_MS -> LogReasons.LATE_EVENT
@@ -704,7 +834,7 @@ internal class EventQueue(
             }
         }
         delivery.success(listener, body)
-        return null
+        return Step.Next
     }
 
     private fun drop(event: QueuedEvent, reason: String, error: LegacyError, attempts: Int = event.attempts) {

@@ -19,6 +19,21 @@ import java.util.Locale
 import kotlin.random.Random
 
 /**
+ * The queue's two lanes: each keeps its own order, its pause after a failure and its count of failures.
+ */
+internal enum class QueueLane {
+    /** The push events (`track/delivered` and the others): they need only a `did`, never a session. */
+    PUSH,
+
+    /** The other events: they need the instance ready and a live session. */
+    TRACKING;
+
+    internal companion object {
+        fun of(path: String): QueueLane = if (path in EventQueue.PUSH_EVENT_PATHS) PUSH else TRACKING
+    }
+}
+
+/**
  * One event in a shop's queue: the request's own fields ([body], without the common ones, which go on a
  * copy at send time and never reach the disk), when it was made, and what its answers so far did to it.
  */
@@ -35,6 +50,8 @@ internal class QueuedEvent(
 ) {
     fun copy(attempts: Int = this.attempts, shopChecked: Boolean = this.shopChecked) =
         QueuedEvent(id, path, body, createdAt, attempts, shopChecked)
+
+    val lane: QueueLane get() = QueueLane.of(path)
 
     fun toJson(): JSONObject = JSONObject()
         .put(FIELD_VERSION, VERSION)
@@ -230,11 +247,11 @@ internal class QueueStore private constructor(private val directory: File, priva
     }
 
     /**
-     * The oldest event that is not [skipped]. A file that is not an event (it does not parse) is dropped
+     * The oldest event whose lane is not [skipped]. A file that is not an event (it does not parse) is dropped
      * (`queue_dropped`, `unreadable`) and its listener goes to [unreadable], to hear an error; a file the
      * disk cannot read now stays, and the head is [Head.Unavailable].
      */
-    fun head(unreadable: MutableList<Waiting>, skipped: (QueuedEvent) -> Boolean = { false }): Head = synchronized(files) {
+    fun head(unreadable: MutableList<Waiting>, skipped: (QueueLane) -> Boolean = { false }): Head = synchronized(files) {
         for (id in ids()) {
             val file = File(directory, id + EXTENSION)
             val text = try {
@@ -250,7 +267,7 @@ internal class QueueStore private constructor(private val directory: File, priva
             }
             val event = QueuedEvent.parse(id, text)
             if (event != null) {
-                if (skipped(event)) continue
+                if (skipped(event.lane)) continue
                 return Head.Event(patched[id] ?: event)
             }
             file.delete()

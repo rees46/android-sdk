@@ -11,6 +11,7 @@ import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
@@ -29,6 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /** The new core behind the old callbacks: one answer per request, the old codes, and release. */
 @RunWith(RobolectricTestRunner::class)
@@ -162,6 +164,38 @@ class CoreV2Test {
         val after = Recorder()
         core.send(NetworkMethod.GET("products/get"), JSONObject(), after)
         assertEquals(listOf("error:-1"), after.await().map { it.substringBefore(":The") })
+    }
+
+    @Test
+    fun `an event the queue's disk refused goes by the queue's rules - a push event neither waits for a session nor asks init`() {
+        val inits = AtomicInteger()
+        // The mock's last activity is never: every session's window has ended.
+        val init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings, connectivity) {
+            inits.incrementAndGet()
+            HttpResult.Success(JSONObject().put("did", "did-1").put("seance", "S"))
+        }
+        runBlocking {
+            init.awaitPrepared()
+            init.awaitIdle()
+        }
+        val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, "shop")
+        val direct = CoreV2(client, "shop").also { it.init = init }
+        assertEquals("the start's own /init", 1, inits.get())
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val pushed = Recorder()
+        direct.sendDirectly("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), pushed)
+        assertEquals(listOf("success:{}"), pushed.await())
+        assertEquals("/track/delivered", server.takeRequest(5, TimeUnit.SECONDS)?.path)
+        assertEquals("no /init for a push event", 1, inits.get())
+
+        // A tracking event goes as a request does: the session's window ended, so /init comes first.
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        val tracked = Recorder()
+        direct.sendDirectly("push", JSONObject().put("event", "view"), tracked)
+        assertEquals(listOf("success:{}"), tracked.await())
+        assertEquals(2, inits.get())
+        direct.release()
     }
 
     @Test

@@ -1004,20 +1004,167 @@ class EventQueueTest {
         assertEquals("STORED", sent.single().body.getString("did"))
         assertEquals("the app's instance sends the other events", 1, files().size)
 
-        // A refusal to a push's event: no check of the shop, the event waits for the app's instance.
+        // A refusal to a push's event: no check of the shop, the event is dropped.
         eventAnswers += http(404)
         queue.accept("track/clicked", JSONObject().put("code", "m-1").put("type", "bulk"), null)
         run()
-        after(CoreInit.CHECK_SHOP_INTERVAL_MS - 1)
         clock.advance(SessionWindow.WINDOW_MS + 1)
         lifecycle.set(false)
         lifecycle.set(true)
-        run()
+        after(CoreInit.CHECK_SHOP_INTERVAL_MS)
         assertEquals(0, initsSent)
         assertEquals(listOf("track/delivered", "track/clicked"), sent.map { it.path })
+        assertEquals(LogReasons.REJECTED, codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
+    }
+
+    // After the final review: the lanes.
+
+    private fun pushEvent(queue: EventQueue, code: String, listener: OnApiCallbackListener? = null) =
+        queue.accept("track/delivered", JSONObject().put("code", code).put("type", "bulk"), listener)
+
+    private fun codesSent(): List<String> = sent.map { it.body.optString("code").ifEmpty { "t:" + it.body.optJSONArray("items")?.optJSONObject(0)?.optString("id") } }
+
+    @Test
+    fun `a push event answered 402 or 403 is dropped as the service's refusal and 404 as rejected, and asks init nothing`() {
+        listOf(402 to LogReasons.SERVICE_REFUSED, 403 to LogReasons.SERVICE_REFUSED, 404 to LogReasons.REJECTED).forEach { (code, reason) ->
+            tearDown()
+            setUp()
+            val queue = start()
+            assertEquals(1, initsSent)
+            eventAnswers += http(code)
+            val heard = Heard()
+            pushEvent(queue, "m-1", heard)
+            pushEvent(queue, "m-2")
+            run()
+
+            assertEquals("$code", listOf("m-1", "m-2"), codesSent())
+            assertEquals("$code", listOf("error:$code"), heard.calls)
+            assertEquals("$code", reason, codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
+            assertEquals("$code: no check of the shop", 1, initsSent)
+            assertEquals(SdkState.READY, state.current)
+            // Later, still no check: the push lane never asks /init.
+            after(CoreInit.CHECK_SHOP_INTERVAL_MS)
+            assertEquals(1, initsSent)
+        }
+    }
+
+    @Test
+    fun `a tracking event answered 402 in the background waits for the foreground to check the shop, and the push lane goes meanwhile`() {
+        val queue = start()
+        assertEquals(1, initsSent)
+        lifecycle.set(false)
+        eventAnswers += http(402)
+        val heard = Heard()
+        event(queue, "1", listener = heard)
+        run()
+        assertEquals(listOf("t:1"), codesSent())
+
+        // In the background no /init goes, whatever wakes the queue; the push lane is not held.
+        pushEvent(queue, "m-1")
+        run()
+        after(EventQueue.TIMER_MS)
+        connectivity.set(false)
+        connectivity.set(true)
+        run()
+        assertEquals(listOf("t:1", "m-1"), codesSent())
+        assertEquals("no check of the shop from the background", 1, initsSent)
+        assertTrue(heard.calls.isEmpty())
+
+        // The foreground: the check goes, finds the shop fine, and the event goes once more.
+        lifecycle.set(true)
+        run()
+        assertEquals(2, initsSent)
+        assertEquals(listOf("t:1", "m-1", "t:1"), codesSent())
+        assertTrue(heard.calls.single().startsWith("success"))
+    }
+
+    @Test
+    fun `a tracking event's pause never holds the push events, nor a push event's pause the tracking ones`() {
+        val queue = start()
+        eventAnswers += http(500)
+        event(queue, "1")
+        run()
+        assertEquals(listOf("t:1"), codesSent())
+
+        // The tracking lane waits out its second: a push event goes at once.
+        pushEvent(queue, "m-1")
+        run()
+        assertEquals(listOf("t:1", "m-1"), codesSent())
+
+        // Half a second on a push event fails: its lane waits, and the tracking event goes when its own pause ends.
+        after(500)
+        eventAnswers += http(503)
+        pushEvent(queue, "m-2")
+        run()
+        assertEquals(listOf("t:1", "m-1", "m-2"), codesSent())
+        after(500)
+        assertEquals(listOf("t:1", "m-1", "m-2", "t:1"), codesSent())
+        event(queue, "2")
+        run()
+        assertEquals("the tracking lane goes on while the push lane waits", listOf("t:1", "m-1", "m-2", "t:1", "t:2"), codesSent())
+        after(500)
+        assertEquals(listOf("t:1", "m-1", "m-2", "t:1", "t:2", "m-2"), codesSent())
+    }
+
+    @Test
+    fun `each lane counts its own failures and starts over after its own success`() {
+        val queue = start()
+        eventAnswers += http(500)
+        eventAnswers += HttpResult.Success(JSONObject())
+        eventAnswers += http(500)
+        event(queue, "1")
+        run()
+        // A push event goes in the tracking lane's pause: the tracking lane's count stays.
+        pushEvent(queue, "m-1")
+        run()
+        assertEquals(listOf("t:1", "m-1"), codesSent())
+        after(1_000)
+        assertEquals(3, sent.size)
+        // Its second failure in a row: two seconds.
+        after(1_999)
+        assertEquals(3, sent.size)
         after(1)
-        assertEquals(listOf("track/delivered", "track/clicked", "track/clicked"), sent.map { it.path })
-        assertEquals(0, initsSent)
+        assertEquals("the event went at last", 4, sent.size)
+
+        // The tracking lane succeeded: a new failure pauses it for a second again.
+        eventAnswers += http(500)
+        event(queue, "2")
+        run()
+        assertEquals(5, sent.size)
+        after(999)
+        assertEquals(5, sent.size)
+        after(1)
+        assertEquals(6, sent.size)
+    }
+
+    @Test
+    fun `flush ends the pauses of both lanes but not a server's Retry-After`() {
+        val queue = start()
+        eventAnswers += http(500)
+        eventAnswers += http(500)
+        event(queue, "1")
+        pushEvent(queue, "m-1")
+        run()
+        assertEquals(listOf("t:1", "m-1"), codesSent())
+
+        // Both lanes wait out their backoff: flush sends both now.
+        assertNull(flush(queue).getCompleted())
+        assertEquals(listOf("t:1", "m-1", "t:1", "m-1"), codesSent())
+
+        // A server's Retry-After on the push lane holds through a flush, which still ends the tracking lane's.
+        eventAnswers += http(429, retryAfterMs = 60_000)
+        eventAnswers += http(500)
+        pushEvent(queue, "m-2")
+        run()
+        event(queue, "2")
+        run()
+        assertEquals(listOf("t:1", "m-1", "t:1", "m-1", "m-2", "t:2"), codesSent())
+        assertNull(flush(queue).getCompleted())
+        assertEquals(listOf("t:1", "m-1", "t:1", "m-1", "m-2", "t:2", "t:2"), codesSent())
+        after(59_999)
+        assertEquals(7, sent.size)
+        after(1)
+        assertEquals("m-2", codesSent().last())
     }
 
     @Test
