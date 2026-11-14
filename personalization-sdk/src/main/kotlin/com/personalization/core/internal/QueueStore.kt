@@ -123,6 +123,13 @@ internal class QueueStore private constructor(private val directory: File, priva
     /** The state of events whose file could not be rewritten: kept for this process. */
     private val patched = HashMap<String, QueuedEvent>()
 
+    /**
+     * What this process knows of the events on disk without reading their files again: each one's lane and
+     * when it was made, from its write or its first read. A [head] that skips a lane passes over its events
+     * without reading them on every pass. Guarded by [files].
+     */
+    private val index = HashMap<String, Entry>()
+
     /** The time of the last name, in microseconds: names of one process rise with the calls. */
     private var lastStamp = 0L
 
@@ -139,6 +146,9 @@ internal class QueueStore private constructor(private val directory: File, priva
 
     /** An event's listener and the queue that accepted it. */
     class Waiting(val queue: EventQueue, val listener: OnApiCallbackListener)
+
+    /** An event as [index] knows it. */
+    class Entry(val lane: QueueLane, val createdAt: Long)
 
     /** An event [remove] took off the queue, with its listener if it had one. */
     class Removed(val waiting: Waiting?)
@@ -243,6 +253,8 @@ internal class QueueStore private constructor(private val directory: File, priva
         }
         gone.retainAll { File(directory, it + EXTENSION).exists() }
         ids.sort()
+        // Sent or cleared by another process meanwhile: forgotten here too.
+        if (index.isNotEmpty()) index.keys.retainAll(ids.toHashSet())
         return ids
     }
 
@@ -253,6 +265,9 @@ internal class QueueStore private constructor(private val directory: File, priva
      */
     fun head(unreadable: MutableList<Waiting>, skipped: (QueueLane) -> Boolean = { false }): Head = synchronized(files) {
         for (id in ids()) {
+            // Known already: a skipped lane's event is not read again.
+            val known = index[id]
+            if (known != null && skipped(known.lane)) continue
             val file = File(directory, id + EXTENSION)
             val text = try {
                 file.readText(Charsets.UTF_8)
@@ -267,11 +282,13 @@ internal class QueueStore private constructor(private val directory: File, priva
             }
             val event = QueuedEvent.parse(id, text)
             if (event != null) {
+                index[id] = Entry(event.lane, event.createdAt)
                 if (skipped(event.lane)) continue
                 return Head.Event(patched[id] ?: event)
             }
             file.delete()
             patched -= id
+            index -= id
             synchronized(listenersLock) { listeners.remove(id) }?.let { unreadable += it }
             SdkLogs.log(LogLevel.WARNING, LogCodes.QUEUE_DROPPED, "An event that could not be read was dropped", shopId,
                 mapOf("reason" to REASON_UNREADABLE))
@@ -312,11 +329,13 @@ internal class QueueStore private constructor(private val directory: File, priva
                 val old = read(id)
                 File(directory, id + EXTENSION).delete()
                 patched -= id
+                index -= id
                 dropped += old to synchronized(listenersLock) { listeners.remove(id) }
             }
         }
         val event = QueuedEvent(newId(createdAt), path, body, createdAt)
         if (!write(event)) return null
+        index[event.id] = Entry(event.lane, createdAt)
         if (listener != null) synchronized(listenersLock) { listeners[event.id] = Waiting(queue, listener) }
         event
     }
@@ -355,6 +374,7 @@ internal class QueueStore private constructor(private val directory: File, priva
             gone += id
         }
         patched -= id
+        index -= id
         Removed(synchronized(listenersLock) { listeners.remove(id) })
     }
 
@@ -376,6 +396,7 @@ internal class QueueStore private constructor(private val directory: File, priva
             }
         }
         patched.clear()
+        index.clear()
         val waiting = synchronized(listenersLock) { listeners.values.toList().also { listeners.clear() } }
         Triple(ids.size, waiting, then())
     }

@@ -1138,6 +1138,37 @@ class EventQueueTest {
     }
 
     @Test
+    fun `the head's scan reads the file of an event its lane skips once, not on every pass`() {
+        settings.updateDid("STORED")
+        connectivity.set(false)
+        val first = start()
+        event(first, "1")
+        run()
+        first.release()
+
+        // A new process, whose queue sends the push events alone: its first pass reads the tracking event.
+        QueueStore.reset()
+        connectivity.set(true)
+        val queue = start(pushOnly = true)
+        pushEvent(queue, "m-0")
+        run()
+        assertEquals(listOf("m-0"), codesSent())
+
+        // Its file changes now: a pass that read it again would find no event and drop it.
+        val file = File(storage.queuePath, files().single())
+        file.writeText("not json")
+        pushEvent(queue, "m-1")
+        run()
+        after(EventQueue.TIMER_MS)
+        pushEvent(queue, "m-2")
+        run()
+
+        assertEquals(listOf("m-0", "m-1", "m-2"), codesSent())
+        assertTrue("its file was not read again", file.exists())
+        assertTrue(codes(LogCodes.QUEUE_DROPPED).isEmpty())
+    }
+
+    @Test
     fun `flush ends the pauses of both lanes but not a server's Retry-After`() {
         val queue = start()
         eventAnswers += http(500)
