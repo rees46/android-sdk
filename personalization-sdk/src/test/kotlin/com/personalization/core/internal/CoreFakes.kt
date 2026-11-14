@@ -6,6 +6,16 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import java.util.concurrent.CopyOnWriteArrayList
 
+/**
+ * What a request with a result waits for, as [CoreV2] waits: [CoreInit.usable] within [timeoutMs], `timeout`
+ * when the wait runs out.
+ */
+internal suspend fun CoreInit.usableWithin(timeoutMs: Long): com.personalization.core.SdkError? {
+    var verdict: com.personalization.core.SdkError? = com.personalization.core.SdkError.Timeout
+    kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { verdict = usable() }
+    return verdict
+}
+
 /** A clock that moves only when the test says so. */
 internal class FakeClock(var now: Long = 1_700_000_000_000L) : Clock {
     override fun nowMillis(): Long = now

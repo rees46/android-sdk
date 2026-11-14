@@ -457,19 +457,12 @@ internal class EventQueue(
                     command.done.completeExceptionally(SdkException(SdkError.NotInitialized))
                     return
                 }
-                val owner = store.owner
-                if (owner != null && owner !== this) {
-                    owner.flushFromOther(command.done)
-                } else {
-                    addFlush(command.done)
-                }
+                // A flush asked of another queue of the shop: the one that sends takes it.
+                (store.owner ?: this).addFlush(command.done)
             }
             is Command.Barrier -> command.done.complete(Unit)
         }
     }
-
-    /** A flush asked of another queue of the shop: this one sends. */
-    private fun flushFromOther(done: CompletableDeferred<Unit>) = addFlush(done)
 
     /** Hands [done] to the next pass; a released queue sends nothing more, so it ends at once. */
     private fun addFlush(done: CompletableDeferred<Unit>) {

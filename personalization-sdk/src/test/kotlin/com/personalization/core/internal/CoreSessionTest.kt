@@ -107,7 +107,7 @@ class CoreSessionTest {
 
     /** A request with a result asking to go, as [CoreV2] asks. */
     private fun request(init: CoreInit, timeoutMs: Long = 10_000): Deferred<SdkError?> =
-        CoroutineScope(StandardTestDispatcher(scheduler)).async { init.awaitUsable(timeoutMs) }.also { scheduler.runCurrent() }
+        CoroutineScope(StandardTestDispatcher(scheduler)).async { init.usableWithin(timeoutMs) }.also { scheduler.runCurrent() }
 
     private fun knownDevice(sid: String, lastActivity: Long) {
         settings.updateDid("D1")
