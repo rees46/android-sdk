@@ -333,6 +333,62 @@ class CorePushTokensTest {
         assertEquals(listOf("success"), heard.calls)
     }
 
+    @Test
+    fun `a send begun before the customer was deleted records no week after it, and the next did sends the token again`() {
+        val tokens = tokens()
+        val before = Heard()
+        tokens.set("t1", PushProvider.FCM, before)
+        run()
+        assertEquals("on its way", 1, sent.size)
+
+        // deleteUserCredentials(): the customer is forgotten first, then their data is wiped.
+        tokens.customerForgotten()
+        val shop = context.getSharedPreferences(partition(SHOP), Context.MODE_PRIVATE)
+        shop.edit().apply { StorageKeys.USER_CREDENTIALS.forEach { remove(it) } }.commit()
+        did = "D2"
+
+        // The next did's send does not wait for the forgotten customer's.
+        val after = Heard()
+        tokens.set("t1", PushProvider.FCM, after)
+        run()
+        assertEquals(2, sent.size)
+
+        // The forgotten customer's send lands now: its listener hears it, but no week is recorded.
+        answers.removeAt(0).onSuccess(JSONObject())
+        run()
+        assertEquals(listOf("success"), before.calls)
+        assertTrue(after.calls.isEmpty())
+        assertEquals(0L, shop.getLong(StorageKeys.pushTokenDate("fcm"), 0L))
+        assertEquals("the next customer's claim stays", "t1", shop.getString(StorageKeys.pushTokenClaim("fcm"), null))
+
+        ok()
+        assertEquals(listOf("success"), after.calls)
+        assertEquals(clock.now, shop.getLong(StorageKeys.pushTokenDate("fcm"), 0L))
+        tokens.sendStored()
+        run()
+        assertEquals("the next customer's week counts", 2, sent.size)
+    }
+
+    @Test
+    fun `a send that lands after the deletion and before the next did records nothing`() {
+        val tokens = tokens()
+        tokens.received("t1", PushProvider.FCM)
+        run()
+        tokens.customerForgotten()
+        val shop = context.getSharedPreferences(partition(SHOP), Context.MODE_PRIVATE)
+        shop.edit().apply { StorageKeys.USER_CREDENTIALS.forEach { remove(it) } }.commit()
+        did = ""
+
+        ok()
+
+        assertEquals(0L, shop.getLong(StorageKeys.pushTokenDate("fcm"), 0L))
+        assertNull(shop.getString(StorageKeys.pushTokenClaim("fcm"), null))
+        did = "D2"
+        tokens.sendStored()
+        run()
+        assertEquals("the token goes for the next did", 2, sent.size)
+    }
+
     private companion object {
         const val SHOP = "token-shop"
         const val OTHER = "token-other"

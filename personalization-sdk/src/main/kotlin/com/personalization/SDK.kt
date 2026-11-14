@@ -1191,6 +1191,8 @@ open class SDK {
         // write the forgotten did back. The new core also holds requests until the new did.
         val init = (core as? CoreV2)?.init
         init?.holdForRestart()
+        // A send of the push token on its way is the forgotten customer's: it records no week after the wipe.
+        if (::pushTokenManager.isInitialized) pushTokenManager.core?.customerForgotten()
         val restart = if (init == null) registerManager.beginRestart() else 0
         val complete = withContext(dispatchers.io) {
             val stored = core.deleteUserCredentials(storage)

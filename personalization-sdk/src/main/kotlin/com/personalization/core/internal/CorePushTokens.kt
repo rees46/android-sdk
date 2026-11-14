@@ -38,6 +38,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - A token goes only once the instance is ready ([ready]) and never without a `did`. A token the app
  *   passes waits for the `did` and its listener hears the answer of the send: waiting is no error. After
  *   each start's `/init` ([sendStored]) the shop sends the device's token if it is due.
+ * - A send begun before `deleteUserCredentials()` ([customerForgotten]) belongs to the forgotten customer: its
+ *   answer still reaches its listeners, but records neither the token nor the week, and a send for the next
+ *   `did` does not wait for it.
  * - A push-only instance ([sends] false) sends no token.
  * - After [release] nothing is sent or kept: [set] answers `notInitialized`, and so does one that was
  *   waiting for the instance to be ready.
@@ -75,10 +78,14 @@ internal class CorePushTokens(
     /** Guarded by [lock]: after [release] nothing is kept or sent. */
     private var released = false
 
+    /** Guarded by [lock]: moves when the customer is forgotten; a send of an earlier one is not this customer's. */
+    private var generation = 0
+
     /** The sends on their way, by `provider:token`, with the listeners waiting for their answer. */
     private val flights = HashMap<String, Flight>()
 
-    private class Flight(val claimedAt: Long) {
+    /** A send on its way: when it took the week, for which customer ([generation]), and who waits for it. */
+    private class Flight(val claimedAt: Long, val generation: Int) {
         val waiting = ArrayList<OnApiCallbackListener>()
     }
 
@@ -164,8 +171,9 @@ internal class CorePushTokens(
         val key = "${provider.id}:$token"
         val now = clock.nowMillis()
         val flight = synchronized(lock) {
-            flights[key]?.let { going ->
-                // The same token on its way: one request, this caller hears its answer.
+            // The same token on its way for this customer: one request, this caller hears its answer. One
+            // of a forgotten customer's does not count: the token goes again for this one.
+            flights[key]?.takeIf { it.generation == generation }?.let { going ->
                 listener?.let { going.waiting += it }
                 return
             }
@@ -176,7 +184,7 @@ internal class CorePushTokens(
                 null
             } else {
                 // The week is taken before the request: a second send meanwhile finds it taken.
-                Flight(now).also { taken ->
+                Flight(now, generation).also { taken ->
                     listener?.let { taken.waiting += it }
                     flights[key] = taken
                     busy.update { it + 1 }
@@ -194,6 +202,9 @@ internal class CorePushTokens(
             .put(FIELD_TOKEN, token)
             .put(FIELD_PUSH_PROVIDER, provider.serverValue)
         send(params, object : OnApiCallbackListener() {
+            /** Guarded by [lock]: the answer was taken. */
+            private var ended = false
+
             override fun onSuccess(response: JSONObject?) = landed { waiting ->
                 log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", mapOf("provider" to provider.id))
                 waiting.forEach { delivery.success(it, response ?: JSONObject()) }
@@ -215,9 +226,12 @@ internal class CorePushTokens(
 
             private fun landed(failed: Boolean = false, tell: (List<OnApiCallbackListener>) -> Unit) {
                 val waiting = synchronized(lock) {
-                    val ended = flights.remove(key) ?: return
-                    settle(provider, token, ended, sent = !failed)
-                    ended.waiting.toList()
+                    if (ended) return
+                    ended = true
+                    // A send of the next customer may have the key by now: it stays.
+                    if (flights[key] === flight) flights.remove(key)
+                    if (flight.generation == generation) settle(provider, token, flight, sent = !failed)
+                    flight.waiting.toList()
                 }
                 try {
                     tell(waiting)
@@ -280,6 +294,15 @@ internal class CorePushTokens(
 
     private fun skipped(provider: PushProvider, reason: String) =
         log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_SKIPPED, "Push token not sent", mapOf("provider" to provider.id, "reason" to reason))
+
+    /**
+     * The customer is about to be forgotten (`deleteUserCredentials()`), before their data is wiped: a send on
+     * its way from now on records neither the token nor the week when it lands, and the next `did` sends the
+     * token again without waiting for it.
+     */
+    fun customerForgotten() {
+        synchronized(lock) { generation++ }
+    }
 
     /**
      * Stops the sends waiting for the instance — a [set] among them hears `notInitialized` — and keeps or
