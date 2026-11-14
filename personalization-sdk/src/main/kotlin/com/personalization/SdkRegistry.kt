@@ -47,8 +47,8 @@ internal object SdkRegistry {
     private class Awaiter(val shopId: String?, val onReady: (SDK) -> Unit)
 
     /**
-     * Records an initialized [sdk] for [shopId]: it joins the push fan-out set and becomes the
-     * current default. Re-registering the same instance keeps a single entry; a new instance for an
+     * Records an initialized [sdk] for [shopId]: it joins the push fan-out set and, unless it was
+     * brought up only for a push ([SDK.pushOnly]), becomes the current default. Re-registering the same instance keeps a single entry; a new instance for an
      * already-known [shopId] replaces the mapping (last writer wins) and evicts the superseded
      * instance from the fan-out set, so a re-init does not leave the old object receiving push tokens.
      */
@@ -63,8 +63,9 @@ internal object SdkRegistry {
             if (previous != null && previous !== sdk) {
                 instances.remove(previous)
             }
-            current = sdk
-            // An instance brought up only for a push is not the one they wait for: the app's own is.
+            // An instance brought up only for a push is not the app's: it becomes neither the default
+            // (SDK.instance) nor the one they wait for. The app's own instance of the shop is.
+            if (!sdk.pushOnly) current = sdk
             toNotify = if (sdk.pushOnly) emptyList() else takeMatchingAwaiters(shopId)
         }
         toNotify.forEach { it.onReady(sdk) }

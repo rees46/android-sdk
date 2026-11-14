@@ -47,11 +47,29 @@ internal object PushHub {
     }
 
     /**
-     * The events of the messages handled in this process, as `shop|event|code`: one event of one message
-     * goes once. Bounded: the oldest are forgotten past [SEEN_LIMIT].
+     * The events of the messages a queue accepted in this process, as `shop|event|code`: one event of one
+     * message goes once. Bounded: the oldest are forgotten past [SEEN_LIMIT]. Guards [reserved] too.
      */
     private val seen = object : LinkedHashMap<String, Boolean>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > SEEN_LIMIT
+    }
+
+    /**
+     * The events being handed to a queue now ([reserve]), with the repeats that came meanwhile: they try
+     * again if that one is not accepted ([release]).
+     */
+    private val reserved = HashMap<String, MutableList<() -> Unit>>()
+
+    /** What [reserve] decided for one event of one message. */
+    enum class Reservation {
+        /** Taken: the caller hands the event to its queue, then [confirm]s or [release]s it. */
+        TAKEN,
+
+        /** A queue accepted it already: a repeat, nothing goes. */
+        REPEAT,
+
+        /** Being handed to a queue right now: this one tries again only if that one is not accepted. */
+        PARKED,
     }
 
     /**
@@ -69,17 +87,48 @@ internal object PushHub {
     private val sinkReported = ConcurrentHashMap<PushProvider, String>()
 
     /**
-     * True the first time [event] of the message [code] comes for [shopId] in this process: it is taken,
-     * and a repeat is not sent. [forget] gives it back when the queue did not accept the event.
+     * Whether [event] of the message [code] may go to [shopId]'s queue now: once per process. The event
+     * counts as sent only once a queue accepted it ([confirm]); one the queue did not take is [release]d
+     * and may go when it comes again. A repeat that comes while the first is being handed over is
+     * [Reservation.PARKED]: [retry] runs if the first is released, so the two are never lost together.
      */
-    fun firstTime(shopId: String, event: PushEvent, code: String): Boolean = synchronized(seen) {
-        seen.put("$shopId|${event.name}|$code", true) == null
+    fun reserve(shopId: String, event: PushEvent, code: String, retry: () -> Unit): Reservation = synchronized(seen) {
+        val key = key(shopId, event, code)
+        if (seen.containsKey(key)) return Reservation.REPEAT
+        val waiting = reserved[key]
+        if (waiting != null) {
+            waiting += retry
+            return Reservation.PARKED
+        }
+        reserved[key] = ArrayList()
+        Reservation.TAKEN
     }
 
-    /** [event] of the message [code] was not accepted for [shopId]: it may come again and go. */
-    fun forget(shopId: String, event: PushEvent, code: String) {
-        synchronized(seen) { seen.remove("$shopId|${event.name}|$code") }
+    /** A queue accepted the event [reserve] took: a repeat sends nothing from now on, the parked ones included. */
+    fun confirm(shopId: String, event: PushEvent, code: String) {
+        val key = key(shopId, event, code)
+        synchronized(seen) {
+            reserved.remove(key)
+            seen[key] = true
+        }
     }
+
+    /**
+     * The queue did not take the event [reserve] took: it may go when it comes again, and the repeats
+     * parked meanwhile try again now, on this thread.
+     */
+    fun release(shopId: String, event: PushEvent, code: String) {
+        val parked = synchronized(seen) { reserved.remove(key(shopId, event, code)) }.orEmpty()
+        parked.forEach { retry ->
+            try {
+                retry()
+            } catch (e: Exception) {
+                SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "A repeat of a push event could not be tried again", shopId, throwable = e)
+            }
+        }
+    }
+
+    private fun key(shopId: String, event: PushEvent, code: String) = "$shopId|${event.name}|$code"
 
     /** Keeps [payload], handed to its shop ([PushPayload.shopId]), for [received]. */
     fun remember(payload: PushPayload) {
@@ -175,7 +224,10 @@ internal object PushHub {
         callbacks = null
         eventSinks.clear()
         tokenSinks.clear()
-        synchronized(seen) { seen.clear() }
+        synchronized(seen) {
+            seen.clear()
+            reserved.clear()
+        }
         forgetPushes()
         facadeReported.clear()
         sinkReported.clear()

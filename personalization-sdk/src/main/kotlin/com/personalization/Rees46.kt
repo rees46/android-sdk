@@ -128,10 +128,10 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing ->
-                SdkRegistry.byShopId(resolution.shopId)?.let(::upgraded)
-                    ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
+                appInstance(resolution.shopId) ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
 
-            is InstanceResolver.Resolution.Pending -> materialize(resolution.shopId)
+            is InstanceResolver.Resolution.Pending ->
+                appInstance(resolution.shopId) ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
 
             InstanceResolver.Resolution.NotRegistered -> throw UnknownShopIdException(
                 if (shopId != null) {
@@ -176,12 +176,12 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing -> {
-                SdkRegistry.byShopId(resolution.shopId)?.let { onReady(upgraded(it)) }
+                appInstance(resolution.shopId)?.let(onReady)
                 Cancellable.NOOP
             }
 
             is InstanceResolver.Resolution.Pending -> {
-                onReady(materialize(resolution.shopId))
+                appInstance(resolution.shopId)?.let(onReady)
                 Cancellable.NOOP
             }
 
@@ -267,14 +267,15 @@ object Rees46 {
             return null
         }
         if (target.dropsPushWithoutDid()) return null
-        // The callbacks hear the event once it is taken: on the new core, once its queue accepted it.
-        val tell = { PushHub.event(event, payload, target.pushCallbacks) }
+        // The callbacks hear the event once it is taken: on the new core, once a queue accepted it. Those of
+        // the instance that took it: one that took a push-only instance's place takes its event too.
+        val tell = { taker: SDK -> PushHub.event(event, payload, taker.pushCallbacks) }
         when {
             event == PushEvent.DELIVERED -> target.onPushReceived(data, tell)
             // The legacy core's tap, as it always went: from the extras of a tap's intent.
             event == PushEvent.CLICKED && target.core?.isV2 != true -> {
                 target.notificationClicked(tapExtras(parsed.code, parsed.type))
-                tell()
+                tell(target)
             }
             else -> target.pushEvent(event, parsed.code, parsed.type, tell)
         }
@@ -319,7 +320,7 @@ object Rees46 {
         runCatching {
             val target = targetInstance(resolution, shopId) ?: return@runCatching
             if (target.dropsPushWithoutDid()) return@runCatching
-            target.onPushReceived(payload) { parsed?.let { PushHub.event(PushEvent.DELIVERED, it, target.pushCallbacks) } }
+            target.onPushReceived(payload) { taker -> parsed?.let { PushHub.event(PushEvent.DELIVERED, it, taker.pushCallbacks) } }
         }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
@@ -336,7 +337,7 @@ object Rees46 {
             val parsed = PushPayload.parse(payload)?.withShop(shopId)
             parsed?.let(PushHub::remember)
             if (parsed != null && target.core?.isV2 == true) {
-                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type) { PushHub.event(PushEvent.CLICKED, parsed, target.pushCallbacks) }
+                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type) { taker -> PushHub.event(PushEvent.CLICKED, parsed, taker.pushCallbacks) }
             } else {
                 target.notificationClicked(payload.toBundle())
                 parsed?.let { PushHub.event(PushEvent.CLICKED, it, target.pushCallbacks) }
@@ -428,17 +429,6 @@ object Rees46 {
     }
 
     /**
-     * The app's own instance of [sdk]'s shop: [sdk] itself, or, for an instance brought up only for a push
-     * ([SDK.initializeForPush]), a full one with a full start (`/init`, the push token, everything) that
-     * takes its place while the push's events in flight finish.
-     */
-    private fun upgraded(sdk: SDK): SDK {
-        if (!sdk.pushOnly) return sdk
-        val config = sdk.config ?: return sdk
-        return initialize(sdk.context, config)
-    }
-
-    /**
      * Sets a single process-global listener invoked for every received push, on whatever shop it
      * routes to, with that shop's id. Set it once — typically in `Application.onCreate` — instead of
      * wiring a per-instance [SDK.setOnMessageListener] on every shop. Replaces any previously set
@@ -471,11 +461,26 @@ object Rees46 {
     private fun Map<String, String>.toBundle(): Bundle =
         Bundle().also { bundle -> forEach { (key, value) -> bundle.putString(key, value) } }
 
-    /** Initializes a pending registration for [shopId]; one that another caller initialized meanwhile is returned. */
-    private fun materialize(shopId: String): SDK = synchronized(lock) {
-        SdkRegistry.byShopId(shopId)?.let { return it }
-        val pendingInit = pending[shopId] ?: throw UnknownShopIdException(missingMessage(shopId))
-        initialize(pendingInit.context, pendingInit.config)
+    /**
+     * The app's own instance of [shopId], never one brought up only for a push ([SDK.initializeForPush]):
+     * the live full instance, or one made now with a full start (`/init`, the push token, everything) — from
+     * the pending registration, or in place of the push-only instance, whose push events in flight still go.
+     * Null when the shop has neither (released meanwhile).
+     */
+    private fun appInstance(shopId: String): SDK? {
+        SdkRegistry.byShopId(shopId)?.takeUnless { it.pushOnly }?.let { return it }
+        return synchronized(lock) {
+            // Another caller may have made it meanwhile, or a push brought the shop up for itself.
+            val live = SdkRegistry.byShopId(shopId)
+            if (live != null && !live.pushOnly) return live
+            val pendingInit = pending[shopId]
+            when {
+                pendingInit != null -> initialize(pendingInit.context, pendingInit.config)
+                // Its config is set before it registers: an instance found in the registry has one.
+                live != null -> live.config?.let { initialize(live.context, it) }
+                else -> null
+            }
+        }
     }
 
     private fun missingMessage(shopId: String): String =

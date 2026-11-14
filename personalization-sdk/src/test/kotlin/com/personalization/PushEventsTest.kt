@@ -16,6 +16,7 @@ import com.personalization.core.internal.LegacyCore
 import com.personalization.core.internal.PushHub
 import com.personalization.core.internal.QueueStore
 import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageKeys
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.TrackingThreads
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -51,9 +52,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The push events of `core/push.md` and decision 0004 through `Rees46.handlePush` and the SDK, on a local
@@ -272,6 +275,7 @@ class PushEventsTest {
         while (logged.none { it.message == "The push event was not accepted" } && System.nanoTime() < deadline) Thread.sleep(10)
         assertTrue(logged.any { it.message == "The push event was not accepted" })
         assertTrue("no callback for an event the queue refused", clicked.isEmpty() && bridge.isEmpty())
+        assertNull("no source for a tap the queue refused", partition().getString(StorageKeys.TRACKING_SOURCE_TYPE, null))
         // What a bridge reports for the initialize of a refused shop.
         assertEquals(com.personalization.core.SdkError.ShopBlocked, com.personalization.core.BridgeErrors.errorOf(refused.state))
         refused.release()
@@ -283,6 +287,7 @@ class PushEventsTest {
         assertEquals("again", next("track/clicked")?.second?.getString("code"))
         assertEquals(listOf("again"), clicked)
         assertEquals(listOf("again"), bridge)
+        assertEquals("bulk", partition().getString(StorageKeys.TRACKING_SOURCE_TYPE, null))
     }
 
     @Test
@@ -373,6 +378,116 @@ class PushEventsTest {
         assertEquals("STORED", next("init")?.second?.getString("did"))
         flush(light)
         assertEquals(listOf("cold"), seen.filter { it.first == "track/delivered" }.map { it.second.getString("code") })
+    }
+
+    @Test
+    fun `the instance brought up for a push never reaches the app, nor becomes the default`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertTrue(light.pushOnly)
+        assertTrue("not the default", SdkRegistry.current() !== light)
+        assertTrue("not SDK.instance", SDK.instance !== light)
+
+        var awaited: SDK? = null
+        Rees46.awaitInstance(SHOP) { awaited = it }
+        val full = awaited ?: throw AssertionError("awaitInstance heard nothing")
+        assertFalse(full.pushOnly)
+        assertTrue(Rees46.instance(SHOP) === full)
+        assertTrue(Rees46.instance() === full)
+        assertTrue(Rees46.initialize(context, config(SHOP)) === full)
+        assertTrue(SdkRegistry.current() === full)
+        assertTrue(SDK.instance === full)
+    }
+
+    @Test
+    fun `initialize of a shop a push brought up gives the app a full instance`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+
+        val full = Rees46.initialize(context, config(SHOP))
+
+        assertTrue(full !== light)
+        assertFalse(full.pushOnly)
+        assertTrue(SdkRegistry.byShopId(SHOP) === full)
+    }
+
+    @Test
+    fun `a push at a cold start while the app asks for its instance never hands the app the push-only one`() {
+        repeat(RACE_ROUNDS) { round ->
+            if (round > 0) {
+                tearDown()
+                setUp()
+            }
+            partition().edit().putString("did", "STORED").commit()
+            Rees46.register(context, listOf(config(SHOP)))
+            val barrier = CyclicBarrier(2)
+            val app = AtomicReference<SDK>()
+            val failure = AtomicReference<Throwable>()
+            // FCM's thread hands the push over while the app's main thread asks for the shop's instance.
+            val fcm = Thread {
+                barrier.await()
+                Rees46.handlePush(push(code = "race-$round"), PushEvent.DELIVERED)
+            }
+            val main = Thread {
+                barrier.await()
+                // Rounds start the app's call at different moments of the push's bring-up: before it, while it
+                // holds the facade, and after the instance registered.
+                Thread.sleep(MAIN_DELAYS_MS[round % MAIN_DELAYS_MS.size])
+                try {
+                    app.set(Rees46.instance(SHOP))
+                } catch (e: Throwable) {
+                    failure.set(e)
+                }
+            }
+            fcm.start()
+            main.start()
+            fcm.join(10_000)
+            main.join(10_000)
+
+            failure.get()?.let { throw AssertionError("round $round", it) }
+            val got = app.get() ?: throw AssertionError("round $round: no instance")
+            assertFalse("round $round: the push-only instance reached the app", got.pushOnly)
+            assertTrue("round $round", SdkRegistry.byShopId(SHOP) === got)
+            assertTrue("round $round", Rees46.instance(SHOP) === got)
+            // The push's event is not lost to the race: one of the two instances sends it.
+            flush(got)
+            assertTrue("round $round: the push's event went", awaitSeen("track/delivered", "race-$round"))
+        }
+    }
+
+    @Test
+    fun `a push event that reaches the instance a push brought up after it gave way goes to the app's instance`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "first"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        val full = Rees46.instance(SHOP)
+        assertTrue(full !== light)
+
+        // The push's handling still holds the instance that gave way, and hands it the tap.
+        val takers = LinkedBlockingQueue<SDK>()
+        light.pushEvent(PushEvent.CLICKED, "late", "bulk") { takers += it }
+
+        assertTrue("the app's instance took it", takers.poll(5, TimeUnit.SECONDS) === full)
+        flush(full)
+        assertEquals("late", next("track/clicked")?.second?.getString("code"))
+        assertEquals("STORED", seen.last { it.first == "track/clicked" }.second.getString("did"))
+        assertEquals("bulk", partition().getString(StorageKeys.TRACKING_SOURCE_TYPE, null))
+        assertFalse(logged.any { it.message == "The push event was not accepted" })
+    }
+
+    /** Whether the server got [path] with [code], waiting up to five seconds for it. */
+    private fun awaitSeen(path: String, code: String): Boolean {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (System.nanoTime() < deadline) {
+            if (seen.any { it.first == path && it.second.optString("code") == code }) return true
+            Thread.sleep(10)
+        }
+        return false
     }
 
     @Test
@@ -795,5 +910,11 @@ class PushEventsTest {
     private companion object {
         const val SHOP = "push-shop"
         const val OTHER = "push-other"
+
+        /** How often the race of a push and the app's first call is run. */
+        const val RACE_ROUNDS = 14
+
+        /** How long the app's call waits after the push's handling began, by round. */
+        val MAIN_DELAYS_MS = longArrayOf(0, 1, 2, 3, 5, 8, 13)
     }
 }
