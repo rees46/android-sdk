@@ -6,6 +6,7 @@ import android.util.AtomicFile
 import com.personalization.LogLevel
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
+import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import org.json.JSONException
 import org.json.JSONObject
@@ -48,6 +49,15 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
             initAnswerFile.delete()
             null
         }
+    }
+
+    /**
+     * The `did` of the saved `/init` answer, or null when there is none — or when the customer was wiped
+     * since ([isWiped]) and a file that outlived the wipe holds the forgotten one.
+     */
+    fun savedDid(): String? {
+        if (isWiped) return null
+        return initAnswer()?.optString(UserBasicParams.DID)?.takeIf { it.isNotEmpty() }
     }
 
     /** Replaces the saved `/init` answer; false when the disk refused it. */

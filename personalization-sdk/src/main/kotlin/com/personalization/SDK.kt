@@ -538,12 +538,17 @@ open class SDK {
     }
 
     /**
-     * A push-only instance ([initializeForPush]) of the new core without a stored `did` cannot send a push's
-     * event: true when this is one, and the push is dropped (`push_dropped`, `no_did`).
+     * A push-only instance ([initializeForPush]) of the new core without a `did` cannot send a push's event:
+     * true when this is one, and the push is dropped (`push_dropped`, `no_did`). Decided at once from every
+     * source of a `did` the start takes without `/init` — the stored one, [Rees46Config.deviceId] when it is
+     * taken, the saved `/init` answer's ([CoreInit.hasDid]) — while the start may still be taking them. It
+     * may read the disk: the push's thread, not the main one.
      */
     internal fun dropsPushWithoutDid(): Boolean {
-        // The legacy core asks /init for one first, as it always did.
-        if (!pushOnly || !isCoreV2 || deviceId != null) return false
+        // The legacy core brings a shop without a did up as a full instance, as it always did.
+        if (!pushOnly || !isCoreV2) return false
+        val init = (core as? CoreV2)?.init ?: return false
+        if (init.hasDid()) return false
         log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "The push's event is dropped: the shop has no did yet", mapOf("reason" to LogReasons.NO_DID))
         return true
     }

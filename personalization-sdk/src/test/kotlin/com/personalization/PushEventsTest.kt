@@ -152,12 +152,13 @@ class PushEventsTest {
         PushDismissReceiver.work = defaultWork
     }
 
-    private fun config(shop: String = SHOP, coreV2: Boolean = true) = Rees46Config(
+    private fun config(shop: String = SHOP, coreV2: Boolean = true, deviceId: String? = null) = Rees46Config(
         shopId = shop,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
         coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
+        deviceId = deviceId,
     )
 
     private fun sdk(shop: String = SHOP, coreV2: Boolean = true): SDK {
@@ -521,6 +522,25 @@ class PushEventsTest {
         runBlocking { withTimeout(5_000) { init.awaitPrepared() } }
         assertEquals(0, init.sent)
         assertEquals(SdkState.INITIALIZING, light.state)
+    }
+
+    @Test
+    fun `a shop a push brings up takes its did from the config or the saved init answer, not only the stored one`() {
+        // Only the app's config brings it.
+        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")))
+        assertEquals(SHOP, Rees46.handlePush(push(code = "configured"), PushEvent.DELIVERED))
+        flush(SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance"))
+        assertEquals("CONFIGURED", next("track/delivered")?.second?.getString("did"))
+
+        // Only the saved answer of an earlier /init has it.
+        ShopStorage(context, StorageLayout(OTHER, null)).saveInitAnswer(JSONObject().put("did", "SAVED").put("seance", "S0"))
+        Rees46.register(context, listOf(config(OTHER)))
+        assertEquals(OTHER, Rees46.handlePush(push(code = "saved", shop = OTHER), PushEvent.DELIVERED))
+        flush(SdkRegistry.byShopId(OTHER) ?: throw AssertionError("no instance"))
+        assertEquals("SAVED", next("track/delivered")?.second?.getString("did"))
+
+        assertFalse(logged.any { it.code == LogCodes.PUSH_DROPPED && it.context["reason"] == LogReasons.NO_DID })
+        assertFalse("no /init went", seen.any { it.first == "init" })
     }
 
     @Test

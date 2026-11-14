@@ -243,6 +243,18 @@ internal class CoreInit(
     }
 
     /**
+     * Whether the instance has a `did`, or its start will give it one without `/init`: the stored one, the one
+     * [InitSetup.deviceId] brings when it is taken, or the saved answer's. Decided at once; while the start
+     * prepares the storage it waits for that, and before it reads the disk: not for the main thread.
+     */
+    internal fun hasDid(): Boolean = synchronized(lock) {
+        if (settings.getDid().isNotEmpty()) return true
+        // Prepared: every source was taken already. A new did would come from /init.
+        if (prepared || released || setup.needReInitialization) return false
+        storage.takesConfiguredDid(setup.deviceId) || storage.savedDid() != null
+    }
+
+    /**
      * Waits without a limit until the instance is ready, or never will be: null once it is (it has a
      * `did`), otherwise `shopBlocked` or `notInitialized`. The push token waits here (`core/push.md`).
      */
@@ -451,9 +463,7 @@ internal class CoreInit(
         }
         // The saved answer's did fills a shop that lost its own; it never replaces one. After a wipe
         // (deleteUserCredentials, needReInitialization) whose file did not go, it is the forgotten one.
-        if (settings.getDid().isEmpty() && !storage.isWiped) {
-            storage.initAnswer()?.optString(UserBasicParams.DID)?.takeIf { it.isNotEmpty() }?.let(settings::updateDid)
-        }
+        if (settings.getDid().isEmpty()) storage.savedDid()?.let(settings::updateDid)
         forgetStaleSession()
     }
 
