@@ -103,6 +103,18 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         return taken
     }
 
+    /** The shop's `did` as its partition holds it; empty when there is none. */
+    fun storedDid(): String = preferences.getString(StorageKeys.DID, null).orEmpty()
+
+    /**
+     * Whether [adoptConfiguredDid] would take [deviceId] now: one is brought, the shop has none, and no
+     * launch considered one before.
+     */
+    fun takesConfiguredDid(deviceId: String?): Boolean =
+        deviceId?.trim().orEmpty().isNotEmpty() &&
+            !preferences.getBoolean(StorageKeys.MIGRATED_CONFIG_DEVICE_ID, false) &&
+            storedDid().isEmpty()
+
     /** Whether the customer was wiped and no `/init` has succeeded since ([StorageKeys.CREDENTIALS_WIPED]). */
     var isWiped: Boolean
         get() = preferences.getBoolean(StorageKeys.CREDENTIALS_WIPED, false)

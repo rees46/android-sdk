@@ -498,10 +498,10 @@ open class SDK {
      * Light bring-up for handling a push in a (possibly cold) background process, used by
      * [Rees46.handlePush] for a shop registered but not created. On both cores, with a stored `did`, it never
      * sends `/init`: the instance is ready on that `did` and sends the push's event with it. It shows no
-     * popup and sends neither the push token nor the profile. Without a stored `did` the new core drops the
-     * event (`push_dropped`, `no_did`), and the legacy core starts as it always did. The app's first
-     * [Rees46.instance] or [Rees46.initialize] of the shop puts a full instance in its place, and an
-     * initialize of this object makes it one.
+     * popup and sends neither the push token nor the profile. Without a `did` the new core drops the event
+     * (`push_dropped`, `no_did`); on the legacy core [Rees46] makes the shop's full instance instead. The
+     * app's first [Rees46.instance] or [Rees46.initialize] of the shop puts a full instance in its place,
+     * and an initialize of this object makes it one.
      */
     internal fun initializeForPush(context: Context, config: Rees46Config) = start(
         context,
@@ -745,9 +745,11 @@ open class SDK {
     }
 
     /**
-     * The legacy path brought up only for a push: with a stored `did`, no `/init`, no session of its own, no
-     * popup, no token; ready on that `did`, with which the push's event goes. Without one it starts as it
-     * always did (`/init` for a `did`, which the push's event then waits for), only sending no token.
+     * The legacy path brought up only for a push: with a stored `did`, no `/init`, no session of its own (its
+     * requests do not move the last activity of the stored one), no popup, no token; ready on that `did`,
+     * with which the push's event goes. [Rees46] brings a shop without one up as a full instance instead;
+     * should one come here all the same, it starts as it always did (`/init` for a `did`, which the push's
+     * event then waits for), only sending no token.
      */
     private fun startLegacyForPush(context: Context, config: Rees46Config, storage: ShopStorage) {
         storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
@@ -755,6 +757,7 @@ open class SDK {
             startLegacy(context, config, storage, autoSendPushToken = false, needReInitialization = false)
             return
         }
+        networkRepository.movesLegacySession = false
         instanceState.set(SdkState.READY)
     }
 

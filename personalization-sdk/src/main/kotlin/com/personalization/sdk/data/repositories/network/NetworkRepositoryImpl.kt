@@ -55,6 +55,14 @@ class NetworkRepositoryImpl @Inject constructor(
     @Volatile
     internal var onRequest: ((path: String) -> Unit)? = null
 
+    /**
+     * Whether a request on the legacy core moves the session's last activity, as every request always
+     * did. Not for an instance brought up only for a push: its tracking would keep alive a session the
+     * app's own next start must end.
+     */
+    @Volatile
+    internal var movesLegacySession: Boolean = true
+
     /** How many requests wait for a `did` on the legacy core; for tests. */
     internal val waitingForDid: Int
         get() = synchronized(queueLock) { queue.size }
@@ -188,14 +196,15 @@ class NetworkRepositoryImpl @Inject constructor(
 
     /**
      * Stops the instance's core. The requests still waiting for a `did` are let go and fail with
-     * `notInitialized`, as every request made after this does. Without [cancelRequests] the new core lets
-     * the requests in flight finish (a push-only instance giving way to the app's); the legacy one never
-     * cancels them.
+     * `notInitialized`, as every request made after this does. Without [cancelRequests] (a push-only
+     * instance giving way to the app's) the new core lets the requests in flight finish, and the legacy
+     * one is left as it is: it cannot cancel a request, and the push's tracking handed to it on another
+     * thread still goes. Only the push's own handling holds such an instance.
      */
     internal fun release(cancelRequests: Boolean = true) {
         when (val current = core) {
             is CoreV2 -> current.release(cancelRequests)
-            else -> current.release()
+            else -> if (cancelRequests) current.release()
         }
         executeQueueTasks()
     }
@@ -206,9 +215,9 @@ class NetworkRepositoryImpl @Inject constructor(
         listener: OnApiCallbackListener?,
     ) {
         val core = core
-        // The legacy session moves with every request. On the new core only /init and the queue's
-        // events move it (core/session.md): a request with a result does not.
-        if (!core.isV2) userSettingsRepository.updateSidLastActTime()
+        // The legacy session moves with every request, but a push-only instance's. On the new core only
+        // /init and the queue's events move it (core/session.md): a request with a result does not.
+        if (!core.isV2 && movesLegacySession) userSettingsRepository.updateSidLastActTime()
         core.send(networkMethod, params, listener)
     }
 }

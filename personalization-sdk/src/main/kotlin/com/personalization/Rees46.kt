@@ -13,6 +13,9 @@ import com.personalization.core.PushPayload
 import com.personalization.core.PushTokenListener
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.PushHub
+import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import java.util.concurrent.ConcurrentHashMap
@@ -421,10 +424,16 @@ object Rees46 {
      * Brings up a registered-but-pending shop just enough to send a push's event, via
      * [SDK.initializeForPush]: no `/init`, no push token, no profile, no popup; the event goes with the shop's
      * stored `did`. The app's first [instance] or [initialize] of the shop puts a full instance in its place.
+     *
+     * On the legacy core a shop without a `did` starts as it always did instead: its full instance, whose one
+     * `/init` gives the `did` the push's `track/received` waits for, and which the app then gets as it is.
      */
     private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
         SdkRegistry.byShopId(shopId)?.let { return it }
         val pendingInit = pending[shopId] ?: return null
+        if (!CoreSelection.resolve(pendingInit.config.coreV2, shopId) && !legacyHasDid(pendingInit.context, pendingInit.config)) {
+            return initialize(pendingInit.context, pendingInit.config)
+        }
         SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
     }
 
@@ -486,6 +495,17 @@ object Rees46 {
     private fun missingMessage(shopId: String): String =
         "No shop is registered for shopId=$shopId. " +
             "Call Rees46.initialize(...) or Rees46.register(...) first."
+
+    /**
+     * Whether the legacy core has a `did` for [config]'s shop without `/init`: stored — the data of older
+     * releases read into its partition first — or brought in [Rees46Config.deviceId] and taken. Reads the disk.
+     */
+    private fun legacyHasDid(context: Context, config: Rees46Config): Boolean {
+        val layout = StorageLayout(config.shopId, config.storageKey)
+        StorageMigrations.run(context, layout)
+        val storage = ShopStorage(context, layout)
+        return storage.storedDid().isNotEmpty() || storage.takesConfiguredDid(config.deviceId)
+    }
 
     private fun registeredShopIds(): List<String> =
         (SdkRegistry.shopIds() + pending.keys).sorted()

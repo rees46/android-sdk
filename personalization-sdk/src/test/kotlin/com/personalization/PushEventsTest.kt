@@ -524,6 +524,41 @@ class PushEventsTest {
     }
 
     @Test
+    fun `on the legacy core a push for a shop without a did makes its full instance as before, with one init`() {
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
+        val made = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertFalse(made.pushOnly)
+        assertEquals(SHOP, next("init")?.second?.getString("shop_id"))
+        assertEquals("D1", next("track/received")?.second?.getString("did"))
+
+        // The app gets it as it is: no second instance, no second /init.
+        assertTrue(Rees46.instance(SHOP) === made)
+        assertTrue(SdkRegistry.current() === made)
+        threads.awaitIdle()
+        assertEquals(1, seen.count { it.first == "init" })
+        assertEquals(1, seen.count { it.first == "track/received" })
+        assertEquals(SdkState.READY, made.state)
+    }
+
+    @Test
+    fun `on the legacy core the push of a shop a push brought up does not keep its ended session alive`() {
+        val ended = System.currentTimeMillis() - 3 * 60 * 60 * 1000L
+        partition().edit().putString("did", "STORED").putString("sid", "OLD").putLong("sid_last_act", ended).commit()
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
+        assertEquals("STORED", next("track/received")?.second?.getString("did"))
+        threads.awaitIdle()
+        assertEquals(ended, partition().getLong("sid_last_act", 0L))
+
+        // The app's own start begins a new session.
+        Rees46.instance(SHOP)
+        assertTrue(partition().getString("sid", null) != "OLD")
+    }
+
+    @Test
     fun `on the legacy core a shop registered but not created sends its push with its stored did and no init, and without one starts as before`() {
         partition().edit().putString("did", "STORED").commit()
         Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
