@@ -75,7 +75,8 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *   others. A disk that fails to read an event pauses the queue, and one that fails to rewrite one pauses
  *   its lane, instead of sending it again at once.
  * - **Limits.** An event older than 7 days is dropped when its turn comes; at 1000 events the oldest go.
- *   Each drop is `queue_dropped` with its reason.
+ *   Each drop is `queue_dropped` with its reason. A queue the shop's refusal cleared tells its events'
+ *   listeners `cancelled`.
  * - **Listeners.** An old-style listener hears the event's fate once: the server's answer when it went,
  *   or the error that dropped it. A popup in the answer is shown only when the event went within 10 s
  *   of being made and the app is in the foreground (decision 2).
@@ -265,7 +266,8 @@ internal class EventQueue(
             state.changes.collect { current ->
                 when (current) {
                     SdkState.READY, SdkState.RETRYING -> kick(urgent = true)
-                    SdkState.REFUSED -> clearLater(LogReasons.REFUSED, LegacyErrors.of(SdkError.ShopBlocked))
+                    // The events were dropped, not refused: their listeners hear `cancelled` (core/queue.md, «Пределы»).
+                    SdkState.REFUSED -> clearLater(LogReasons.REFUSED, CLEARED_REFUSED)
                     else -> Unit
                 }
             }
@@ -884,5 +886,6 @@ internal class EventQueue(
         private val EXPIRED = LegacyError(LegacyErrors.NO_ANSWER, "The event expired in the queue", SdkError.Timeout)
         private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full", SdkError.Cancelled)
         private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk", SdkError.Decoding)
+        private val CLEARED_REFUSED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the shop refused the SDK", SdkError.Cancelled)
     }
 }

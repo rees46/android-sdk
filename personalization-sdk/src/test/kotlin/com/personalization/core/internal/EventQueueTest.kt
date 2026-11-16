@@ -217,12 +217,16 @@ class EventQueueTest {
         val calls = CopyOnWriteArrayList<String>()
         var heldBack: String? = "unset"
 
+        /** The whole error behind each `onError`, as a bridge reads it. */
+        val errors = CopyOnWriteArrayList<SdkError?>()
+
         override fun onSuccess(response: JSONObject?) {
             heldBack = popupHeldBack
             calls += "success:$response"
         }
 
         override fun onError(code: Int, msg: String?) {
+            errors += CurrentError.get()
             calls += "error:$code"
         }
     }
@@ -458,13 +462,17 @@ class EventQueueTest {
         run()
 
         assertEquals(SdkState.REFUSED, state.current)
-        assertEquals(listOf("error:402"), first.calls)
-        assertEquals(listOf("error:402"), second.calls)
+        // Dropped with the queue, not refused: cancelled (core/queue.md, «Пределы»).
+        assertEquals(listOf("error:-1"), first.calls)
+        assertEquals(listOf("error:-1"), second.calls)
+        assertEquals(listOf<SdkError?>(SdkError.Cancelled), first.errors)
+        assertEquals(listOf<SdkError?>(SdkError.Cancelled), second.errors)
         assertTrue(files().isEmpty())
         val later = Heard()
         event(queue, "3", listener = later)
         run()
         assertEquals("refused at once", listOf("error:402"), later.calls)
+        assertEquals(listOf<SdkError?>(SdkError.ShopBlocked), later.errors)
         assertEquals(1, sent.size)
         assertEquals(LogReasons.REFUSED, codes(LogCodes.QUEUE_DROPPED).single().context["reason"])
     }
@@ -1515,6 +1523,56 @@ class EventQueueTest {
         assertEquals("c1", bodies[0].getJSONObject("source").getString("code"))
         assertEquals(clock.now / 1_000, bodies[1].getLong("time"))
         assertFalse(bodies[1].has("source"))
+    }
+
+    // After the decisions of the contract's review.
+
+    @Test
+    fun `each dropped event's listener hears the error of its reason`() {
+        val queue = start(cap = 2)
+        fun dropOne(path: String = "push", answers: List<HttpResult> = emptyList(), before: () -> Unit = {}): Heard {
+            val heard = Heard()
+            eventAnswers.clear()
+            eventAnswers += answers
+            before()
+            queue.accept(path, JSONObject().put("event", "view"), heard)
+            run()
+            return heard
+        }
+        // rejected: the answer's own code.
+        assertEquals(listOf<SdkError?>(SdkError.Http(422)), dropOne(answers = listOf(http(422))).errors)
+        // attempts: the last answer's code.
+        val attempts = dropOne(answers = List(EventQueue.MAX_ATTEMPTS) { http(503) })
+        // Each pause of the backoff (at most five minutes) runs out on the test scheduler.
+        repeat(EventQueue.MAX_ATTEMPTS) { after(300_000) }
+        assertEquals(listOf<SdkError?>(SdkError.Http(503)), attempts.errors)
+        // service_refused: a push event's 403.
+        assertEquals(listOf<SdkError?>(SdkError.Http(403)), dropOne(path = "track/delivered", answers = listOf(http(403))).errors)
+        // expired: timeout.
+        connectivity.set(false)
+        val expired = dropOne()
+        clock.advance(EventQueue.TTL_MS + 1)
+        connectivity.set(true)
+        run()
+        assertEquals(listOf<SdkError?>(SdkError.Timeout), expired.errors)
+        // overflow: cancelled.
+        connectivity.set(false)
+        val oldest = dropOne()
+        dropOne()
+        dropOne()
+        assertEquals(listOf<SdkError?>(SdkError.Cancelled), oldest.errors)
+        // delete_user_credentials: cancelled.
+        val waiting = dropOne()
+        val cleared = CoroutineScope(StandardTestDispatcher(scheduler)).async {
+            queue.clear(LogReasons.DELETE_USER_CREDENTIALS, LegacyError(-1, null, SdkError.Cancelled)) { true }
+        }
+        run()
+        assertTrue(cleared.isCompleted)
+        assertEquals(listOf<SdkError?>(SdkError.Cancelled), waiting.errors)
+        assertEquals(
+            listOf(LogReasons.REJECTED, LogReasons.ATTEMPTS, LogReasons.SERVICE_REFUSED, LogReasons.EXPIRED, LogReasons.OVERFLOW),
+            codes(LogCodes.QUEUE_DROPPED).map { it.context["reason"] }.take(5),
+        )
     }
 
     private companion object {
