@@ -224,6 +224,58 @@ class PushBringUpTest {
         assertFalse(logged.any { it.code == LogCodes.PUSH_DROPPED && it.context["reason"] == LogReasons.NO_DID })
     }
 
+    // The tap's source on the way to the instance that took the push's place.
+
+    @Test
+    fun `a tap handed to the app's instance sets its source before the app's next view goes`() {
+        val scheduler = TestCoroutineScheduler()
+        partition().edit().putString(StorageKeys.DID, "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        val light = heldPushInstance(config(SHOP), scheduler)
+        val full = Rees46.instance(SHOP)
+        assertTrue(full !== light)
+
+        // The push's handling hands the tap to the instance that gave way, whose refusal waits on its own work;
+        // meanwhile the app tracks a view.
+        val takers = LinkedBlockingQueue<SDK>()
+        light.pushEvent(PushEvent.CLICKED, "tap", "chain") { takers += it }
+        full.tracking.productView("37")
+        flush(full)
+        val view = next("push")?.second ?: throw AssertionError("no push")
+        assertEquals("the tap's source", "chain", view.getJSONObject("source").getString("from"))
+        assertEquals("tap", view.getJSONObject("source").getString("code"))
+
+        scheduler.runCurrent()
+        assertTrue(takers.poll(5, TimeUnit.SECONDS) === full)
+        flush(full)
+        assertEquals("tap", next("track/clicked")?.second?.getString("code"))
+    }
+
+    @Test
+    fun `a tap no queue takes puts the source before it back`() {
+        val savedAt = System.currentTimeMillis() - 60_000
+        partition().edit()
+            .putString(StorageKeys.TRACKING_SOURCE_TYPE, "bulk")
+            .putString(StorageKeys.TRACKING_SOURCE_CODE, "kept")
+            .putLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, savedAt)
+            .commit()
+        val sdk = Rees46.initialize(context, config(SHOP))
+        runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
+        sdk.release()
+
+        // The tap reaches the released instance: no queue takes it.
+        val heard = CopyOnWriteArrayList<SDK>()
+        sdk.pushEvent(PushEvent.CLICKED, "refused", "chain") { heard += it }
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (logged.none { it.message == "The push event was not accepted" } && System.nanoTime() < deadline) Thread.sleep(10)
+
+        assertTrue(logged.any { it.message == "The push event was not accepted" })
+        assertTrue(heard.isEmpty())
+        assertEquals("bulk", partition().getString(StorageKeys.TRACKING_SOURCE_TYPE, null))
+        assertEquals("kept", partition().getString(StorageKeys.TRACKING_SOURCE_CODE, null))
+        assertEquals(savedAt, partition().getLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, 0L))
+    }
+
     private companion object {
         const val SHOP = "bring-up-shop"
         const val OTHER = "bring-up-other"

@@ -57,6 +57,7 @@ import com.personalization.core.internal.PushHub
 import com.personalization.core.internal.QueueStore
 import com.personalization.core.internal.SessionWindow
 import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageKeys
 import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
@@ -1904,6 +1905,11 @@ open class SDK {
      * no-op). The event is reserved ([PushHub.reserve]) while it is handed to the queue, and counts as sent
      * once a queue accepted it ([offerPushEvent]); only then [accepted] runs. A repeat that comes meanwhile
      * goes only if this one is not accepted.
+     *
+     * A tap of a type of [TrackingSourceType] sets the tracking source for 48 hours (the `/push` events carry
+     * it as `source`) before it is handed over: a `/push` that goes while the tap is on its way — to the
+     * instance that took this one's place — carries it too. When no queue takes the tap, the source is put
+     * back as it was.
      */
     private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
         if (core !is CoreV2) return
@@ -1914,44 +1920,78 @@ open class SDK {
             log(LogLevel.DEBUG, LogCodes.PUSH, message, mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
             return
         }
-        offerPushEvent(event, code, type, accepted)
+        val undoSource = if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) setTapSource(type, code) else null
+        offerPushEvent(event, code, type, undoSource, accepted)
+    }
+
+    /**
+     * Sets the tap's tracking source and returns what puts back the source before it, while the stored one is
+     * still this tap's; null when it could not be set.
+     */
+    private fun setTapSource(type: String, code: String): (() -> Unit)? {
+        val preferences = storage?.preferences
+        val before = preferences?.let {
+            Triple(
+                it.getString(StorageKeys.TRACKING_SOURCE_TYPE, null),
+                it.getString(StorageKeys.TRACKING_SOURCE_CODE, null),
+                if (it.contains(StorageKeys.TRACKING_SOURCE_SAVED_AT)) it.getLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, 0L) else null,
+            )
+        }
+        try {
+            notificationHandler.setClickSource(type = type, code = code)
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "The tap's tracking source was not kept", throwable = e)
+            return null
+        }
+        if (preferences == null || before == null) return null
+        return {
+            // Another tap or setSource since keeps its own.
+            if (preferences.getString(StorageKeys.TRACKING_SOURCE_TYPE, null) == type &&
+                preferences.getString(StorageKeys.TRACKING_SOURCE_CODE, null) == code
+            ) {
+                val (beforeType, beforeCode, beforeSavedAt) = before
+                val editor = preferences.edit()
+                if (beforeType != null) editor.putString(StorageKeys.TRACKING_SOURCE_TYPE, beforeType) else editor.remove(StorageKeys.TRACKING_SOURCE_TYPE)
+                if (beforeCode != null) editor.putString(StorageKeys.TRACKING_SOURCE_CODE, beforeCode) else editor.remove(StorageKeys.TRACKING_SOURCE_CODE)
+                if (beforeSavedAt != null) editor.putLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, beforeSavedAt) else editor.remove(StorageKeys.TRACKING_SOURCE_SAVED_AT)
+                editor.apply()
+            }
+        }
     }
 
     /**
      * Hands the reserved push [event] to this instance's queue.
-     * - Accepted: it counts as sent ([PushHub.confirm]); a tap sets the tracking source for 48 hours when
-     *   its type is one of [TrackingSourceType] (the `/push` events carry it as `source`); and [accepted]
-     *   hears this instance.
+     * - Accepted: it counts as sent ([PushHub.confirm]), and [accepted] hears this instance.
      * - Refused with `notInitialized` because another instance of the shop took this one's place (one
      *   brought up for a push gave way to the app's): it goes to that one.
      * - Refused otherwise (the instance released, the shop refused): it is not sent and may come again
-     *   ([PushHub.release]).
+     *   ([PushHub.release]); a tap's source goes back as it was ([undoSource]).
      */
-    private fun offerPushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
+    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit) {
         val shop = shopId
         val core = core as? CoreV2
         if (core == null) {
+            undoSource?.invoke()
             PushHub.release(shop, event, code)
             return
         }
         core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
             if (refused == null) {
                 PushHub.confirm(shop, event, code)
-                if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) {
-                    try {
-                        notificationHandler.setClickSource(type = type, code = code)
-                    } catch (e: Exception) {
-                        log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "The tap's tracking source was not kept", throwable = e)
-                    }
-                }
                 accepted(this)
                 return@accept
             }
             val live = SdkRegistry.byShopId(shop)
             if (refused == SdkError.NotInitialized && live != null && live !== this) {
                 log(LogLevel.DEBUG, LogCodes.PUSH, "The push event goes to the shop's instance that took this one's place", mapOf("event" to event.name.lowercase(Locale.ROOT)))
-                live.offerPushEvent(event, code, type, accepted)
+                live.offerPushEvent(event, code, type, undoSource, accepted)
                 return@accept
+            }
+            // Before the repeats parked meanwhile try again: one of them may set the source anew.
+            try {
+                undoSource?.invoke()
+            } catch (e: Exception) {
+                log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "The tap's tracking source was not put back", throwable = e)
             }
             PushHub.release(shop, event, code)
             log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
