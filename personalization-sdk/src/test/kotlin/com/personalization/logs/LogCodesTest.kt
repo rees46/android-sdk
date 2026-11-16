@@ -83,7 +83,33 @@ class LogCodesTest {
             .filter { Modifier.isStatic(it.modifiers) && it.type == String::class.java }
             .map { it.get(null) as String }
         assertTrue(codes.isNotEmpty())
-        assertEquals(emptyList<String>(), codes - SPEC_CODES)
+        val spec = LoggingSpec.codes()
+        assertTrue("the table was read", "init_refused" in spec && "queue_dropped" in spec && "push" in spec)
+        assertEquals(emptyList<String>(), codes - spec)
+    }
+
+    @Test
+    fun `the reasons the SDK gives are those of the table`() {
+        // The reasons of the codes whose row lists them all.
+        assertEquals(
+            emptySet<String>(),
+            setOf(LogReasons.SENT_RECENTLY, LogReasons.NO_DEVICE_ID, LogReasons.AUTO_SEND_OFF, LogReasons.PUSH_ONLY) - LoggingSpec.reasons("push_token_skipped"),
+        )
+        assertEquals(
+            emptySet<String>(),
+            setOf(LogReasons.NOT_SDK_PUSH, LogReasons.UNKNOWN_SHOP, LogReasons.AMBIGUOUS_SHOP, LogReasons.NO_DID) - LoggingSpec.reasons("push_dropped"),
+        )
+        assertEquals(
+            emptySet<String>(),
+            setOf(
+                LogReasons.EXPIRED, LogReasons.OVERFLOW, LogReasons.ATTEMPTS, LogReasons.REJECTED, LogReasons.SERVICE_REFUSED,
+                LogReasons.REFUSED, LogReasons.DELETE_USER_CREDENTIALS, "unreadable",
+            ) - LoggingSpec.reasons("queue_dropped"),
+        )
+        assertTrue(LogReasons.DEVICE_ID_KEPT in LoggingSpec.reasons("invalid_config"))
+        assertTrue(LogReasons.ALREADY_INITIALIZED in LoggingSpec.reasons("invalid_config"))
+        assertTrue(LogReasons.LATE_EVENT in LoggingSpec.reasons("popup_not_shown"))
+        assertTrue(LogReasons.APP_IN_BACKGROUND in LoggingSpec.reasons("popup_not_shown"))
     }
 
     @Test
@@ -193,8 +219,10 @@ class LogCodesTest {
 
         tokens.onTokenReceived("secret-token", PushProvider.FCM)
 
-        assertEquals(listOf(LogCodes.PUSH_TOKEN_RECEIVED to LogLevel.DEBUG), codes())
-        assertEquals("fcm", received.single().context["provider"])
+        // Not sent: the shop does not send the providers' tokens by itself.
+        assertEquals(listOf(LogCodes.PUSH_TOKEN_RECEIVED to LogLevel.DEBUG, LogCodes.PUSH_TOKEN_SKIPPED to LogLevel.DEBUG), codes())
+        assertEquals("fcm", received.first().context["provider"])
+        assertEquals(LogReasons.AUTO_SEND_OFF, received.last().context["reason"])
         assertTrue(received.none { "secret-token" in it.message || "secret-token" in it.context.toString() })
     }
 
@@ -265,17 +293,33 @@ class LogCodesTest {
         return listener.captured
     }
 
-    private companion object {
-        /** The table "Коды" of the logging spec, with the area codes of the older code. */
-        val SPEC_CODES = setOf(
-            "request", "request_failed", "request_build_failed", "invalid_argument", "invalid_config",
-            "decoding_failed", "callback_failed", "init_succeeded", "init_saved_answer", "init_retry",
-            "init_failed", "init_refused", "device_id_reset", "storage_failed", "queue_dropped",
-            "push_received", "push_dropped", "push_failed", "push_permission", "push_permission_failed",
-            "push_token_sent", "push_token_skipped", "push_token_failed", "advertising_id_sent",
-            "advertising_id_failed", "popup_not_shown", "core_flag_mismatch", "not_implemented",
-            "request_cancelled", "init_skipped", "push_token_received", "device_id_kept",
-            "sdk_log", "ui", "stories", "stories_v3", "popups_v3", "push",
-        )
+    /**
+     * The table "Коды" of `sdk/core/logging.md`, read from the contract's file as it is (copied beside the
+     * fixtures, [com.personalization.core.internal.ContractFixtures]): the codes of its rows and the area codes
+     * of the older code named after it, and the reasons a row lists.
+     */
+    private object LoggingSpec {
+        private val document: String by lazy { com.personalization.core.internal.ContractFixtures.text("logging.md") }
+
+        /** The rows of the table, by code. */
+        private val rows: Map<String, String> by lazy {
+            val table = document.substringAfter("### Коды").substringBefore("\n## ")
+            table.lines()
+                .filter { it.startsWith("| `") }
+                .associate { row -> row.substringAfter("| `").substringBefore("`") to row }
+        }
+
+        private fun quoted(text: String): Set<String> = Regex("`([a-z0-9_]+)`").findAll(text).map { it.groupValues[1] }.toSet()
+
+        fun codes(): Set<String> {
+            val areas = document.substringAfter("идут под кодом области:").substringBefore(".")
+            return rows.keys + quoted(areas)
+        }
+
+        /** What the row of [code] names: its reasons among them (and its levels, which no reason is called). */
+        fun reasons(code: String): Set<String> {
+            val row = requireNotNull(rows[code]) { "no row $code in logging.md" }
+            return quoted(row) - code
+        }
     }
 }

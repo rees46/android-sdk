@@ -6,6 +6,7 @@ import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -95,9 +96,16 @@ internal class CorePushTokens(
     /** The device's token of [provider], or the one this shop sent last. */
     fun token(provider: PushProvider): String? = device.pushToken(provider.id) ?: sentToken(provider)
 
-    /** A token FCM or HMS gave: kept and sent, when the shop takes them, once the instance is ready. */
+    /**
+     * A token FCM or HMS gave: kept and sent, when the shop takes them, once the instance is ready. A shop
+     * that does not send tokens by itself neither keeps nor sends it (`push_token_skipped`, `auto_send_off`).
+     */
     fun received(token: String, provider: PushProvider) {
-        if (token.isEmpty() || !autoSend) return
+        if (token.isEmpty()) return
+        if (!autoSend) {
+            skipped(provider, REASON_AUTO_SEND_OFF)
+            return
+        }
         synchronized(lock) {
             if (released) return
             device.savePushToken(provider.id, token)
@@ -164,7 +172,7 @@ internal class CorePushTokens(
         }
         if (!hasDid()) {
             // Not before /init gave a did: the next start's /init sends it.
-            skipped(provider, REASON_NO_DID)
+            skipped(provider, REASON_NO_DEVICE_ID)
             listener?.let { delivery.failure(it, LegacyErrors.of(SdkError.NotInitialized)) }
             return
         }
@@ -193,7 +201,7 @@ internal class CorePushTokens(
             }
         }
         if (flight == null) {
-            skipped(provider, REASON_SENT_THIS_WEEK)
+            skipped(provider, REASON_SENT_RECENTLY)
             listener?.let { delivery.success(it, JSONObject()) }
             return
         }
@@ -326,9 +334,11 @@ internal class CorePushTokens(
         /** How often a token the app passed looks again for the did a deletion of the customer took. */
         const val DID_RECHECK_MS = 100L
 
-        const val REASON_SENT_THIS_WEEK = "sent_this_week"
-        const val REASON_NO_DID = "no_did"
-        const val REASON_PUSH_ONLY = "push_only"
+        /** The reasons of `push_token_skipped` (core/logging.md). */
+        const val REASON_SENT_RECENTLY = LogReasons.SENT_RECENTLY
+        const val REASON_NO_DEVICE_ID = LogReasons.NO_DEVICE_ID
+        const val REASON_AUTO_SEND_OFF = LogReasons.AUTO_SEND_OFF
+        const val REASON_PUSH_ONLY = LogReasons.PUSH_ONLY
 
         private const val FIELD_PLATFORM = "platform"
         private const val FIELD_TOKEN = "token"

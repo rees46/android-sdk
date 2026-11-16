@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.AtomicFile
 import com.personalization.LogLevel
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
@@ -90,7 +91,7 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
     /**
      * Takes the `did` an app brings in `Rees46Config.deviceId`, once for the shop: on the first launch
      * that brings one, while the shop has no `did` of its own. A shop that has one keeps it and logs
-     * `device_id_kept`. Either way the flag [StorageKeys.MIGRATED_CONFIG_DEVICE_ID] is set and later
+     * `invalid_config` with the reason `device_id_kept`. Either way the flag [StorageKeys.MIGRATED_CONFIG_DEVICE_ID] is set and later
      * launches leave the config's `did` alone, so it does not come back after `deleteUserCredentials()`
      * even when the app passes it on every launch. True when it was taken.
      */
@@ -104,9 +105,10 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         } else if (own != configured) {
             SdkLogs.log(
                 LogLevel.WARNING,
-                LogCodes.DEVICE_ID_KEPT,
+                LogCodes.INVALID_CONFIG,
                 "Rees46Config.deviceId is not taken: the shop keeps the did it has",
                 layout.shopId,
+                mapOf("reason" to LogReasons.DEVICE_ID_KEPT),
             )
         }
         preferences.edit().putBoolean(StorageKeys.MIGRATED_CONFIG_DEVICE_ID, true).commit()

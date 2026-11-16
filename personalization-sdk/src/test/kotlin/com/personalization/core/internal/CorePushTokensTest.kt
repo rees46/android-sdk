@@ -127,7 +127,8 @@ class CorePushTokensTest {
         tokens.received("t1", PushProvider.FCM)
         run()
         assertEquals("the same token this week", 1, sent.size)
-        assertEquals(listOf<Any?>(CorePushTokens.REASON_SENT_THIS_WEEK), reasons())
+        // The reasons are the contract's (core/logging.md).
+        assertEquals(listOf<Any?>("sent_recently"), reasons())
 
         tokens.received("t2", PushProvider.FCM)
         run()
@@ -186,7 +187,7 @@ class CorePushTokensTest {
         tokens(OTHER, sends = false).sendStored()
         run()
         assertEquals(1, sent.size)
-        assertEquals(listOf<Any?>(CorePushTokens.REASON_NO_DID, CorePushTokens.REASON_PUSH_ONLY), reasons())
+        assertEquals(listOf<Any?>("no_device_id", "push_only"), reasons())
     }
 
     @Test
@@ -248,12 +249,13 @@ class CorePushTokensTest {
     }
 
     @Test
-    fun `a shop that does not send tokens by itself keeps none from FCM, and sends the one the app passes`() {
+    fun `a shop that does not send tokens by itself keeps none from FCM, says why, and sends the one the app passes`() {
         val tokens = tokens(autoSend = false)
         tokens.received("from-fcm", PushProvider.FCM)
         run()
         assertNull(DeviceStorage(context).pushToken("fcm"))
         assertTrue(sent.isEmpty())
+        assertEquals(listOf<Any?>("auto_send_off"), reasons())
 
         tokens.set("from-app", PushProvider.FCM, null)
         run()
@@ -312,7 +314,7 @@ class CorePushTokensTest {
         next.sendStored()
         run()
         assertEquals("the send that went counts the week", 2, sent.size)
-        assertEquals(CorePushTokens.REASON_SENT_THIS_WEEK, reasons().last())
+        assertEquals("sent_recently", reasons().last())
     }
 
     @Test

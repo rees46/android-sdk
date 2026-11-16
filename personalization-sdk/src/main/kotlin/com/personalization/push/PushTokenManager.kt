@@ -2,6 +2,7 @@ package com.personalization.push
 
 import com.personalization.logs.SdkLogs
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.LogLevel
 import android.content.Context
 import com.personalization.OnPushTokenListener
@@ -135,6 +136,10 @@ class PushTokenManager @Inject constructor(
         if (v2 != null) {
             // Kept for the device and sent once the instance is ready, even before it is.
             v2.received(token, provider)
+        } else if (!autoSendPushToken) {
+            // As before, not sent: the app passes the tokens it wants sent through setPushToken.
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_SKIPPED, "Push token not sent", logShopId,
+                mapOf("provider" to provider.id, "reason" to LogReasons.AUTO_SEND_OFF))
         } else {
             val currentDate = Date().time
             if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {

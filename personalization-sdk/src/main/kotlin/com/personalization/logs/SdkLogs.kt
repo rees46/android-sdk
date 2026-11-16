@@ -168,9 +168,6 @@ internal object LogCodes {
     /** The shop refused and the core is in the `refused` state; the legacy path has no such state. */
     const val INIT_REFUSED = "init_refused"
     const val DEVICE_ID_RESET = "device_id_reset"
-
-    /** `Rees46Config.deviceId` not taken because the shop has a `did` of its own (`warning`, once per shop). */
-    const val DEVICE_ID_KEPT = "device_id_kept"
     const val STORAGE_FAILED = "storage_failed"
     const val QUEUE_DROPPED = "queue_dropped"
 
@@ -227,10 +224,26 @@ internal object LogReasons {
     const val PRE_LAUNCH_REPORT = "pre_launch_report"
     const val NEED_REINITIALIZATION = "need_reinitialization"
     const val ALREADY_INITIALIZED = "already_initialized"
+
+    /** `Rees46Config.deviceId` not taken because the shop has a `did` of its own (`invalid_config`, once per shop). */
+    const val DEVICE_ID_KEPT = "device_id_kept"
     const val NOT_READY = "not_ready"
 
     /** A shop brought up only for a push has no `did`: its event cannot go (`push_dropped`). */
     const val NO_DID = "no_did"
+
+    // Why a push token was not sent (`push_token_skipped`).
+    /** This shop sent the same token less than a week ago. */
+    const val SENT_RECENTLY = "sent_recently"
+
+    /** The instance has no `did` yet: the token goes after the `/init` that gives one. */
+    const val NO_DEVICE_ID = "no_device_id"
+
+    /** A token from FCM or HMS while the shop does not send tokens by itself (`autoSendPushToken = false`). */
+    const val AUTO_SEND_OFF = "auto_send_off"
+
+    /** The instance was brought up only for a push: the shop's own instance sends the token. */
+    const val PUSH_ONLY = "push_only"
 
     // Why the queue dropped events (`queue_dropped`).
     /** Older than the queue keeps an event (7 days). */

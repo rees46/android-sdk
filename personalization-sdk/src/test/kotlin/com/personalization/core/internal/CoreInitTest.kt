@@ -470,20 +470,23 @@ class CoreInitTest {
 
         assertEquals("", settings.getDid())
         assertEquals(SdkState.INITIALIZING, state.current)
-        assertTrue(codes(LogCodes.DEVICE_ID_KEPT).isEmpty())
+        assertTrue(codes(LogCodes.INVALID_CONFIG).isEmpty())
     }
 
     @Test
-    fun `a did of the config that the shop does not take is logged once`() {
+    fun `a did of the config that the shop does not take is logged once, as invalid_config with the reason device_id_kept`() {
         settings.updateDid("MINE")
         started(InitSetup(SHOP, deviceId = "FROM_RN"))
         inits.single().release()
         started(InitSetup(SHOP, deviceId = "FROM_RN"))
 
         assertEquals("MINE", settings.getDid())
-        val kept = codes(LogCodes.DEVICE_ID_KEPT).single()
+        // The code and the reason of core/logging.md: device_id_kept is a reason, not a code.
+        val kept = codes(LogCodes.INVALID_CONFIG).single()
         assertEquals(LogLevel.WARNING, kept.level)
-        assertTrue("no did in the log", "MINE" !in kept.message && "FROM_RN" !in kept.message && kept.context.isEmpty())
+        assertEquals(mapOf<String, Any?>("reason" to "device_id_kept"), kept.context)
+        assertTrue("no did in the log", "MINE" !in kept.message && "FROM_RN" !in kept.message)
+        assertTrue(logged.none { it.code == "device_id_kept" })
     }
 
     @Test
