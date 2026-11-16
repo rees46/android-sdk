@@ -1119,10 +1119,10 @@ open class SDK {
      * returns once each of them was tried: sent, dropped, or held — by no network, by the instance not
      * being ready yet, or by a server that asked to wait (`Retry-After`). An event waiting out the pause
      * after a failure goes again at once; it promises no delivery. On the legacy core, which has no queue,
-     * it returns at once.
+     * it returns at once, and so it does for a shop that refused the SDK: its queue was emptied.
      *
      * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
-     * was released, with [SdkError.ShopBlocked] when the shop refused the SDK.
+     * was released.
      */
     suspend fun flush() {
         val core = core

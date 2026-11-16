@@ -618,10 +618,13 @@ class EventQueueTest {
     }
 
     @Test
-    fun `flush fails with notInitialized after release and with shopBlocked for a refused shop`() {
+    fun `flush of a refused shop ends without an error, its queue being empty, and fails with notInitialized after release`() {
         initAnswer = { http(402) }
         val queue = start()
-        assertEquals(SdkError.ShopBlocked, (flush(queue).getCompleted() as SdkException).error)
+        assertEquals(SdkState.REFUSED, state.current)
+        val refused = flush(queue)
+        assertTrue(refused.isCompleted)
+        assertNull("nothing to send: no error (core/init.md)", refused.getCompleted())
         queue.release()
         assertEquals(SdkError.NotInitialized, (flush(queue).getCompleted() as SdkException).error)
     }

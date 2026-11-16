@@ -333,13 +333,14 @@ internal class EventQueue(
      * Sends what is in the queue now, without waiting for a trigger, and returns once each of those
      * events was tried: sent, dropped, or held by no network, the instance not being ready, the shop's
      * check or a server's `Retry-After`. The pauses of the backoff end, in both lanes: the events waiting in
-     * them go again at once; a server's `Retry-After` does not.
+     * them go again at once; a server's `Retry-After` does not. A refused shop's queue is empty: it returns
+     * at once, without an error (core/init.md).
      *
-     * @throws SdkException `notInitialized` after [release], `shopBlocked` for a refused shop.
+     * @throws SdkException `notInitialized` after [release].
      */
     suspend fun flush() {
         if (released) throw SdkException(SdkError.NotInitialized)
-        if (state.current == SdkState.REFUSED) throw SdkException(SdkError.ShopBlocked)
+        if (state.current == SdkState.REFUSED) return
         val done = CompletableDeferred<Unit>()
         if (writer?.isActive != true || commands.trySend(Command.Flush(done)).isFailure) throw SdkException(SdkError.NotInitialized)
         done.await()
