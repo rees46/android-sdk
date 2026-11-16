@@ -71,6 +71,8 @@ internal object SdkRegistry {
             if (!sdk.pushOnly) current = sdk
             toNotify = if (sdk.pushOnly) emptyList() else takeMatchingAwaiters(shopId)
         }
+        // Handed to the app that waits for it: what a push's start left for the app goes.
+        if (toNotify.isNotEmpty()) sdk.handedToApp()
         toNotify.forEach { it.onReady(sdk) }
     }
 
@@ -103,7 +105,7 @@ internal object SdkRegistry {
             }
         }
         return if (alreadyLive != null) {
-            onReady(alreadyLive)
+            onReady(alreadyLive.handedToApp())
             Cancellable.NOOP
         } else {
             // Set under the lock whenever nothing was live; the fallback is unreachable.
@@ -132,9 +134,13 @@ internal object SdkRegistry {
     /**
      * The current default, lazily creating an (uninitialized) instance if none exists. Preserves the
      * legacy `SDK.instance` fallback: a push delivered before `initialize()` ran still reaches a
-     * guarded instance instead of crashing the host.
+     * guarded instance instead of crashing the host. The app takes the current default this way
+     * ([SDK.handedToApp]).
      */
-    fun currentOrLazy(): SDK = synchronized(lock) { current ?: SDK().also { current = it } }
+    fun currentOrLazy(): SDK {
+        current?.let { return it.handedToApp() }
+        return synchronized(lock) { current ?: SDK().also { current = it } }
+    }
 
     /** Sets (or clears, with null) the process-global push-message listener. */
     fun setMessageListener(listener: OnShopMessageListener?) {

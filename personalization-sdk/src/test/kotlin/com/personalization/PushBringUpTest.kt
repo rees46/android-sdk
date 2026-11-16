@@ -196,6 +196,40 @@ class PushBringUpTest {
         return light
     }
 
+    // The legacy core's cold push for a shop without a did, as 2.49.0 had it.
+
+    @Test
+    fun `on the legacy core a cold push for a shop without a did sends only init and track received, and the token and profile go once the app takes the instance`() {
+        PushTokenManager.sourceFactory = { listOf(TokenSource("tok")) }
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false).copy(autoSendPushToken = true)))
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
+        val made = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertFalse(made.pushOnly)
+        assertEquals("D1", next("track/received")?.second?.getString("did"))
+        threads.awaitIdle()
+        // The profile reads the advertising id off the push's thread first: had it been sent, it would be here by now.
+        assertNull("no token and no profile for a push, as 2.49.0", next("mobile_push_tokens", "profile/set", timeoutMs = 1_000))
+        assertEquals(listOf("init", "track/received"), seen.map { it.first })
+
+        // The app takes the instance: its token and its profile go, once each, with the did of /init.
+        assertTrue(Rees46.instance(SHOP) === made)
+        val taken = listOf(next("mobile_push_tokens", "profile/set"), next("mobile_push_tokens", "profile/set"))
+        assertEquals(setOf("mobile_push_tokens", "profile/set"), taken.map { it?.first }.toSet())
+        assertTrue(taken.all { it?.second?.getString("did") == "D1" })
+        assertEquals("tok", taken.single { it?.first == "mobile_push_tokens" }?.second?.getString("token"))
+
+        // Taken again, however: nothing more goes.
+        assertTrue(Rees46.instance(SHOP) === made)
+        assertTrue(SDK.instance === made)
+        assertTrue(Rees46.initialize(context, config(SHOP, coreV2 = false).copy(autoSendPushToken = true)) === made)
+        threads.awaitIdle()
+        assertNull(next("mobile_push_tokens", "profile/set", timeoutMs = 1_000))
+        assertEquals(listOf("init", "track/received"), seen.map { it.first }.filter { it != "mobile_push_tokens" && it != "profile/set" })
+        assertEquals(1, seen.count { it.first == "mobile_push_tokens" })
+        assertEquals(1, seen.count { it.first == "profile/set" })
+    }
+
     // The app's first call overtaking the push's instance before it read its did.
 
     @Test

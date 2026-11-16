@@ -60,7 +60,7 @@ object Rees46 {
         if (existing != null && !existing.pushOnly) {
             existing.keepConfig(config)
             pending.remove(config.shopId)
-            return existing
+            return existing.handedToApp()
         }
         val sdk = SDK()
         sdk.initializeWith(context, config)
@@ -425,14 +425,15 @@ object Rees46 {
      * [SDK.initializeForPush]: no `/init`, no push token, no profile, no popup; the event goes with the shop's
      * stored `did`. The app's first [instance] or [initialize] of the shop puts a full instance in its place.
      *
-     * On the legacy core a shop without a `did` starts as it always did instead: its full instance, whose one
-     * `/init` gives the `did` the push's `track/received` waits for, and which the app then gets as it is.
+     * On the legacy core a shop without a `did` starts as 2.49.0 started it ([SDK.initializeForPushWithoutDid]):
+     * its full instance, whose one `/init` gives the `did` the push's `track/received` waits for, without the
+     * push token and the profile. The app then gets it as it is, and they go when it takes it.
      */
     private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
         SdkRegistry.byShopId(shopId)?.let { return it }
         val pendingInit = pending[shopId] ?: return null
         if (!CoreSelection.resolve(pendingInit.config.coreV2, shopId) && !legacyHasDid(pendingInit.context, pendingInit.config)) {
-            return initialize(pendingInit.context, pendingInit.config)
+            return SDK().apply { initializeForPushWithoutDid(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
         }
         SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
     }
@@ -474,14 +475,15 @@ object Rees46 {
      * The app's own instance of [shopId], never one brought up only for a push ([SDK.initializeForPush]):
      * the live full instance, or one made now with a full start (`/init`, the push token, everything) — from
      * the pending registration, or in place of the push-only instance, whose push events in flight still go.
-     * Null when the shop has neither (released meanwhile).
+     * A full instance a push started gets what it left for the app ([SDK.handedToApp]). Null when the shop has
+     * neither (released meanwhile).
      */
     private fun appInstance(shopId: String): SDK? {
-        SdkRegistry.byShopId(shopId)?.takeUnless { it.pushOnly }?.let { return it }
+        SdkRegistry.byShopId(shopId)?.takeUnless { it.pushOnly }?.let { return it.handedToApp() }
         return synchronized(lock) {
             // Another caller may have made it meanwhile, or a push brought the shop up for itself.
             val live = SdkRegistry.byShopId(shopId)
-            if (live != null && !live.pushOnly) return live
+            if (live != null && !live.pushOnly) return live.handedToApp()
             val pendingInit = pending[shopId]
             when {
                 pendingInit != null -> initialize(pendingInit.context, pendingInit.config)

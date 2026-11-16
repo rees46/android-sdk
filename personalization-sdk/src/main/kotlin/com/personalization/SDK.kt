@@ -152,6 +152,12 @@ open class SDK {
     internal var pushOnly: Boolean = false
         private set
 
+    /**
+     * Started by a push as the shop's full instance without its push token and its profile
+     * ([initializeForPushWithoutDid]): they go once the app takes the instance ([handedToApp]).
+     */
+    private val appStartDeferred = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /** The instance's [SdkState] and the app's listeners of it, for both cores. */
     internal val instanceState: InstanceState by lazy { InstanceState(shopId = { logShopId }, dispatchers = dispatchers) }
 
@@ -512,12 +518,41 @@ open class SDK {
         pushOnly = true,
     )
 
+    /**
+     * The legacy core's start for a push of a shop registered but not created and without a `did`, as 2.49.0
+     * brought it up: the shop's full instance, whose `/init` gives the `did` the push's `track/received` waits
+     * for, but without the push token and the profile with the advertising id. The app gets this instance as
+     * it is, and when it takes it ([handedToApp]) they go, once.
+     */
+    internal fun initializeForPushWithoutDid(context: Context, config: Rees46Config) = start(
+        context,
+        config,
+        autoSendPushToken = false,
+        needReInitialization = false,
+        pushOnly = false,
+        deferAppStart = true,
+    )
+
+    /**
+     * The app takes this instance ([Rees46.instance], [Rees46.initialize], [Rees46.awaitInstance], [instance]):
+     * what a push's start left for the app ([initializeForPushWithoutDid]) goes now, once — the profile with
+     * the advertising id and the push token, each after the `did`. Returns this instance.
+     */
+    internal fun handedToApp(): SDK {
+        if (released || !appStartDeferred.compareAndSet(true, false)) return this
+        val config = config ?: return this
+        sendAdvertisingProfile(config.shopId)
+        if (::registerManager.isInitialized) registerManager.sendTokensFromNow(config.autoSendPushToken)
+        return this
+    }
+
     private fun start(
         context: Context,
         config: Rees46Config,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
         pushOnly: Boolean,
+        deferAppStart: Boolean = false,
     ): Unit = synchronized(initLock) {
         val current = this.config
         val sameShop = current != null && isLive && current.shopId == config.shopId
@@ -535,7 +570,11 @@ open class SDK {
         // instance, and whoever finds it in the registry has the config to put a full one in its place.
         this.pushOnly = pushOnly
         this.config = config
-        initializeInternal(context, config, autoSendPushToken, needReInitialization, pushOnly = pushOnly, cancelRequests = !upgrade)
+        appStartDeferred.set(deferAppStart)
+        initializeInternal(
+            context, config, autoSendPushToken, needReInitialization,
+            pushOnly = pushOnly, cancelRequests = !upgrade, sendProfile = !pushOnly && !deferAppStart,
+        )
     }
 
     /**
@@ -581,8 +620,9 @@ open class SDK {
         pushOnly: Boolean,
         // False when a push-only instance becomes a full one: the push's events in flight finish.
         cancelRequests: Boolean = true,
+        // The legacy core's profile with the advertising id after the start: not for a push's start.
+        sendProfile: Boolean = !pushOnly,
     ) {
-        val sendProfileOnInit = !pushOnly
         val shopId = config.shopId
         // Initialized before (another shop, or released): the old start sends and takes nothing more.
         stopCurrent(cancelRequests)
@@ -687,39 +727,42 @@ open class SDK {
         isSdkInitialized = true
 
         // The new core sends the advertising id with /init, and only with sendAdvertisingId.
-        if (sendProfileOnInit && !coreV2) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val advertisingId = initializeAdvertisingIdUseCase.invoke()
+        if (sendProfile && !coreV2) sendAdvertisingProfile(shopId)
+    }
 
-                // Not through profile(): the advertising id is not a change of the visitor that
-                // should make popups v3 ask for their list again.
-                sendNetworkMethodUseCase.postAsync(
-                    method = SET_PROFILE_FIELD,
-                    params = ProfileParams
-                        .Builder()
-                        .put(GAID_KEY, advertisingId)
-                        .build()
-                        .toJson(),
-                    listener = object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            SdkLogs.log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent", shopId)
-                        }
+    /** The legacy core's `profile/set` with the advertising id, read off the caller's thread; it waits for the `did`. */
+    private fun sendAdvertisingProfile(shopId: String) {
+        if (core?.isV2 == true) return
+        CoroutineScope(Dispatchers.IO).launch {
+            val advertisingId = initializeAdvertisingIdUseCase.invoke()
 
-                        override fun onError(code: Int, msg: String?) {
-                            // Without the answer's body: an error answer often repeats the request's data.
-                            SdkLogs.log(
-                                LogLevel.WARNING,
-                                LogCodes.ADVERTISING_ID_FAILED,
-                                "Advertising id was not sent",
-                                shopId,
-                                mapOf("status" to code)
-                            )
-                        }
+            // Not through profile(): the advertising id is not a change of the visitor that
+            // should make popups v3 ask for their list again.
+            sendNetworkMethodUseCase.postAsync(
+                method = SET_PROFILE_FIELD,
+                params = ProfileParams
+                    .Builder()
+                    .put(GAID_KEY, advertisingId)
+                    .build()
+                    .toJson(),
+                listener = object : OnApiCallbackListener() {
+                    override fun onSuccess(response: JSONObject?) {
+                        SdkLogs.log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent", shopId)
                     }
-                )
-            }
-        }
 
+                    override fun onError(code: Int, msg: String?) {
+                        // Without the answer's body: an error answer often repeats the request's data.
+                        SdkLogs.log(
+                            LogLevel.WARNING,
+                            LogCodes.ADVERTISING_ID_FAILED,
+                            "Advertising id was not sent",
+                            shopId,
+                            mapOf("status" to code)
+                        )
+                    }
+                }
+            )
+        }
     }
 
     /**

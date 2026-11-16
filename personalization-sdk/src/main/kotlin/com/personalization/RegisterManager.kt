@@ -34,6 +34,7 @@ class RegisterManager @Inject constructor(
     private val inAppNotificationManager: InAppNotificationManager,
     private val pushTokenManager: PushTokenManager
 ) {
+    @Volatile
     private var autoSendPushToken: Boolean = false
 
     /**
@@ -153,6 +154,19 @@ class RegisterManager @Inject constructor(
         }
 
         sendInitRequestWithRetry(knownDevice = knownDevice, start = start)
+    }
+
+    /**
+     * The app took an instance a push started without its tokens: the providers' tokens go from now on with
+     * [autoSendPushToken], once the device has its `did` — at once when it has one, otherwise from the answer
+     * to `/init`, which asks the providers with it.
+     */
+    internal fun sendTokensFromNow(autoSendPushToken: Boolean) {
+        this.autoSendPushToken = autoSendPushToken
+        if (stopped || !::context.isInitialized) return
+        if (getUserSettingsValueUseCase.getDid().isNotEmpty()) {
+            pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
+        }
     }
 
     /** The instance was released: no `/init` goes out any more and no answer is taken. */
