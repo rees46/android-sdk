@@ -30,8 +30,9 @@ android {
                 // real one: every connection to another host goes to a SOCKS proxy that does not exist and
                 // fails at once. This machine (MockWebServer), hosts of the reserved .test domain (tests map
                 // them to this machine with their own DNS) and Maven Central (the Android jars Robolectric
-                // fetches on a fresh machine) stay direct. NoLiveServerGuardTest pins it.
-                def direct = 'localhost|127.*|[::1]|0.0.0.0|[::0]|*.test|repo1.maven.org'
+                // fetches on a fresh machine: repo1.maven.org redirects a jar to a mirror under maven.org)
+                // stay direct. NoLiveServerGuardTest pins it.
+                def direct = 'localhost|127.*|[::1]|0.0.0.0|[::0]|*.test|*.maven.org'
                 systemProperty 'socksProxyHost', '127.0.0.1'
                 systemProperty 'socksProxyPort', '9'
                 systemProperty 'socksNonProxyHosts', direct

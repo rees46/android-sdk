@@ -36,8 +36,11 @@ class NoLiveServerGuardTest {
             "http://127.0.0.1:8080/init",
             // Tests map hosts of the reserved .test domain to this machine with their own DNS.
             "https://sdk.test/init",
-            // Robolectric fetches its Android jars from Maven Central on a fresh machine.
+            // Robolectric fetches its Android jars from Maven Central on a fresh machine, and Maven
+            // Central sends a jar to a mirror of its own.
             "https://repo1.maven.org/maven2/",
+            "https://gcp.mirrors.maven.org/maven2/",
+            "socket://gcp.mirrors.maven.org:443",
         ).forEach { url ->
             assertEquals(url, listOf(Proxy.NO_PROXY), ProxySelector.getDefault().select(URI(url)))
         }
