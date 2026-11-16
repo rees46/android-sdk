@@ -39,13 +39,15 @@ import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
  * The push token's week belongs to the `did` that sent it (`core/push.md`, «Токен»), on a local server: a new
- * `did` that `needReInitialization` brings, on either core, gets the token at once, not a week later.
+ * `did` — `needReInitialization` on either core, `deleteUserCredentials()` while a send is on its way — gets
+ * the token at once, not a week later.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -64,6 +66,10 @@ class PushTokenWeekTest {
 
     @Volatile
     private var lastDid = "D1"
+
+    /** Holds the answers to mobile_push_tokens while it is not null. */
+    @Volatile
+    private var holdTokens: CountDownLatch? = null
 
     @Before
     fun setUp() {
@@ -106,6 +112,10 @@ class PushTokenWeekTest {
                         lastDid = did
                         MockResponse().setBody("""{"did":"$did","seance":"S-$did"}""")
                     }
+                    "mobile_push_tokens" -> {
+                        holdTokens?.await(5, TimeUnit.SECONDS)
+                        MockResponse().setBody("{}")
+                    }
                     else -> MockResponse().setBody("{}")
                 }
             }
@@ -115,6 +125,7 @@ class PushTokenWeekTest {
 
     @After
     fun tearDown() {
+        holdTokens?.countDown()
         SdkRegistry.all().forEach { it.release() }
         server.shutdown()
         LegacyCore.threads = LegacyCore.DEFAULT_THREADS
@@ -209,6 +220,26 @@ class PushTokenWeekTest {
         // Asked for its token once before /init and once after: neither goes.
         assertNull(next("mobile_push_tokens", timeoutMs = 1_000))
         assertEquals("D1", sdk.deviceId)
+    }
+
+    @Test
+    fun `a token send on its way when the customer is deleted goes again for the new did at once`() {
+        dids += listOf("D1", "D2")
+        holdTokens = CountDownLatch(1)
+        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
+        sdk.setPushToken("tok", PushProvider.FCM)
+        // The server has the send and has not answered yet.
+        assertEquals("D1", next("mobile_push_tokens")?.getString("did"))
+
+        runBlocking { withTimeout(5_000) { sdk.deleteUserCredentials() } }
+
+        val again = next("mobile_push_tokens") ?: throw AssertionError("the token waited for the forgotten customer's send")
+        assertEquals("D2", again.getString("did"))
+        holdTokens?.countDown()
+        runBlocking { withTimeout(5_000) { sdk.pushTokenManager.core?.awaitIdle() } }
+        assertEquals("the week is the new did's", "tok", partition().getString(StorageKeys.pushToken("fcm"), null))
+        assertEquals(2, seen.count { it.first == "mobile_push_tokens" })
     }
 
     private companion object {

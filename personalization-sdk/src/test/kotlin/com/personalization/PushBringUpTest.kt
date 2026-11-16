@@ -394,6 +394,75 @@ class PushBringUpTest {
         assertTrue("nothing more for it", heard.isEmpty())
     }
 
+    @Test
+    fun `on the legacy core the push's instance that gave way still sends the tracking its push hands it later, with its did`() {
+        partition().edit().putString(StorageKeys.DID, "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertTrue(light.pushOnly)
+        val full = Rees46.instance(SHOP)
+        assertTrue(full !== light)
+
+        // The push's handling still holds the instance that gave way, and hands it the tap.
+        light.notificationClicked(tap("late"))
+
+        val clicked = next("track/clicked")?.second ?: throw AssertionError("no track/clicked")
+        assertEquals("late", clicked.getString("code"))
+        assertEquals("STORED", clicked.getString("did"))
+    }
+
+    // A legacy shop's did that /init does not give.
+
+    @Test
+    fun `on the legacy core a shop whose did comes from the config or the store of an older release sends its push without init`() {
+        Rees46.register(context, listOf(config(SHOP, coreV2 = false, deviceId = "CONFIGURED")))
+        assertEquals(SHOP, Rees46.handlePush(push(code = "configured"), PushEvent.DELIVERED))
+        assertTrue(SdkRegistry.byShopId(SHOP)?.pushOnly == true)
+        assertEquals("CONFIGURED", next("track/received")?.second?.getString("did"))
+
+        // Only the store all shops shared before partitions has it.
+        context.getSharedPreferences(PreferencesPartition.LEGACY_KEY, Context.MODE_PRIVATE).edit()
+            .putString(StorageKeys.SHOP_ID, OTHER).putString(StorageKeys.DID, "OLD").commit()
+        Rees46.register(context, listOf(config(OTHER, coreV2 = false)))
+        assertEquals(OTHER, Rees46.handlePush(push(code = "old", shop = OTHER), PushEvent.DELIVERED))
+        assertTrue(SdkRegistry.byShopId(OTHER)?.pushOnly == true)
+        assertEquals("OLD", next("track/received")?.second?.getString("did"))
+
+        threads.awaitIdle()
+        assertFalse("no /init went", seen.any { it.first == "init" })
+    }
+
+    // A repeat that comes while the first is handed over.
+
+    @Test
+    fun `a repeat that comes while the first event of a message is handed over is tried again when no queue takes that one, and the message goes later`() {
+        val scheduler = TestCoroutineScheduler()
+        partition().edit().putString(StorageKeys.DID, "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        val light = heldPushInstance(config(SHOP), scheduler)
+        Rees46.instance(SHOP).release()
+        assertTrue(SdkRegistry.byShopId(SHOP) == null)
+
+        // The first is on its way to a queue; the repeat parks behind it.
+        light.pushEvent(PushEvent.DELIVERED, "m", "bulk") {}
+        light.pushEvent(PushEvent.DELIVERED, "m", "bulk") {}
+        assertTrue(logged.none { it.message == "The push event was not accepted" })
+
+        // No queue takes the first: the repeat is tried again, and no queue takes it either.
+        scheduler.runCurrent()
+        scheduler.runCurrent()
+        assertEquals(2, logged.count { it.message == "The push event was not accepted" })
+
+        // Not taken, the message is not counted as sent: it goes when it comes again.
+        val sdk = Rees46.initialize(context, config(SHOP))
+        assertEquals(SHOP, Rees46.handlePush(push(code = "m"), PushEvent.DELIVERED))
+        flush(sdk)
+        assertEquals("m", next("track/delivered")?.second?.getString("code"))
+        flush(sdk)
+        assertEquals(1, seen.count { it.first == "track/delivered" })
+    }
+
     private companion object {
         const val SHOP = "bring-up-shop"
         const val OTHER = "bring-up-other"
