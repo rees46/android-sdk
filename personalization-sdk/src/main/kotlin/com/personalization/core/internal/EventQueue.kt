@@ -47,9 +47,11 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
  *
  * - **Accepting.** [accept] answers a released instance with `notInitialized`, a refused shop with
  *   `shopBlocked` and fields JSON cannot hold with `invalidArgument`, at once; otherwise it moves the
- *   session's last activity and hands the event to a writer that keeps the calls' order: an event is
- *   accepted once its file is on disk ([QueueStore]), and the caller's `accepted` hears it then. A disk
- *   that refuses it sends it once, as a request.
+ *   session's last activity (a tracking event or a tap; a push's delivery, its notification shown or
+ *   dismissed do not) and hands the event to a writer that keeps the calls' order: an event is accepted
+ *   once its file is on disk ([QueueStore]), and the caller's `accepted` hears it then. A disk that
+ *   refuses it sends it once, as a request, by the queue's rules: a tracking event that would start a
+ *   session from the background is not accepted and does not go (`cancelled`).
  * - **Stamping.** The common fields — `did`, the `sid` of the moment, `segment`, `stream` — go on a copy
  *   when the event is sent ([stamp]), with the stored tracking source as a `source` object on `/push` only
  *   and the time it was made as `time` on `/push/custom` only (the only path that reads it), unless the
@@ -485,16 +487,33 @@ internal class EventQueue(
         if (keepListener == null && accept.listener != null) {
             delivery.failure(accept.listener, LegacyErrors.of(SdkError.Cancelled))
         }
+        if (event == null && mayNotStartSession(accept.path)) {
+            // The disk refused it (storage_failed), and sent now it would start a session from the background,
+            // which the queue never does: not accepted, nothing goes.
+            log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "POST ${accept.path}: not sent: the disk refused it and no session starts from the background",
+                mapOf("method" to "POST", "path" to accept.path, "reason" to LogReasons.NOT_READY))
+            accept.listener?.let { delivery.failure(it, NOT_KEPT) }
+            accept.accepted?.let { tell(it, NOT_KEPT.error) }
+            return
+        }
         accept.accepted?.let { tell(it, null) }
         if (event == null) {
             // Not accepted: the disk refused it (storage_failed). It goes once, as a request, with what
-            // the queue would have put on it.
+            // the queue would have put on it, by the queue's rules.
             sendDirectly(accept.path, withOwnFields(accept.path, JSONObject(accept.body.toString()), accept.createdAt), accept.listener)
             return
         }
         // The queue that sends: this one, or the one made after it.
         (store.owner ?: this).kick(urgent = false)
     }
+
+    /**
+     * Whether an event of [path] the disk refused would start a session from the background if it went now:
+     * a tracking event whose session ended while the app is in the background. The queue holds such an event
+     * until the foreground; one that is not kept cannot wait.
+     */
+    private fun mayNotStartSession(path: String): Boolean =
+        QueueLane.of(path) == QueueLane.TRACKING && !lifecycle.isForeground && !init.session.isAlive()
 
     private fun clearNow(reason: String, error: LegacyError, then: () -> Boolean): Boolean {
         val (count, waiting, result) = store.clear(then)
@@ -889,6 +908,7 @@ internal class EventQueue(
         private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full", SdkError.Cancelled)
         private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk", SdkError.Decoding)
         private val CLEARED_REFUSED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the shop refused the SDK", SdkError.Cancelled)
+        private val NOT_KEPT = LegacyError(LegacyErrors.NO_ANSWER, "The event was not kept: the disk refused it and it cannot go from the background", SdkError.Cancelled)
 
         /** The one push event that moves the session's last activity: the server extends its session on it too. */
         private const val PATH_CLICKED = "track/clicked"

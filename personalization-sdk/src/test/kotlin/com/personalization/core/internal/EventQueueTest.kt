@@ -1565,6 +1565,40 @@ class EventQueueTest {
     }
 
     @Test
+    fun `an event the disk does not take is not sent from the background when its session ended, and its listeners hear why`() {
+        val queue = start()
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        lifecycle.set(false)
+        storage.directory.mkdirs()
+        storage.queuePath.deleteRecursively()
+        storage.queuePath.writeText("in the way")
+        try {
+            val heard = Heard()
+            val accepted = mutableListOf<SdkError?>()
+            queue.accept("push", JSONObject().put("event", "view"), heard) { accepted += it }
+            run()
+
+            assertTrue("not sent: it would start a session from the background", direct.isEmpty())
+            assertEquals(listOf<SdkError?>(SdkError.Cancelled), accepted)
+            assertEquals(listOf("error:-1"), heard.calls)
+            assertEquals(listOf<SdkError?>(SdkError.Cancelled), heard.errors)
+            assertEquals("no /init from the background", 1, initsSent)
+
+            // A push event needs no session: it goes. So does a tracking event in the foreground.
+            queue.accept("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), null) { accepted += it }
+            run()
+            lifecycle.set(true)
+            run()
+            queue.accept("push", JSONObject().put("event", "view"), null) { accepted += it }
+            run()
+            assertEquals(listOf("track/delivered", "push"), direct)
+            assertEquals(listOf<SdkError?>(SdkError.Cancelled, null, null), accepted)
+        } finally {
+            storage.queuePath.delete()
+        }
+    }
+
+    @Test
     fun `each dropped event's listener hears the error of its reason`() {
         val queue = start(cap = 2)
         fun dropOne(path: String = "push", answers: List<HttpResult> = emptyList(), before: () -> Unit = {}): Heard {
