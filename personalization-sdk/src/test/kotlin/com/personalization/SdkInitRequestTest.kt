@@ -64,6 +64,9 @@ class SdkInitRequestTest {
     private lateinit var context: Context
     private var server = MockWebServer()
     private val logged = CopyOnWriteArrayList<SdkLogMessage>()
+
+    /** The codes the log handler heard, in order: what a test waits on. */
+    private val heard = LinkedBlockingQueue<String>()
     private val defaultExecutor = SdkLogs.handlerExecutor
     private val defaultCookies: CookieHandler? = CookieHandler.getDefault()
 
@@ -83,7 +86,10 @@ class SdkInitRequestTest {
         SdkLogs.reset()
         QueueStore.reset()
         SdkLogs.handlerExecutor = Executor { it.run() }
-        SdkLogs.handler = SdkLogHandler { logged += it }
+        SdkLogs.handler = SdkLogHandler {
+            logged += it
+            heard += it.code
+        }
         context.getSharedPreferences(StorageLayout(SHOP, null).partitionName, Context.MODE_PRIVATE).edit().clear().commit()
         listOf(PreferencesPartition.LEGACY_KEY, DeviceStorage.NAME).forEach { context.getSharedPreferences(it, Context.MODE_PRIVATE).edit().clear().commit() }
         File(context.noBackupFilesDir, ShopStorage.ROOT_DIRECTORY).deleteRecursively()
@@ -299,6 +305,7 @@ class SdkInitRequestTest {
         val sdk = Rees46.initialize(context, config(apiDomain = "bad domain"))
 
         awaitState(sdk, SdkState.RETRYING)
+        awaitLog(LogCodes.INIT_RETRY)
 
         val built = logged.first { it.code == LogCodes.REQUEST_BUILD_FAILED }
         assertEquals(LogLevel.ERROR, built.level)
@@ -314,10 +321,24 @@ class SdkInitRequestTest {
         val sdk = Rees46.initialize(context, config())
 
         awaitState(sdk, SdkState.RETRYING)
+        awaitLog(LogCodes.INIT_RETRY)
 
         assertNull(sdk.deviceId)
         assertTrue(logged.any { it.code == LogCodes.DECODING_FAILED && it.context["path"] == "init" })
         assertEquals("decoding", logged.first { it.code == LogCodes.INIT_RETRY }.context["error"])
+    }
+
+    /**
+     * Waits until the log handler hears [code]: the state changes before a repeat of /init is logged, so a test
+     * that saw the state waits for the line itself.
+     */
+    private fun awaitLog(code: String) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (logged.none { it.code == code }) {
+            val left = deadline - System.nanoTime()
+            if (left <= 0) throw AssertionError("$code was not logged")
+            heard.poll(left, TimeUnit.NANOSECONDS)
+        }
     }
 
     private companion object {
