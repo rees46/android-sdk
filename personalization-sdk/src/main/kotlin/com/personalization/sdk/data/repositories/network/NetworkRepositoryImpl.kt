@@ -46,7 +46,10 @@ class NetworkRepositoryImpl @Inject constructor(
      * drains, so none is left behind and none starts twice.
      */
     private val queueLock = Any()
-    private val queue = ArrayList<Thread>()
+    private val queue = ArrayList<Waiting>()
+
+    /** A request waiting for a `did`, and who hears it fail if it never goes. */
+    private class Waiting(val task: Thread, val listener: OnApiCallbackListener?)
 
     /**
      * Hears the path of each request handed to the funnel, on the caller's thread, before anything else
@@ -112,7 +115,7 @@ class NetworkRepositoryImpl @Inject constructor(
         listener: OnApiCallbackListener?
     ) {
         onRequest?.invoke(method)
-        sendAsync {
+        sendAsync(listener) {
             sendMethod(
                 networkMethod = NetworkMethod.POST(method),
                 params = params,
@@ -148,7 +151,7 @@ class NetworkRepositoryImpl @Inject constructor(
         listener: OnApiCallbackListener?
     ) {
         onRequest?.invoke(method)
-        sendAsync {
+        sendAsync(listener) {
             sendMethod(
                 networkMethod = NetworkMethod.GET(method),
                 params = params,
@@ -165,7 +168,7 @@ class NetworkRepositoryImpl @Inject constructor(
         getAsync(method, params, listener)
     }
 
-    private fun sendAsync(sendFunction: () -> Unit) {
+    private fun sendAsync(listener: OnApiCallbackListener?, sendFunction: () -> Unit) {
         // The new core waits for the instance to be ready itself, within the request's timeout.
         if (core.isV2) {
             sendFunction()
@@ -176,7 +179,7 @@ class NetworkRepositoryImpl @Inject constructor(
             if (userSettingsRepository.getDid().isNotEmpty()) {
                 true
             } else {
-                queue.add(thread)
+                queue.add(Waiting(thread, listener))
                 false
             }
         }
@@ -184,27 +187,32 @@ class NetworkRepositoryImpl @Inject constructor(
     }
 
     override fun executeQueueTasks() {
-        val tasks = synchronized(queueLock) {
-            ArrayList(queue).also { queue.clear() }
-        }
-        tasks.forEach { it.start() }
+        drainWaiting().forEach { it.task.start() }
     }
 
     override fun addTaskToQueue(thread: Thread) {
-        synchronized(queueLock) { queue.add(thread) }
+        synchronized(queueLock) { queue.add(Waiting(thread, null)) }
     }
 
+    private fun drainWaiting(): List<Waiting> = synchronized(queueLock) { ArrayList(queue).also { queue.clear() } }
+
     /**
-     * Stops the instance's core. The requests still waiting for a `did` are let go and fail with
-     * `notInitialized`, as every request made after this does. Without [cancelRequests] (a push-only
-     * instance giving way to the app's) the new core lets the requests in flight finish, and the legacy
-     * one is left as it is: it cannot cancel a request, and the push's tracking handed to it on another
-     * thread still goes. Only the push's own handling holds such an instance.
+     * Stops the instance's core. The requests still waiting for a `did` fail with `notInitialized`, as every
+     * request made after this does. Without [cancelRequests] (a push-only instance giving way to the app's)
+     * the new core lets the requests in flight finish, and the legacy one is left as it is: it cannot cancel a
+     * request, and the push's tracking handed to it on another thread still goes with the `did` it has. A
+     * request that waits for a `did` there never gets one — the instance's `/init` stopped — and is not let go
+     * without it: it fails at once.
      */
     internal fun release(cancelRequests: Boolean = true) {
         when (val current = core) {
             is CoreV2 -> current.release(cancelRequests)
-            else -> if (cancelRequests) current.release()
+            else -> if (cancelRequests) {
+                current.release()
+            } else {
+                drainWaiting().forEach { waiting -> waiting.listener?.let(legacyCore::refuse) }
+                return
+            }
         }
         executeQueueTasks()
     }

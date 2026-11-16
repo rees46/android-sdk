@@ -360,6 +360,40 @@ class PushBringUpTest {
         assertEquals(1, seen.count { it.first == "push" })
     }
 
+    // The legacy core's push instance giving way.
+
+    @Test
+    fun `on the legacy core a request the push's instance holds for a did fails when it gives way, and never goes without one`() {
+        holdInit = CountDownLatch(1)
+        // The push's instance without a did, as it starts should one come without one: /init for a did.
+        val light = SDK()
+        light.initializeForPush(context, config(SHOP, coreV2 = false))
+        assertTrue(light.pushOnly)
+        val heard = LinkedBlockingQueue<Int>()
+        light.sendNetworkMethodUseCase.postAsync("track/received", JSONObject().put("code", "held").put("type", "bulk"), object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) {
+                heard += 200
+            }
+
+            override fun onError(code: Int, msg: String?) {
+                heard += code
+            }
+        })
+        assertEquals(1, light.networkRepository.waitingForDid)
+
+        val full = Rees46.initialize(context, config(SHOP, coreV2 = false))
+
+        assertEquals(SdkState.NOT_INITIALIZED, light.state)
+        assertEquals("notInitialized, at once", -1, heard.poll(5, TimeUnit.SECONDS))
+        assertEquals(0, light.networkRepository.waitingForDid)
+        holdInit?.countDown()
+        runBlocking { withTimeout(5_000) { full.instanceState.changes.first { it == SdkState.READY } } }
+        threads.awaitIdle()
+        assertFalse("nothing went without a did", seen.any { it.first != "init" && it.second.optString("did").isEmpty() })
+        assertFalse(seen.any { it.first == "track/received" })
+        assertTrue("nothing more for it", heard.isEmpty())
+    }
+
     private companion object {
         const val SHOP = "bring-up-shop"
         const val OTHER = "bring-up-other"

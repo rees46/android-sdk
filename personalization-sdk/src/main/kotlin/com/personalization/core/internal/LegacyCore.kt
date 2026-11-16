@@ -49,11 +49,7 @@ internal class LegacyCore(
 
     override fun send(method: NetworkMethod, params: JSONObject, listener: OnApiCallbackListener?) {
         if (released) {
-            // Off the caller's thread, as every answer of this path.
-            if (listener != null) {
-                val error = LegacyErrors.of(SdkError.NotInitialized)
-                threads.execute { delivery.failure(listener, error) }
-            }
+            listener?.let(::refuse)
             return
         }
         try {
@@ -65,6 +61,12 @@ internal class LegacyCore(
 
     override fun release() {
         released = true
+    }
+
+    /** Tells [listener] `notInitialized` (`onError(-1)`) without sending, off the caller's thread as every answer of this path. */
+    fun refuse(listener: OnApiCallbackListener) {
+        val error = LegacyErrors.of(SdkError.NotInitialized)
+        threads.execute { delivery.failure(listener, error) }
     }
 
     /** The legacy path has no queue: the partition's credentials and the saved answer go. */
