@@ -671,8 +671,7 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * One button per standard event, all of them going through the `tracking` namespace.
-     * Each writes its outcome into `tvTrackingNamespaceResult`, which is what
-     * `TrackingNamespaceDemoE2ETest` reads.
+     * Each writes its outcome into `tvTrackingNamespaceResult`.
      */
     private fun setupTrackingNamespaceButtons() {
         findViewById<Button>(R.id.btnTrackingProductView).setOnClickListener {

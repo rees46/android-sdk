@@ -25,6 +25,20 @@ android {
             // Robolectric читает смерженные ресурсы модуля: без этого тесты
             // дизайн-системы падают на Resources$NotFoundException.
             includeAndroidResources = true
+            all {
+                // Unit tests check the SDK's contract with the API on a mock server, never the work of a
+                // real one: every connection to another host goes to a SOCKS proxy that does not exist and
+                // fails at once. This machine (MockWebServer), hosts of the reserved .test domain (tests map
+                // them to this machine with their own DNS) and Maven Central (the Android jars Robolectric
+                // fetches on a fresh machine: repo1.maven.org redirects a jar to a mirror under maven.org)
+                // stay direct. NoLiveServerGuardTest pins it.
+                def direct = 'localhost|127.*|[::1]|0.0.0.0|[::0]|*.test|*.maven.org'
+                systemProperty 'socksProxyHost', '127.0.0.1'
+                systemProperty 'socksProxyPort', '9'
+                systemProperty 'socksNonProxyHosts', direct
+                // http and https URLs read this list, even when they fall back to the SOCKS proxy.
+                systemProperty 'http.nonProxyHosts', direct
+            }
         }
     }
     defaultConfig {

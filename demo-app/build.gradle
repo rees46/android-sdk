@@ -45,7 +45,7 @@ android {
         versionName "1.0"
         multiDexEnabled true
 
-        testInstrumentationRunner "com.personalization.demo.DemoTestRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         // Add shop ID to BuildConfig
         buildConfigField "String", "SHOP_ID", "\"${shopId}\""
@@ -131,7 +131,5 @@ dependencies {
     }
 
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 }
 

@@ -220,9 +220,8 @@ class PushRoutingTest {
     }
 
     // --- The SDK's own FCM messaging service routes through Rees46.handlePush (the pending-aware router).
-    // Materializing a lazily-registered shop needs a real init (network/resources), so the pending path
-    // is exercised on-device in the demo's instrumented MultiInstanceE2ETest; here we pin the wiring: a
-    // data push from the FCM service reaches the shop its shop_id names. ---
+    // The push of a shop that is only registered is pinned on a mock server in PushEventsTest; here we
+    // pin the wiring: a data push from the FCM service reaches the shop its shop_id names. ---
 
     @Test
     fun `the FCM messaging service routes a data push to its shop`() {
