@@ -8,11 +8,13 @@ import com.personalization.SdkLogMessage
 import com.personalization.core.SdkError
 import com.personalization.core.SdkState
 import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSourceImpl
 import com.personalization.sdk.data.repositories.userSettings.UserSettingsRepositoryImpl
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -516,6 +518,72 @@ class CoreInitTest {
         scheduler.runCurrent()
         assertEquals("SAVED", settings.getDid())
         assertTrue(saved.hasDid())
+    }
+
+    @Test
+    fun `the pauses between repeats double up to five minutes and stay there`() {
+        started()
+        answer(http(503))
+        repeat(11) { after(CoreInit.NETWORK_RECHECK_MS); answer(http(503)) }
+
+        val pauses = codes(LogCodes.INIT_RETRY).map { it.context["delay_ms"] }
+        assertEquals(
+            listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L, 32_000L, 64_000L, 128_000L, 256_000L, 300_000L, 300_000L, 300_000L),
+            pauses,
+        )
+    }
+
+    @Test
+    fun `a network that comes back without a word is found by init looking again within five minutes`() {
+        connectivity.set(false)
+        started()
+        answer(HttpResult.Failure(SdkError.Network))
+        assertEquals(1, sent.size)
+        assertEquals(LogReasons.OFFLINE, codes(LogCodes.INIT_RETRY).single().context["reason"])
+
+        // The system's callback never comes.
+        connectivity.setQuietly(true)
+        after(CoreInit.NETWORK_RECHECK_MS - 1)
+        assertEquals(1, sent.size)
+        after(1)
+        assertEquals(2, sent.size)
+        answer(ok())
+        assertEquals(SdkState.READY, state.current)
+    }
+
+    @Test
+    fun `a hook that throws is logged and changes nothing, the instance is ready and can send`() {
+        var usableCalls = 0
+        val failing = CoreInit(
+            setup = InitSetup(SHOP),
+            send = { queued.removeFirstOrNull() ?: CompletableDeferred<HttpResult>().also { calls += it }.await() },
+            settings = settings,
+            storage = storage,
+            state = state,
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            hooks = object : InitHooks {
+                override fun onAnswer(answer: JSONObject, fresh: Boolean) = throw IllegalStateException("the popup failed")
+                override fun onUsable() {
+                    usableCalls++
+                    throw IllegalStateException("the token failed")
+                }
+            },
+            dispatchers = dispatchers,
+            clock = clock,
+            backoff = Backoff(random = { 0.5 }),
+        ).also { inits += it }
+        failing.start()
+        scheduler.runCurrent()
+
+        answer(ok())
+
+        assertEquals(SdkState.READY, state.current)
+        assertEquals("D1", settings.getDid())
+        assertEquals(1, usableCalls)
+        val errors = codes(LogCodes.SDK_LOG).filter { it.level == LogLevel.ERROR }.map { it.message }
+        assertEquals(listOf("Acting on /init failed: onAnswer", "Acting on /init failed: onUsable"), errors)
+        assertEquals(null, runBlocking { failing.usableWithin(1) })
     }
 
     @Test

@@ -131,9 +131,9 @@ class EventQueueTest {
      * An instance as an app starts it: its `/init`, then its queue over the shop's files. [pushOnly]: as
      * `Rees46.handlePush` brings up a shop registered but not created.
      */
-    private fun start(cap: Int = EventQueue.CAP, pushOnly: Boolean = false): EventQueue {
+    private fun start(cap: Int = EventQueue.CAP, pushOnly: Boolean = false, skipInit: Boolean = false): EventQueue {
         val init = CoreInit(
-            setup = InitSetup(SHOP, pushOnly = pushOnly),
+            setup = InitSetup(SHOP, pushOnly = pushOnly, skipInit = { skipInit }),
             send = {
                 initsSent++
                 if (holdInit) CompletableDeferred<HttpResult>().also { initCalls += it }.await() else initAnswer()
@@ -1528,6 +1528,157 @@ class EventQueueTest {
     // The gaps of the coverage audit.
 
     @Test
+    fun `a check of the shop that may not go yet holds the tracking event until it may, and no trigger ends that wait`() {
+        // A device where /init is not sent (a pre-launch report device): a check of the shop tells nothing.
+        settings.updateDid("D1")
+        settings.updateSid("S1")
+        storage.preferences.edit().putLong(StorageKeys.SID_LAST_ACT, clock.now).commit()
+        val queue = start(skipInit = true)
+        eventAnswers += List(3) { http(404) }
+        event(queue, "1")
+        run()
+        assertEquals(1, sent.size)
+        // The check's /init went nowhere: after the wait for its answer, a pause of the backoff.
+        after(10_000)
+        clock.advance(10_000)
+        after(1_000)
+        clock.advance(1_000)
+        assertEquals("sent once more after the pause", 2, sent.size)
+
+        // Answered 404 again less than ten minutes after the check: the event waits until a check may go.
+        flush(queue)
+        lifecycle.set(false)
+        lifecycle.set(true)
+        connectivity.set(false)
+        connectivity.set(true)
+        after(5 * 60_000)
+        assertEquals("no trigger ends the wait for the check", 2, sent.size)
+        clock.advance(CoreInit.CHECK_SHOP_INTERVAL_MS)
+        after(CoreInit.CHECK_SHOP_INTERVAL_MS)
+        // Sent again once a check may go; that check tells nothing either, and after its pause the event goes
+        // once more, answered now: four sends, no loop.
+        assertEquals(4, sent.size)
+        assertTrue(files().isEmpty())
+    }
+
+    @Test
+    fun `an unexpected answer of the client is held, dropped or waits for the network by what it is`() {
+        val queue = start()
+        // The send throws: no answer, held after a pause, the attempt not counted.
+        var throwing = true
+        var dropNetwork = false
+        val throwingQueue = EventQueue(
+            shopId = SHOP,
+            store = QueueStore.of(storage.queuePath, SHOP),
+            init = inits.single(),
+            state = state,
+            send = { method, body ->
+                sent += Sent(method.method, JSONObject(body.toString()), settings.getSid())
+                if (throwing) throw IllegalStateException("the client failed")
+                if (dropNetwork) {
+                    // The network went while the request was on its way.
+                    dropNetwork = false
+                    connectivity.setQuietly(false)
+                    HttpResult.Failure(SdkError.Network)
+                } else {
+                    eventAnswers.removeFirstOrNull() ?: HttpResult.Success(JSONObject())
+                }
+            },
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            dispatchers = dispatchers,
+            clock = clock,
+            backoff = Backoff(random = { 0.5 }),
+        ).also { queues += it }
+        throwingQueue.start()
+        run()
+        event(throwingQueue, "1")
+        run()
+        assertEquals(1, sent.size)
+        assertTrue(codes(LogCodes.REQUEST_FAILED).isNotEmpty())
+        assertEquals("kept", 1, files().size)
+        throwing = false
+        after(1_000)
+        assertEquals(listOf("1", "1"), ids())
+        assertTrue(files().isEmpty())
+
+        // Another error of the client (a request it could not build): dropped as rejected, the next goes.
+        val built = Heard()
+        eventAnswers += HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
+        event(throwingQueue, "2", listener = built)
+        event(throwingQueue, "3")
+        run()
+        assertEquals(listOf<SdkError?>(SdkError.InvalidArgument("The request could not be built")), built.errors)
+        assertEquals(LogReasons.REJECTED, codes(LogCodes.QUEUE_DROPPED).last().context["reason"])
+        assertEquals(listOf("1", "1", "2", "3"), ids())
+
+        // A cancel the queue did not make: held like a timeout, sent again after the pause.
+        eventAnswers += HttpResult.Failure(SdkError.Cancelled)
+        event(throwingQueue, "4")
+        run()
+        after(1_000)
+        assertEquals(listOf("1", "1", "2", "3", "4", "4"), ids())
+
+        // No connection, and the network went meanwhile: no attempt, no pause; the network's return sends it.
+        dropNetwork = true
+        event(throwingQueue, "5")
+        run()
+        assertEquals(listOf("1", "1", "2", "3", "4", "4", "5"), ids())
+        assertEquals("kept", 1, files().size)
+        val kept = QueuedEvent.parse(files().single().removeSuffix(".json"), File(storage.queuePath, files().single()).readText())
+        assertEquals("an offline answer counts no attempt", 0, kept?.attempts)
+        connectivity.set(true)
+        run()
+        assertEquals(listOf("1", "1", "2", "3", "4", "4", "5", "5"), ids())
+        assertTrue(files().isEmpty())
+        // The queue made first sent none of them: the one made after it holds the files.
+        assertTrue(queue !== throwingQueue)
+    }
+
+    @Test
+    fun `a tracking event whose session is alive waits while the instance is not ready, and goes with the next did`() {
+        val queue = start()
+        inits.single().holdForRestart()
+        assertEquals(SdkState.INITIALIZING, state.current)
+        assertTrue(inits.single().session.isAlive())
+        event(queue, "1")
+        run()
+        assertTrue("neither lane goes while the instance is not ready", sent.isEmpty())
+        after(EventQueue.TIMER_MS)
+        assertTrue(sent.isEmpty())
+
+        // The customer is forgotten meanwhile; the next /init gives a new did and session.
+        storage.deleteUserCredentials(includeQueue = false)
+        initAnswer = { ok(did = "D2", sid = "S2") }
+        inits.single().restart()
+        run()
+        after(10_000)
+        assertEquals(listOf("1"), ids())
+        assertEquals("D2", sent.single().body.getString("did"))
+        assertEquals("S2", sent.single().sid)
+    }
+
+    @Test
+    fun `an event whose session ends while it waits for the instance goes with the session started after it`() {
+        val queue = start()
+        inits.single().holdForRestart()
+        event(queue, "1")
+        run()
+        // The window ends while the queue waits for the instance, whose /init then fails once: ready on the did
+        // it has, without a session.
+        clock.advance(SessionWindow.WINDOW_MS + 1)
+        val answers = ArrayDeque(listOf<HttpResult>(http(500)))
+        initAnswer = { answers.removeFirstOrNull() ?: ok(sid = "S2") }
+        inits.single().restart()
+        run()
+        assertEquals(SdkState.RETRYING, state.current)
+        assertTrue("not without its session", sent.isEmpty())
+        after(1_000)
+        assertEquals(listOf("1"), ids())
+        assertEquals("S2", sent.single().sid)
+    }
+
+    @Test
     fun `a release while events wait to be written lets the clear that follows wait for them, so none outlives the deletion`() {
         val queue = start()
         connectivity.set(false)
@@ -1580,6 +1731,92 @@ class EventQueueTest {
         next.start()
         run()
         assertEquals(listOf("late"), ids())
+    }
+
+    @Test
+    fun `a file of another format or missing what an event has is dropped as unreadable, and the next event goes`() {
+        val queue = start()
+        val formats = listOf(
+            JSONObject().put("v", 2).put("path", "push").put("body", JSONObject()).put("created_at", clock.now),
+            JSONObject().put("v", 1).put("body", JSONObject()).put("created_at", clock.now),
+            JSONObject().put("v", 1).put("path", "push").put("created_at", clock.now),
+            JSONObject().put("v", 1).put("path", "push").put("body", JSONObject()),
+        )
+        formats.forEachIndexed { index, format ->
+            connectivity.set(false)
+            val heard = Heard()
+            event(queue, "bad-$index", listener = heard)
+            run()
+            File(storage.queuePath, files().single()).writeText(format.toString())
+            event(queue, "good-$index")
+            connectivity.set(true)
+            run()
+            assertEquals("$format", listOf<SdkError?>(SdkError.Decoding), heard.errors)
+            assertEquals("$format", "good-$index", ids().last())
+        }
+        assertEquals(List(4) { "unreadable" }, codes(LogCodes.QUEUE_DROPPED).map { it.context["reason"] })
+        assertEquals(List(4) { "good-$it" }, ids())
+    }
+
+    @Test
+    fun `a flush of the queue made first is ended by the pass of the one that sends, and the first sends again once that one is released`() {
+        val first = start()
+        connectivity.set(false)
+        val second = EventQueue(
+            shopId = SHOP,
+            store = QueueStore.of(storage.queuePath, SHOP),
+            init = inits.single(),
+            state = state,
+            send = { method, body ->
+                sent += Sent(method.method, JSONObject(body.toString()), settings.getSid())
+                HttpResult.Success(JSONObject())
+            },
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            dispatchers = dispatchers,
+            clock = clock,
+        ).also { queues += it }
+        second.start()
+        event(first, "1")
+        run()
+        val flushed = flush(first)
+        assertTrue("tried, not sent: no network", flushed.isCompleted)
+        connectivity.set(true)
+        run()
+        assertEquals(listOf("1"), ids())
+
+        second.release()
+        event(first, "2")
+        run()
+        assertEquals(listOf("1", "2"), ids())
+    }
+
+    @Test
+    fun `an event exactly seven days old still goes, exactly the cap of events all stay, and one sent exactly ten seconds after it was made shows its popup`() {
+        val queue = start(cap = 3)
+        connectivity.set(false)
+        val exact = Heard()
+        event(queue, "1", listener = exact)
+        event(queue, "2")
+        event(queue, "3")
+        run()
+        assertEquals(3, files().size)
+        assertTrue(codes(LogCodes.QUEUE_DROPPED).isEmpty())
+        clock.advance(EventQueue.TTL_MS)
+        connectivity.set(true)
+        run()
+        assertEquals(listOf("1", "2", "3"), ids())
+        assertTrue(codes(LogCodes.QUEUE_DROPPED).isEmpty())
+        assertEquals(LogReasons.LATE_EVENT, exact.heldBack)
+
+        connectivity.set(false)
+        val onTime = Heard()
+        event(queue, "4", listener = onTime)
+        run()
+        clock.advance(EventQueue.POPUP_WINDOW_MS)
+        connectivity.set(true)
+        run()
+        assertNull("sent exactly ten seconds after: its popup may be shown", onTime.heldBack)
     }
 
     // After the decisions of the contract's review.
