@@ -47,6 +47,14 @@ internal object StorageKeys {
     /** The providers whose token the SDK stores. */
     val PUSH_PROVIDERS: List<String> = listOf("fcm", "hms")
 
+    /**
+     * The week of the push token: when each provider's token was sent, under the keys of this release and of
+     * the ones before, and the claims of the sends on their way. It belongs to the `did` that sent it.
+     */
+    val PUSH_TOKEN_WEEK: List<String> by lazy {
+        PUSH_PROVIDERS.flatMap { listOf(pushTokenDate(it), pushTokenClaim(it), pushTokenClaimedAt(it)) } + LEGACY_PUSH_TOKEN_DATE.values
+    }
+
     // The core's own state.
     /** The shop refused the SDK (`402`, `403`, `404` or another `4xx` on `/init`). */
     const val REFUSED = "refused"
@@ -107,12 +115,7 @@ internal object StorageKeys {
         add(TRACKING_SOURCE_TYPE)
         add(TRACKING_SOURCE_CODE)
         add(TRACKING_SOURCE_SAVED_AT)
-        PUSH_PROVIDERS.forEach {
-            add(pushTokenDate(it))
-            add(pushTokenClaim(it))
-            add(pushTokenClaimedAt(it))
-        }
-        addAll(LEGACY_PUSH_TOKEN_DATE.values)
+        addAll(PUSH_TOKEN_WEEK)
         add(REFUSED)
     }
 }

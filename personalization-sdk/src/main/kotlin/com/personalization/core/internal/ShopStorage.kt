@@ -186,16 +186,17 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
     }
 
     /**
-     * Forgets the device for `needReInitialization`: the `did`, the session and the saved `/init`
-     * answer, so the next `/init` gets a new `did`; [isWiped] as [deleteUserCredentials] sets it. False
-     * when part of it did not reach the disk.
+     * Forgets the device for `needReInitialization`: the `did`, the session, the saved `/init` answer and the
+     * week of the push token, so the next `/init` gets a new `did` and the token goes to it, as after
+     * [deleteUserCredentials]; [isWiped] as that sets it. False when part of it did not reach the disk.
      */
     fun forgetDevice(): Boolean {
         val complete = attempt(OP_FORGET_DEVICE) {
-            preferences.edit()
+            val editor = preferences.edit()
                 .remove(StorageKeys.DID).remove(StorageKeys.SID).remove(StorageKeys.SEANCE).remove(StorageKeys.SID_LAST_ACT)
                 .putBoolean(StorageKeys.CREDENTIALS_WIPED, true)
-                .commit()
+            StorageKeys.PUSH_TOKEN_WEEK.forEach { editor.remove(it) }
+            editor.commit()
         }
         return attempt(OP_DELETE_INIT_ANSWER) {
             synchronized(fileLock) {
@@ -203,6 +204,17 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
                 !initAnswerFile.baseFile.exists()
             }
         } && complete
+    }
+
+    /**
+     * Forgets when the push token was sent, and any send's claim: the week was the `did`'s that sent it, and
+     * the shop has another `did` now (the legacy core's `/init` handed one out for `needReInitialization`).
+     * The token goes to the new one. False when it did not reach the disk.
+     */
+    fun forgetPushTokenWeek(): Boolean = attempt(OP_FORGET_PUSH_TOKEN_WEEK) {
+        val editor = preferences.edit()
+        StorageKeys.PUSH_TOKEN_WEEK.forEach { editor.remove(it) }
+        editor.commit()
     }
 
     /** Ends the session: its `sid` and the time of its last activity go, so `/init` asks for a new one. */
@@ -245,5 +257,6 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         const val OP_DELETE_QUEUE = "delete_queue"
         const val OP_DELETE_SOURCE_CREDENTIALS = "delete_old_storage_credentials"
         const val OP_FORGET_DEVICE = "forget_device"
+        const val OP_FORGET_PUSH_TOKEN_WEEK = "forget_push_token_week"
     }
 }

@@ -53,6 +53,12 @@ class RegisterManager @Inject constructor(
      */
     internal var onStateChange: ((SdkState) -> Unit)? = null
 
+    /**
+     * Called when an answer to `/init` replaced the `did` the device had (`needReInitialization`) with
+     * another one, before the push tokens are asked for again: the token's week was the old `did`'s.
+     */
+    internal var onDidReplaced: (() -> Unit)? = null
+
     /** Set by [stop]: nothing more goes out and no answer is taken. */
     @Volatile
     private var stopped = false
@@ -221,8 +227,17 @@ class RegisterManager @Inject constructor(
         synchronized(answerLock) {
             // A restart that began while this answer was on its way: the did belongs to the forgotten customer.
             if (start != generation.get()) return
+            val before = getUserSettingsValueUseCase.getDid()
             updateUserSettingsValueUseCase.updateDid(did)
             updateUserSettingsValueUseCase.updateSid(value = seance)
+            // The token's week was the old did's: the token goes to this one when the providers are asked below.
+            if (before.isNotEmpty() && before != did) {
+                try {
+                    onDidReplaced?.invoke()
+                } catch (e: Exception) {
+                    log(LogLevel.ERROR, LogCodes.SDK_LOG, "The push token's week could not be forgotten", throwable = e)
+                }
+            }
             // Under the lock: a restart beginning right after this cannot be overtaken by it.
             state(SdkState.READY)
         }

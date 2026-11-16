@@ -740,6 +740,8 @@ open class SDK {
         }
         registerManager.extraInitParams = ::popupsV3InitParams
         registerManager.onStateChange = { state -> instanceState.set(state) }
+        // needReInitialization: the server's new did gets the push token, whose week was the old did's.
+        registerManager.onDidReplaced = { storage.forgetPushTokenWeek() }
 
         registerManager.initialize(
             context = context,
