@@ -17,8 +17,10 @@ import java.util.concurrent.CopyOnWriteArrayList
  * - The window is alive while there is a `sid` and the last activity is at most [windowMs] ago. An `/init`
  *   whose answer has no `seance` ([startWithoutSid]) starts a session without one: alive for its window
  *   all the same, so requests do not send `/init` after `/init` for it.
- * - Only `/init` ([start]) and the events of the queue ([extend]) move the last activity; requests with
- *   a result do not, as the server does not extend its own session on them either.
+ * - Only `/init` ([start]) and the events of the queue ([extend]) move the last activity: the tracking events
+ *   and, of the push events, a tap ([EventQueue.extendsSession]). Requests with a result do not, nor does a
+ *   push's delivery or its notification shown or dismissed, as the server does not extend its own session
+ *   on them either.
  *
  * Listeners hear every `/init` that answers: the `sid` it brings and whether it differs from the one
  * before ("the session changed", for the bridges), or, from an answer without a `seance`, the `sid` kept

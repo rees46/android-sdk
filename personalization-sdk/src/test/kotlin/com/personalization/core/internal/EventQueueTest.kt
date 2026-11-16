@@ -1528,6 +1528,43 @@ class EventQueueTest {
     // After the decisions of the contract's review.
 
     @Test
+    fun `a push's delivery, notification shown or dismissed does not extend the session, a tap and the tracking events do`() {
+        val queue = start()
+        val firstActivity = settings.getSidLastActTime()
+        listOf("track/delivered", "track/opened", "track/closed").forEach { path ->
+            clock.advance(60_000)
+            queue.accept(path, JSONObject().put("code", "m-$path").put("type", "bulk"), null)
+            assertEquals(path, firstActivity, settings.getSidLastActTime())
+        }
+        clock.advance(60_000)
+        queue.accept("track/clicked", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        assertEquals("a tap, which the server counts too", clock.now, settings.getSidLastActTime())
+        clock.advance(60_000)
+        event(queue, "1")
+        assertEquals(clock.now, settings.getSidLastActTime())
+        run()
+        assertEquals(5, sent.size)
+    }
+
+    @Test
+    fun `a push delivered in the background to an instance brought up for it leaves the session to end when it would`() {
+        settings.updateDid("STORED")
+        settings.updateSid("S0")
+        val lastActivity = clock.now - SessionWindow.WINDOW_MS + 60_000
+        storage.preferences.edit().putLong(StorageKeys.SID_LAST_ACT, lastActivity).commit()
+        lifecycle.set(false)
+        val queue = start(pushOnly = true)
+
+        queue.accept("track/delivered", JSONObject().put("code", "m-1").put("type", "bulk"), null)
+        run()
+
+        assertEquals(listOf("track/delivered"), sent.map { it.path })
+        assertEquals(lastActivity, settings.getSidLastActTime())
+        clock.advance(60_001)
+        assertFalse("the window ended as it would have without the push", inits.single().session.isAlive())
+    }
+
+    @Test
     fun `each dropped event's listener hears the error of its reason`() {
         val queue = start(cap = 2)
         fun dropOne(path: String = "push", answers: List<HttpResult> = emptyList(), before: () -> Unit = {}): Heard {

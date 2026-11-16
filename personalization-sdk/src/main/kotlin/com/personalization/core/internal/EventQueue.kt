@@ -300,7 +300,9 @@ internal class EventQueue(
             return
         }
         val createdAt = clock.nowMillis()
-        init.session.extend(createdAt)
+        // Tracking events move the session's last activity; of the push events only a tap, which the server
+        // counts too: a delivery, a notification shown or dismissed in the background extend nothing.
+        if (extendsSession(path)) init.session.extend(createdAt)
         if (writer?.isActive != true || commands.trySend(Command.Accept(path, body, createdAt, listener, accepted)).isFailure) {
             refuse(SdkError.NotInitialized, listener, accepted)
         }
@@ -887,5 +889,11 @@ internal class EventQueue(
         private val OVERFLOWED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the queue was full", SdkError.Cancelled)
         private val UNREADABLE = LegacyError(LegacyErrors.NO_ANSWER, "The event could not be read from the disk", SdkError.Decoding)
         private val CLEARED_REFUSED = LegacyError(LegacyErrors.NO_ANSWER, "The event was dropped: the shop refused the SDK", SdkError.Cancelled)
+
+        /** The one push event that moves the session's last activity: the server extends its session on it too. */
+        private const val PATH_CLICKED = "track/clicked"
+
+        /** Whether an event of [path] moves the session's last activity (core/session.md). */
+        fun extendsSession(path: String): Boolean = path !in PUSH_EVENT_PATHS || path == PATH_CLICKED
     }
 }
