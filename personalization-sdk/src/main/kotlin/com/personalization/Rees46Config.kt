@@ -41,10 +41,10 @@ package com.personalization
  *   empty id is refused at once; [SDK.flush] sends the queue now; the stored tracking source goes on
  *   `/push` only, and a popup in an event's answer is shown only within 10 s of the event and in the
  *   foreground;
- * - cookies: the new core's requests never send or keep a cookie. The legacy core's requests, and the
- *   stories v3 client's on either core, follow the app's global `java.net.CookieHandler`: an app that
- *   installs one (`CookieHandler.setDefault`) has them keep the cookies the server sets, the API's
- *   year-long `did` cookie among them, and send them back.
+ * - cookies: the new core's requests never send or keep a cookie. The legacy core's requests, and those
+ *   of the stories v3 and popups v3 clients on either core, follow the app's global
+ *   `java.net.CookieHandler`: an app that installs one (`CookieHandler.setDefault`) has them keep the
+ *   cookies the server sets, the API's year-long `did` cookie among them, and send them back.
  * @property deviceId a `did` the app already keeps, from another SDK or an earlier version of it: taken
  * only while the shop has no `did` of its own, and sent with the next `/init`. Ignored with
  * [needReInitialization].

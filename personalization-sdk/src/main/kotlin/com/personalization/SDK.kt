@@ -1233,9 +1233,9 @@ open class SDK {
      * The saved `/init` answer and the queue are kept in `noBackupFilesDir` and never leave the device.
      *
      * Cookies are not the SDK's to delete. The new core's requests never send or keep one. The legacy core's
-     * requests, and the stories v3 client's on either core, follow the app's global `java.net.CookieHandler`:
-     * an app that installs one keeps the API's `did` cookie there — the forgotten customer's too — until it
-     * clears that store itself.
+     * requests, and those of the stories v3 and popups v3 clients on either core, follow the app's global
+     * `java.net.CookieHandler`: an app that installs one keeps the API's `did` cookie there — the forgotten
+     * customer's too — until it clears that store itself.
      *
      * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
      * was released; nothing is deleted then.
