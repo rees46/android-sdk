@@ -44,9 +44,9 @@ internal data class CoreTimeouts(
  * What the process shares between the instances' clients: one connection pool and one dispatcher.
  *
  * The dispatcher lets 16 requests run at once to one host instead of OkHttp's 5: the old client had no
- * limit, and a screen of recommendation blocks should not wait in line. OkHttp still recovers from a
- * stale pooled connection by opening a new one, as `HttpURLConnection` does; that is not a retry of an
- * answered request, which the client never makes.
+ * limit, and a screen of recommendation blocks should not wait in line. OkHttp sends nothing again by
+ * itself ([CoreHttpClient]): its `retryOnConnectionFailure` would repeat a POST whose pooled connection
+ * broke after the request went, and the server would get the event twice.
  */
 internal object CoreHttp {
     private const val MAX_REQUESTS_PER_HOST = 16
@@ -54,6 +54,7 @@ internal object CoreHttp {
     val shared: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
+            .retryOnConnectionFailure(false)
             .build()
     }
 }
@@ -68,9 +69,10 @@ internal object CoreHttp {
  *   `timeout` once it did (the answer did not come in time or broke off midway);
  * - a request cancelled with the instance is `cancelled`.
  *
- * Without a network a request fails at once with `network`. The client never retries; the log gets the
- * method, the path and the code, never the query, a body or the answer. An answer's `Retry-After` comes
- * back with the failure, for the caller that repeats ([CoreInit]).
+ * Without a network a request fails at once with `network`. The client never retries, nor lets OkHttp
+ * repeat a request on another connection by itself. The log gets the method, the path and the code,
+ * never the query, a body or the answer. An answer's `Retry-After` comes back with the failure, for the
+ * caller that repeats ([CoreInit]).
  *
  * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
  * device), and no `segment`. A push event (`track/delivered` and the others) carries no `sid` or `seance`
@@ -91,6 +93,9 @@ internal class CoreHttpClient(
         .connectTimeout(timeouts.connectMs, TimeUnit.MILLISECONDS)
         .readTimeout(timeouts.readMs, TimeUnit.MILLISECONDS)
         .writeTimeout(timeouts.writeMs, TimeUnit.MILLISECONDS)
+        // No hidden repeats (core/network.md): a connection that breaks after the request went is `timeout`,
+        // and the queue repeats it by its own rules; one that breaks before is `network`.
+        .retryOnConnectionFailure(false)
         .eventListenerFactory(PhaseListener)
         .addNetworkInterceptor(RetryAfterGuard)
         .build()

@@ -192,6 +192,22 @@ class CoreHttpClientTest {
     }
 
     @Test
+    fun `OkHttp never sends a request again by itself when its kept-alive connection drops after the request went`() {
+        reply(200, "{}")
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
+        reply(200, "{}")
+        val client = client()
+
+        assertTrue(send(NetworkMethod.POST("push"), JSONObject().put("event", "view"), client) is HttpResult.Success)
+        // The second goes over the connection the first left in the pool; the server drops it once the
+        // request is in. OkHttp's own retry would send it again on a new connection: the event twice.
+        val second = send(NetworkMethod.POST("push"), JSONObject().put("event", "view"), client)
+
+        assertEquals("the server got the event once", 2, server.requestCount)
+        assertEquals("sent and not answered: the queue repeats it after a pause", SdkError.Timeout, second.error())
+    }
+
+    @Test
     fun `a GET carries the common fields in its query`() {
         reply(200, "{}")
 
