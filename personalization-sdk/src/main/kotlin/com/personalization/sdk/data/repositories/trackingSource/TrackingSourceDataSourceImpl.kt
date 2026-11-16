@@ -1,5 +1,6 @@
 package com.personalization.sdk.data.repositories.trackingSource
 
+import com.personalization.core.internal.StorageKeys
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.domain.models.StoredTrackingSource
 import javax.inject.Inject
@@ -38,9 +39,9 @@ class TrackingSourceDataSourceImpl @Inject constructor(
     }
 
     private companion object {
-        const val TYPE_FIELD = "tracking_source_type"
-        const val CODE_FIELD = "tracking_source_code"
-        const val SAVED_AT_FIELD = "tracking_source_saved_at"
+        const val TYPE_FIELD = StorageKeys.TRACKING_SOURCE_TYPE
+        const val CODE_FIELD = StorageKeys.TRACKING_SOURCE_CODE
+        const val SAVED_AT_FIELD = StorageKeys.TRACKING_SOURCE_SAVED_AT
 
         const val NEVER_SAVED = 0L
         const val EMPTY = ""

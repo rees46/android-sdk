@@ -1,7 +1,21 @@
 package com.personalization
 
+import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
+import com.personalization.logs.SdkLogs
 import android.content.Context
 import android.os.Bundle
+import com.personalization.core.BridgeApi
+import com.personalization.core.BridgePushListener
+import com.personalization.core.PushCallbacks
+import com.personalization.core.PushEvent
+import com.personalization.core.PushPayload
+import com.personalization.core.PushTokenListener
+import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.PushHub
+import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.notification.data.mapper.toNotificationData
 import java.util.concurrent.ConcurrentHashMap
@@ -10,16 +24,16 @@ import java.util.concurrent.ConcurrentHashMap
  * Public entry point for the SDK — the unified, multi-instance API.
  *
  * A host no longer keeps its own reference to the SDK: initialize (or register) shops here and reach
- * them by `shopId` through [getInstance]. One instance per shop, each with isolated storage and state.
+ * them by `shopId` through [instance]. One instance per shop, each with isolated storage and state.
  *
  * ```kotlin
  * // Single shop:
  * Rees46.initialize(context, Rees46Config(shopId = "SHOP_ID"))
- * Rees46.getInstance().track(...)
+ * Rees46.instance().tracking.productView("37")
  *
  * // Several shops, initialized lazily on first use:
- * Rees46.registerShops(context, listOf(Rees46Config("shop-a"), Rees46Config("shop-b")))
- * Rees46.getInstance("shop-a").track(...)
+ * Rees46.register(context, listOf(Rees46Config("shop-a"), Rees46Config("shop-b")))
+ * Rees46.instance("shop-a").tracking.productView("37")
  * ```
  */
 object Rees46 {
@@ -28,35 +42,42 @@ object Rees46 {
 
     private val pending = ConcurrentHashMap<String, PendingInit>()
 
+    /** Making an instance takes it: two calls for a shop never make two instances. */
+    private val lock = Any()
+
     /**
-     * Initializes an SDK instance for [config] immediately and returns it. The instance is registered,
-     * so it is also reachable via [getInstance]. Any pending registration for the same shop is cleared.
+     * Initializes an SDK instance for [config] and returns it at once; `/init` goes in the background
+     * and [SDK.state] follows it. The instance is registered, so it is also reachable via [instance].
+     * Any pending registration for the same shop is cleared.
+     *
+     * A shop that has a live instance gets that instance back, not a second one; when [config] differs
+     * from the one it was made with, `invalid_config` (`already_initialized`) is logged and the instance
+     * keeps its own. After [SDK.release] a call makes a fresh instance. Calls from several threads at
+     * once make one instance.
      */
-    @Suppress("DEPRECATION")
-    fun initialize(context: Context, config: Rees46Config): SDK {
+    fun initialize(context: Context, config: Rees46Config): SDK = synchronized(lock) {
+        val existing = SdkRegistry.byShopId(config.shopId)
+        if (existing != null && !existing.pushOnly) {
+            existing.keepConfig(config)
+            pending.remove(config.shopId)
+            return existing.handedToApp()
+        }
         val sdk = SDK()
-        sdk.enableAutoPopupPresentation = config.enableAutoPopupPresentation
-        sdk.initialize(
-            context = context,
-            shopId = config.shopId,
-            apiDomain = config.apiDomain,
-            tag = config.tag,
-            stream = config.stream,
-            autoSendPushToken = config.autoSendPushToken,
-            needReInitialization = config.needReInitialization,
-            addTrailingSlash = config.addTrailingSlash
-        )
+        // A shop brought up only to track a push gives way to the full instance once it is registered; the
+        // push's tracking in flight still gets through.
+        sdk.initializeWith(context, config)
+        // Removed once the instance is registered: a lookup meanwhile still finds the shop.
         pending.remove(config.shopId)
-        return sdk
+        sdk
     }
 
     /**
      * Registers [configs] without initializing them. Initialization happens lazily on the first
-     * [getInstance] for a shop — the region case, where only the current region is needed. Pass
+     * [instance] for a shop — the region case, where only the current region is needed. Pass
      * [eagerInit] = true to initialize every shop up front — the super-shop case, where instances must
      * stay consistent.
      */
-    fun registerShops(
+    fun register(
         context: Context,
         configs: List<Rees46Config>,
         eagerInit: Boolean = false
@@ -66,6 +87,8 @@ object Rees46 {
         // resumed. The startup initializer covers that; this covers hosts that turned it off.
         ForegroundActivity.install(appContext)
         configs.forEach { config ->
+            // A registration decides the process's core as an initialize does.
+            CoreSelection.resolve(config.coreV2, config.shopId)
             if (eagerInit) {
                 initialize(appContext, config)
             } else {
@@ -74,6 +97,24 @@ object Rees46 {
         }
     }
 
+    /** The former name of [register]. */
+    @Deprecated(
+        message = "Renamed to register.",
+        replaceWith = ReplaceWith("Rees46.register(context, configs, eagerInit)", "com.personalization.Rees46")
+    )
+    fun registerShops(
+        context: Context,
+        configs: List<Rees46Config>,
+        eagerInit: Boolean = false
+    ) = register(context, configs, eagerInit)
+
+    /** The former name of [instance]. */
+    @Deprecated(
+        message = "Renamed to instance.",
+        replaceWith = ReplaceWith("Rees46.instance(shopId)", "com.personalization.Rees46")
+    )
+    fun getInstance(shopId: String? = null): SDK = instance(shopId)
+
     /**
      * Returns the SDK instance for [shopId], initializing a pending registration on first use. With no
      * [shopId], returns the single instance when exactly one shop is registered.
@@ -81,7 +122,7 @@ object Rees46 {
      * @throws AmbiguousShopException when [shopId] is null and more than one shop is registered.
      * @throws UnknownShopIdException when the shop is unknown — nothing registered, or no such shop.
      */
-    fun getInstance(shopId: String? = null): SDK {
+    fun instance(shopId: String? = null): SDK {
         val resolution = InstanceResolver.resolve(
             requestedShopId = shopId,
             liveShopIds = SdkRegistry.shopIds(),
@@ -89,21 +130,21 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing ->
-                SdkRegistry.byShopId(resolution.shopId)
-                    ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
+                appInstance(resolution.shopId) ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
 
-            is InstanceResolver.Resolution.Pending -> materialize(resolution.shopId)
+            is InstanceResolver.Resolution.Pending ->
+                appInstance(resolution.shopId) ?: throw UnknownShopIdException(missingMessage(resolution.shopId))
 
             InstanceResolver.Resolution.NotRegistered -> throw UnknownShopIdException(
                 if (shopId != null) {
                     missingMessage(shopId)
                 } else {
-                    "No shop has been registered. Call Rees46.initialize(...) or Rees46.registerShops(...) first."
+                    "No shop has been registered. Call Rees46.initialize(...) or Rees46.register(...) first."
                 }
             )
 
             InstanceResolver.Resolution.Ambiguous -> throw AmbiguousShopException(
-                "More than one shop is registered — call Rees46.getInstance(shopId) with an explicit id. " +
+                "More than one shop is registered — call Rees46.instance(shopId) with an explicit id. " +
                     "Registered: ${registeredShopIds()}."
             )
         }
@@ -137,12 +178,12 @@ object Rees46 {
         )
         return when (resolution) {
             is InstanceResolver.Resolution.Existing -> {
-                SdkRegistry.byShopId(resolution.shopId)?.let(onReady)
+                appInstance(resolution.shopId)?.let(onReady)
                 Cancellable.NOOP
             }
 
             is InstanceResolver.Resolution.Pending -> {
-                onReady(materialize(resolution.shopId))
+                appInstance(resolution.shopId)?.let(onReady)
                 Cancellable.NOOP
             }
 
@@ -158,10 +199,13 @@ object Rees46 {
             // not warned about.
             InstanceResolver.Resolution.NotRegistered -> {
                 if (shopId != null) {
-                    SDK.warn(
-                        "Rees46.awaitInstance(\"$shopId\"): no shop with this id is initialized or " +
-                            "registered. Waiting for it to register — if you never register it (typo, or " +
-                            "a missing Rees46.initialize/registerShops), onReady will never fire."
+                    SdkLogs.log(
+                        LogLevel.WARNING,
+                        LogCodes.INVALID_ARGUMENT,
+                        "Rees46.awaitInstance: no shop with this id is initialized or registered. " +
+                            "Waiting for it to register — if it never is (typo, or a missing " +
+                            "Rees46.initialize/register), onReady will never fire.",
+                        shopId
                     )
                 }
                 SdkRegistry.onNextRegister(shopId, onReady)
@@ -170,21 +214,93 @@ object Rees46 {
     }
 
     /**
-     * Routes a push to the shop it belongs to. The target is the payload's `shop_id`; with no `shop_id`
-     * a single registered shop still resolves, but an unknown shop — or an absent `shop_id` while
-     * several shops are registered — drops the push instead of delivering it to the wrong one.
+     * Hands a push to the shop it belongs to and returns that shop's id, or null when it is not the SDK's
+     * or no shop takes it. Never throws. The SDK's messaging services call it, and so does an app that has
+     * its own `FirebaseMessagingService` or `HmsMessageService`, or draws and handles the notifications
+     * itself.
+     *
+     * 1. A push of the SDK has a `type` and an `id`, the message's code (a tap's intent extras
+     *    `NOTIFICATION_TYPE` and `NOTIFICATION_ID` are read too); without them it is not the SDK's
+     *    (`push_dropped`, `not_sdk_push`).
+     * 2. The shop is the push's `shop_id`; without one, the only registered shop. An unknown shop, or no
+     *    `shop_id` while several shops are registered, drops the push (`push_dropped`) instead of handing it
+     *    to the wrong shop. A shop registered without `eagerInit` is brought up just to send the event: the
+     *    app may have been started by the push itself.
+     * 3. The event goes to the shop. On the new core ([Rees46Config.coreV2]) through its queue to
+     *    `track/delivered`, `track/opened`, `track/clicked` or `track/closed`, once per message in a process:
+     *    a repeat sends nothing and still returns the shop. A tap also sets the tracking source for 48 hours,
+     *    which the `/push` events carry as `source`. The legacy core sends a delivery to `track/received`
+     *    and a tap to `track/clicked`, as before.
+     * 4. The shop's callback of the event runs on the main thread, on the new core once the queue accepted
+     *    the event: the one of [SDK.setPushCallbacks], or else the one of [setPushCallbacks]. An event the
+     *    queue refused (the instance released, the shop refused) calls none. For [PushEvent.DELIVERED] the
+     *    old listeners ([setOnMessageListener], [SDK.setOnMessageListener]) hear the push too, as before.
+     */
+    fun handlePush(payload: Map<String, String>, event: PushEvent): String? = try {
+        route(payload, event)
+    } catch (e: Exception) {
+        SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the push could not be handled", payload[PreferencesPartition.SHOP_ID_FIELD], throwable = e)
+        null
+    }
+
+    private fun route(data: Map<String, String>, event: PushEvent): String? {
+        val parsed = PushPayload.parse(data)
+        if (parsed == null) {
+            // Not the values: they carry the push's content.
+            SdkLogs.log(
+                LogLevel.DEBUG,
+                LogCodes.PUSH_DROPPED,
+                "handlePush: the push has no id or type, it is not a push of the SDK",
+                data[PreferencesPartition.SHOP_ID_FIELD],
+                mapOf("reason" to LogReasons.NOT_SDK_PUSH, "keys" to data.keys.sorted()),
+            )
+            return null
+        }
+        val (resolution, shopId) = resolvePushTarget(data[PreferencesPartition.SHOP_ID_FIELD]) ?: return null
+        logHandedOver(shopId, event.name)
+        // Kept before it is shown: a notification the SDK draws for it reports the whole push for its shop.
+        val payload = parsed.withShop(shopId)
+        PushHub.remember(payload)
+        // Shown first, as before: the process-global listener needs no instance.
+        if (event == PushEvent.DELIVERED) SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
+        val target = targetInstance(resolution, shopId)
+        if (target == null) {
+            logDropped(shopId, LogReasons.UNKNOWN_SHOP)
+            return null
+        }
+        if (target.dropsPushWithoutDid()) return null
+        // The callbacks hear the event once it is taken: on the new core, once a queue accepted it. Those of
+        // the instance that took it: one that took a push-only instance's place takes its event too.
+        val tell = { taker: SDK -> PushHub.event(event, payload, taker.pushCallbacks) }
+        when {
+            event == PushEvent.DELIVERED -> target.onPushReceived(data, tell)
+            // The legacy core's tap, as it always went: from the extras of a tap's intent.
+            event == PushEvent.CLICKED && target.core?.isV2 != true -> {
+                target.notificationClicked(tapExtras(parsed.code, parsed.type))
+                tell(target)
+            }
+            else -> target.pushEvent(event, parsed.code, parsed.type, tell)
+        }
+        return shopId
+    }
+
+    /**
+     * The form of [handlePush] before [PushEvent]: [PushEventType.RECEIVED] is [PushEvent.DELIVERED] and
+     * [PushEventType.CLICKED] is [PushEvent.CLICKED].
      *
      * A `RECEIVED` push is **shown first, with no initialization**: the parsed notification is dispatched
      * to the process-global listener ([setOnMessageListener]) so it appears even for a shop that is
      * registered but not yet initialized — the cold-process case, where FCM/HMS start the app just to
-     * deliver a data-only message and only eagerly-initialized shops are live. Tracking the delivery
-     * (`track/received`) then runs on the shop's own network, bringing a pending shop up with a light
-     * init ([materializeForPush]): no `/init` round-trip, no push-token re-registration, no profile
-     * call. A failure to track never undoes the shown notification.
-     *
-     * This is the router the SDK's own messaging services use; a host that owns its messaging service
-     * calls it directly.
+     * deliver a data-only message and only eagerly-initialized shops are live. As before, any push the
+     * shop resolves reaches that listener, one without `id` and `type` too. Tracking the delivery then runs
+     * on the shop's own network, bringing a pending shop up with a light init ([materializeForPush]); a
+     * failure to track never undoes the shown notification. The legacy core sends it to `track/received`,
+     * the new core to `track/delivered`.
      */
+    @Deprecated(
+        message = "Use handlePush(payload, PushEvent): it returns the shop that took the push, and knows OPENED and CLOSED.",
+        replaceWith = ReplaceWith("Rees46.handlePush(payload, com.personalization.core.PushEvent.DELIVERED)", "com.personalization.Rees46"),
+    )
     fun handlePush(payload: Map<String, String>, event: PushEventType) {
         when (event) {
             PushEventType.RECEIVED -> receivePush(payload)
@@ -192,25 +308,74 @@ object Rees46 {
         }
     }
 
-    private fun receivePush(payload: Map<String, String>) {
+    /** A push the SDK's messaging services got: [handlePush] with [PushEventType.RECEIVED]. */
+    internal fun receivePush(payload: Map<String, String>) {
         val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
+        logHandedOver(shopId, PushEventType.RECEIVED.name)
+        val parsed = PushPayload.parse(payload)?.withShop(shopId)
+        // Kept before it is shown: a notification the SDK draws for it reports the whole push for its shop.
+        parsed?.let(PushHub::remember)
         // Show first — the process-global listener needs no instance, so a pending shop's push still
         // appears. Then track the delivery on the shop's own network (light bring-up if it isn't live);
         // a tracking/init failure must never undo the shown notification.
         SdkRegistry.dispatchMessage(shopId = shopId, data = payload.toNotificationData())
-        runCatching { targetInstance(resolution, shopId)?.onPushReceived(payload) }
-            .onFailure { SDK.error("handlePush: failed to track received (shop=$shopId)", it) }
-    }
-
-    private fun clickPush(payload: Map<String, String>) {
-        val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
-        runCatching { targetInstance(resolution, shopId)?.notificationClicked(payload.toBundle()) }
-            .onFailure { SDK.error("handlePush: failed to track click (shop=$shopId)", it) }
+        runCatching {
+            val target = targetInstance(resolution, shopId) ?: return@runCatching
+            if (target.dropsPushWithoutDid()) return@runCatching
+            target.onPushReceived(payload) { taker -> parsed?.let { PushHub.event(PushEvent.DELIVERED, it, taker.pushCallbacks) } }
+        }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the delivery was not tracked", shopId, throwable = it) }
     }
 
     /**
+     * A tap in the old form: the legacy core tracks it from the payload's `NOTIFICATION_TYPE` and
+     * `NOTIFICATION_ID`, as before; the new core as [handlePush] with [PushEvent.CLICKED].
+     */
+    private fun clickPush(payload: Map<String, String>) {
+        val (resolution, shopId) = resolvePushTarget(payload[PreferencesPartition.SHOP_ID_FIELD]) ?: return
+        logHandedOver(shopId, PushEventType.CLICKED.name)
+        runCatching {
+            val target = targetInstance(resolution, shopId) ?: return@runCatching
+            if (target.dropsPushWithoutDid()) return@runCatching
+            val parsed = PushPayload.parse(payload)?.withShop(shopId)
+            parsed?.let(PushHub::remember)
+            if (parsed != null && target.core?.isV2 == true) {
+                target.pushEvent(PushEvent.CLICKED, parsed.code, parsed.type) { taker -> PushHub.event(PushEvent.CLICKED, parsed, taker.pushCallbacks) }
+            } else {
+                target.notificationClicked(payload.toBundle())
+                parsed?.let { PushHub.event(PushEvent.CLICKED, it, target.pushCallbacks) }
+            }
+        }.onFailure { SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "handlePush: the click was not tracked", shopId, throwable = it) }
+    }
+
+    /**
+     * The app's callbacks on the pushes of every shop, the registered and not yet created among them:
+     * [PushPayload.shopId] tells the shop. A shop's own callback of an event ([SDK.setPushCallbacks]) wins
+     * over the one here. Replaces the callbacks set before; null clears them. [setOnMessageListener] keeps
+     * working beside them.
+     */
+    fun setPushCallbacks(callbacks: PushCallbacks?) {
+        PushHub.callbacks = callbacks
+    }
+
+    /**
+     * For the bridges: [listener] hears every push event the SDK handles, of every shop, on the main
+     * thread, beside the app's [PushCallbacks] and whatever they are. Once per event of a message, like
+     * them, and on the new core once the queue accepted the event. Until the handle is cancelled.
+     */
+    @BridgeApi
+    fun onPushEvent(listener: BridgePushListener): Cancellable = PushHub.addEventSink(listener)
+
+    /**
+     * For the bridges: [listener] hears every new push token the SDK gets from FCM or HMS, once per token
+     * and provider in a process, on the main thread, beside the app's `onToken`. Until the handle is
+     * cancelled.
+     */
+    @BridgeApi
+    fun onPushToken(listener: PushTokenListener): Cancellable = PushHub.addTokenSink(listener)
+
+    /**
      * Resolves the push target as ([InstanceResolver.Resolution] to shopId), or null when the push
-     * should be dropped. Mirrors [getInstance] resolution (live wins over pending; a single registered
+     * should be dropped. Mirrors [instance] resolution (live wins over pending; a single registered
      * shop resolves with no `shop_id`) but drops instead of throwing on an unknown or ambiguous target.
      */
     private fun resolvePushTarget(payloadShopId: String?): Pair<InstanceResolver.Resolution, String>? {
@@ -222,15 +387,29 @@ object Rees46 {
         return when (resolution) {
             is InstanceResolver.Resolution.Existing -> resolution to resolution.shopId
             is InstanceResolver.Resolution.Pending -> resolution to resolution.shopId
-            InstanceResolver.Resolution.Ambiguous,
+            InstanceResolver.Resolution.Ambiguous -> {
+                logDropped(payloadShopId, LogReasons.AMBIGUOUS_SHOP)
+                null
+            }
             InstanceResolver.Resolution.NotRegistered -> {
-                SDK.warn(
-                    "handlePush: push dropped — no shop resolves it (shop_id=$payloadShopId, " +
-                        "live=${SdkRegistry.shopIds()}, pending=${pending.keys})."
-                )
+                logDropped(payloadShopId, LogReasons.UNKNOWN_SHOP)
                 null
             }
         }
+    }
+
+    private fun logDropped(payloadShopId: String?, reason: String) {
+        SdkLogs.log(
+            LogLevel.WARNING,
+            LogCodes.PUSH_DROPPED,
+            "handlePush: push dropped — no shop resolves it",
+            payloadShopId,
+            mapOf("reason" to reason, "live" to SdkRegistry.shopIds().size, "pending" to pending.size)
+        )
+    }
+
+    private fun logHandedOver(shopId: String, event: String) {
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to event.lowercase()))
     }
 
     /** The live instance, or a pending shop brought up with a light push-context init. */
@@ -241,14 +420,21 @@ object Rees46 {
         }
 
     /**
-     * Brings up a registered-but-pending shop just enough to track a push, via [SDK.initializeForPush]:
-     * no `/init` round-trip, no push-token re-registration, no profile call. A shop that was never
-     * initialized has no did and the backend never sent it a push, so this is not reached for real
-     * deliveries.
+     * Brings up a registered-but-pending shop just enough to send a push's event, via
+     * [SDK.initializeForPush]: no `/init`, no push token, no profile, no popup; the event goes with the shop's
+     * stored `did`. The app's first [instance] or [initialize] of the shop puts a full instance in its place.
+     *
+     * On the legacy core a shop without a `did` starts as 2.49.0 started it ([SDK.initializeForPushWithoutDid]):
+     * its full instance, whose one `/init` gives the `did` the push's `track/received` waits for, without the
+     * push token and the profile. The app then gets it as it is, and they go when it takes it.
      */
-    private fun materializeForPush(shopId: String): SDK? {
-        val pendingInit = pending.remove(shopId) ?: return SdkRegistry.byShopId(shopId)
-        return SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }
+    private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
+        SdkRegistry.byShopId(shopId)?.let { return it }
+        val pendingInit = pending[shopId] ?: return null
+        if (!CoreSelection.resolve(pendingInit.config.coreV2, shopId) && !legacyHasDid(pendingInit.context, pendingInit.config)) {
+            return SDK().apply { initializeForPushWithoutDid(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
+        }
+        SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
     }
 
     /**
@@ -265,23 +451,62 @@ object Rees46 {
         SdkRegistry.setMessageListener(listener)
     }
 
+    /**
+     * Sets the process-global receiver of the SDK's log messages: each message of every shop that
+     * passes that shop's [Rees46Config.logLevel], for example to forward it to the app's crash
+     * reporter. The handler runs on a background thread; an exception it throws is caught. Messages
+     * carry no personal data. Replaces any previously set handler; pass null to clear.
+     */
+    fun setLogHandler(handler: SdkLogHandler?) {
+        SdkLogs.handler = handler
+    }
+
+    /** The extras of a tap's intent, as the SDK's notification helpers name them: what the legacy core reads. */
+    private fun tapExtras(code: String, type: String): Bundle = Bundle().apply {
+        putString(PushPayload.CLICK_TYPE, type)
+        putString(PushPayload.CLICK_ID, code)
+    }
+
     private fun Map<String, String>.toBundle(): Bundle =
         Bundle().also { bundle -> forEach { (key, value) -> bundle.putString(key, value) } }
 
-    /** Initializes a pending registration for [shopId], tolerating a lost race with another caller. */
-    private fun materialize(shopId: String): SDK {
-        val pendingInit = pending.remove(shopId)
-        return if (pendingInit != null) {
-            initialize(pendingInit.context, pendingInit.config)
-        } else {
-            SdkRegistry.byShopId(shopId)
-                ?: throw UnknownShopIdException(missingMessage(shopId))
+    /**
+     * The app's own instance of [shopId], never one brought up only for a push ([SDK.initializeForPush]):
+     * the live full instance, or one made now with a full start (`/init`, the push token, everything) — from
+     * the pending registration, or in place of the push-only instance, whose push events in flight still go.
+     * A full instance a push started gets what it left for the app ([SDK.handedToApp]). Null when the shop has
+     * neither (released meanwhile).
+     */
+    internal fun appInstance(shopId: String): SDK? {
+        SdkRegistry.byShopId(shopId)?.takeUnless { it.pushOnly }?.let { return it.handedToApp() }
+        return synchronized(lock) {
+            // Another caller may have made it meanwhile, or a push brought the shop up for itself.
+            val live = SdkRegistry.byShopId(shopId)
+            if (live != null && !live.pushOnly) return live.handedToApp()
+            val pendingInit = pending[shopId]
+            when {
+                pendingInit != null -> initialize(pendingInit.context, pendingInit.config)
+                // Its config is set before it registers: an instance found in the registry has one.
+                live != null -> live.config?.let { initialize(live.context, it) }
+                else -> null
+            }
         }
     }
 
     private fun missingMessage(shopId: String): String =
         "No shop is registered for shopId=$shopId. " +
-            "Call Rees46.initialize(...) or Rees46.registerShops(...) first."
+            "Call Rees46.initialize(...) or Rees46.register(...) first."
+
+    /**
+     * Whether the legacy core has a `did` for [config]'s shop without `/init`: stored — the data of older
+     * releases read into its partition first — or brought in [Rees46Config.deviceId] and taken. Reads the disk.
+     */
+    private fun legacyHasDid(context: Context, config: Rees46Config): Boolean {
+        val layout = StorageLayout(config.shopId, config.storageKey)
+        StorageMigrations.run(context, layout)
+        val storage = ShopStorage(context, layout)
+        return storage.storedDid().isNotEmpty() || storage.takesConfiguredDid(config.deviceId)
+    }
 
     private fun registeredShopIds(): List<String> =
         (SdkRegistry.shopIds() + pending.keys).sorted()

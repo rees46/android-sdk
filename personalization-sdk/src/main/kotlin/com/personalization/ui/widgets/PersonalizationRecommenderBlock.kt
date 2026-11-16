@@ -413,7 +413,8 @@ class PersonalizationRecommenderBlock @JvmOverloads constructor(
     }
 
     private fun report(code: Int, message: String?) {
-        SDK.error("PersonalizationRecommenderBlock: $code $message")
+        // The code only: the message of a failed request is the answer's body.
+        SDK.error("PersonalizationRecommenderBlock: request failed ($code)")
         onError?.invoke(code, message)
     }
 

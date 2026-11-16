@@ -43,7 +43,7 @@ class SearchParams : AbstractParams<SearchParams>() {
                 try {
                     json.put(key, JSONArray(value))
                 } catch (e: JSONException) {
-                    SDK.warn(e.message)
+                    SDK.warn("SearchParams: a filter is left out: ${e.javaClass.simpleName}")
                 }
             }
             return json.toString()

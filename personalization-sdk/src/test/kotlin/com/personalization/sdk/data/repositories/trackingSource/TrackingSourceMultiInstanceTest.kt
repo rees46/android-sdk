@@ -48,7 +48,6 @@ class TrackingSourceMultiInstanceTest {
         preferences.initialize(
             context = context,
             preferencesKey = PreferencesPartition.keyFor(shopId),
-            legacyPreferencesKey = null,
             shopId = shopId
         )
         return TrackingSourceDataSourceImpl(preferences)
@@ -113,7 +112,7 @@ class TrackingSourceMultiInstanceTest {
         context.getSharedPreferences("host_own_key", Context.MODE_PRIVATE).edit().clear().commit()
         fun hostStore(): TrackingSourceDataSourceImpl {
             val preferences = PreferencesDataSourceImpl()
-            preferences.initialize(context, "host_own_key", null, null)
+            preferences.initialize(context, "host_own_key", null)
             return TrackingSourceDataSourceImpl(preferences)
         }
 

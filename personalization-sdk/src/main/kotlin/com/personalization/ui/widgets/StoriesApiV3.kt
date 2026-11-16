@@ -1,6 +1,9 @@
 package com.personalization.ui.widgets
 
+import com.personalization.LogLevel
 import com.personalization.SDK
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.models.Story
 import java.net.HttpURLConnection
@@ -109,8 +112,8 @@ internal object StoriesApiV3 {
         runCatching { sdk.storiesManager.setTrackingSourceUseCase(StoriesManager.STORIES_SOURCE_TYPE, code) }
         whenDid(sdk) {
             val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId)
-            val response = post(eventsUrl(domain, code), body)
-            if (response.code !in 200..299) SDK.error("stories v3: $event failed: ${response.code}")
+            // A failed answer is logged by the call itself, as request_failed.
+            post(eventsUrl(domain, code), body, sdk.logShopId)
         }
     }
 
@@ -118,7 +121,7 @@ internal object StoriesApiV3 {
     private fun load(sdk: SDK, url: (String, String) -> String, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) {
         whenDid(sdk) {
             val response = try {
-                call("GET", url(shopId(sdk), sdk.getDid().orEmpty()), null)
+                call("GET", url(shopId(sdk), sdk.getDid().orEmpty()), null, sdk.logShopId)
             } catch (throwable: Throwable) {
                 MainThread.run { onFailed(StoriesLoader.ERROR_CODE, throwable.message) }
                 return@whenDid
@@ -140,16 +143,18 @@ internal object StoriesApiV3 {
     /**
      * Задача — когда у SDK есть did: сразу или из очереди `getAsync` после init. Init мог
      * закончиться между проверкой и постановкой в очередь — тогда задача стартует сама; дважды
-     * она не выполнится.
+     * она не выполнится. В новом ядре перед задачей — проверка окна сессии, как у любого запроса
+     * ядра: если окно кончилось, сначала `/init`, и задача берёт живой `sid`.
      */
     fun whenDid(sdk: SDK, task: () -> Unit) {
         val once = AtomicBoolean(false)
         val run = Runnable {
             if (!once.compareAndSet(false, true)) return@Runnable
             try {
+                sdk.awaitLiveSession()
                 task()
             } catch (throwable: Throwable) {
-                SDK.error("stories v3: request failed", throwable)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES_V3, "stories v3: request failed", sdk.logShopId, throwable = throwable)
             }
         }
         try {
@@ -158,35 +163,47 @@ internal object StoriesApiV3 {
                 if (sdk.getDid().isNullOrEmpty()) return
             }
         } catch (throwable: Throwable) {
-            SDK.error("stories v3: SDK is not ready", throwable)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES_V3, "stories v3: SDK is not ready", sdk.logShopId, throwable = throwable)
         }
         runner(run)
     }
 
     fun shopId(sdk: SDK): String = sdk.getUserSettingsValueUseCase.getShopId()
 
-    /** POST с JSON-телом — события и опросы; зовётся не на главном потоке. */
-    fun post(url: String, body: JSONObject): Response = call("POST", url, body.toString())
+    /**
+     * POST с JSON-телом — события и опросы; зовётся не на главном потоке. [shopId] — магазин
+     * экземпляра: строка лога проходит его уровень.
+     */
+    fun post(url: String, body: JSONObject, shopId: String? = null): Response = call("POST", url, body.toString(), shopId)
 
     /** GET — для других клиентов API v3 (попапы); зовётся не на главном потоке. */
-    fun get(url: String): Response = call("GET", url, null)
+    fun get(url: String, shopId: String? = null): Response = call("GET", url, null, shopId)
 
     /** Запрос с логом, как у сети SDK: строка в logcat и в `networkLogger`. */
-    private fun call(method: String, url: String, body: String?): Response {
+    private fun call(method: String, url: String, body: String?, shopId: String?): Response {
         val started = System.currentTimeMillis()
         val response = try {
             http.send(method, url, body)
         } catch (throwable: Throwable) {
+            SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "$method ${pathOf(url)}", shopId, mapOf("method" to method, "path" to pathOf(url)), throwable)
             SDK.networkLogger?.onHttpCall(method, url, body, -1, null, System.currentTimeMillis() - started, throwable.message)
             throw throwable
         }
         // Method and path only: the query and the body carry did, the session and the user's answers.
-        SDK.debug("${response.code}: $method ${pathOf(url)}")
+        val success = response.code in 200..299
+        SdkLogs.log(
+            if (success) LogLevel.DEBUG else LogCodes.failureLevel(response.code),
+            if (success) LogCodes.REQUEST else LogCodes.REQUEST_FAILED,
+            "${response.code}: $method ${pathOf(url)}",
+            shopId,
+            mapOf("method" to method, "path" to pathOf(url), "status" to response.code)
+        )
         SDK.networkLogger?.onHttpCall(method, url, body, response.code, response.body, System.currentTimeMillis() - started, null)
         return response
     }
 
-    private fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
+    /** The path of [url] without the host and the query, for a log line: the query carries did and sid. */
+    fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
 
     private fun sendHttp(method: String, url: String, body: String?): Response {
         val connection = URL(url).openConnection() as HttpURLConnection

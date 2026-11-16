@@ -1,5 +1,7 @@
 package com.personalization.ui.widgets
 
+import com.personalization.logs.SdkLogs
+import com.personalization.LogLevel
 import android.os.Looper
 import android.util.Log
 import com.personalization.SDK
@@ -40,6 +42,8 @@ class StoriesPollsApiTest {
         every { sdk.getSid() } returns "sid1"
         every { sdk.getUserSettingsValueUseCase.getShopId() } returns "shop1"
         StoriesApiV3.runner = { it.run() }
+        // The debug log is what these tests read; the default level hides it.
+        SdkLogs.register("log-test", LogLevel.DEBUG, "SDK")
         StoriesApiV3.http = StoriesApiV3.Http { method, url, body ->
             requests += Triple(method, url, body)
             networkError?.let { throw it }
@@ -51,6 +55,7 @@ class StoriesPollsApiTest {
     fun tearDown() {
         StoriesApiV3.http = originalHttp
         StoriesApiV3.runner = { Thread(it).start() }
+        SdkLogs.reset()
     }
 
     @Test
@@ -91,18 +96,19 @@ class StoriesPollsApiTest {
     }
 
     @Test
-    fun `a failure goes to the debug log with its code and message`() {
+    fun `a failure goes to the debug log with its code, without the answer`() {
         reply = StoriesApiV3.Response(429, """{"status":"fail","message":"Too many requests"}""")
         answer()
         val logs = ShadowLog.getLogs().filter { it.type == Log.DEBUG }.map { it.msg }
-        assertTrue(logs.toString(), logs.any { it.contains("/polls/mini_polls/gift_recipient/answers failed: 429 Too many requests") })
+        assertTrue(logs.toString(), logs.any { it.contains("/polls/mini_polls/gift_recipient/answers failed: 429") })
+        assertTrue(logs.toString(), logs.none { it.contains("Too many requests") })
     }
 
     @Test
     fun `a request is logged by method and path, without the identity and the answer`() {
         answer(body = mapOf("text" to "my own answer"))
         val logs = ShadowLog.getLogs().map { it.msg.orEmpty() }
-        assertTrue(logs.toString(), logs.any { it == "200: POST /api/v3/polls/mini_polls/gift_recipient/answers" })
+        assertTrue(logs.toString(), logs.any { it.contains("[request] 200: POST /api/v3/polls/mini_polls/gift_recipient/answers") })
         assertTrue(logs.toString(), logs.none { "did1" in it || "sid1" in it || "my own answer" in it })
     }
 

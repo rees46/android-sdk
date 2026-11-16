@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class EmptyFieldError(
     private val tag: String,
@@ -9,9 +11,6 @@ class EmptyFieldError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */ "Field is empty or null in $functionName : $message"
-        )
+        SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "Field is empty or null in $functionName : $message")
     }
 }

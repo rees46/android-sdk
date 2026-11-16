@@ -53,11 +53,11 @@ class PushTokenManagerTest {
     @Test
     fun `sendToken sends push_provider firebase for FCM`() {
         val paramsSlot = slot<JSONObject>()
-        every { sendNetworkMethodUseCase.post(any(), capture(paramsSlot), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), capture(paramsSlot), any()) } just Runs
 
         pushTokenManager.sendToken("fcm-token-123", PushProvider.FCM, null)
 
-        verify(exactly = 1) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 1) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
         val body = paramsSlot.captured
         assertEquals("fcm-token-123", body.getString("token"))
         assertEquals("android", body.getString("platform"))
@@ -67,7 +67,7 @@ class PushTokenManagerTest {
     @Test
     fun `sendToken sends push_provider huawei for HMS`() {
         val paramsSlot = slot<JSONObject>()
-        every { sendNetworkMethodUseCase.post(any(), capture(paramsSlot), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), capture(paramsSlot), any()) } just Runs
 
         pushTokenManager.sendToken("hms-token-1", PushProvider.HMS, null)
 
@@ -79,7 +79,7 @@ class PushTokenManagerTest {
     @Test
     fun `sendToken forwards backend success to caller listener and persists token`() {
         val listener = mockk<OnApiCallbackListener>(relaxed = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } answers {
             thirdArg<OnApiCallbackListener>().onSuccess(null as JSONObject?)
         }
 
@@ -94,11 +94,11 @@ class PushTokenManagerTest {
     fun `onTokenReceived sends push_provider huawei for new HMS token`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
         val paramsSlot = slot<JSONObject>()
-        every { sendNetworkMethodUseCase.post(any(), capture(paramsSlot), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), capture(paramsSlot), any()) } just Runs
 
         pushTokenManager.onTokenReceived("hms-token-456", PushProvider.HMS)
 
-        verify(exactly = 1) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 1) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
         val body = paramsSlot.captured
         assertEquals("hms-token-456", body.getString("token"))
         assertEquals("huawei", body.getString("push_provider"))
@@ -112,7 +112,7 @@ class PushTokenManagerTest {
 
         pushTokenManager.onTokenReceived("hms-token-same", PushProvider.HMS)
 
-        verify(exactly = 0) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 0) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
@@ -122,11 +122,11 @@ class PushTokenManagerTest {
         every { getPreferencesValueUseCase.getLastPushTokenDate(PushProvider.HMS) } returns eightDaysAgo
         pushTokenManager.initialize(context, autoSendPushToken = true)
         val paramsSlot = slot<JSONObject>()
-        every { sendNetworkMethodUseCase.post(any(), capture(paramsSlot), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), capture(paramsSlot), any()) } just Runs
 
         pushTokenManager.onTokenReceived("hms-token-old", PushProvider.HMS)
 
-        verify(exactly = 1) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 1) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
         assertEquals("hms-token-old", paramsSlot.captured.getString("token"))
     }
 
@@ -136,7 +136,7 @@ class PushTokenManagerTest {
 
         pushTokenManager.onTokenReceived("hms-token", PushProvider.HMS)
 
-        verify(exactly = 0) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 0) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
@@ -144,7 +144,7 @@ class PushTokenManagerTest {
         var notified: Pair<String, PushProvider>? = null
         pushTokenManager.setOnPushTokenListener { token, provider -> notified = token to provider }
         pushTokenManager.initialize(context, autoSendPushToken = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } just Runs
 
         pushTokenManager.onTokenReceived("hms-token-789", PushProvider.HMS)
 
@@ -158,12 +158,12 @@ class PushTokenManagerTest {
     fun `onTokenReceived sends once when the same token arrives twice before the response`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
         // post() never invokes its callback: the first request is still on the wire.
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } just Runs
 
         pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
         pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
 
-        verify(exactly = 1) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 1) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
@@ -171,7 +171,7 @@ class PushTokenManagerTest {
         val notified = mutableListOf<String>()
         pushTokenManager.setOnPushTokenListener { token, _ -> notified.add(token) }
         pushTokenManager.initialize(context, autoSendPushToken = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } just Runs
 
         pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
         pushTokenManager.onTokenReceived("fcm-token-race", PushProvider.FCM)
@@ -182,45 +182,45 @@ class PushTokenManagerTest {
     @Test
     fun `the claim is per provider so the same token value is sent for FCM and HMS`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } just Runs
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } just Runs
 
         pushTokenManager.onTokenReceived("shared-token", PushProvider.FCM)
         pushTokenManager.onTokenReceived("shared-token", PushProvider.HMS)
 
-        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 2) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
     fun `a failed send releases the claim so the next delivery retries`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } answers {
             thirdArg<OnApiCallbackListener>().onError(500, "server error")
         }
 
         pushTokenManager.onTokenReceived("fcm-token-retry", PushProvider.FCM)
         pushTokenManager.onTokenReceived("fcm-token-retry", PushProvider.FCM)
 
-        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 2) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
     fun `a new token is sent after the previous one completed`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } answers {
             thirdArg<OnApiCallbackListener>().onSuccess(null as JSONObject?)
         }
 
         pushTokenManager.onTokenReceived("fcm-token-first", PushProvider.FCM)
         pushTokenManager.onTokenReceived("fcm-token-second", PushProvider.FCM)
 
-        verify(exactly = 2) { sendNetworkMethodUseCase.post("mobile_push_tokens", any(), any()) }
+        verify(exactly = 2) { sendNetworkMethodUseCase.postAsync("mobile_push_tokens", any(), any()) }
     }
 
     @Test
     fun `fcm and hms tokens carry different push_provider values`() {
         pushTokenManager.initialize(context, autoSendPushToken = true)
         val capturedParams = mutableListOf<JSONObject>()
-        every { sendNetworkMethodUseCase.post(any(), any(), any()) } answers {
+        every { sendNetworkMethodUseCase.postAsync(any(), any(), any()) } answers {
             capturedParams.add(secondArg())
         }
 

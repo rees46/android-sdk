@@ -2,14 +2,17 @@ package com.personalization
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import androidx.core.util.Consumer
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
+import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
+import com.personalization.logs.SdkLogs
 import com.personalization.Params.InternalParameter
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
+import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -24,40 +27,97 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
+import com.personalization.core.BridgeApi
+import com.personalization.core.BridgeErrors
+import com.personalization.core.CompletionListener
+import com.personalization.core.PushCallbacks
+import com.personalization.core.PushEvent
+import com.personalization.core.PushPayload
+import com.personalization.core.SdkError
+import com.personalization.core.SdkException
+import com.personalization.core.SdkResult
+import com.personalization.core.SdkState
+import com.personalization.core.internal.AndroidConnectivityMonitor
+import com.personalization.core.internal.CommonFields
+import com.personalization.core.internal.ConnectivityMonitor
+import com.personalization.core.internal.Core
+import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.CoreHttpClient
+import com.personalization.core.internal.CoreInit
+import com.personalization.core.internal.CorePushTokens
+import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.CoreV2
+import com.personalization.core.internal.DeviceStorage
+import com.personalization.core.internal.InitHooks
+import com.personalization.core.internal.InitSetup
+import com.personalization.core.internal.InstanceState
+import com.personalization.core.internal.EventQueue
+import com.personalization.core.internal.ProcessAppLifecycle
+import com.personalization.core.internal.PushHub
+import com.personalization.core.internal.QueueStore
+import com.personalization.core.internal.SessionWindow
+import com.personalization.core.internal.ShopStorage
+import com.personalization.core.internal.StorageKeys
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
+import com.personalization.features.notification.domain.model.NotificationConstants
 import com.personalization.features.notification.presentation.helpers.NotificationHelper
 import com.personalization.handlers.notifications.NotificationHandler
 import com.personalization.popups.PopupsV3
 import com.personalization.push.PushTokenManager
+import com.personalization.sdk.data.mappers.SdkInitializationMapper.mapToSdkInitResponse
+import com.personalization.sdk.data.utils.AdvertisingUtils
+import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NPSRepository
+import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import com.personalization.sdk.domain.usecases.network.AddTaskToQueueUseCase
 import com.personalization.sdk.domain.usecases.network.InitNetworkUseCase
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
+import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.usecases.notification.GetAllNotificationsUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.InitPreferencesUseCase
 import com.personalization.sdk.domain.usecases.recommendation.SetRecommendedByUseCase
+import com.personalization.sdk.domain.usecases.trackingSource.GetTrackingSourceUseCase
 import com.personalization.sdk.domain.usecases.userSettings.GetUserSettingsValueUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitUserSettingsUseCase
 import com.personalization.sdk.domain.usecases.userSettings.InitializeAdvertisingIdUseCase
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.views.StoriesView
+import com.personalization.ui.widgets.RecentSearches
+import com.personalization.ui.widgets.ResponseCache
 import com.personalization.utils.DomainFormattingUtils.formatApiDomain
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import org.json.JSONException
 import org.json.JSONObject
 
 private const val GAID_KEY = "google_advertising_id"
 
-@OptIn(InternalPersonalizationV3Api::class)
+/**
+ * One shop's instance of the SDK: made by [Rees46.initialize], found with [Rees46.instance].
+ *
+ * The class stays `open` for apps that subclassed it in earlier releases. The members this release
+ * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush] and
+ * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
+ * that declares one of them needs to rename its own.
+ */
+@OptIn(InternalPersonalizationV3Api::class, BridgeApi::class)
 open class SDK {
 
     internal lateinit var context: Context
@@ -75,8 +135,40 @@ open class SDK {
     @Volatile
     private var isSdkInitialized: Boolean = false
 
+    /** Set by [release]: every call through the instance fails with `notInitialized` until it is initialized again. */
+    @Volatile
+    private var released: Boolean = false
+
+    /** Serializes initializing this object: two calls never initialize it twice. */
+    private val initLock = Any()
+
+    /** The config the instance was initialized with; set before the instance registers. */
+    @Volatile
+    internal var config: Rees46Config? = null
+        private set
+
+    /** Brought up only to track a push ([initializeForPush]): [Rees46.initialize] replaces it. */
+    @Volatile
+    internal var pushOnly: Boolean = false
+        private set
+
+    /**
+     * Started by a push as the shop's full instance without its push token and its profile
+     * ([initializeForPushWithoutDid]): they go once the app takes the instance ([handedToApp]).
+     */
+    private val appStartDeferred = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** The instance's [SdkState] and the app's listeners of it, for both cores. */
+    internal val instanceState: InstanceState by lazy { InstanceState(shopId = { logShopId }, dispatchers = dispatchers) }
+
     @Inject
     internal lateinit var initializeAdvertisingIdUseCase: InitializeAdvertisingIdUseCase
+
+    @Inject
+    internal lateinit var userSettingsRepository: UserSettingsRepository
+
+    @Inject
+    internal lateinit var getTrackingSourceUseCase: GetTrackingSourceUseCase
 
     @Inject
     lateinit var notificationHandler: NotificationHandler
@@ -163,6 +255,137 @@ open class SDK {
             applyPopupPresentation()
         }
 
+    /**
+     * Where the instance's initialization stands; [SdkState.NOT_INITIALIZED] before it is initialized
+     * and after [release]. On the legacy core it only goes from [SdkState.INITIALIZING] to
+     * [SdkState.READY].
+     */
+    val state: SdkState
+        get() = instanceState.current
+
+    /**
+     * Calls [listener] on the main thread with the current [state] at once, then with every change of
+     * it, once per change, until the returned handle is cancelled. May be set before the instance is
+     * initialized (it hears [SdkState.NOT_INITIALIZED] first). An exception the listener throws is logged
+     * as `callback_failed`. [release] tells it [SdkState.NOT_INITIALIZED] and drops it.
+     */
+    fun onStateChange(listener: (SdkState) -> Unit): Cancellable = instanceState.addListener(listener)
+
+    /** The shop of this instance; empty before it is initialized. */
+    val shopId: String
+        get() = config?.shopId ?: logShopId.orEmpty()
+
+    /** The device's `did` at this shop; null before the server hands one out, or before initialization. */
+    val deviceId: String?
+        get() = if (::userSettingsRepository.isInitialized) userSettingsRepository.getDid().ifEmpty { null } else null
+
+    /**
+     * The `sid` of the current session; null while there is none, or before initialization. On the new
+     * core it is the server's (the `seance` of `/init`), and a session two hours without events ends —
+     * from then on this is null — and the next request or event starts a new one with `/init` first.
+     */
+    val sessionId: String?
+        get() {
+            if (!::userSettingsRepository.isInitialized) return null
+            // On the new core a sid whose window ended is no session any more.
+            val session = (core as? CoreV2)?.init?.session
+            if (session != null && !session.isAlive()) return null
+            return userSettingsRepository.getSid().ifEmpty { null }
+        }
+
+    /**
+     * For the clients that make their own requests (popups v3, stories v3), on their background thread:
+     * on the new core, waits as a request of the core does, within its read timeout, for the instance and
+     * for the `/init` of a new session when the window ended, so [sessionId] is the live `sid` after it.
+     * The legacy core does not wait.
+     */
+    internal fun awaitLiveSession() {
+        val core = core as? CoreV2 ?: return
+        runBlocking { core.awaitUsable() }
+    }
+
+    /** The bridges' listeners of a new `sid` ([onSessionChange]). */
+    private val sessionListeners = CopyOnWriteArrayList<(String) -> Unit>()
+
+    /**
+     * For the bridges: [listener] hears every new `sid` of the new core, on the main thread, until the
+     * handle is cancelled — instead of asking [sessionId] on a timer. The legacy core does not call it.
+     * May be set before the instance is initialized. An exception it throws is logged as `callback_failed`.
+     */
+    @BridgeApi
+    fun onSessionChange(listener: (sessionId: String) -> Unit): Cancellable {
+        sessionListeners += listener
+        return Cancellable { sessionListeners -= listener }
+    }
+
+    /** Tells the bridges' listeners about [sid] on the main thread; one that throws is logged. */
+    private fun sessionChanged(sid: String) {
+        val targets = sessionListeners.toList()
+        if (targets.isEmpty()) return
+        calls.launch {
+            withContext(dispatchers.main) {
+                targets.forEach { listener ->
+                    try {
+                        listener(sid)
+                    } catch (e: Exception) {
+                        log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "A session listener threw", throwable = e)
+                    }
+                }
+            }
+        }
+    }
+
+    /** The app's callbacks on this shop's pushes ([setPushCallbacks]). */
+    @Volatile
+    internal var pushCallbacks: PushCallbacks? = null
+        private set
+
+    /**
+     * The app's callbacks on this shop's pushes: delivered, opened, clicked, closed, and a new token. A
+     * callback set here wins over the one of the same event set with [Rees46.setPushCallbacks] for every
+     * shop. Replaces the callbacks set before; null or `PushCallbacks()` clears them. May be set before
+     * the instance is initialized.
+     *
+     * A callback runs on the main thread when the SDK sees its event: its messaging service,
+     * [Rees46.handlePush], or a notification the SDK drew ([NotificationHelper]); on the new core once the
+     * queue accepted the event. One event of one message is reported once per process. [setOnMessageListener]
+     * and [setOnPushTokenListener] keep working beside them.
+     */
+    fun setPushCallbacks(callbacks: PushCallbacks?) {
+        pushCallbacks = callbacks
+    }
+
+    /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
+    internal var logLevel: LogLevel = LogLevel.WARNING
+
+    /** [Rees46Config.coreV2] of the instance; the process's core decides ([CoreSelection]). */
+    internal var coreV2Requested: Boolean = false
+
+    /** The instance's core, once it is initialized: the legacy one or [CoreV2]. */
+    @Volatile
+    internal var core: Core? = null
+        private set
+
+    /** The shop's partition, once the instance is initialized. */
+    @Volatile
+    internal var storage: ShopStorage? = null
+        private set
+
+    /** Where the instance's own work runs: tests pass test dispatchers before the first call. */
+    internal var dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT
+
+    /** Where the calls made for Java and for code outside coroutines run; nothing they do reaches the app as an exception. */
+    private val calls: CoroutineScope by lazy {
+        CoroutineScope(SupervisorJob() + dispatchers.io + CoroutineExceptionHandler { _, throwable ->
+            log(LogLevel.ERROR, LogCodes.SDK_LOG, "A call of the instance failed unexpectedly", throwable = throwable)
+        })
+    }
+
+    /** The shop this instance logs for, once it is initialized: its lines pass that shop's level. */
+    @Volatile
+    internal var logShopId: String? = null
+        private set
+
     /** `popups_v3` of the last `/init` answer; null while `/init` has not answered. */
     @Volatile
     internal var popupsV3InitFlag: Boolean? = null
@@ -192,6 +415,10 @@ open class SDK {
     @Inject
     lateinit var initNetworkUseCase: InitNetworkUseCase
 
+    /** The request funnel of this instance; its core is chosen at initialization. */
+    @Inject
+    internal lateinit var networkRepository: NetworkRepositoryImpl
+
     @Inject
     lateinit var getPreferencesValueUseCase: GetPreferencesValueUseCase
 
@@ -218,10 +445,16 @@ open class SDK {
 
     /**
      * @param shopId Shop key
+     * @param preferencesKey the prefix of the shop's storage, as [Rees46Config.storageKey]. Earlier
+     * releases kept everything in one file of this name; it is read once into the shop's partition and
+     * left as it is.
+     *
+     * On an object already initialized for [shopId] it does nothing (and logs `invalid_config` when the
+     * parameters differ); after [release] it initializes the object again.
      */
     @Deprecated(
         message = "Use Rees46.initialize(context, Rees46Config(...)) — the unified, multi-instance " +
-            "entry point. Reach instances with Rees46.getInstance(shopId).",
+            "entry point. Reach instances with Rees46.instance(shopId).",
         replaceWith = ReplaceWith(
             "Rees46.initialize(context, Rees46Config(shopId = shopId))",
             "com.personalization.Rees46",
@@ -238,70 +471,184 @@ open class SDK {
         autoSendPushToken: Boolean = true,
         needReInitialization: Boolean = false,
         addTrailingSlash: Boolean = true
-    ) = initializeInternal(
-        context = context,
-        shopId = shopId,
-        apiDomain = apiDomain,
-        tag = tag,
-        preferencesKey = preferencesKey,
-        stream = stream,
-        autoSendPushToken = autoSendPushToken,
-        needReInitialization = needReInitialization,
-        addTrailingSlash = addTrailingSlash,
-        sendProfileOnInit = true
+    ) = initializeWith(
+        context,
+        Rees46Config(
+            shopId = shopId,
+            apiDomain = apiDomain,
+            stream = stream,
+            autoSendPushToken = autoSendPushToken,
+            needReInitialization = needReInitialization,
+            addTrailingSlash = addTrailingSlash,
+            tag = tag,
+            enableAutoPopupPresentation = enableAutoPopupPresentation,
+            logLevel = logLevel,
+            coreV2 = coreV2Requested,
+            storageKey = preferencesKey.takeUnless { it == PreferencesPartition.LEGACY_KEY },
+        )
     )
 
     /**
-     * Light bring-up for handling a push in a (possibly cold) background process: keeps the persisted
-     * did (no `/init`), does not re-register the push token (it is already on the server — that is why
-     * the push arrived), and skips the GAID + profile/set call. Just enough to track the delivery and
-     * reach the message listener. Used by [Rees46.handlePush] to materialize a lazily-registered shop
-     * without the full startup work. The public [initialize] contract is unchanged.
+     * Initializes this object for [config]: the entry of [Rees46.initialize] and of the legacy
+     * [initialize]. An object live for the same shop is left as it is: it keeps the config it was made
+     * with, and a different [config] is logged as `invalid_config` (`already_initialized`).
      */
-    internal fun initializeForPush(context: Context, config: Rees46Config) {
+    internal fun initializeWith(context: Context, config: Rees46Config) = start(
+        context,
+        config,
+        autoSendPushToken = config.autoSendPushToken,
+        needReInitialization = config.needReInitialization,
+        pushOnly = false,
+    )
+
+    /**
+     * Light bring-up for handling a push in a (possibly cold) background process, used by
+     * [Rees46.handlePush] for a shop registered but not created. On both cores, with a stored `did`, it never
+     * sends `/init`: the instance is ready on that `did` and sends the push's event with it. It shows no
+     * popup and sends neither the push token nor the profile. Without a `did` the new core drops the event
+     * (`push_dropped`, `no_did`); on the legacy core [Rees46] makes the shop's full instance instead. The
+     * app's first [Rees46.instance] or [Rees46.initialize] of the shop puts a full instance in its place,
+     * and an initialize of this object makes it one.
+     */
+    internal fun initializeForPush(context: Context, config: Rees46Config) = start(
+        context,
+        config,
+        autoSendPushToken = false,
+        needReInitialization = false,
+        pushOnly = true,
+    )
+
+    /**
+     * The legacy core's start for a push of a shop registered but not created and without a `did`, as 2.49.0
+     * brought it up: the shop's full instance, whose `/init` gives the `did` the push's `track/received` waits
+     * for, but without the push token and the profile with the advertising id. The app gets this instance as
+     * it is, and when it takes it ([handedToApp]) they go, once.
+     */
+    internal fun initializeForPushWithoutDid(context: Context, config: Rees46Config) = start(
+        context,
+        config,
+        autoSendPushToken = false,
+        needReInitialization = false,
+        pushOnly = false,
+        deferAppStart = true,
+    )
+
+    /**
+     * The app takes this instance ([Rees46.instance], [Rees46.initialize], [Rees46.awaitInstance], [instance]):
+     * what a push's start left for the app ([initializeForPushWithoutDid]) goes now, once — the profile with
+     * the advertising id and the push token, each after the `did`. Returns this instance.
+     */
+    internal fun handedToApp(): SDK {
+        if (released || !appStartDeferred.compareAndSet(true, false)) return this
+        val config = config ?: return this
+        sendAdvertisingProfile(config.shopId)
+        if (::registerManager.isInitialized) registerManager.sendTokensFromNow(config.autoSendPushToken)
+        return this
+    }
+
+    private fun start(
+        context: Context,
+        config: Rees46Config,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean,
+        pushOnly: Boolean,
+        deferAppStart: Boolean = false,
+    ): Unit = synchronized(initLock) {
+        val current = this.config
+        val sameShop = current != null && isLive && current.shopId == config.shopId
+        // Brought up for a push and now started by the app: it becomes a full instance, and the push's
+        // events in flight finish.
+        val upgrade = sameShop && this.pushOnly && !pushOnly
+        if (sameShop && !upgrade) {
+            keepConfig(config)
+            return
+        }
         enableAutoPopupPresentation = config.enableAutoPopupPresentation
+        logLevel = config.logLevel
+        coreV2Requested = config.coreV2
+        // Both before the instance registers: a push-only one wakes nobody waiting for the shop's
+        // instance, and whoever finds it in the registry has the config to put a full one in its place.
+        this.pushOnly = pushOnly
+        this.config = config
+        appStartDeferred.set(deferAppStart)
+        // A shop's instance brought up only for a push gives way to this one, however the app made it (the
+        // deprecated initialize of another object too): one queue sends, and the push's events in flight go.
+        val superseded = if (pushOnly) null else SdkRegistry.byShopId(config.shopId)?.takeIf { it !== this && it.pushOnly }
         initializeInternal(
-            context = context,
-            shopId = config.shopId,
-            apiDomain = config.apiDomain,
-            tag = config.tag,
-            preferencesKey = PreferencesPartition.LEGACY_KEY,
-            stream = config.stream,
-            autoSendPushToken = false,
-            needReInitialization = false,
-            addTrailingSlash = config.addTrailingSlash,
-            sendProfileOnInit = false
+            context, config, autoSendPushToken, needReInitialization,
+            pushOnly = pushOnly, cancelRequests = !upgrade, sendProfile = !pushOnly && !deferAppStart,
+        )
+        superseded?.giveWay()
+    }
+
+    /**
+     * A push-only instance ([initializeForPush]) of the new core without a `did` cannot send a push's event:
+     * true when this is one, and the push is dropped (`push_dropped`, `no_did`). Decided at once from every
+     * source of a `did` the start takes without `/init` — the stored one, [Rees46Config.deviceId] when it is
+     * taken, the saved `/init` answer's ([CoreInit.hasDid]) — while the start may still be taking them. It
+     * may read the disk: the push's thread, not the main one.
+     */
+    internal fun dropsPushWithoutDid(): Boolean {
+        // The legacy core brings a shop without a did up as a full instance, as it always did.
+        if (!pushOnly || !isCoreV2) return false
+        // Gave way to the app's instance of the shop meanwhile: the queue refuses the event and it goes to that
+        // one, whose own start takes the did. Not this one's to drop.
+        if (released) return false
+        val init = (core as? CoreV2)?.init ?: return false
+        if (init.hasDid()) return false
+        log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "The push's event is dropped: the shop has no did yet", mapOf("reason" to LogReasons.NO_DID))
+        return true
+    }
+
+    /** Initialized and not released. */
+    private val isLive: Boolean get() = isSdkInitialized && !released
+
+    /** A later initialization of a live shop: the instance stays as it was made, a different config is logged. */
+    internal fun keepConfig(config: Rees46Config) {
+        if (this.config == config) return
+        SdkLogs.log(
+            LogLevel.WARNING,
+            LogCodes.INVALID_CONFIG,
+            "The shop is initialized already; its instance keeps the config it was made with",
+            config.shopId,
+            mapOf("reason" to LogReasons.ALREADY_INITIALIZED)
         )
     }
 
     private fun initializeInternal(
         context: Context,
-        shopId: String,
-        apiDomain: String,
-        tag: String,
-        preferencesKey: String,
-        stream: String,
+        config: Rees46Config,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
-        addTrailingSlash: Boolean,
-        // When false, skip the background GAID + profile/set call (the push-context bring-up).
-        sendProfileOnInit: Boolean
+        // The push-context bring-up: no /init, no GAID + profile/set call and no push token.
+        pushOnly: Boolean,
+        // False when a push-only instance becomes a full one: the push's events in flight finish.
+        cancelRequests: Boolean = true,
+        // The legacy core's profile with the advertising id after the start: not for a push's start.
+        sendProfile: Boolean = !pushOnly,
     ) {
+        val shopId = config.shopId
+        // Initialized before (another shop, or released): the old start sends and takes nothing more.
+        stopCurrent(cancelRequests)
 
         val sdkComponent = DaggerSdkComponent.factory().create(
             appModule = AppModule(applicationContext = context)
         )
 
-        val baseUrl = apiDomain?.let {
-            formatApiDomain(
-                apiDomain = it,
-                addTrailingSlash = addTrailingSlash
-            )
-        }
+        val baseUrl = formatApiDomain(
+            apiDomain = config.apiDomain,
+            addTrailingSlash = config.addTrailingSlash
+        )
 
         sdkComponent.inject(sdk = this)
         this.context = context
-        TAG = tag
+        TAG = config.tag
+        SdkLogs.register(shopId = shopId, level = logLevel, tag = config.tag, owner = this)
+        logShopId = shopId
+        pushTokenManager.logShopId = shopId
+        pushTokenManager.callbacks = { pushCallbacks }
+        storiesManager.logShopId = shopId
+        notificationHelper.shopId = shopId
 
         // Before the init request goes out: its response may already carry a popup.
         ForegroundActivity.install(context)
@@ -309,18 +656,17 @@ open class SDK {
 
         onPushTokenListener?.let { pushTokenManager.setOnPushTokenListener(it) }
 
-        // A host that leaves preferencesKey at its default gets a per-shop partition instead of the
-        // single shared file, plus a one-time migration out of the legacy file so an existing
-        // install keeps its did/sid. A host that passes its own key keeps using it verbatim, with no
-        // derivation and no migration.
-        val usingDefaultPartition = preferencesKey == PreferencesPartition.LEGACY_KEY
-        val effectivePreferencesKey =
-            if (usingDefaultPartition) PreferencesPartition.keyFor(shopId) else preferencesKey
+        // The shop's own partition, prefixed by the app's storageKey if it has one. Before /init, the
+        // data of older releases is read into it once (the file of a custom preferencesKey, or the file
+        // all shops shared before partitions), and the device-level store gets the A/B group, push
+        // tokens and advertising id. Nothing older is deleted.
+        val layout = StorageLayout(shopId, config.storageKey)
+        StorageMigrations.run(context, layout)
+        val storage = ShopStorage(context, layout).also { this.storage = it }
 
         initPreferencesUseCase.invoke(
             context = context,
-            preferencesKey = effectivePreferencesKey,
-            legacyPreferencesKey = if (usingDefaultPartition) PreferencesPartition.LEGACY_KEY else null,
+            preferencesKey = layout.partitionName,
             shopId = shopId
         )
 
@@ -328,26 +674,54 @@ open class SDK {
 
         initUserSettingsUseCase.invoke(
             shopId = shopId,
-            stream = stream
+            stream = config.stream
         )
 
         initNetworkUseCase(url = baseUrl)
-
-        // Popups v3 start from the /init answer; in their test mode /init counts test popups too.
-        registerManager.onInitFinished = { flag ->
-            popupsV3InitFlag = flag
-            popupsV3?.onInit(flag)
+        released = false
+        val coreV2 = CoreSelection.resolve(coreV2Requested, shopId)
+        if (coreV2) {
+            val connectivity = AndroidConnectivityMonitor(context)
+            val lifecycle = ProcessAppLifecycle()
+            lateinit var init: CoreInit
+            // The core gets its /init and its queue before it takes a request: none goes without them.
+            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
+                init = createCoreInit(core, connectivity, lifecycle, context, config, storage, autoSendPushToken, needReInitialization, pushOnly)
+                core.init = init
+                // The token's rules are the new core's from the start: one FCM gives before /init waits for it.
+                pushTokenManager.core = CorePushTokens(
+                    shopId = shopId,
+                    device = DeviceStorage(context),
+                    shop = storage.preferences,
+                    send = { params, listener -> sendNetworkMethodUseCase.postAsync(CorePushTokens.PATH, params, listener) },
+                    ready = { init.ready() },
+                    hasDid = { userSettingsRepository.getDid().isNotEmpty() },
+                    autoSend = autoSendPushToken,
+                    sends = !pushOnly,
+                    dispatchers = dispatchers,
+                )
+                core.queue = EventQueue(
+                    shopId = shopId,
+                    store = QueueStore.of(storage.queuePath, shopId),
+                    init = init,
+                    state = instanceState,
+                    // The queue stamps the common fields on a copy of each event: nothing of them reaches its files.
+                    send = { method, body -> core.client.send(method, body, commonFields = false) },
+                    stamp = { body -> CommonFields.addTo(body, userSettingsRepository) },
+                    connectivity = connectivity,
+                    lifecycle = lifecycle,
+                    source = ::trackingSource,
+                    sendDirectly = core::sendDirectly,
+                    dispatchers = dispatchers,
+                    pushEventsOnly = pushOnly,
+                ).also { it.start() }
+            }
+            this.core = core
+            init.start()
+        } else {
+            core = networkRepository.core
+            if (pushOnly) startLegacyForPush(context, config, storage) else startLegacy(context, config, storage, autoSendPushToken, needReInitialization)
         }
-        registerManager.extraInitParams = {
-            if (popupsV3?.testMode == true) mapOf(POPUPS_V3_TEST_MODE to "true") else emptyMap()
-        }
-
-        registerManager.initialize(
-            context = context,
-            contentResolver = context.contentResolver,
-            autoSendPushToken = autoSendPushToken,
-            needReInitialization = needReInitialization
-        )
 
         // Register this instance so pushes delivered to the (process-global) messaging services are
         // routed back to every initialized SDK instance, not just one, and so the documented
@@ -356,33 +730,161 @@ open class SDK {
         SdkRegistry.register(shopId = shopId, sdk = this)
         isSdkInitialized = true
 
-        if (sendProfileOnInit) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val advertisingId = initializeAdvertisingIdUseCase.invoke()
-
-                // Not through profile(): the advertising id is not a change of the visitor that
-                // should make popups v3 ask for their list again.
-                sendNetworkMethodUseCase.postAsync(
-                    method = SET_PROFILE_FIELD,
-                    params = ProfileParams
-                        .Builder()
-                        .put(GAID_KEY, advertisingId)
-                        .build()
-                        .toJson(),
-                    listener = object : OnApiCallbackListener() {
-                        override fun onSuccess(response: JSONObject?) {
-                            debug("Profile GAID sent successfully")
-                        }
-
-                        override fun onError(code: Int, msg: String?) {
-                            warn("Profile GAID send failed: $code | $msg")
-                        }
-                    }
-                )
-            }
-        }
-
+        // The new core sends the advertising id with /init, and only with sendAdvertisingId.
+        if (sendProfile && !coreV2) sendAdvertisingProfile(shopId)
     }
+
+    /** The legacy core's `profile/set` with the advertising id, read off the caller's thread; it waits for the `did`. */
+    private fun sendAdvertisingProfile(shopId: String) {
+        if (core?.isV2 == true) return
+        CoroutineScope(Dispatchers.IO).launch {
+            val advertisingId = initializeAdvertisingIdUseCase.invoke()
+
+            // Not through profile(): the advertising id is not a change of the visitor that
+            // should make popups v3 ask for their list again.
+            sendNetworkMethodUseCase.postAsync(
+                method = SET_PROFILE_FIELD,
+                params = ProfileParams
+                    .Builder()
+                    .put(GAID_KEY, advertisingId)
+                    .build()
+                    .toJson(),
+                listener = object : OnApiCallbackListener() {
+                    override fun onSuccess(response: JSONObject?) {
+                        SdkLogs.log(LogLevel.DEBUG, LogCodes.ADVERTISING_ID_SENT, "Advertising id sent", shopId)
+                    }
+
+                    override fun onError(code: Int, msg: String?) {
+                        // Without the answer's body: an error answer often repeats the request's data.
+                        SdkLogs.log(
+                            LogLevel.WARNING,
+                            LogCodes.ADVERTISING_ID_FAILED,
+                            "Advertising id was not sent",
+                            shopId,
+                            mapOf("status" to code)
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * Stops what an earlier initialization of this object started. Without [cancelRequests] the new
+     * core's requests in flight finish (see [giveWay]).
+     */
+    private fun stopCurrent(cancelRequests: Boolean = true) {
+        if (::registerManager.isInitialized) registerManager.stop()
+        if (::pushTokenManager.isInitialized) pushTokenManager.core?.release()
+        if (::networkRepository.isInitialized) networkRepository.release(cancelRequests)
+    }
+
+    /** `/init` and the session of the legacy path, as before. */
+    private fun startLegacy(context: Context, config: Rees46Config, storage: ShopStorage, autoSendPushToken: Boolean, needReInitialization: Boolean) {
+        // A did the app brings is taken once, while the shop has none, as on the new core.
+        if (!needReInitialization) storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
+
+        // Popups v3 start from the /init answer; in their test mode /init counts test popups too.
+        registerManager.onInitFinished = { flag ->
+            popupsV3InitFlag = flag
+            popupsV3?.onInit(flag)
+        }
+        registerManager.extraInitParams = ::popupsV3InitParams
+        registerManager.onStateChange = { state -> instanceState.set(state) }
+        // needReInitialization: the server's new did gets the push token, whose week was the old did's.
+        registerManager.onDidReplaced = { storage.forgetPushTokenWeek() }
+
+        registerManager.initialize(
+            context = context,
+            contentResolver = context.contentResolver,
+            autoSendPushToken = autoSendPushToken,
+            needReInitialization = needReInitialization
+        )
+    }
+
+    /**
+     * The legacy path brought up only for a push: with a stored `did`, no `/init`, no session of its own (its
+     * requests do not move the last activity of the stored one), no popup, no token; ready on that `did`,
+     * with which the push's event goes. [Rees46] brings a shop without one up as a full instance instead;
+     * should one come here all the same, it starts as it always did (`/init` for a `did`, which the push's
+     * event then waits for), only sending no token.
+     */
+    private fun startLegacyForPush(context: Context, config: Rees46Config, storage: ShopStorage) {
+        storage.adoptConfiguredDid(config.deviceId, userSettingsRepository)
+        if (userSettingsRepository.getDid().isEmpty()) {
+            startLegacy(context, config, storage, autoSendPushToken = false, needReInitialization = false)
+            return
+        }
+        networkRepository.movesLegacySession = false
+        instanceState.set(SdkState.READY)
+    }
+
+    /** The new core's `/init` and state ([CoreInit]); requests wait for it in [CoreV2]. Started by the caller. */
+    private fun createCoreInit(
+        core: CoreV2,
+        connectivity: ConnectivityMonitor,
+        lifecycle: ProcessAppLifecycle,
+        context: Context,
+        config: Rees46Config,
+        storage: ShopStorage,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean,
+        pushOnly: Boolean,
+    ): CoreInit {
+        val contentResolver = context.contentResolver
+        return CoreInit(
+            setup = InitSetup(
+                shopId = config.shopId,
+                needReInitialization = needReInitialization,
+                deviceId = config.deviceId,
+                advertisingId = if (config.sendAdvertisingId) ::readAdvertisingId else null,
+                extraParams = ::popupsV3InitParams,
+                skipInit = { RegisterManager.isPreLaunchDevice(contentResolver) },
+                pushOnly = pushOnly,
+            ),
+            send = { params -> core.client.send(NetworkMethod.GET(CoreHttpClient.INIT_PATH), params) },
+            settings = userSettingsRepository,
+            storage = storage,
+            state = instanceState,
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            session = SessionWindow(userSettingsRepository, storage).also { session ->
+                session.addListener { sid, changed -> if (changed) sessionChanged(sid) }
+            },
+            hooks = object : InitHooks {
+                override fun onAnswer(answer: JSONObject, fresh: Boolean) {
+                    val response = answer.mapToSdkInitResponse()
+                    // A popup is shown from a fresh answer only, never again from the saved one.
+                    if (fresh) response?.popupDto?.let { inAppNotificationManager.shopPopUp(popupDto = it) }
+                    val flag = response?.popupsV3 == true
+                    popupsV3InitFlag = flag
+                    popupsV3?.onInit(flag)
+                }
+
+                override fun onUsable() {
+                    // What waited for a did on the legacy path (the stories v3 requests) goes now.
+                    networkRepository.executeQueueTasks()
+                    // A push-only instance sends no token: the shop's own instance does.
+                    if (!pushOnly) pushTokenManager.initialize(context = context, autoSendPushToken = autoSendPushToken)
+                }
+            },
+            dispatchers = dispatchers,
+        )
+    }
+
+    /** The source `tracking.setSource` stored, as the queue puts it on `/push`; null when none or expired. */
+    private fun trackingSource(): JSONObject? {
+        val source = getTrackingSourceUseCase() ?: return null
+        return JSONObject().put("from", source.type).put("code", source.code)
+    }
+
+    /** The advertising id for `/init`, or null when it cannot be read. */
+    private suspend fun readAdvertisingId(): String? =
+        initializeAdvertisingIdUseCase.invoke().takeUnless { it.isBlank() || it == AdvertisingUtils.DEFAULT_ADVERTISING_ID }
+
+    /** The test mode of popups v3 makes `/init` count test popups too. */
+    private fun popupsV3InitParams(): Map<String, String> =
+        if (popupsV3?.testMode == true) mapOf(POPUPS_V3_TEST_MODE to "true") else emptyMap()
 
     private fun initNetworkUseCase(url: String?) {
         if (url != null) {
@@ -451,7 +953,7 @@ open class SDK {
                 event = event, code = code, storyId = storyId, slideId = slideId
             )
         } else {
-            Log.i(TAG, "storiesManager is not initialized")
+            log(LogLevel.WARNING, LogCodes.STORIES, "storiesManager is not initialized")
         }
     }
 
@@ -469,7 +971,7 @@ open class SDK {
     /**
      * Return the session ID
      */
-    fun getSid(): String = getUserSettingsValueUseCase.getSid()
+    fun getSid(): String = sessionId.orEmpty()
 
     /**
      * Return the Advertising ID
@@ -489,9 +991,24 @@ open class SDK {
     }
 
     /**
+     * Tracks a tap on a notification: [extras] carry its `NOTIFICATION_TYPE` and `NOTIFICATION_ID`. The tap
+     * attributes the next 48 hours of `/push` events as their `source`. On the new core the event goes
+     * through the queue, once per message in a process, and sets the source only for a type of
+     * [TrackingSourceType].
+     *
      * @param extras from data notification
      */
     fun notificationClicked(extras: Bundle?) {
+        if (isCoreV2) {
+            val type = extras?.getString(NotificationConstants.NOTIFICATION_TYPE)
+            val code = extras?.getString(NotificationConstants.NOTIFICATION_ID)
+            if (type.isNullOrBlank() || code.isNullOrBlank()) {
+                notSdkPush("The clicked push has no type or code", extras?.keySet()?.sorted())
+                return
+            }
+            queuePushEvent(PushEvent.CLICKED, code, type, accepted = {})
+            return
+        }
         notificationHandler.notificationClicked(
             extras = extras,
             sendAsync = { method, params ->
@@ -619,14 +1136,192 @@ open class SDK {
         setPushToken(token = token, provider = PushProvider.FCM, listener = listener)
 
     /**
-     * Releases this SDK instance so it no longer receives push tokens delivered to the
-     * process-global messaging services. Call this for short-lived instances to avoid leaking
-     * them through the active-instances registry. Apps that keep a single long-lived instance
-     * for the whole process usually do not need it.
+     * Stops this instance and takes it out of [Rees46]'s registry and the push fan-out. Call it for
+     * short-lived instances; an app that keeps one instance for the whole process does not need it.
+     *
+     * Afterwards every call through the instance fails with `notInitialized`, on both cores: a
+     * request's old callback gets `onError(-1)` (a request still waiting for a `did` too), and
+     * [deleteUserCredentials] throws [SdkException] without deleting anything or asking `/init`.
+     * [state] is [SdkState.NOT_INITIALIZED]: the state listeners hear it and are dropped. On the new
+     * core ([Rees46Config.coreV2]) the requests in flight are cancelled (`onError(-1)`) and `/init`
+     * stops; the legacy one cannot cancel a request in flight. The shop's data stays on the device, and
+     * a new [Rees46.initialize] for the shop makes a fresh instance.
      */
-    fun release() {
+    fun release() = stop(cancelRequests = true)
+
+    /**
+     * [release] for a push-only instance ([initializeForPush]) that gives way to the app's instance of
+     * its shop: the requests it has in flight — the push's tracking — finish and get their answers.
+     */
+    internal fun giveWay() = stop(cancelRequests = false)
+
+    /** Waits for an initialization in progress: a release during it is not undone by its end. */
+    private fun stop(cancelRequests: Boolean): Unit = synchronized(initLock) {
+        released = true
         SdkRegistry.unregister(this)
+        // Nothing more goes out: no /init, and requests fail with notInitialized.
+        stopCurrent(cancelRequests)
+        instanceState.set(SdkState.NOT_INITIALIZED)
+        instanceState.dropListeners()
+        // Only this instance's level goes: another live instance of the shop keeps logging at its own.
+        logShopId?.let { SdkLogs.unregister(it, owner = this) }
     }
+
+    /**
+     * Sends the events waiting in the queue now, without waiting for the queue's own triggers, and
+     * returns once each of them was tried: sent, dropped, or held — by no network, by the instance not
+     * being ready yet, or by a server that asked to wait (`Retry-After`). An event waiting out the pause
+     * after a failure goes again at once; it promises no delivery. On the legacy core, which has no queue,
+     * it returns at once, and so it does for a shop that refused the SDK: its queue was emptied.
+     *
+     * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
+     * was released.
+     */
+    suspend fun flush() {
+        val core = core
+        if (core == null || released) throw SdkException(SdkError.NotInitialized)
+        (core as? CoreV2)?.flush()
+    }
+
+    /**
+     * [flush] for Java and for code outside coroutines: [listener] gets [SdkResult.Success] once the
+     * queue was tried, or [SdkResult.Failure] with the error, once, on the main thread.
+     */
+    fun flush(listener: CompletionListener<Unit>) {
+        calls.launch {
+            val result: SdkResult<Unit> = try {
+                flush()
+                SdkResult.Success(Unit)
+            } catch (e: SdkException) {
+                SdkResult.Failure(e.error)
+            }
+            complete(listener, result)
+        }
+    }
+
+    /**
+     * Forgets this shop's customer on this device: the `did`, the session (`sid` and the time of the last
+     * activity), the saved `/init` answer, the source [tracking] `setSource` set, the dates the push
+     * token was sent (so the token goes to the next customer), the shop's recent searches, the answers
+     * the widgets keep in memory and, on the new core, the queue of events not sent yet. The `did` and
+     * the session also go from the files older releases kept them in, so a later start cannot read them
+     * back. The stories' state, the device's push token, its A/B group and its advertising id stay: they
+     * belong to the device, not to the customer. Logs `device_id_reset`.
+     *
+     * The instance stays registered and asks `/init` again without a `did`; the server hands out a new
+     * one, and requests made meanwhile wait for it, the push token among them. An answer to an `/init`
+     * sent before is dropped. Other shops of the app keep their customers.
+     *
+     * When part of the data does not reach the disk, the call still ends normally: there is no error for
+     * storage. The failure is logged as `storage_failed` (and not as `device_id_reset`), and the next
+     * call tries again.
+     *
+     * Android's Auto Backup (on by default for apps targeting Android 6.0 and later) copies the app's
+     * `SharedPreferences`, the SDK's among them, and restores them on the user's new device: the `did`
+     * of the backed-up customer comes back there. A library cannot change the app's backup rules; an
+     * app that wants every device to start without one excludes the SDK's files in its own
+     * `fullBackupContent` / `dataExtractionRules`, all in the `sharedpref` domain:
+     * - `personalization_sdk_<shopId>.xml`, the shop's partition (with a [Rees46Config.storageKey],
+     *   `<storageKey>_personalization_sdk_<shopId>.xml`);
+     * - `personalization_sdk.device.xml`, the device's A/B group, push token and advertising id;
+     * - `DEFAULT_STORAGE_KEY.xml`, the store of releases before per-shop partitions, and `<storageKey>.xml`,
+     *   the store an app named with `preferencesKey`: read once into the partition;
+     * - `personalization_sdk_<shopId>_stories.xml`, the stories seen;
+     * - `personalization_sdk_<shopId>_popups_v3.xml`, when popups v3 were shown;
+     * - `personalization_ui_recent_searches.xml`, the search widget's recent searches.
+     *
+     * The saved `/init` answer and the queue are kept in `noBackupFilesDir` and never leave the device.
+     *
+     * Cookies are not the SDK's to delete. The new core's requests never send or keep one. The legacy core's
+     * requests, and those of the stories v3 and popups v3 clients on either core, follow the app's global
+     * `java.net.CookieHandler`: an app that installs one keeps the API's `did` cookie there — the forgotten
+     * customer's too — until it clears that store itself.
+     *
+     * @throws SdkException with [SdkError.NotInitialized] when the instance was never initialized or
+     * was released; nothing is deleted then.
+     */
+    suspend fun deleteUserCredentials() {
+        val core = core
+        val storage = storage
+        if (core == null || storage == null || released) throw SdkException(SdkError.NotInitialized)
+        // Once the hold begins, the wipe and the restart run to the end even if the caller is cancelled:
+        // stopping between them would leave the instance initializing for good.
+        withContext(NonCancellable) { forgetCustomer(core, storage) }
+    }
+
+    private suspend fun forgetCustomer(core: Core, storage: ShopStorage) {
+        // From here on an answer to an /init sent before is dropped: one landing during the wipe would
+        // write the forgotten did back. The new core also holds requests until the new did.
+        val init = (core as? CoreV2)?.init
+        init?.holdForRestart()
+        // A send of the push token on its way is the forgotten customer's: it records no week after the wipe.
+        if (::pushTokenManager.isInitialized) pushTokenManager.core?.customerForgotten()
+        val restart = if (init == null) registerManager.beginRestart() else 0
+        val complete = withContext(dispatchers.io) {
+            val stored = core.deleteUserCredentials(storage)
+            val searches = RecentSearches.forget(context, storage.layout.shopId)
+            ResponseCache.shared.clear()
+            stored && searches
+        }
+        if (complete) {
+            log(
+                LogLevel.INFO,
+                LogCodes.DEVICE_ID_RESET,
+                "The customer's data was deleted; /init asks for a new did",
+                mapOf("reason" to LogReasons.DELETE_USER_CREDENTIALS)
+            )
+        } else {
+            log(
+                LogLevel.ERROR,
+                LogCodes.STORAGE_FAILED,
+                "The customer's data was not all deleted",
+                mapOf("op" to ShopStorage.OP_DELETE_CREDENTIALS)
+            )
+        }
+        try {
+            if (init != null) init.restart() else registerManager.restartAsNewDevice(restart)
+        } catch (e: Exception) {
+            // The customer is forgotten either way; the next launch asks /init.
+            log(LogLevel.ERROR, LogCodes.SDK_LOG, "/init could not be restarted after the deletion", throwable = e)
+        }
+    }
+
+    /**
+     * [deleteUserCredentials] for Java and for code outside coroutines: [listener] gets
+     * [SdkResult.Success] once the customer is forgotten, or [SdkResult.Failure] with the error
+     * ([SdkError.NotInitialized]), once, on the main thread.
+     */
+    fun deleteUserCredentials(listener: CompletionListener<Unit>) {
+        calls.launch {
+            val result: SdkResult<Unit> = try {
+                deleteUserCredentials()
+                SdkResult.Success(Unit)
+            } catch (e: SdkException) {
+                SdkResult.Failure(e.error)
+            }
+            complete(listener, result)
+        }
+    }
+
+    /** Hands [result] to the app's [listener] on the main thread; an exception it throws is logged. */
+    private suspend fun <T> complete(listener: CompletionListener<T>, result: SdkResult<T>) {
+        withContext(dispatchers.main) {
+            try {
+                listener.onComplete(result)
+            } catch (e: Exception) {
+                log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "The app's CompletionListener threw", throwable = e)
+            }
+        }
+    }
+
+    /** Writes to the SDK's log under this instance's shop, so the shop's [Rees46Config.logLevel] applies. */
+    internal fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) = SdkLogs.log(level, code, message, logShopId, context, throwable)
 
     /**
      * Quick search
@@ -672,7 +1367,7 @@ open class SDK {
                 .put(InternalParameter.SEARCH_QUERY, query)
             getAsync(SEARCH_FIELD, params.build(), listener)
         } else {
-            warn("Search not initialized")
+            log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")
         }
     }
 
@@ -700,7 +1395,7 @@ open class SDK {
                 listener.onSuccess(search?.blank)
             }
         } else {
-            warn("Search not initialized")
+            log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")
         }
     }
 
@@ -793,7 +1488,8 @@ open class SDK {
     }
 
     /**
-     * Custom event tracking.
+     * Custom event tracking. On the new core the event goes through the queue and [listener] is kept until
+     * it is sent, up to 7 days ([TrackingApi]).
      *
      * @param event Event key
      * @param time Optional UNIX time in seconds
@@ -889,9 +1585,7 @@ open class SDK {
      *
      * @return String
      */
-    fun getDid(): String? {
-        return getUserSettingsValueUseCase.getDid()
-    }
+    fun getDid(): String? = deviceId.orEmpty()
 
     /**
      * Signs up for price reduction
@@ -944,7 +1638,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE_PRICE, params, listener)
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1001,7 +1695,7 @@ open class SDK {
             }
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE, params, listener)
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1078,7 +1772,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_MANAGE, params, listener)
             popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
@@ -1143,16 +1837,46 @@ open class SDK {
             sendAsync("$SEGMENTS_FIELD/$method", params, listener)
             popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
     /**
+     * Tracks a push that reached the app, from its `data`. On the legacy core it goes to `track/received`;
+     * on the new core to `track/delivered`, through the queue, once per message in a process, and only for
+     * a push with both an `id` and a `type`.
+     *
      * @param data from data notification
      */
     fun notificationReceived(data: Map<String, String>) {
+        trackDelivered(data, accepted = {})
+    }
+
+    /**
+     * [notificationReceived]; [accepted] hears the instance that took the delivery: on the new core once a
+     * queue accepted it — not for a repeat, nor for a push without an `id` and a `type` — and on the legacy
+     * core at once.
+     */
+    private fun trackDelivered(data: Map<String, String>, accepted: (SDK) -> Unit) {
+        if (isCoreV2) {
+            val code = data[ID_FIELD]
+            val type = data[TYPE_FIELD]
+            if (code.isNullOrBlank() || type.isNullOrBlank()) {
+                notSdkPush("The push has no id or type", data.keys.sorted())
+                return
+            }
+            queuePushEvent(PushEvent.DELIVERED, code, type, accepted)
+            return
+        }
+        trackReceivedLegacy(data)
+        accepted(this)
+    }
+
+    private fun trackReceivedLegacy(data: Map<String, String>) {
         if (!isSdkInitialized) {
-            warn(
+            log(
+                LogLevel.WARNING,
+                LogCodes.PUSH,
                 "notificationReceived() called before SDK.initialize(); ignoring. " +
                     "Initialize SDK.instance in Application.onCreate so push delivery works in a cold process."
             )
@@ -1172,21 +1896,211 @@ open class SDK {
                 sendNetworkMethodUseCase.postAsync(TRACK_RECEIVED, params)
             }
         } catch (e: JSONException) {
-            Log.e(TAG, e.message, e)
+            log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
-    private fun receiveMessage(data: Map<String, String>) {
-        // Track the delivery on this instance's network and fire the deprecated per-instance listener.
-        // The process-global listener (Rees46.setOnMessageListener) is dispatched by the router
-        // ([Rees46.handlePush] / the [onMessage] companion) instead, so the notification shows even for a
-        // shop that has no live instance yet.
-        notificationReceived(data = data)
+    /**
+     * Tracks the delivery on this instance's network and fires the deprecated per-instance listener;
+     * [accepted] runs once the delivery is taken ([trackDelivered]). The process-global listener
+     * (Rees46.setOnMessageListener) is dispatched by the router ([Rees46.handlePush] / the [onMessage]
+     * companion) instead, so the notification shows even for a shop that has no live instance yet.
+     */
+    private fun receiveMessage(data: Map<String, String>, accepted: (SDK) -> Unit) {
+        trackDelivered(data, accepted)
         onMessageListener?.onMessage(data = data.toNotificationData())
     }
 
-    /** Entry point for [Rees46.handlePush]: track a received push on the already-resolved instance. */
-    internal fun onPushReceived(data: Map<String, String>) = receiveMessage(data = data)
+    /**
+     * Entry point for [Rees46.handlePush]: track a received push on the already-resolved instance;
+     * [accepted] hears the instance that took the delivery, for the push callbacks.
+     */
+    internal fun onPushReceived(data: Map<String, String>, accepted: (SDK) -> Unit) = receiveMessage(data, accepted)
+
+    /** Whether the instance runs on the new core. */
+    private val isCoreV2: Boolean get() = core?.isV2 == true
+
+    /**
+     * A shown, tapped or dismissed push of the message [code] of mailing [type] for [Rees46.handlePush];
+     * [accepted] hears the instance that took it, for the push callbacks. The new core queues it
+     * ([queuePushEvent]) and calls [accepted] once a queue accepted it. The legacy core reports neither a
+     * shown nor a dismissed notification, as before, and calls [accepted] at once; [Rees46.handlePush]
+     * takes its taps through [notificationClicked] and its deliveries through [onPushReceived].
+     */
+    internal fun pushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
+        if (isCoreV2) {
+            queuePushEvent(event, code, type, accepted)
+            return
+        }
+        log(LogLevel.DEBUG, LogCodes.PUSH, "The legacy core does not report this push event", mapOf("event" to event.name.lowercase(Locale.ROOT)))
+        accepted(this)
+    }
+
+    /**
+     * Returns once the events this instance accepted before the call are written to the disk of its
+     * queue, or after [timeoutMs]; at once on the legacy core, which has no queue. Blocks: not for the
+     * main thread.
+     */
+    internal fun awaitEventsWritten(timeoutMs: Long) {
+        val core = core as? CoreV2 ?: return
+        runBlocking { withTimeoutOrNull(timeoutMs) { core.awaitWrites() } }
+    }
+
+    /**
+     * The new core's push event: `track/delivered`, `track/opened`, `track/clicked` or `track/closed`
+     * through the queue with `code` and `type`, once per message and event in a process (a repeat is a
+     * no-op). The event is reserved ([PushHub.reserve]) while it is handed to the queue, and counts as sent
+     * once a queue accepted it ([offerPushEvent]); only then [accepted] runs. A repeat that comes meanwhile
+     * goes only if this one is not accepted.
+     *
+     * A tap of a type of [TrackingSourceType] sets the tracking source for 48 hours (the `/push` events carry
+     * it as `source`) before it is handed over: a `/push` that goes while the tap is on its way — to the
+     * instance that took this one's place — carries it too. When no queue takes the tap, the source is put
+     * back as it was.
+     */
+    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
+        if (core !is CoreV2) return
+        val reservation = PushHub.reserve(shopId, event, code) { queuePushEvent(event, code, type, accepted) }
+        if (reservation != PushHub.Reservation.TAKEN) {
+            val message = if (reservation == PushHub.Reservation.REPEAT) "The push event was handled already"
+            else "The push event is being handled already: this one goes only if that one is not accepted"
+            log(LogLevel.DEBUG, LogCodes.PUSH, message, mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
+            return
+        }
+        val undoSource = if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) setTapSource(type, code) else null
+        offerPushEvent(event, code, type, undoSource, accepted)
+    }
+
+    /**
+     * Sets the tap's tracking source and returns what puts back the source before it, while the stored one is
+     * still this tap's; null when it could not be set.
+     */
+    private fun setTapSource(type: String, code: String): (() -> Unit)? {
+        val preferences = storage?.preferences
+        val before = preferences?.let {
+            Triple(
+                it.getString(StorageKeys.TRACKING_SOURCE_TYPE, null),
+                it.getString(StorageKeys.TRACKING_SOURCE_CODE, null),
+                if (it.contains(StorageKeys.TRACKING_SOURCE_SAVED_AT)) it.getLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, 0L) else null,
+            )
+        }
+        try {
+            notificationHandler.setClickSource(type = type, code = code)
+        } catch (e: Exception) {
+            log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "The tap's tracking source was not kept", throwable = e)
+            return null
+        }
+        if (preferences == null || before == null) return null
+        return {
+            // Another tap or setSource since keeps its own.
+            if (preferences.getString(StorageKeys.TRACKING_SOURCE_TYPE, null) == type &&
+                preferences.getString(StorageKeys.TRACKING_SOURCE_CODE, null) == code
+            ) {
+                val (beforeType, beforeCode, beforeSavedAt) = before
+                val editor = preferences.edit()
+                if (beforeType != null) editor.putString(StorageKeys.TRACKING_SOURCE_TYPE, beforeType) else editor.remove(StorageKeys.TRACKING_SOURCE_TYPE)
+                if (beforeCode != null) editor.putString(StorageKeys.TRACKING_SOURCE_CODE, beforeCode) else editor.remove(StorageKeys.TRACKING_SOURCE_CODE)
+                if (beforeSavedAt != null) editor.putLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, beforeSavedAt) else editor.remove(StorageKeys.TRACKING_SOURCE_SAVED_AT)
+                editor.apply()
+            }
+        }
+    }
+
+    /**
+     * Hands the reserved push [event] to this instance's queue.
+     * - Accepted: it counts as sent ([PushHub.confirm]), and [accepted] hears this instance.
+     * - Refused with `notInitialized` because another instance of the shop took this one's place (one
+     *   brought up for a push gave way to the app's): it goes to that one.
+     * - Refused otherwise (the instance released, the shop refused): it is not sent and may come again
+     *   ([PushHub.release]); a tap's source goes back as it was ([undoSource]).
+     */
+    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit) {
+        val shop = shopId
+        val core = core as? CoreV2
+        if (core == null) {
+            undoSource?.invoke()
+            PushHub.release(shop, event, code)
+            return
+        }
+        core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
+            if (refused == null) {
+                PushHub.confirm(shop, event, code)
+                accepted(this)
+                return@accept
+            }
+            val live = SdkRegistry.byShopId(shop)
+            if (refused == SdkError.NotInitialized && live != null && live !== this) {
+                log(LogLevel.DEBUG, LogCodes.PUSH, "The push event goes to the shop's instance that took this one's place", mapOf("event" to event.name.lowercase(Locale.ROOT)))
+                live.offerPushEvent(event, code, type, undoSource, accepted)
+                return@accept
+            }
+            // Before the repeats parked meanwhile try again: one of them may set the source anew.
+            try {
+                undoSource?.invoke()
+            } catch (e: Exception) {
+                log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "The tap's tracking source was not put back", throwable = e)
+            }
+            PushHub.release(shop, event, code)
+            log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
+        }
+    }
+
+    private fun pathOf(event: PushEvent): String = "track/" + event.name.lowercase(Locale.ROOT)
+
+    private fun notSdkPush(message: String, keys: List<String>?) {
+        // Not the keys' values: they carry the push's content.
+        log(LogLevel.DEBUG, LogCodes.PUSH_DROPPED, "$message: not a push of the SDK", mapOf("reason" to LogReasons.NOT_SDK_PUSH, "keys" to keys))
+    }
+
+    /**
+     * For the bridges: [body] as an event of [path] through the queue, as the tracking methods send it —
+     * `push`, `push/custom`, `track/stories`, `track/slider` and `popup/showed`. The queue adds the common
+     * fields and, on `/push`, the stored source when the event goes. A push event (`track/delivered`,
+     * `track/opened`, `track/clicked`, `track/closed`, `track/received`) is [SdkError.InvalidArgument]: a
+     * bridge hands the push to [Rees46.handlePush], which keeps its rules (once per message, the callbacks).
+     *
+     * [listener] hears once, on the main thread: [SdkResult.Success] once the event is accepted — written
+     * to disk, the way the contract's tracking methods complete — or [SdkResult.Failure] with
+     * [SdkError.InvalidArgument] for another path or fields JSON cannot hold (NaN, Infinity),
+     * [SdkError.NotInitialized], or [SdkError.ShopBlocked]. It never throws. On
+     * the legacy core, which has no queue, the event goes at once and [listener] hears the server's answer.
+     */
+    @BridgeApi
+    fun queueEvent(path: String, body: JSONObject, listener: CompletionListener<Unit>) {
+        val core = core
+        val error = when {
+            path in EventQueue.PUSH_EVENT_PATHS || path == TRACK_RECEIVED ->
+                SdkError.InvalidArgument("$path is a push event: hand the push to Rees46.handlePush")
+            path !in CoreV2.EVENT_PATHS -> SdkError.InvalidArgument("$path is not an event of the queue")
+            core == null || released -> SdkError.NotInitialized
+            else -> null
+        }
+        if (error != null || core == null) {
+            calls.launch { complete(listener, SdkResult.Failure(error ?: SdkError.NotInitialized)) }
+            return
+        }
+        // A copy of the fields as they are now; null for fields JSON cannot hold (NaN, Infinity).
+        val copy = try {
+            val text: String? = body.toString()
+            text?.let(::JSONObject)
+        } catch (e: Exception) {
+            null
+        }
+        if (copy == null) {
+            log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A bridge's event was refused: its fields are not JSON", mapOf("reason" to "invalid_json", "path" to path))
+            calls.launch { complete(listener, SdkResult.Failure(SdkError.InvalidArgument("The event's fields cannot be written as JSON"))) }
+            return
+        }
+        if (core is CoreV2) {
+            core.accept(path, copy) { refused ->
+                calls.launch { complete(listener, if (refused == null) SdkResult.Success(Unit) else SdkResult.Failure(refused)) }
+            }
+            return
+        }
+        sendNetworkMethodUseCase.postAsync(path, copy, BridgeErrors.listener { result ->
+            calls.launch { complete(listener, if (result is SdkResult.Failure) result else SdkResult.Success(Unit)) }
+        })
+    }
 
     companion object {
 
@@ -1226,6 +2140,7 @@ open class SDK {
         private const val ADD_FIELD = "add"
         private const val ID_FIELD = "id"
         private const val POPUPS_V3_TEST_MODE = "testmode"
+        private const val REASON_REPEAT = "repeat"
 
         /**
          * The SDK that receives push callbacks (see [onMessage]): whichever SDK was last passed to
@@ -1238,36 +2153,50 @@ open class SDK {
         val instance: SDK
             get() = SdkRegistry.currentOrLazy()
 
-        fun userAgent(): String {
-            return PERSONALIZATION_SDK + BuildConfig.FLAVOR.uppercase(Locale.getDefault()) + ", v" + BuildConfig.VERSION_NAME
-        }
+        fun userAgent(): String = userAgent(BuildConfig.FLAVOR, BuildConfig.VERSION_NAME)
 
         /**
+         * The flavor is upper-cased without the device's locale: under Turkish or Azerbaijani the `i`
+         * of `personaclick` would become `İ`, which no HTTP header may carry, and every request of the
+         * new client would fail.
+         */
+        internal fun userAgent(flavor: String, version: String): String =
+            PERSONALIZATION_SDK + flavor.uppercase(Locale.ROOT) + ", v" + version
+
+        /**
+         * Writes [message] to the SDK's log at [LogLevel.DEBUG] (see [Rees46Config.logLevel]).
+         *
          * @param message Message
          */
         fun debug(message: String) {
-            Log.d(TAG, message)
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.SDK_LOG, message)
         }
 
         /**
+         * Writes [message] to the SDK's log at [LogLevel.WARNING].
+         *
          * @param message Message
          */
         fun warn(message: String?) {
-            Log.w(TAG, message.toString())
+            SdkLogs.log(LogLevel.WARNING, LogCodes.SDK_LOG, message.toString())
         }
 
         /**
+         * Writes [message] to the SDK's log at [LogLevel.ERROR].
+         *
          * @param message Error message
          */
         fun error(message: String?) {
-            Log.e(TAG, message.toString())
+            SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, message.toString())
         }
 
         /**
+         * Writes [message] and [e] to the SDK's log at [LogLevel.ERROR].
+         *
          * @param message Error message
          */
         fun error(message: String?, e: Throwable?) {
-            Log.e(TAG, message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, message.toString(), throwable = e)
         }
 
         /**
@@ -1300,21 +2229,30 @@ open class SDK {
          * @param data the push data payload (title/body/icon/…)
          */
         fun onMessage(data: Map<String, String>) {
-            val shopId = PushTargetResolver.resolve(
-                payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD],
-                liveShopIds = SdkRegistry.shopIds()
-            )
+            val payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD]
+            val liveShopIds = SdkRegistry.shopIds()
+            val shopId = PushTargetResolver.resolve(payloadShopId = payloadShopId, liveShopIds = liveShopIds)
             val target = shopId?.let { SdkRegistry.byShopId(it) }
             if (target == null || shopId == null) {
-                warn(
-                    "onMessage: push dropped — no shop resolves it " +
-                        "(shop_id=${data[PreferencesPartition.SHOP_ID_FIELD]}, live=${SdkRegistry.shopIds()})."
+                val reason = if (payloadShopId == null && liveShopIds.size > 1) LogReasons.AMBIGUOUS_SHOP else LogReasons.UNKNOWN_SHOP
+                SdkLogs.log(
+                    LogLevel.WARNING,
+                    LogCodes.PUSH_DROPPED,
+                    "onMessage: push dropped — no shop resolves it",
+                    payloadShopId,
+                    mapOf("reason" to reason, "live" to liveShopIds.size)
                 )
                 return
             }
-            // Show via the process-global listener, then track received on the instance.
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_RECEIVED, "Push handed to its shop", shopId, mapOf("event" to "received"))
+            val payload = PushPayload.parse(data)?.withShop(shopId)
+            // Kept before it is shown: a notification the SDK draws for it reports the whole push.
+            payload?.let(PushHub::remember)
+            // Show via the process-global listener, then track the delivery on the instance.
             SdkRegistry.dispatchMessage(shopId = shopId, data = data.toNotificationData())
-            target.receiveMessage(data = data)
+            if (target.dropsPushWithoutDid()) return
+            // The callbacks hear the delivery once a queue accepted it: those of the instance that took it.
+            target.receiveMessage(data) { taker -> payload?.let { PushHub.event(PushEvent.DELIVERED, it, taker.pushCallbacks) } }
         }
 
         /**

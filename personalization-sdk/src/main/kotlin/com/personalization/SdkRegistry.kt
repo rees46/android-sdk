@@ -11,7 +11,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * public surface: it simply owns the static routing state that used to live in [SDK]'s companion
  * (`currentInstance` + `activeInstances`), so the single-instance behaviour is unchanged while the
  * plumbing for resolving an instance by `shop_id` is in place and tested. The public
- * `Rees46.initialize/getInstance/registerShops` API will be layered on top later.
+ * `Rees46.initialize/instance/register` API will be layered on top later.
  *
  * Two pieces of state, matching what [SDK] needs:
  *  - an ordered list of initialized instances, for fanning a push token out to each ([all]);
@@ -47,25 +47,32 @@ internal object SdkRegistry {
     private class Awaiter(val shopId: String?, val onReady: (SDK) -> Unit)
 
     /**
-     * Records an initialized [sdk] for [shopId]: it joins the push fan-out set and becomes the
-     * current default. Re-registering the same instance keeps a single entry; a new instance for an
+     * Records an initialized [sdk] for [shopId]: it joins the push fan-out set and, unless it was
+     * brought up only for a push ([SDK.pushOnly]), becomes the current default. Re-registering the same instance keeps a single entry; a new instance for an
      * already-known [shopId] replaces the mapping (last writer wins) and evicts the superseded
      * instance from the fan-out set, so a re-init does not leave the old object receiving push tokens.
+     * An object initialized again for another shop (the deprecated `SDK.initialize`) is that shop's only.
      */
     fun register(shopId: String, sdk: SDK) {
         val toNotify: List<Awaiter>
         synchronized(lock) {
             instances.remove(sdk)
             instances.add(sdk)
+            // The shop it was initialized for before no longer finds it: its start was stopped.
+            byShop.entries.removeAll { it.value === sdk && it.key != shopId }
             // A re-init builds a new SDK for the same shop: drop the one it supersedes, or it lingers
             // in the fan-out set forever — still fed push tokens and inflating all()/count().
             val previous = byShop.put(shopId, sdk)
             if (previous != null && previous !== sdk) {
                 instances.remove(previous)
             }
-            current = sdk
-            toNotify = takeMatchingAwaiters(shopId)
+            // An instance brought up only for a push is not the app's: it becomes neither the default
+            // (SDK.instance) nor the one they wait for. The app's own instance of the shop is.
+            if (!sdk.pushOnly) current = sdk
+            toNotify = if (sdk.pushOnly) emptyList() else takeMatchingAwaiters(shopId)
         }
+        // Handed to the app that waits for it: what a push's start left for the app goes.
+        if (toNotify.isNotEmpty()) sdk.handedToApp()
         toNotify.forEach { it.onReady(sdk) }
     }
 
@@ -89,7 +96,7 @@ internal object SdkRegistry {
         val alreadyLive: SDK?
         val awaiter: Awaiter?
         synchronized(lock) {
-            alreadyLive = if (shopId != null) byShop[shopId] else current
+            alreadyLive = (if (shopId != null) byShop[shopId] else current)?.takeUnless { it.pushOnly }
             if (alreadyLive == null) {
                 awaiter = Awaiter(shopId, onReady)
                 awaiting.add(awaiter)
@@ -98,10 +105,11 @@ internal object SdkRegistry {
             }
         }
         return if (alreadyLive != null) {
-            onReady(alreadyLive)
+            onReady(alreadyLive.handedToApp())
             Cancellable.NOOP
         } else {
-            val added = awaiter!!
+            // Set under the lock whenever nothing was live; the fallback is unreachable.
+            val added = awaiter ?: return Cancellable.NOOP
             Cancellable { synchronized(lock) { awaiting.remove(added) } }
         }
     }
@@ -127,8 +135,20 @@ internal object SdkRegistry {
      * The current default, lazily creating an (uninitialized) instance if none exists. Preserves the
      * legacy `SDK.instance` fallback: a push delivered before `initialize()` ran still reaches a
      * guarded instance instead of crashing the host.
+     *
+     * When the only live instance is one a push brought up for itself ([SDK.pushOnly]), which is never the
+     * app's, the app gets its shop's full instance as [Rees46.instance] makes it: an uninitialized one would
+     * fail its calls, and initialized it would be a second instance of the shop beside the push's.
      */
-    fun currentOrLazy(): SDK = synchronized(lock) { current ?: SDK().also { current = it } }
+    fun currentOrLazy(): SDK {
+        current?.let { return it.handedToApp() }
+        val pushOnlyShop = synchronized(lock) {
+            if (current != null) null else byShop.entries.singleOrNull()?.takeIf { it.value.pushOnly }?.key
+        }
+        // Outside the lock: making the instance registers it here.
+        if (pushOnlyShop != null) Rees46.appInstance(pushOnlyShop)?.let { return it }
+        return synchronized(lock) { current ?: SDK().also { current = it } }
+    }
 
     /** Sets (or clears, with null) the process-global push-message listener. */
     fun setMessageListener(listener: OnShopMessageListener?) {

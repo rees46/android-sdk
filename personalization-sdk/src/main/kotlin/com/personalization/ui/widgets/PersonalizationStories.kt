@@ -283,7 +283,8 @@ class PersonalizationStories @JvmOverloads constructor(
         instanceHandle?.cancel()
         instanceHandle = null
         pendingOpen = null
-        SDK.error("PersonalizationStories: $code $message")
+        // The code only: the message of a failed request is the answer's body.
+        SDK.error("PersonalizationStories: request failed ($code)")
         if (stories.isEmpty()) visibility = View.GONE
         onError?.invoke(code, message)
     }

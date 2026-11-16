@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class NetworkError(
     private val tag: String,
@@ -8,9 +10,6 @@ class NetworkError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */ "Error caught in $functionName : Network connection issue "
-        )
+        SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "Error caught in $functionName : Network connection issue ")
     }
 }

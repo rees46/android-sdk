@@ -1,6 +1,7 @@
 package com.personalization
 
-import android.util.Log
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
 import com.personalization.api.params.ProductItemParams
 import org.json.JSONArray
 import org.json.JSONException
@@ -189,7 +190,7 @@ class Params : AbstractParams<Params>() {
                 params.put(field.value, code)
             }
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
         return this
     }
@@ -230,7 +231,7 @@ class Params : AbstractParams<Params>() {
             }
             array.put(jsonObject)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
 
         return this
@@ -248,7 +249,7 @@ class Params : AbstractParams<Params>() {
 
             params.put("custom", jsonObject)
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
 
         return this

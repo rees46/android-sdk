@@ -4,11 +4,14 @@ package com.personalization.popups
 internal sealed class PopupsV3ListResult {
     class Success(val list: PopupsV3List) : PopupsV3ListResult()
 
-    /** 4xx: кешируется пустым списком на [PopupsV3List.DEFAULT_TTL]. */
-    class ClientError(val code: Int, val message: String?) : PopupsV3ListResult()
+    /** 4xx или `2xx` не по контракту: кешируется пустым списком на [PopupsV3List.DEFAULT_TTL]. */
+    class ClientError(val code: Int) : PopupsV3ListResult()
 
-    /** Сеть, 5xx, неразборчивый ответ: не кешируется, повтор при следующем поводе. */
-    class Failure(val message: String?) : PopupsV3ListResult()
+    /**
+     * Сеть, 5xx: не кешируется, повтор при следующем поводе. [reason] — код или класс исключения,
+     * без текста ответа.
+     */
+    class Failure(val reason: String) : PopupsV3ListResult()
 }
 
 /** Сеть попапов v3. Ответы — на главном потоке. */
@@ -311,11 +314,11 @@ internal class PopupsV3Engine(
                     setList(list.popups)
                 }
                 is PopupsV3ListResult.ClientError -> {
-                    debugLog("list request failed (${result.code}): ${result.message}")
+                    debugLog("list request failed: ${result.code}")
                     cache = Cache(currentSid, test, clock() + PopupsV3List.DEFAULT_TTL * 1000, emptyList())
                     setList(emptyList())
                 }
-                is PopupsV3ListResult.Failure -> debugLog("list request failed: ${result.message}")
+                is PopupsV3ListResult.Failure -> debugLog("list request failed: ${result.reason}")
             }
             if (reloadAfterLoad) {
                 reloadAfterLoad = false
@@ -416,8 +419,9 @@ internal class PopupsV3Engine(
             return
         }
         showing += id
-        if (popup.needsPromoCode) {
-            promoCode(popup.promoCodeListId!!) { code ->
+        val promoCodeListId = popup.promoCodeListId.takeIf { popup.needsPromoCode }
+        if (promoCodeListId != null) {
+            promoCode(promoCodeListId) { code ->
                 if (code == null) {
                     showing -= id
                     debugLog("popup $id skipped: no promo code")

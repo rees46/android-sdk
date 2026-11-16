@@ -39,4 +39,9 @@ class NotificationHandler @Inject constructor(
             }
         )
     }
+
+    /** The source a tap on a push sets for the next 48 hours of `/push` events, as [notificationClicked] does. */
+    internal fun setClickSource(type: String, code: String) {
+        setTrackingSourceUseCase(type = type, code = code)
+    }
 }

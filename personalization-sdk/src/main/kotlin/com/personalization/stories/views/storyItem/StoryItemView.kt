@@ -2,6 +2,8 @@
 
 package com.personalization.stories.views.storyItem
 
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -13,7 +15,6 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -340,10 +341,10 @@ class StoryItemView(
                 }
                 storyStateListener.onStoryStateChanged(StoryState.CLOSE)
             } catch (e: ActivityNotFoundException) {
-                Log.e(SDK.TAG, e.message, e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
             } catch (e: NullPointerException) {
-                Log.e(SDK.TAG, e.message, e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
                 Toast.makeText(context, "Unknown error", Toast.LENGTH_SHORT).show()
             }
         }

@@ -1,5 +1,8 @@
 package com.personalization
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -17,19 +20,24 @@ class MessagingService : FirebaseMessagingService() {
         try {
             // Check if message contains a data payload.
             if (remoteMessage.data.isNotEmpty()) {
-                SDK.debug("Message data payload keys: ${remoteMessage.data.keys}")
+                SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH, "FCM data message", remoteMessage.data["shop_id"], mapOf("keys" to remoteMessage.data.keys.sorted()))
                 // Route through the facade so a lazily-registered shop the push targets is materialized
                 // on demand — the cold process FCM starts to deliver a data-only message only has the
                 // eagerly-initialized shops live, so a lazy shop would otherwise be dropped at routing.
-                Rees46.handlePush(remoteMessage.data, PushEventType.RECEIVED)
+                Rees46.receivePush(remoteMessage.data)
             }
 
-            // Check if message contains a notification payload.
-            if (remoteMessage.notification != null) {
-                SDK.debug("Message has a notification payload")
+            // SDK pushes are data messages; one with only a notification payload is not the SDK's.
+            if (remoteMessage.data.isEmpty() && remoteMessage.notification != null) {
+                SdkLogs.log(
+                    LogLevel.DEBUG,
+                    LogCodes.PUSH_DROPPED,
+                    "FCM message with only a notification payload is not an SDK push",
+                    context = mapOf("reason" to LogReasons.NOT_SDK_PUSH)
+                )
             }
         } catch (throwable: Throwable) {
-            SDK.error("Failed to handle push message", throwable)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "An FCM message could not be handled", throwable = throwable)
         }
     }
 }

@@ -4,9 +4,9 @@ package com.personalization
  * Naming of the SDK's SharedPreferences partitions.
  *
  * Release 2 of multi-instance: storage is partitioned per `shop_id` so instances do not share one
- * file. Transparent to hosts — a host that leaves `SDK.initialize(preferencesKey)` at its default
- * gets a shop-scoped partition plus a one-time migration out of the old shared file, so an existing
- * install keeps its `did`/`sid`. A host that passes its own `preferencesKey` keeps using it verbatim.
+ * file. Transparent to hosts — an existing install's data is read once into the shop's partition,
+ * so it keeps its `did`/`sid`. With an app's `storageKey` (formerly `SDK.initialize(preferencesKey)`)
+ * the partition name gets that prefix; see [com.personalization.core.internal.StorageLayout].
  */
 internal object PreferencesPartition {
 
@@ -30,5 +30,8 @@ internal object PreferencesPartition {
      * Stable, filename-safe SharedPreferences name for [shopId]'s partition. Stable forever:
      * changing the scheme would orphan every existing install's storage.
      */
-    fun keyFor(shopId: String): String = PREFIX + shopId.replace(UNSAFE_FILENAME_CHARS, "_")
+    fun keyFor(shopId: String): String = PREFIX + sanitize(shopId)
+
+    /** [value] as a part of a file name: every character but letters, digits, `_` and `-` becomes `_`. */
+    fun sanitize(value: String): String = value.replace(UNSAFE_FILENAME_CHARS, "_")
 }

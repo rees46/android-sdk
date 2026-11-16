@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class FirebaseError(
     private val tag: String,
@@ -8,10 +10,6 @@ class FirebaseError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */
-            "Failed to retrieve Firebase token: ${exception?.message ?: "Unknown error"}"
-        )
+        SdkLogs.log(LogLevel.WARNING, LogCodes.PUSH_TOKEN_FAILED, "Failed to retrieve Firebase token: ${exception?.javaClass?.simpleName ?: "unknown error"}")
     }
 }

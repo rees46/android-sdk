@@ -93,13 +93,13 @@ class PopupsV3ApiTest {
             idle()
             val error = result as PopupsV3ListResult.ClientError
             assertEquals(code, error.code)
-            assertEquals(errors.getJSONObject(name).getString("message"), error.message)
         }
         replies += StoriesApiV3.Response(503, "<html>down</html>")
         var result: PopupsV3ListResult? = null
         api.list(false, false) { result = it }
         idle()
-        assertTrue(result is PopupsV3ListResult.Failure)
+        // The code only: the answer's text stays out of the log.
+        assertEquals("HTTP 503", (result as PopupsV3ListResult.Failure).reason)
     }
 
     @Test

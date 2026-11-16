@@ -470,7 +470,7 @@ class PopupsV3EngineTest {
         assertEquals(1, env.transport.listCalls)
 
         val failing = Env(emptyList())
-        failing.transport.listResult = { PopupsV3ListResult.ClientError(402, "Payment required") }
+        failing.transport.listResult = { PopupsV3ListResult.ClientError(402) }
         failing.engine.start()
         failing.engine.start()
         assertEquals(1, failing.transport.listCalls)

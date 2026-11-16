@@ -66,8 +66,8 @@ class MultiInstanceE2ETest {
 
     @Test
     fun bothShops_resolveToDistinctInstances() {
-        val a = Rees46.getInstance(shopA)
-        val b = Rees46.getInstance(shopB) // materializes the lazily-registered shop B
+        val a = Rees46.instance(shopA)
+        val b = Rees46.instance(shopB) // materializes the lazily-registered shop B
         assertNotNull(a)
         assertNotNull(b)
         assertNotSame("Each shop must have its own SDK instance", a, b)
@@ -84,19 +84,19 @@ class MultiInstanceE2ETest {
 
     @Test
     fun defaultGetInstance_isAmbiguousWithTwoShopsLive() {
-        Rees46.getInstance(shopB) // make both live
-        assertThrowsOf<AmbiguousShopException> { Rees46.getInstance() }
+        Rees46.instance(shopB) // make both live
+        assertThrowsOf<AmbiguousShopException> { Rees46.instance() }
     }
 
     @Test
     fun getInstance_forUnknownShop_throwsUnknownShopId() {
-        assertThrowsOf<UnknownShopIdException> { Rees46.getInstance("nope-not-a-shop") }
+        assertThrowsOf<UnknownShopIdException> { Rees46.instance("nope-not-a-shop") }
     }
 
     @Test
     fun handlePush_routesToTheNamedShopOnly() {
-        val a = Rees46.getInstance(shopA)
-        val b = Rees46.getInstance(shopB)
+        val a = Rees46.instance(shopA)
+        val b = Rees46.instance(shopB)
         val toA = mutableListOf<NotificationData>()
         val toB = mutableListOf<NotificationData>()
         a.setOnMessageListener { toA.add(it) }
@@ -113,8 +113,8 @@ class MultiInstanceE2ETest {
 
     @Test
     fun handlePush_withUnknownShop_isDropped() {
-        val a = Rees46.getInstance(shopA)
-        val b = Rees46.getInstance(shopB)
+        val a = Rees46.instance(shopA)
+        val b = Rees46.instance(shopB)
         val toA = mutableListOf<NotificationData>()
         val toB = mutableListOf<NotificationData>()
         a.setOnMessageListener { toA.add(it) }
@@ -130,7 +130,7 @@ class MultiInstanceE2ETest {
 
     @Test
     fun handlePush_clicked_tracksTheClickOnTheNamedShop() {
-        Rees46.getInstance(shopB) // ensure B is live and its session is ready
+        Rees46.instance(shopB) // ensure B is live and its session is ready
         HttpLogStore.clear()
 
         // CLICKED goes through notificationClicked, whose extractor reads NOTIFICATION_TYPE/
@@ -161,7 +161,7 @@ class MultiInstanceE2ETest {
         // used by no other test, so on a fresh process it is genuinely pending here.
         val lazyShop = "mi-materialize-on-push"
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        Rees46.registerShops(
+        Rees46.register(
             context = context,
             configs = listOf(Rees46Config(shopId = lazyShop, autoSendPushToken = false)),
             eagerInit = false
@@ -196,8 +196,8 @@ class MultiInstanceE2ETest {
 
     /** Both shops live, then poll until the server has assigned each a did/sid (async /init). */
     private fun awaitSessions(timeoutMs: Long = 10_000): Sessions {
-        val a = Rees46.getInstance(shopA)
-        val b = Rees46.getInstance(shopB)
+        val a = Rees46.instance(shopA)
+        val b = Rees46.instance(shopB)
         val deadline = System.currentTimeMillis() + timeoutMs
         var s = read(a, b)
         while (System.currentTimeMillis() < deadline &&

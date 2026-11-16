@@ -36,6 +36,9 @@ import com.bumptech.glide.request.transition.Transition
 import com.personalization.InternalPersonalizationV3Api
 import com.personalization.OnClickListener
 import com.personalization.SDK
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import com.personalization.stories.models.Story
 import com.personalization.ui.widgets.StoriesViewerState.Pause
 import java.lang.ref.WeakReference
@@ -628,7 +631,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(intent)
         } catch (_: android.content.ActivityNotFoundException) {
-            SDK.error("PersonalizationStoriesViewer: no app can open $url")
+            logError("PersonalizationStoriesViewer: no app can open the link")
         }
     }
 
@@ -643,7 +646,7 @@ class PersonalizationStoriesViewer(
         track("share")
         val shared = shareUrlTransform?.let { transform ->
             runCatching { transform(url) }.getOrElse {
-                SDK.error("PersonalizationStoriesViewer: shareUrlTransform failed, sharing $url", it)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "PersonalizationStoriesViewer: shareUrlTransform threw, the link is shared as it is", sdk?.logShopId, throwable = it)
                 url
             }
         } ?: url
@@ -656,7 +659,7 @@ class PersonalizationStoriesViewer(
         try {
             (activity ?: hostContext).startActivity(chooser)
         } catch (throwable: RuntimeException) {
-            SDK.error("PersonalizationStoriesViewer: cannot share $url", throwable)
+            logError("PersonalizationStoriesViewer: the link could not be shared", throwable)
             endShare()
             return
         }
@@ -907,7 +910,7 @@ class PersonalizationStoriesViewer(
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            SDK.error("PersonalizationStoriesViewer: video failed", error)
+            logError("PersonalizationStoriesViewer: video failed", error)
             playerSlide?.let(::onMediaFailed)
         }
 
@@ -971,6 +974,10 @@ class PersonalizationStoriesViewer(
         if (url.isEmpty() || imageLoader != null) return
         com.bumptech.glide.Glide.with(hostContext.applicationContext).load(url).preload()
     }
+
+    /** An error of the viewer under its shop, so the shop's log level applies. */
+    private fun logError(message: String, throwable: Throwable? = null) =
+        SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, message, sdk?.logShopId ?: shopId, throwable = throwable)
 
     private inner class StoriesAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
         override fun getItemCount(): Int = stories.size

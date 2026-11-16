@@ -16,7 +16,6 @@ class PreferencesRepositoryImpl @Inject constructor(
     ) = preferencesDataSource.initialize(
         context = context,
         preferencesKey = preferencesKey,
-        legacyPreferencesKey = legacyPreferencesKey,
         shopId = shopId
     )
 

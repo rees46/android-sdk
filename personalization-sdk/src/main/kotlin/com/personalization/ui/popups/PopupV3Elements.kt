@@ -27,7 +27,11 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import com.personalization.LogLevel
 import com.personalization.SDK
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
+import com.personalization.popups.popupsV3Log
 import com.personalization.popups.PopupV3Design
 import com.personalization.popups.PopupV3Element
 import com.personalization.popups.PopupV3Links
@@ -83,7 +87,10 @@ internal class PopupV3RenderContext(
     val screenHeightPx: Int,
     /** Фон рамки из дизайна. */
     val frameBackground: Int = Color.WHITE,
-    val log: (String) -> Unit = SDK::debug
+    /** Строка попапов v3 под магазином [sdk]; с `PopupsV3.debug` — при любом уровне лога. */
+    val log: (String) -> Unit = { message ->
+        if (sdk != null) popupsV3Log(sdk, LogLevel.DEBUG, message) else SdkLogs.log(LogLevel.DEBUG, LogCodes.POPUPS_V3, message)
+    }
 ) {
     fun dp(value: Double): Int = context.popupDp(value)
     fun dpF(value: Double): Float = context.popupDpF(value)
@@ -169,7 +176,8 @@ internal object PopupV3Renderer {
         val content = try {
             renderer.render(element, ctx)
         } catch (throwable: Throwable) {
-            ctx.log("popups v3: element ${element.id} (${element.type}) failed: ${throwable.message}")
+            // The class only: an exception's text may carry the popup's data.
+            ctx.log("popups v3: element ${element.id} (${element.type}) failed: ${SdkLogs.exceptionName(throwable)}")
             null
         } ?: return null
         val box = PopupV3Specs.box(element)
@@ -272,7 +280,7 @@ internal object PopupV3Renderer {
         val spec = PopupV3Specs.image(element, ctx.texts)
         if (!spec.show) return null
         val url = PopupV3Links.image(ctx.runtime(spec.url))
-        val view = PopupV3ImageView(ctx.context, spec, ctx.screenHeightPx)
+        val view = PopupV3ImageView(ctx.context, spec, ctx.screenHeightPx, ctx.log)
         view.contentDescription = spec.alt
         view.scaleType = when (spec.fit) {
             "contain" -> ImageView.ScaleType.FIT_CENTER
@@ -843,8 +851,12 @@ internal object PopupV3Renderer {
  * у `auto` высоты до загрузки нет.
  */
 @SuppressLint("ViewConstructor")
-internal class PopupV3ImageView(context: Context, private val spec: PopupV3Specs.Image, private val screenHeightPx: Int) :
-    AppCompatImageView(context) {
+internal class PopupV3ImageView(
+    context: Context,
+    private val spec: PopupV3Specs.Image,
+    private val screenHeightPx: Int,
+    private val log: (String) -> Unit,
+) : AppCompatImageView(context) {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
@@ -872,7 +884,7 @@ internal class PopupV3ImageView(context: Context, private val spec: PopupV3Specs
                 override fun onLoadCleared(placeholder: Drawable?) = setImageDrawable(placeholder)
 
                 override fun onLoadFailed(errorDrawable: Drawable?) {
-                    SDK.debug("popups v3: image $url failed to load")
+                    log("popups v3: an image failed to load")
                 }
             })
     }

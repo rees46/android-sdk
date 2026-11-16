@@ -3,7 +3,10 @@ package com.personalization.ui.widgets
 import android.os.Handler
 import android.os.Looper
 import com.personalization.InternalPersonalizationV3Api
+import com.personalization.LogLevel
 import com.personalization.SDK
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
 import org.json.JSONObject
@@ -28,7 +31,7 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
         val claimed = AtomicBoolean(false)
         val timeout = Runnable {
             if (!claimed.compareAndSet(false, true)) return@Runnable
-            SDK.debug("stories poll: $url failed: no did in ${DID_TIMEOUT_MS / 1000} s")
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${StoriesApiV3.pathOf(url)} failed: no did in ${DID_TIMEOUT_MS / 1000} s", sdk.logShopId)
             callback(StoriesPollsResult.Failure(StoriesLoader.ERROR_CODE, "no did"))
         }
         handler.postDelayed(timeout, DID_TIMEOUT_MS)
@@ -48,7 +51,7 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
         val json = identity()
         body.forEach { (key, value) -> json.put(key, if (value is Collection<*>) JSONArray(value) else value) }
         val response = try {
-            StoriesApiV3.post(url, json)
+            StoriesApiV3.post(url, json, sdk.logShopId)
         } catch (throwable: Throwable) {
             return failure(url, StoriesLoader.ERROR_CODE, throwable.message)
         }
@@ -70,8 +73,9 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
         .put("did", sdk.getDid().orEmpty())
         .put("sid", runCatching { sdk.getSid() }.getOrNull().orEmpty())
 
+    // Path only, without the answer: the query carries did and sid, an error answer often repeats them.
     private fun failure(url: String, code: Int, message: String?): StoriesPollsResult {
-        SDK.debug("stories poll: $url failed: $code $message")
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.STORIES_V3, "stories poll: ${StoriesApiV3.pathOf(url)} failed: $code", sdk.logShopId)
         return StoriesPollsResult.Failure(code, message)
     }
 

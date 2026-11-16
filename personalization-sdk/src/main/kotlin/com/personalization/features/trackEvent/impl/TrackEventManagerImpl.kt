@@ -1,6 +1,8 @@
 package com.personalization.features.trackEvent.impl
 
-import android.util.Log
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import com.personalization.SDK
 import com.personalization.SdkRegistry
 import com.personalization.Params
@@ -10,6 +12,8 @@ import com.personalization.api.managers.InAppNotificationManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.internal.ArgumentRefusals
+import com.personalization.core.internal.EventAnswerListener
 import com.personalization.sdk.data.mappers.popup.PopupDtoMapper
 import com.personalization.sdk.data.models.params.SdkInitializationParams.PARAM_POPUP
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
@@ -48,18 +52,7 @@ internal class TrackEventManagerImpl @Inject constructor(
             setRecommendedByUseCase(null)
         }
 
-        val internalListener = object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    handlePopup(response)
-                }
-                listener?.onSuccess(response)
-            }
-
-            override fun onError(code: Int, msg: String?) {
-                listener?.onError(code, msg)
-            }
-        }
+        val internalListener = answerListener(listener)
 
         val body = params.build()
         attachStoredSource(body)
@@ -72,15 +65,10 @@ internal class TrackEventManagerImpl @Inject constructor(
     }
 
     override fun trackPurchase(request: PurchaseTrackingRequest, listener: OnApiCallbackListener?) {
-        val jsonResult = PurchaseTrackingJsonBuilder.buildOrError(request)
-        if (jsonResult.isFailure) {
-            listener?.onError(
-                PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE,
-                jsonResult.exceptionOrNull()?.message,
-            )
+        val body = PurchaseTrackingJsonBuilder.buildOrError(request).getOrElse { error ->
+            refuse(listener, PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE, error.message)
             return
         }
-        val body = jsonResult.getOrNull()!!
         popups()?.onPurchase()
         if (request.recommendedBy == null) {
             val lastRecommendedBy = getRecommendedByUseCase()
@@ -90,18 +78,7 @@ internal class TrackEventManagerImpl @Inject constructor(
             }
         }
 
-        val internalListener = object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    handlePopup(response)
-                }
-                listener?.onSuccess(response)
-            }
-
-            override fun onError(code: Int, msg: String?) {
-                listener?.onError(code, msg)
-            }
-        }
+        val internalListener = answerListener(listener)
 
         attachStoredSource(body)
 
@@ -123,7 +100,7 @@ internal class TrackEventManagerImpl @Inject constructor(
     ) {
         val effectiveCustom = TrackCustomEventPayloadHelper.effectiveCustomFields(customFields)
         TrackCustomEventPayloadHelper.validateNoReservedKeyCollisions(effectiveCustom)?.let { msg ->
-            listener?.onError(TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE, msg)
+            refuse(listener, TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE, msg)
             return
         }
 
@@ -153,7 +130,8 @@ internal class TrackEventManagerImpl @Inject constructor(
                 }
                 body.put(PAYLOAD_PARAMETER, payload)
             } catch (e: JSONException) {
-                listener?.onError(
+                refuse(
+                    listener,
                     TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE,
                     "trackEvent: failed to build custom fields payload: ${e.message}"
                 )
@@ -204,6 +182,13 @@ internal class TrackEventManagerImpl @Inject constructor(
         postCustomEvent(params.build(), listener)
     }
 
+    /**
+     * An argument the call cannot take: `invalidArgument` behind the old code ([ArgumentRefusals]), off the
+     * caller's thread on the new core.
+     */
+    private fun refuse(listener: OnApiCallbackListener?, code: Int, message: String?) =
+        ArgumentRefusals.refuse(listener, code, message, offThread = sendNetworkMethodUseCase.queuesEvents)
+
     override fun trackPopupShown(popupId: Int, listener: OnApiCallbackListener?) {
         val params = Params()
         params.put(UserBasicParams.SHOP_ID, getUserSettingsValueUseCase.getShopId())
@@ -223,9 +208,12 @@ internal class TrackEventManagerImpl @Inject constructor(
      *
      * Port of iOS `TrackEventServiceImpl`: the source rides in its own `source` object and stays on
      * every request until it expires — it is not spent by the first one. Attached to `push` and
-     * `push/custom`; `popup/showed` carries no attribution, on either platform.
+     * `push/custom` on the legacy core; `popup/showed` carries no attribution, on either platform. On
+     * the new core the queue stamps it when the event is sent, on `push` only (contract `tracking`).
      */
     private fun attachStoredSource(body: JSONObject) {
+        // The new core's queue puts it on /push when it sends the event, and nowhere else.
+        if (sendNetworkMethodUseCase.queuesEvents) return
         val source = getTrackingSourceUseCase() ?: return
         try {
             body.put(
@@ -235,24 +223,13 @@ internal class TrackEventManagerImpl @Inject constructor(
                     .put(SOURCE_CODE_PARAMETER, source.code)
             )
         } catch (e: JSONException) {
-            Log.e(SDK.TAG, e.message, e)
+            SdkLogs.log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
         }
     }
 
     private fun postCustomEvent(json: JSONObject, listener: OnApiCallbackListener?) {
         attachStoredSource(json)
-        val internalListener = object : OnApiCallbackListener() {
-            override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    handlePopup(response)
-                }
-                listener?.onSuccess(response)
-            }
-
-            override fun onError(code: Int, msg: String?) {
-                listener?.onError(code, msg)
-            }
-        }
+        val internalListener = answerListener(listener)
 
         sendNetworkMethodUseCase.postAsync(
             CUSTOM_PUSH_REQUEST,
@@ -268,11 +245,36 @@ internal class TrackEventManagerImpl @Inject constructor(
         null
     }
 
-    private fun handlePopup(response: JSONObject) {
-        val popUpData = response.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) }
-        if (popUpData != null) {
-            inAppNotificationManager.shopPopUp(popupDto = popUpData)
+    /**
+     * Wraps the app's [listener]: a popup in the answer is shown, then the app hears the answer. On the
+     * new core the queue may hold the popup back (decision 2: the event went late, or the app is in the
+     * background); the app still gets the whole answer.
+     */
+    private fun answerListener(listener: OnApiCallbackListener?) = object : EventAnswerListener() {
+        override fun onSuccess(response: JSONObject?) {
+            response?.let { handlePopup(it, popupHeldBack) }
+            listener?.onSuccess(response)
         }
+
+        override fun onError(code: Int, msg: String?) {
+            listener?.onError(code, msg)
+        }
+    }
+
+    private fun handlePopup(response: JSONObject, heldBack: String? = null) {
+        val popUpData = response.optJSONObject(PARAM_POPUP)?.let { PopupDtoMapper.map(it) } ?: return
+        if (heldBack != null) {
+            // Held back on purpose (decision 2): a late event, an app in the background.
+            SdkLogs.log(
+                LogLevel.DEBUG,
+                LogCodes.POPUP_NOT_SHOWN,
+                "The popup of an event's answer is not shown",
+                getUserSettingsValueUseCase.getShopId().takeIf { it.isNotEmpty() },
+                mapOf("reason" to heldBack),
+            )
+            return
+        }
+        inAppNotificationManager.shopPopUp(popupDto = popUpData)
     }
 
     companion object {

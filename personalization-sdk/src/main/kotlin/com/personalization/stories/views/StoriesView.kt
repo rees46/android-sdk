@@ -1,5 +1,8 @@
 package com.personalization.stories.views
 
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.Context
@@ -109,7 +112,7 @@ class StoriesView : ConstraintLayout, ClickListener {
             typedArray.getString(R.styleable.StoriesView_product_banner_tap_default_message) ?: "Copied"
         this.shopId = typedArray.getString(R.styleable.StoriesView_shop_id)
         if (code == null) {
-            SDK.error("Code is set incorrectly")
+            SdkLogs.log(LogLevel.ERROR, LogCodes.STORIES, "StoriesView: app:code is not set", shopId)
             return
         }
         this.code = code
@@ -141,7 +144,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         // resolve the instance for this view's shop as soon as it is available and load. The
         // subscription fires immediately when the instance already exists, or later otherwise.
         //
-        // A direct Rees46.getInstance/awaitInstance keeps its fail-fast contract, but here the resolve
+        // A direct Rees46.instance/awaitInstance keeps its fail-fast contract, but here the resolve
         // happens inside a lifecycle callback the host cannot wrap: a misconfigured view (e.g. no
         // app:shop_id while several shops are registered → AmbiguousShopException) must log and
         // render nothing, not crash the screen.
@@ -149,10 +152,13 @@ class StoriesView : ConstraintLayout, ClickListener {
             instanceHandle = try {
                 Rees46.awaitInstance(shopId) { resolved -> attach(resolved) }
             } catch (throwable: Throwable) {
-                SDK.error(
+                SdkLogs.log(
+                    LogLevel.ERROR,
+                    LogCodes.STORIES,
                     "StoriesView: cannot resolve an SDK for shopId=$shopId — set app:shop_id to pick a " +
                         "shop when several are registered. The block will not load.",
-                    throwable
+                    shopId,
+                    throwable = throwable
                 )
                 null
             }

@@ -1,0 +1,15 @@
+# Kotlin sources that may still have `!!`, and exactly how many. The list may only shrink:
+# a force unwrap on a path the app reaches crashes the app instead of failing one call.
+# Removing a `!!` means lowering its count here (or removing the line at 0) in the same change.
+# Checked by `./gradlew checkForceUnwraps`, which `check` runs; comments and strings are not counted.
+com/personalization/inAppNotification/view/component/dialog/alert/AlertDialog.kt 1
+com/personalization/inAppNotification/view/component/dialog/bottom/BottomDialog.kt 1
+com/personalization/inAppNotification/view/component/dialog/fullScreen/FullScreenDialog.kt 1
+com/personalization/inAppNotification/view/component/dialog/top/TopDialog.kt 1
+com/personalization/stories/Player.kt 1
+com/personalization/stories/viewAdapters/StoriesAdapter.kt 5
+com/personalization/stories/views/StoriesView.kt 5
+com/personalization/stories/views/StoryDialog.kt 1
+com/personalization/stories/views/StoryView.kt 5
+com/personalization/stories/views/storyItem/StoryItemView.kt 3
+com/personalization/ui/components/PersonalizationProductsGrid.kt 1

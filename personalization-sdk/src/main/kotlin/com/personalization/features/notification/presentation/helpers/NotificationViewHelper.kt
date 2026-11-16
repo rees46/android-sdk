@@ -17,6 +17,21 @@ object NotificationViewHelper {
         currentIndex: Int,
         imageCount: Int,
         hasError: Boolean
+    ) = setNavigationActions(customView, context, data, currentIndex, imageCount, hasError, push = null)
+
+    /**
+     * [setNavigationActions] whose buttons carry [push], the push behind [data] on the new core: the
+     * notification drawn again still reports its dismissal for the push's shop, in a process started by
+     * the button.
+     */
+    internal fun setNavigationActions(
+        customView: RemoteViews,
+        context: Context,
+        data: NotificationData,
+        currentIndex: Int,
+        imageCount: Int,
+        hasError: Boolean,
+        push: Map<String, String>?,
     ) {
         setActionButton(
             customView = customView,
@@ -25,7 +40,8 @@ object NotificationViewHelper {
             actionId = R.id.action1,
             action = ACTION_PREVIOUS_IMAGE,
             newIndex = currentIndex - 1,
-            isVisible = currentIndex > 0
+            isVisible = currentIndex > 0,
+            push = push,
         )
 
         setActionButton(
@@ -35,14 +51,16 @@ object NotificationViewHelper {
             actionId = R.id.action2,
             action = ACTION_NEXT_IMAGE,
             newIndex = currentIndex + 1,
-            isVisible = currentIndex < imageCount - 1
+            isVisible = currentIndex < imageCount - 1,
+            push = push,
         )
 
         setRetryButtonVisibility(
             customView = customView,
             context = context,
             data = data,
-            hasError = hasError
+            hasError = hasError,
+            push = push,
         )
     }
 
@@ -53,13 +71,15 @@ object NotificationViewHelper {
         actionId: Int,
         action: String,
         newIndex: Int,
-        isVisible: Boolean
+        isVisible: Boolean,
+        push: Map<String, String>?,
     ) {
         val pendingIntent = NotificationNavigationHelper.createNavigationPendingIntent(
             context = context,
             data = data,
             newIndex = newIndex,
-            action = action
+            action = action,
+            push = push,
         )
         customView.setOnClickPendingIntent(
             /* viewId = */ actionId,
@@ -75,12 +95,14 @@ object NotificationViewHelper {
         customView: RemoteViews,
         context: Context,
         data: NotificationData,
-        hasError: Boolean
+        hasError: Boolean,
+        push: Map<String, String>?,
     ) {
         if (hasError) {
             val retryPendingIntent = NotificationNavigationHelper.createRetryPendingIntent(
                 context = context,
-                data = data
+                data = data,
+                push = push,
             )
             customView.setOnClickPendingIntent(
                 /* viewId = */ R.id.retryButton,

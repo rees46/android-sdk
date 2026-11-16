@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class ResourceLoadError(
     private val tag: String,
@@ -9,9 +11,6 @@ class ResourceLoadError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */ "Error caught in $functionName: $message"
-        )
+        SdkLogs.log(LogLevel.ERROR, LogCodes.UI, "Error caught in $functionName: $message")
     }
 }

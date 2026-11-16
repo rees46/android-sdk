@@ -1,5 +1,9 @@
 package com.personalization.features.inAppNotification.impl
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
+import com.personalization.LogLevel
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -93,11 +97,11 @@ class InAppNotificationManagerImpl @Inject constructor(
                 val activity = try {
                     listener(popupDto)
                 } catch (exception: Exception) {
-                    SDK.error("Popup ${popupDto.id} was not shown: the presentation listener failed", exception)
+                    log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "Popup was not shown: the presentation listener threw", context = mapOf("popup" to popupDto.id), throwable = exception)
                     return
                 }
                 if (activity == null) {
-                    SDK.debug("Popup ${popupDto.id} was kept back by the presentation listener")
+                    log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup kept back by the presentation listener", context = mapOf("popup" to popupDto.id, "reason" to LogReasons.APP_DECLINED))
                     return
                 }
                 activity.supportFragmentManager.takeIf { it.canShowDialog() }
@@ -106,18 +110,18 @@ class InAppNotificationManagerImpl @Inject constructor(
             presentation.autoPresentation -> defaultTarget()
 
             else -> {
-                SDK.debug("Popup ${popupDto.id} was not shown: automatic presentation is off")
+                log(LogLevel.DEBUG, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: automatic presentation is off", context = mapOf("popup" to popupDto.id, "reason" to LogReasons.AUTO_PRESENTATION_OFF))
                 return
             }
         }
         if (target == null) {
-            SDK.warn("Popup ${popupDto.id} was not shown: no activity that can take a dialog")
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id, "reason" to "no_activity"))
             return
         }
         try {
             showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
-            SDK.error("Popup ${popupDto.id} was not shown: ${exception.message}", exception)
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown", context = mapOf("popup" to popupDto.id, "reason" to "exception"), throwable = exception)
             return
         }
 
@@ -259,7 +263,7 @@ class InAppNotificationManagerImpl @Inject constructor(
         target: FragmentManager?
     ) {
         if (target == null) {
-            SDK.warn("Dialog was not shown: no activity on screen to show it in")
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Dialog was not shown: no activity on screen to show it in", context = mapOf("reason" to "no_activity"))
             return
         }
 
@@ -336,7 +340,8 @@ class InAppNotificationManagerImpl @Inject constructor(
             }
             context.startActivity(intent)
         } catch (exception: Exception) {
-            exception.printStackTrace()
+            // The class only: the text names the link.
+            log(LogLevel.WARNING, LogCodes.UI, "No app opened the popup's link", throwable = exception)
         }
     }
 
@@ -364,6 +369,22 @@ class InAppNotificationManagerImpl @Inject constructor(
                 /* duration = */ Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    /**
+     * Writes to the log under the instance's shop. The level is checked before the shop is read from
+     * the preferences, so a line below every shop's level costs nothing.
+     */
+    private fun log(
+        level: LogLevel,
+        code: String,
+        message: String,
+        context: Map<String, Any?> = emptyMap(),
+        throwable: Throwable? = null,
+    ) {
+        if (!SdkLogs.isLoggable(level)) return
+        val shopId = runCatching { getUserSettingsValueUseCase.getShopId() }.getOrNull()?.takeIf { it.isNotEmpty() }
+        SdkLogs.log(level, code, message, shopId, context, throwable)
     }
 
     companion object {

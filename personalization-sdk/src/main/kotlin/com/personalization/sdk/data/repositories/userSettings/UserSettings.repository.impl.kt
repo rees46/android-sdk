@@ -1,5 +1,6 @@
 package com.personalization.sdk.data.repositories.userSettings
 
+import com.personalization.core.internal.StorageKeys
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.data.utils.AdvertisingUtils
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
@@ -12,13 +13,13 @@ private const val DEFAULT_SHOP_ID = ""
 private const val DEFAULT_STREAM = "android"
 private const val DEFAULT_SEGMENT = ""
 
-private const val DID_KEY = "did"
-private const val SID_KEY = "sid"
-private const val SID_LAST_ACT_KEY = "sid_last_act"
-private const val SHOP_ID_KEY = "shop_id"
-private const val SEGMENT_AB_TESTING_KEY = "segment_ab_testing"
-private const val STREAM_KEY = "stream"
-private const val ADVERTISING_ID_KEY = "google_ad_id"
+private const val DID_KEY = StorageKeys.DID
+private const val SID_KEY = StorageKeys.SID
+private const val SID_LAST_ACT_KEY = StorageKeys.SID_LAST_ACT
+private const val SHOP_ID_KEY = StorageKeys.SHOP_ID
+private const val SEGMENT_AB_TESTING_KEY = StorageKeys.SEGMENT
+private const val STREAM_KEY = StorageKeys.STREAM
+private const val ADVERTISING_ID_KEY = StorageKeys.ADVERTISING_ID
 
 class UserSettingsRepositoryImpl @Inject constructor(
     private val preferencesDataSource: PreferencesDataSource,
@@ -78,9 +79,10 @@ class UserSettingsRepositoryImpl @Inject constructor(
     }
 
     // The A/B segment is a sticky per-device bucket: assigned once, then reused for the device's
-    // lifetime (and kept as-is when migrated from a previous install). It is assigned-and-persisted
-    // lazily on first read rather than overwritten on every init — re-rolling it each launch would
-    // flip the device between A and B and discard a migrated segment.
+    // lifetime (and kept as-is when migrated from a previous install). The start gives a shop without
+    // one the device's group (StorageMigrations); the random pick here is the fallback for a partition
+    // opened without it. It is never overwritten on init — re-rolling it each launch would flip the
+    // device between A and B and discard a migrated segment.
     override fun getSegmentForABTesting(): String {
         val stored = preferencesDataSource.getValue(
             field = SEGMENT_AB_TESTING_KEY,

@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 
 class BaseInfoError(
     private val tag: String,
@@ -9,9 +11,6 @@ class BaseInfoError(
 ) {
 
     fun logError() {
-        Log.e(
-            /* tag = */ tag,
-            /* msg = */"$message: ${exception?.message ?: "Unknown error"}"
-        )
+        SdkLogs.log(LogLevel.ERROR, LogCodes.SDK_LOG, "$message: ${exception?.javaClass?.simpleName ?: "unknown error"}")
     }
 }

@@ -1,6 +1,8 @@
 package com.personalization.errors
 
-import android.util.Log
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
 import org.json.JSONObject
 
 /**
@@ -48,6 +50,6 @@ class JsonResponseErrorHandler(
         message: String? = this.message,
         exception: Exception? = null
     ) {
-        Log.e(tag, message, exception)
+        SdkLogs.log(LogLevel.WARNING, LogCodes.DECODING_FAILED, message ?: "Response is null or incorrect", throwable = exception)
     }
 }

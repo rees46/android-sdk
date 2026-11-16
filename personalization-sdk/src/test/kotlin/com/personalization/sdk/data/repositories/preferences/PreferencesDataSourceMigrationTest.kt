@@ -3,6 +3,8 @@ package com.personalization.sdk.data.repositories.preferences
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.PreferencesPartition
+import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.StorageMigrations
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -45,12 +47,13 @@ class PreferencesDataSourceMigrationTest {
         editor.commit()
     }
 
+    /** What a start does: the migrations, then the partition opened. */
     private fun initPartition(shop: String = shopId): PreferencesDataSourceImpl {
+        StorageMigrations.run(context, StorageLayout(shop, null))
         return PreferencesDataSourceImpl().apply {
             initialize(
                 context = context,
                 preferencesKey = PreferencesPartition.keyFor(shop),
-                legacyPreferencesKey = legacyKey,
                 shopId = shop
             )
         }
@@ -122,7 +125,7 @@ class PreferencesDataSourceMigrationTest {
         )
 
         val source = PreferencesDataSourceImpl().apply {
-            // No legacyPreferencesKey/shopId — the host opted into its own partition.
+            // A partition opened by name without a start's migrations reads nothing older.
             initialize(context = context, preferencesKey = "host_custom_prefs")
         }
 

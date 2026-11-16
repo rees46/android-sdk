@@ -2,12 +2,13 @@
 
 package com.personalization.stories.viewAdapters
 
+import com.personalization.logs.LogCodes
+import com.personalization.LogLevel
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Paint
 import android.net.Uri
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -104,7 +105,7 @@ internal class ProductsAdapter(
 
         private fun setupClickListener(product: Product) {
             itemView.setOnClickListener {
-                Log.d(SDK.TAG, "click: ${product.name}, ${product.url}")
+                sdk.log(LogLevel.DEBUG, LogCodes.STORIES, "Story product clicked")
                 handleProductClick(product)
             }
         }
@@ -126,7 +127,7 @@ internal class ProductsAdapter(
                     onCloseStories.invoke()
                 }
             } catch (e: ActivityNotFoundException) {
-                Log.e(SDK.TAG, e.message, e)
+                sdk.log(LogLevel.ERROR, LogCodes.STORIES, "Stories failed", throwable = e)
             }
         }
     }

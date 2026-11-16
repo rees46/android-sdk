@@ -112,11 +112,13 @@ class SdkModule {
     fun provideTrackingApi(
         trackEventManager: TrackEventManager,
         storiesManager: StoriesManager,
-        setTrackingSourceUseCase: SetTrackingSourceUseCase
+        setTrackingSourceUseCase: SetTrackingSourceUseCase,
+        sendNetworkMethodUseCase: SendNetworkMethodUseCase,
     ): TrackingApi = TrackingApiImpl(
         trackEventManager = trackEventManager,
         storiesManager = storiesManager,
-        setTrackingSourceUseCase = setTrackingSourceUseCase
+        setTrackingSourceUseCase = setTrackingSourceUseCase,
+        checksArguments = { sendNetworkMethodUseCase.queuesEvents },
     )
 
     @Singleton

@@ -5,9 +5,11 @@ import android.content.Context
 interface PreferencesDataSource {
 
     /**
-     * Opens the preferences partition named [preferencesKey]. When [legacyPreferencesKey] and
-     * [shopId] are provided, a one-time migration copies the legacy shared file into the partition
-     * if it is still empty and the legacy file belongs to [shopId].
+     * Opens the preferences partition named [preferencesKey] of [shopId]'s instance. The data of older
+     * releases is read into it before, by [com.personalization.core.internal.StorageMigrations].
+     *
+     * The parameters are those of earlier releases, so a call written for them binds as it did:
+     * [legacyPreferencesKey] is not read any more, the SDK migrates the store of older releases itself.
      */
     fun initialize(
         context: Context,

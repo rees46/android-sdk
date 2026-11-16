@@ -1,5 +1,6 @@
 package com.personalization.popups
 
+import com.personalization.LogLevel
 import android.content.Context
 import android.content.SharedPreferences
 import com.personalization.PreferencesPartition
@@ -28,19 +29,20 @@ internal class PopupsV3Api(
         StoriesApiV3.whenDid(sdk) {
             val url = listUrl(appHost(), shopId(), did(), sid(), testMode, debug)
             val result = try {
-                val response = StoriesApiV3.get(url)
+                val response = StoriesApiV3.get(url, sdk.logShopId)
                 when (response.code) {
                     in 200..299 -> try {
                         PopupsV3ListResult.Success(PopupsV3List.parse(response.body))
                     } catch (throwable: Throwable) {
                         // Ответ не по контракту — как у web: пустой список на срок по умолчанию.
-                        PopupsV3ListResult.ClientError(response.code, throwable.message)
+                        PopupsV3ListResult.ClientError(response.code)
                     }
-                    in 400..499 -> PopupsV3ListResult.ClientError(response.code, message(response.body))
-                    else -> PopupsV3ListResult.Failure("${response.code} ${message(response.body)}")
+                    // Only the code: the answer's message often repeats the request's data.
+                    in 400..499 -> PopupsV3ListResult.ClientError(response.code)
+                    else -> PopupsV3ListResult.Failure("HTTP ${response.code}")
                 }
             } catch (throwable: Throwable) {
-                PopupsV3ListResult.Failure(throwable.message)
+                PopupsV3ListResult.Failure(throwable.javaClass.simpleName)
             }
             MainThread.run { callback(result) }
         }
@@ -49,22 +51,23 @@ internal class PopupsV3Api(
     override fun one(id: Int, testMode: Boolean, callback: (PopupV3?) -> Unit) {
         StoriesApiV3.whenDid(sdk) {
             val popup = try {
-                val response = StoriesApiV3.get(oneUrl(appHost(), id, shopId(), did(), sid(), testMode))
+                val response = StoriesApiV3.get(oneUrl(appHost(), id, shopId(), did(), sid(), testMode), sdk.logShopId)
                 if (response.code in 200..299) {
                     when (val parsed = PopupsV3List.parseOne(response.body)) {
                         is PopupV3.Parsed.Ok -> parsed.popup
                         is PopupV3.Parsed.Skipped -> {
-                            SDK.debug("popups v3: popup $id skipped: ${parsed.reason}")
+                            popupsV3Log(sdk, LogLevel.DEBUG, "popups v3: popup $id skipped: ${parsed.reason}")
                             null
                         }
                         null -> null
                     }
                 } else {
-                    SDK.debug("popups v3: popup $id request failed: ${response.code} ${message(response.body)}")
+                    // Without the answer's body: an error answer often repeats the request's data.
+                    popupsV3Log(sdk, LogLevel.DEBUG, "Popup request failed", mapOf("popup" to id, "status" to response.code))
                     null
                 }
             } catch (throwable: Throwable) {
-                SDK.debug("popups v3: popup $id request failed: ${throwable.message}")
+                popupsV3Log(sdk, LogLevel.DEBUG, "popups v3: popup $id request failed", throwable = throwable)
                 null
             }
             MainThread.run { callback(popup) }
@@ -77,7 +80,7 @@ internal class PopupsV3Api(
      */
     override fun event(id: Int, event: String, channel: String?) {
         if (System.currentTimeMillis() < eventsPausedUntil) {
-            SDK.debug("popups v3: event $event of popup $id dropped: too many requests")
+            popupsV3Log(sdk, LogLevel.DEBUG, "popups v3: event $event of popup $id dropped: too many requests")
             return
         }
         StoriesApiV3.whenDid(sdk) {
@@ -85,7 +88,7 @@ internal class PopupsV3Api(
             val body = eventBody(shopId(), did(), sid(), event, channel)
             for (attempt in 0..1) {
                 val code = try {
-                    StoriesApiV3.post(url, body).code
+                    StoriesApiV3.post(url, body, sdk.logShopId).code
                 } catch (throwable: Throwable) {
                     -1
                 }
@@ -113,7 +116,7 @@ internal class PopupsV3Api(
                 }
 
                 override fun onError(code: Int, msg: String?) {
-                    SDK.debug("popups v3: promo code of list $listId failed: $code $msg")
+                    popupsV3Log(sdk, LogLevel.DEBUG, "Promo code request failed", mapOf("list" to listId, "status" to code))
                     MainThread.run { callback(null) }
                 }
             }
@@ -124,15 +127,10 @@ internal class PopupsV3Api(
     private fun did(): String = sdk.getDid().orEmpty()
     private fun sid(): String = runCatching { sdk.getSid() }.getOrNull().orEmpty()
 
-    private fun message(body: String): String? =
-        runCatching { JSONObject(body).optString("message") }.getOrNull()?.takeIf { it.isNotEmpty() }
-            ?: body.take(MAX_MESSAGE).takeIf { it.isNotEmpty() }
-
     companion object {
         private const val PATH = "/api/v3/storefront/popups"
         const val PROMO_METHOD = "promo_codes/fetch"
         const val EVENTS_PAUSE_MS = 60_000L
-        private const val MAX_MESSAGE = 200
 
         /** Пауза перед повтором события; в тестах — 0. */
         @Volatile

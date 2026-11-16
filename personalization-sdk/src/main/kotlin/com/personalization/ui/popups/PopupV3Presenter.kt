@@ -30,6 +30,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.FragmentActivity
 import com.personalization.InternalPersonalizationV3Api
 import com.personalization.R
+import com.personalization.LogLevel
+import com.personalization.logs.LogCodes
+import com.personalization.logs.SdkLogs
+import com.personalization.popups.popupsV3Log
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.params.ProfileParams
@@ -198,7 +202,7 @@ internal class PopupV3Session(
         ForegroundActivity.addListener(this)
         val current = ForegroundActivity.get()
         if (current == null) {
-            SDK.debug("popups v3: popup ${popup.id} waits for an activity")
+            popupsV3Log(sdk, LogLevel.DEBUG, "popups v3: popup ${popup.id} waits for an activity")
             return
         }
         attach(current)
@@ -219,7 +223,7 @@ internal class PopupV3Session(
         val view = try {
             PopupV3RootView(host, popup, design, variables, state, actions, sdk, blocking, onOutside = { close(sendEvent = true) })
         } catch (throwable: Throwable) {
-            fail("render failed: ${throwable.message}")
+            fail("render failed: ${throwable.javaClass.simpleName}")
             return
         }
         try {
@@ -232,7 +236,7 @@ internal class PopupV3Session(
         } catch (throwable: Throwable) {
             dialog = null
             (view.parent as? ViewGroup)?.removeView(view)
-            if (!shown) fail("no window: ${throwable.message}") else SDK.debug("popups v3: popup ${popup.id} could not come back: ${throwable.message}")
+            if (!shown) fail("no window: ${throwable.javaClass.simpleName}") else popupsV3Log(sdk, LogLevel.DEBUG, "popups v3: popup ${popup.id} could not come back", throwable = throwable)
             return
         }
         activity = WeakReference(host)
@@ -725,7 +729,7 @@ internal class PopupV3ActionHandler(
             val handled = try {
                 handler(link)
             } catch (throwable: Throwable) {
-                SDK.error("popups v3: link handler failed on $link", throwable)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "popups v3: the link handler threw", sdk.logShopId, throwable = throwable)
                 false
             }
             if (handled) {
@@ -739,9 +743,9 @@ internal class PopupV3ActionHandler(
         try {
             host.startActivity(intent)
         } catch (exception: ActivityNotFoundException) {
-            SDK.error("popups v3: no app can open $link")
+            popupsV3Log(sdk, LogLevel.ERROR, "popups v3: no app can open the link")
         } catch (exception: RuntimeException) {
-            SDK.error("popups v3: cannot open $link", exception)
+            popupsV3Log(sdk, LogLevel.ERROR, "popups v3: the link could not be opened", throwable = exception)
         }
     }
 
@@ -824,7 +828,7 @@ internal class PopupV3ActionHandler(
             val handled = try {
                 handler(product)
             } catch (throwable: Throwable) {
-                SDK.error("popups v3: product handler failed on ${product.id}", throwable)
+                SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "popups v3: the product handler threw", sdk.logShopId, mapOf("product" to product.id), throwable)
                 false
             }
             if (handled) {

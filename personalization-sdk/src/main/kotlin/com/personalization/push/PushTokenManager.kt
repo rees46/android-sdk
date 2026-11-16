@@ -1,11 +1,17 @@
 package com.personalization.push
 
+import com.personalization.logs.SdkLogs
+import com.personalization.logs.LogCodes
+import com.personalization.logs.LogReasons
+import com.personalization.LogLevel
 import android.content.Context
-import android.util.Log
 import com.personalization.OnPushTokenListener
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.errors.BaseInfoError
+import com.personalization.core.PushCallbacks
+import com.personalization.core.PushToken
+import com.personalization.core.internal.CorePushTokens
+import com.personalization.core.internal.PushHub
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import com.personalization.sdk.domain.usecases.preferences.GetPreferencesValueUseCase
 import com.personalization.sdk.domain.usecases.preferences.SavePreferencesValueUseCase
@@ -23,6 +29,15 @@ import javax.inject.Singleton
  * ([onTokenReceived]), or pushed manually by the host ([sendToken]) — funnels through here:
  * it is deduplicated, persisted per provider, sent to the rees46 backend, and reported to the
  * host via [OnPushTokenListener]. Adding a provider only requires a new [PushTokenSource].
+ *
+ * A token never goes to the backend without a `did`: registered without one it would belong to no
+ * device. Until the device has a `did` (a new install before `/init` answers, or the window after
+ * `deleteUserCredentials()`) the request waits in the instance's queue and goes once the `did` is
+ * stored; the host's listener hears of the token at once all the same.
+ *
+ * On the new core the rules of `core/push.md` are [CorePushTokens]'s: the token is the device's, each shop
+ * sends a new one at once and the same one at most once a week, after the instance is ready. Either way
+ * the app's `PushCallbacks.onToken` hears each new token once ([PushHub]).
  */
 @Singleton
 class PushTokenManager @Inject constructor(
@@ -34,6 +49,21 @@ class PushTokenManager @Inject constructor(
     private lateinit var context: Context
     private var autoSendPushToken: Boolean = false
     private var listener: OnPushTokenListener? = null
+
+    /** The shop of the instance, so the token's log lines pass that shop's level. */
+    @Volatile
+    internal var logShopId: String? = null
+
+    /** The new core's rules for this shop's token; null on the legacy core. */
+    @Volatile
+    internal var core: CorePushTokens? = null
+
+    /** The instance's own push callbacks, for `onToken`. */
+    @Volatile
+    internal var callbacks: () -> PushCallbacks? = { null }
+
+    /** The tokens the instance's own `onToken` heard of, by provider. */
+    private val reported = ConcurrentHashMap<PushProvider, String>()
 
     /**
      * Tokens whose request is already on the wire, as `provider:token`.
@@ -54,25 +84,15 @@ class PushTokenManager @Inject constructor(
      * [HmsTokenSource] there would throw NoClassDefFoundError. The guard keeps a provider off
      * unless the host opted in by adding its artifacts.
      */
-    private val sources: List<PushTokenSource> = buildList {
-        if (isOnClasspath(FCM_MARKER_CLASS)) add(FcmTokenSource())
-        if (isOnClasspath(HMS_MARKER_CLASS)) add(HmsTokenSource())
-    }
-
-    private fun isOnClasspath(className: String): Boolean = try {
-        Class.forName(className, false, javaClass.classLoader)
-        true
-    } catch (_: Throwable) {
-        false
-    }
+    private val sources: List<PushTokenSource> = sourceFactory()
 
     fun setOnPushTokenListener(listener: OnPushTokenListener) {
         this.listener = listener
     }
 
-    /** Last token known for [provider] from the local cache, or null if none. */
+    /** Last token known for [provider] from the local cache, or null if none: on the new core the device's. */
     fun getToken(provider: PushProvider): String? =
-        getPreferencesValueUseCase.getPushToken(provider).takeIf { it.isNotEmpty() }
+        core?.token(provider) ?: getPreferencesValueUseCase.getPushToken(provider).takeIf { it.isNotEmpty() }
 
     /**
      * Detects available providers and proactively fetches their tokens. Tokens that are only
@@ -81,6 +101,8 @@ class PushTokenManager @Inject constructor(
     fun initialize(context: Context, autoSendPushToken: Boolean) {
         this.context = context
         this.autoSendPushToken = autoSendPushToken
+        // The new core: what the device has goes once it is due, before a fetch brings it again.
+        core?.sendStored()
 
         sources.filter { it.isAvailable(context) }.forEach { source ->
             source.fetchToken(context) { result ->
@@ -88,10 +110,14 @@ class PushTokenManager @Inject constructor(
                     ?.takeIf { it.isNotEmpty() }
                     ?.let { token -> onTokenReceived(token, source.provider) }
                 result.exceptionOrNull()?.let { error ->
-                    BaseInfoError(
-                        tag = TAG,
-                        message = "${source.provider.id} token fetch error: ${error.message}"
-                    ).logError()
+                    SdkLogs.log(
+                        LogLevel.WARNING,
+                        LogCodes.PUSH_TOKEN_FAILED,
+                        "Push token could not be fetched",
+                        logShopId,
+                        mapOf("provider" to source.provider.id),
+                        error
+                    )
                 }
             }
         }
@@ -102,20 +128,38 @@ class PushTokenManager @Inject constructor(
      * `onNewToken`). Sends to the backend when changed, then always notifies the host listener.
      */
     fun onTokenReceived(token: String, provider: PushProvider) {
-        if (token.isEmpty() || !::context.isInitialized) return
+        val v2 = core
+        if (token.isEmpty() || (v2 == null && !::context.isInitialized)) return
+        // Never the token itself.
+        SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_RECEIVED, "Push token received", logShopId, mapOf("provider" to provider.id))
 
-        val currentDate = Date().time
-        if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {
-            sendTokenToServer(token, provider, currentDate, external = null)
+        if (v2 != null) {
+            // Kept for the device and sent once the instance is ready, even before it is.
+            v2.received(token, provider)
+        } else if (!autoSendPushToken) {
+            // As before, not sent: the app passes the tokens it wants sent through setPushToken.
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.PUSH_TOKEN_SKIPPED, "Push token not sent", logShopId,
+                mapOf("provider" to provider.id, "reason" to LogReasons.AUTO_SEND_OFF))
+        } else {
+            val currentDate = Date().time
+            if (shouldSendToken(provider, token, currentDate) && claimInFlight(provider, token)) {
+                sendTokenToServer(token, provider, currentDate, external = null)
+            }
         }
         listener?.onPushToken(token, provider)
+        PushHub.token(PushToken(token, provider), logShopId, callbacks(), reported)
     }
 
     /**
      * Manual registration entry point ([com.personalization.SDK.setPushToken]). Always sends to
-     * the backend regardless of [autoSendPushToken], because the host asked for it explicitly.
+     * the backend regardless of [autoSendPushToken], because the host asked for it explicitly. On the
+     * new core it waits for the instance and keeps the week like any token ([CorePushTokens.set]).
      */
     fun sendToken(token: String, provider: PushProvider, listener: OnApiCallbackListener?) {
+        core?.let {
+            it.set(token, provider, listener)
+            return
+        }
         if (token.isEmpty()) return
         sendTokenToServer(token, provider, Date().time, external = listener)
     }
@@ -151,7 +195,8 @@ class PushTokenManager @Inject constructor(
             TOKEN_FIELD to token,
             PUSH_PROVIDER_FIELD to provider.serverValue
         )
-        sendNetworkMethodUseCase.post(
+        // Through the queue of requests that wait for a did, never straight to the network.
+        sendNetworkMethodUseCase.postAsync(
             MOBILE_PUSH_TOKENS,
             JSONObject(params),
             object : OnApiCallbackListener() {
@@ -161,17 +206,21 @@ class PushTokenManager @Inject constructor(
                     // Released only after the token is persisted, so a delivery arriving in
                     // between is still deduplicated — by the cache rather than by the claim.
                     tokensInFlight.remove(inFlightKey(provider, token))
-                    Log.d(TAG, "${provider.id} push token successfully sent and saved")
+                    SdkLogs.log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", logShopId, mapOf("provider" to provider.id))
                     external?.onSuccess(response)
                 }
 
                 override fun onError(code: Int, msg: String?) {
                     // Nothing was persisted, so free the claim and let a later delivery retry.
                     tokensInFlight.remove(inFlightKey(provider, token))
-                    BaseInfoError(
-                        tag = TAG,
-                        message = "${provider.id} push token failed. Code: $code, Message: $msg"
-                    ).logError()
+                    // Without the answer's body: an error answer often repeats the request's data.
+                    SdkLogs.log(
+                        LogLevel.WARNING,
+                        LogCodes.PUSH_TOKEN_FAILED,
+                        "Push token was not sent",
+                        logShopId,
+                        mapOf("provider" to provider.id, "status" to code)
+                    )
                     external?.onError(code, msg)
                 }
             }
@@ -179,6 +228,22 @@ class PushTokenManager @Inject constructor(
     }
 
     companion object {
+        /** The providers whose SDK is on the classpath; a test hands its own before the instance is made. */
+        @Volatile
+        internal var sourceFactory: () -> List<PushTokenSource> = ::classpathSources
+
+        internal fun classpathSources(): List<PushTokenSource> = buildList {
+            if (isOnClasspath(FCM_MARKER_CLASS)) add(FcmTokenSource())
+            if (isOnClasspath(HMS_MARKER_CLASS)) add(HmsTokenSource())
+        }
+
+        private fun isOnClasspath(className: String): Boolean = try {
+            Class.forName(className, false, PushTokenManager::class.java.classLoader)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
         private const val TAG = "PushTokenManager"
         // Marker classes used to detect whether each provider's SDK is present at runtime.
         private const val FCM_MARKER_CLASS = "com.google.firebase.messaging.FirebaseMessaging"

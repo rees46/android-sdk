@@ -1,40 +1,74 @@
 package com.personalization.sdk.data.repositories.network
 
-import android.net.Uri
-import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
-import com.personalization.sdk.data.models.params.UserBasicParams
-import com.personalization.sdk.data.utils.QueryParamsUtils.addMultipleParams
+import com.personalization.core.internal.ConnectivityMonitor
+import com.personalization.core.internal.Core
+import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.CoreHttpClient
+import com.personalization.core.internal.CoreV2
+import com.personalization.core.internal.LegacyCore
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
-import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
-import org.json.JSONTokener
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.ConnectException
-import java.net.HttpURLConnection
-import java.net.URL
-import java.nio.charset.StandardCharsets
-import java.util.Collections
 import javax.inject.Inject
+import javax.inject.Singleton
 
+/**
+ * The funnel every request of an instance goes through: the namespaces call it and it hands each
+ * request to the instance's [Core], legacy or new. On the legacy core it holds the requests that wait
+ * for a `did`; the new core holds a request until the instance is ready itself.
+ */
+@Singleton
 class NetworkRepositoryImpl @Inject constructor(
     private val userSettingsRepository: UserSettingsRepository,
 ) : NetworkRepository {
 
     private lateinit var baseUrl: String
 
-    /** How long a request may wait for the next bytes of an answer; tests shorten it. */
-    internal var readTimeoutMs: Int = READ_TIMEOUT_MS
+    private val legacyCore = LegacyCore(userSettingsRepository) { baseUrl }
 
-    private val queue: MutableList<Thread> = Collections.synchronizedList(ArrayList())
+    /** The core the requests go to: the legacy one until [useCoreV2]. */
+    @Volatile
+    internal var core: Core = legacyCore
+        private set
+
+    /** How long a legacy request may wait for the next bytes of an answer; tests shorten it. */
+    internal var readTimeoutMs: Int
+        get() = legacyCore.readTimeoutMs
+        set(value) {
+            legacyCore.readTimeoutMs = value
+        }
+
+    /**
+     * Requests made before the device has a `did`. Guarded by [queueLock] together with the `did`
+     * check in [sendAsync]: a request either sees the `did` or lands here before [executeQueueTasks]
+     * drains, so none is left behind and none starts twice.
+     */
+    private val queueLock = Any()
+    private val queue = ArrayList<Waiting>()
+
+    /** A request waiting for a `did`, and who hears it fail if it never goes. */
+    private class Waiting(val task: Thread, val listener: OnApiCallbackListener?)
+
+    /**
+     * Hears the path of each request handed to the funnel, on the caller's thread, before anything else
+     * happens to it; for tests, which then know what went without waiting for it.
+     */
+    @Volatile
+    internal var onRequest: ((path: String) -> Unit)? = null
+
+    /**
+     * Whether a request on the legacy core moves the session's last activity, as every request always
+     * did. Not for an instance brought up only for a push: its tracking would keep alive a session the
+     * app's own next start must end.
+     */
+    @Volatile
+    internal var movesLegacySession: Boolean = true
+
+    /** How many requests wait for a `did` on the legacy core; for tests. */
+    internal val waitingForDid: Int
+        get() = synchronized(queueLock) { queue.size }
 
     override fun initialize(
         baseUrl: String
@@ -42,11 +76,32 @@ class NetworkRepositoryImpl @Inject constructor(
         this.baseUrl = baseUrl
     }
 
+    /**
+     * Sends this instance's requests through the new core from now on. [attach] runs before the core
+     * takes any request: it gives the core its `/init`, so no request goes without waiting for it.
+     */
+    internal fun useCoreV2(
+        shopId: String,
+        connectivity: ConnectivityMonitor,
+        dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
+        client: CoreHttpClient = CoreHttpClient(
+            baseUrl = { baseUrl },
+            settings = userSettingsRepository,
+            connectivity = connectivity,
+            shopId = shopId,
+        ),
+        attach: (CoreV2) -> Unit = {},
+    ): CoreV2 = CoreV2(client, shopId, dispatchers).also {
+        attach(it)
+        core = it
+    }
+
     override fun post(
         method: String,
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendMethod(
             networkMethod = NetworkMethod.POST(method),
             params = params,
@@ -59,7 +114,8 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync {
+        onRequest?.invoke(method)
+        sendAsync(listener) {
             sendMethod(
                 networkMethod = NetworkMethod.POST(method),
                 params = params,
@@ -73,13 +129,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync {
-            sendSecretMethod(
-                networkMethod = NetworkMethod.POST(method),
-                params = params,
-                listener = listener
-            )
-        }
+        postAsync(method, params, listener)
     }
 
     override fun get(
@@ -87,6 +137,7 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
+        onRequest?.invoke(method)
         sendMethod(
             networkMethod = NetworkMethod.GET(method),
             params = params,
@@ -99,7 +150,8 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync {
+        onRequest?.invoke(method)
+        sendAsync(listener) {
             sendMethod(
                 networkMethod = NetworkMethod.GET(method),
                 params = params,
@@ -113,47 +165,56 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?
     ) {
-        sendAsync {
-            sendSecretMethod(
-                networkMethod = NetworkMethod.GET(method),
-                params = params,
-                listener = listener
-            )
-        }
+        getAsync(method, params, listener)
     }
 
-    private fun sendAsync(sendFunction: () -> Unit) {
-        val thread = Thread(sendFunction)
-        if (userSettingsRepository.getDid()
-                .isNotEmpty()
-        ) {
-            thread.start()
-        } else {
-            addTaskToQueue(thread)
+    private fun sendAsync(listener: OnApiCallbackListener?, sendFunction: () -> Unit) {
+        // The new core waits for the instance to be ready itself, within the request's timeout.
+        if (core.isV2) {
+            sendFunction()
+            return
         }
+        val thread = Thread(sendFunction)
+        val startNow = synchronized(queueLock) {
+            if (userSettingsRepository.getDid().isNotEmpty()) {
+                true
+            } else {
+                queue.add(Waiting(thread, listener))
+                false
+            }
+        }
+        if (startNow) thread.start()
     }
 
     override fun executeQueueTasks() {
-        for (thread in queue) {
-            thread.start()
-        }
-        queue.clear()
+        drainWaiting().forEach { it.task.start() }
     }
 
     override fun addTaskToQueue(thread: Thread) {
-        queue.add(thread)
+        synchronized(queueLock) { queue.add(Waiting(thread, null)) }
     }
 
-    private fun sendSecretMethod(
-        networkMethod: NetworkMethod,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    ) {
-        sendMethod(
-            networkMethod = networkMethod,
-            params = params,
-            listener = listener,
-        )
+    private fun drainWaiting(): List<Waiting> = synchronized(queueLock) { ArrayList(queue).also { queue.clear() } }
+
+    /**
+     * Stops the instance's core. The requests still waiting for a `did` fail with `notInitialized`, as every
+     * request made after this does. Without [cancelRequests] (a push-only instance giving way to the app's)
+     * the new core lets the requests in flight finish, and the legacy one is left as it is: it cannot cancel a
+     * request, and the push's tracking handed to it on another thread still goes with the `did` it has. A
+     * request that waits for a `did` there never gets one — the instance's `/init` stopped — and is not let go
+     * without it: it fails at once.
+     */
+    internal fun release(cancelRequests: Boolean = true) {
+        when (val current = core) {
+            is CoreV2 -> current.release(cancelRequests)
+            else -> if (cancelRequests) {
+                current.release()
+            } else {
+                drainWaiting().forEach { waiting -> waiting.listener?.let(legacyCore::refuse) }
+                return
+            }
+        }
+        executeQueueTasks()
     }
 
     private fun sendMethod(
@@ -161,248 +222,10 @@ class NetworkRepositoryImpl @Inject constructor(
         params: JSONObject,
         listener: OnApiCallbackListener?,
     ) {
-        userSettingsRepository.updateSidLastActTime()
-
-        try {
-            val newParams = addBasicQueryParams(params = params)
-
-            executeMethod(networkMethod, newParams, listener)
-        } catch (e: JSONException) {
-            SDK.error(e.message, e)
-        }
-    }
-
-    /**
-     * The common fields of every request. A clicked push is not among them: `from` and `code` on
-     * `/init` record one more click of the mailing on every launch, so the click travels as the
-     * `source` of `/push` events instead ([com.personalization.handlers.notifications.NotificationHandler]).
-     */
-    private fun addBasicQueryParams(params: JSONObject): JSONObject {
-        addMultipleParams(
-            params = params,
-            paramsToAdd = mapOf(
-                UserBasicParams.SHOP_ID to userSettingsRepository.getShopId(),
-                UserBasicParams.DID to userSettingsRepository.getDid(),
-                UserBasicParams.SID to userSettingsRepository.getSid(),
-                UserBasicParams.SEANCE to userSettingsRepository.getSid(),
-                UserBasicParams.SEGMENT to resolveClientOrRepoString(
-                    params = params,
-                    key = UserBasicParams.SEGMENT,
-                    repoValue = userSettingsRepository.getSegmentForABTesting(),
-                ),
-                UserBasicParams.STREAM to resolveClientOrRepoString(
-                    params = params,
-                    key = UserBasicParams.STREAM,
-                    repoValue = userSettingsRepository.getStream(),
-                ),
-            )
-        )
-        return params
-    }
-
-    /**
-     * If the request body already contains a non-blank [key] (e.g. strict `trackPurchase` override), keep it;
-     * otherwise use [repoValue].
-     */
-    private fun resolveClientOrRepoString(
-        params: JSONObject,
-        key: String,
-        repoValue: String,
-    ): String {
-        if (!params.has(key) || params.isNull(key)) {
-            return repoValue
-        }
-        val raw = params.get(key)
-        val asString = when (raw) {
-            is String -> raw
-            else -> raw.toString()
-        }
-        return asString.ifBlank { repoValue }
-    }
-
-    private fun executeMethod(
-        networkMethod: NetworkMethod,
-        params: JSONObject,
-        listener: OnApiCallbackListener?
-    ) {
-        val thread = Thread {
-            val startTime = System.currentTimeMillis()
-            val requestBodyForLog = if (networkMethod is NetworkMethod.POST) params.toString() else null
-            var logUrl = baseUrl + networkMethod.method
-            var responseCode = -1
-            var responseBodyForLog: String? = null
-            var errorForLog: String? = null
-            var connection: HttpURLConnection? = null
-            // The outcome is decided first and delivered once the connection is done with, so a
-            // callback that throws cannot change it.
-            val outcome: Outcome = try {
-                val buildUri = build(networkMethod, params)
-                val url = getUrl(networkMethod, buildUri)
-                logUrl = url.toString()
-                connection = getConnection(networkMethod, url, params)
-
-                connection.connect()
-                responseCode = connection.responseCode
-
-                // Method and path only: the query string and the body carry the user's data.
-                SDK.debug("$responseCode: ${networkMethod.type} ${networkMethod.method}")
-
-                if (responseCode in HTTP_SUCCESS) {
-                    // A body the read timeout cuts short throws here and ends in onError.
-                    val responseText = readStream(connection.inputStream)
-                    responseBodyForLog = responseText
-                    successOutcome(responseText)
-                } else {
-                    // Below 400 there is no error stream: a redirect the connection did not follow.
-                    // The status is the answer, so a body that fails to arrive does not replace it.
-                    val error = try {
-                        connection.errorStream?.let(::readStream).orEmpty()
-                    } catch (e: IOException) {
-                        ""
-                    }
-                    responseBodyForLog = error
-                    // Without the body: an error answer often repeats the request's data.
-                    SDK.error("$responseCode: ${networkMethod.type} ${networkMethod.method}")
-                    Outcome.Failure(responseCode, error)
-                }
-            } catch (e: ConnectException) {
-                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}")
-                errorForLog = e.message
-                responseCode = 504
-                Outcome.Failure(504, e.message)
-            } catch (e: Exception) {
-                SDK.error("${networkMethod.type} ${networkMethod.method}: ${e.message}", e)
-                errorForLog = e.message
-                Outcome.Failure(-1, e.message)
-            } finally {
-                connection?.disconnect()
-                try {
-                    SDK.networkLogger?.onHttpCall(
-                        method = networkMethod.type,
-                        url = logUrl,
-                        requestBody = requestBodyForLog,
-                        responseCode = responseCode,
-                        responseBody = responseBodyForLog,
-                        durationMs = System.currentTimeMillis() - startTime,
-                        error = errorForLog
-                    )
-                } catch (e: Exception) {
-                    SDK.error("NetworkLogger failed: ${e.message}", e)
-                }
-            }
-
-            listener?.let { deliver(it, outcome) }
-        }
-
-        thread.start()
-    }
-
-    private sealed interface Outcome {
-        /** [body] is a [JSONObject] or a [JSONArray]. */
-        class Success(val body: Any) : Outcome
-        class Failure(val code: Int, val message: String?) : Outcome
-    }
-
-    /** Any 2xx is a success; an empty answer or one that is not JSON succeeds with an empty object. */
-    private fun successOutcome(responseText: String): Outcome {
-        val json = try {
-            if (responseText.isEmpty()) null else JSONTokener(responseText).nextValue()
-        } catch (e: JSONException) {
-            null
-        }
-        return Outcome.Success(if (json is JSONObject || json is JSONArray) json else JSONObject())
-    }
-
-    /**
-     * A callback that throws is logged and must not take down the SDK's network thread. A failed
-     * onSuccess ends in one onError(-1): the SDK's own listeners parse the answer there and hand
-     * the model to the app, so without it a parse error would leave the app waiting for an answer.
-     */
-    private fun deliver(listener: OnApiCallbackListener, outcome: Outcome) {
-        when (outcome) {
-            is Outcome.Success -> try {
-                when (val body = outcome.body) {
-                    is JSONArray -> listener.onSuccess(body)
-                    else -> listener.onSuccess(body as JSONObject)
-                }
-            } catch (e: Exception) {
-                SDK.error("onSuccess of a request failed: ${e.message}", e)
-                fail(listener, -1, e.message)
-            }
-            is Outcome.Failure -> fail(listener, outcome.code, outcome.message)
-        }
-    }
-
-    private fun fail(listener: OnApiCallbackListener, code: Int, message: String?) {
-        try {
-            listener.onError(code, message)
-        } catch (e: Exception) {
-            SDK.error("onError of a request failed: ${e.message}", e)
-        }
-    }
-
-    private fun build(
-        networkMethod: NetworkMethod,
-        params: JSONObject
-    ): Uri {
-
-        val builder = Uri.parse(baseUrl + networkMethod.method).buildUpon()
-
-        val it = params.keys()
-        while (it.hasNext()) {
-            val key = it.next()
-            builder.appendQueryParameter(key, params.getString(key))
-        }
-
-        return builder.build()
-    }
-
-    private fun getUrl(
-        networkMethod: NetworkMethod,
-        buildUri: Uri
-    ): URL {
-
-        return if (networkMethod is NetworkMethod.POST) {
-            URL(baseUrl + networkMethod.method)
-        } else {
-            URL(buildUri.toString())
-        }
-    }
-
-    private fun getConnection(
-        networkMethod: NetworkMethod,
-        url: URL,
-        params: JSONObject
-    ): HttpURLConnection {
-        val connection = url.openConnection() as HttpURLConnection
-        connection.setRequestProperty("User-Agent", SDK.userAgent())
-        connection.requestMethod = networkMethod.type
-        connection.connectTimeout = CONNECT_TIMEOUT_MS
-        connection.readTimeout = readTimeoutMs
-
-        if (networkMethod is NetworkMethod.POST) {
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.doOutput = true
-            connection.doInput = true
-            val os =
-                BufferedWriter(OutputStreamWriter(connection.outputStream, StandardCharsets.UTF_8))
-            os.write(params.toString())
-            os.flush()
-            os.close()
-        }
-
-        return connection
-    }
-
-    /** The whole answer, its lines joined; a read that fails midway throws instead of returning a part. */
-    private fun readStream(inputStream: InputStream): String =
-        BufferedReader(InputStreamReader(inputStream)).use { reader ->
-            buildString { reader.forEachLine { append(it) } }
-        }
-
-    private companion object {
-        const val CONNECT_TIMEOUT_MS = 5_000
-        const val READ_TIMEOUT_MS = 10_000
-        val HTTP_SUCCESS = 200..299
+        val core = core
+        // The legacy session moves with every request, but a push-only instance's. On the new core only
+        // /init and the queue's events move it (core/session.md): a request with a result does not.
+        if (!core.isV2 && movesLegacySession) userSettingsRepository.updateSidLastActTime()
+        core.send(networkMethod, params, listener)
     }
 }
