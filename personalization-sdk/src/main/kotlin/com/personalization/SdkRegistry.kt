@@ -51,12 +51,15 @@ internal object SdkRegistry {
      * brought up only for a push ([SDK.pushOnly]), becomes the current default. Re-registering the same instance keeps a single entry; a new instance for an
      * already-known [shopId] replaces the mapping (last writer wins) and evicts the superseded
      * instance from the fan-out set, so a re-init does not leave the old object receiving push tokens.
+     * An object initialized again for another shop (the deprecated `SDK.initialize`) is that shop's only.
      */
     fun register(shopId: String, sdk: SDK) {
         val toNotify: List<Awaiter>
         synchronized(lock) {
             instances.remove(sdk)
             instances.add(sdk)
+            // The shop it was initialized for before no longer finds it: its start was stopped.
+            byShop.entries.removeAll { it.value === sdk && it.key != shopId }
             // A re-init builds a new SDK for the same shop: drop the one it supersedes, or it lingers
             // in the fan-out set forever — still fed push tokens and inflating all()/count().
             val previous = byShop.put(shopId, sdk)
