@@ -547,6 +547,9 @@ open class SDK {
     internal fun dropsPushWithoutDid(): Boolean {
         // The legacy core brings a shop without a did up as a full instance, as it always did.
         if (!pushOnly || !isCoreV2) return false
+        // Gave way to the app's instance of the shop meanwhile: the queue refuses the event and it goes to that
+        // one, whose own start takes the did. Not this one's to drop.
+        if (released) return false
         val init = (core as? CoreV2)?.init ?: return false
         if (init.hasDid()) return false
         log(LogLevel.WARNING, LogCodes.PUSH_DROPPED, "The push's event is dropped: the shop has no did yet", mapOf("reason" to LogReasons.NO_DID))

@@ -490,6 +490,35 @@ class CoreInitTest {
     }
 
     @Test
+    fun `hasDid tells before the disk is read whether the start gives a did without init, and once it was read what it gave`() {
+        // Nothing anywhere, read: no did, /init gives one.
+        val none = started()
+        assertFalse(none.hasDid())
+        none.release()
+
+        // The config brings one: the start will take it. Read, not taken.
+        val configured = init(InitSetup(SHOP, deviceId = "FROM_RN")).also { it.start() }
+        assertTrue(configured.hasDid())
+        assertEquals("", settings.getDid())
+        // Released before it read the disk: what the start would have taken still counts.
+        configured.release()
+        assertTrue(configured.hasDid())
+
+        // needReInitialization forgets every did: none counts.
+        val renewed = init(InitSetup(SHOP, deviceId = "FROM_RN", needReInitialization = true)).also { it.start() }
+        assertFalse(renewed.hasDid())
+        renewed.release()
+
+        // The saved answer of an earlier /init brings one.
+        storage.saveInitAnswer(JSONObject().put("did", "SAVED").put("seance", "S0"))
+        val saved = init(InitSetup(SHOP)).also { it.start() }
+        assertTrue(saved.hasDid())
+        scheduler.runCurrent()
+        assertEquals("SAVED", settings.getDid())
+        assertTrue(saved.hasDid())
+    }
+
+    @Test
     fun `an init cancelled by something else than the SDK is repeated`() {
         started()
 

@@ -245,12 +245,13 @@ internal class CoreInit(
     /**
      * Whether the instance has a `did`, or its start will give it one without `/init`: the stored one, the one
      * [InitSetup.deviceId] brings when it is taken, or the saved answer's. Decided at once; while the start
-     * prepares the storage it waits for that, and before it reads the disk: not for the main thread.
+     * prepares the storage it waits for that, and before it reads the disk: not for the main thread. Released
+     * before the storage was prepared, it reads those sources as the start would have taken them.
      */
     internal fun hasDid(): Boolean = synchronized(lock) {
         if (settings.getDid().isNotEmpty()) return true
         // Prepared: every source was taken already. A new did would come from /init.
-        if (prepared || released || setup.needReInitialization) return false
+        if (prepared || setup.needReInitialization) return false
         storage.takesConfiguredDid(setup.deviceId) || storage.savedDid() != null
     }
 
