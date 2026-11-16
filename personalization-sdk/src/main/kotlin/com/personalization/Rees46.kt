@@ -63,10 +63,9 @@ object Rees46 {
             return existing.handedToApp()
         }
         val sdk = SDK()
+        // A shop brought up only to track a push gives way to the full instance once it is registered; the
+        // push's tracking in flight still gets through.
         sdk.initializeWith(context, config)
-        // A shop brought up only to track a push gives way to the full instance; the push's tracking
-        // in flight still gets through.
-        existing?.giveWay()
         // Removed once the instance is registered: a lookup meanwhile still finds the shop.
         pending.remove(config.shopId)
         sdk
@@ -478,7 +477,7 @@ object Rees46 {
      * A full instance a push started gets what it left for the app ([SDK.handedToApp]). Null when the shop has
      * neither (released meanwhile).
      */
-    private fun appInstance(shopId: String): SDK? {
+    internal fun appInstance(shopId: String): SDK? {
         SdkRegistry.byShopId(shopId)?.takeUnless { it.pushOnly }?.let { return it.handedToApp() }
         return synchronized(lock) {
             // Another caller may have made it meanwhile, or a push brought the shop up for itself.

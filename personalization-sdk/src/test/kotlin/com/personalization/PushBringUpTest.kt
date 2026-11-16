@@ -310,6 +310,56 @@ class PushBringUpTest {
         assertEquals(savedAt, partition().getLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, 0L))
     }
 
+    // SDK.instance and the deprecated initialize while only the push's instance lives.
+
+    @Test
+    fun `SDK instance while only the push's instance lives is the shop's full instance, for the old calls and the deprecated initialize`() {
+        partition().edit().putString(StorageKeys.DID, "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertTrue(light.pushOnly)
+
+        // An app of the old API asks SDK.instance: the shop's full instance, as Rees46.instance makes it.
+        val app = SDK.instance
+        assertTrue(app !== light)
+        assertFalse(app.pushOnly)
+        assertTrue(SdkRegistry.byShopId(SHOP) === app)
+        assertEquals(SdkState.NOT_INITIALIZED, light.state)
+        app.notificationClicked(tap("tap"))
+        @Suppress("DEPRECATION")
+        SDK.instance.initialize(context, SHOP, apiDomain = server.url("/").toString().trimEnd('/'))
+
+        assertTrue(SDK.instance === app)
+        assertEquals(1, SdkRegistry.count())
+        flush(app)
+        assertEquals("tap", next("track/clicked")?.second?.getString("code"))
+        assertEquals("STORED", seen.last { it.first == "track/clicked" }.second.getString("did"))
+        assertEquals("one /init: the full instance's", 1, seen.count { it.first == "init" })
+    }
+
+    @Test
+    fun `the deprecated initialize of a new object takes the push's instance's place, and each event goes once`() {
+        partition().edit().putString(StorageKeys.DID, "STORED").commit()
+        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+
+        val app = SDK()
+        @Suppress("DEPRECATION")
+        app.initialize(context, SHOP, apiDomain = server.url("/").toString().trimEnd('/'))
+
+        assertTrue(SdkRegistry.byShopId(SHOP) === app)
+        assertEquals("the push's instance gave way", SdkState.NOT_INITIALIZED, light.state)
+        app.tracking.productView("37")
+        flush(app)
+        assertEquals("37", next("push")?.second?.getJSONArray("items")?.getJSONObject(0)?.getString("id"))
+        // Both queues' files were the shop's: one of them sent each event, once.
+        flush(app)
+        assertEquals(1, seen.count { it.first == "track/delivered" && it.second.optString("code") == "cold" })
+        assertEquals(1, seen.count { it.first == "push" })
+    }
+
     private companion object {
         const val SHOP = "bring-up-shop"
         const val OTHER = "bring-up-other"

@@ -134,11 +134,19 @@ internal object SdkRegistry {
     /**
      * The current default, lazily creating an (uninitialized) instance if none exists. Preserves the
      * legacy `SDK.instance` fallback: a push delivered before `initialize()` ran still reaches a
-     * guarded instance instead of crashing the host. The app takes the current default this way
-     * ([SDK.handedToApp]).
+     * guarded instance instead of crashing the host.
+     *
+     * When the only live instance is one a push brought up for itself ([SDK.pushOnly]), which is never the
+     * app's, the app gets its shop's full instance as [Rees46.instance] makes it: an uninitialized one would
+     * fail its calls, and initialized it would be a second instance of the shop beside the push's.
      */
     fun currentOrLazy(): SDK {
         current?.let { return it.handedToApp() }
+        val pushOnlyShop = synchronized(lock) {
+            if (current != null) null else byShop.entries.singleOrNull()?.takeIf { it.value.pushOnly }?.key
+        }
+        // Outside the lock: making the instance registers it here.
+        if (pushOnlyShop != null) Rees46.appInstance(pushOnlyShop)?.let { return it }
         return synchronized(lock) { current ?: SDK().also { current = it } }
     }
 

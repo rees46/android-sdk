@@ -571,10 +571,14 @@ open class SDK {
         this.pushOnly = pushOnly
         this.config = config
         appStartDeferred.set(deferAppStart)
+        // A shop's instance brought up only for a push gives way to this one, however the app made it (the
+        // deprecated initialize of another object too): one queue sends, and the push's events in flight go.
+        val superseded = if (pushOnly) null else SdkRegistry.byShopId(config.shopId)?.takeIf { it !== this && it.pushOnly }
         initializeInternal(
             context, config, autoSendPushToken, needReInitialization,
             pushOnly = pushOnly, cancelRequests = !upgrade, sendProfile = !pushOnly && !deferAppStart,
         )
+        superseded?.giveWay()
     }
 
     /**
