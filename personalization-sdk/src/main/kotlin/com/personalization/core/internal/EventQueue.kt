@@ -365,11 +365,14 @@ internal class EventQueue(
     /**
      * Empties the queue for [reason] and runs [then] while no event can be accepted: an event accepted
      * before this call goes, one accepted after it stays. The listeners waiting hear [error]. Returns
-     * [then]'s result. Without a writer to keep the order (released) it is done here.
+     * [then]'s result. Released, it takes no command: it waits for the writer to write what was accepted
+     * before it, then clears here.
      */
     suspend fun clear(reason: String, error: LegacyError, then: () -> Boolean): Boolean {
         val done = CompletableDeferred<Boolean>()
         if (released || writer?.isActive != true || commands.trySend(Command.Clear(reason, error, then, done)).isFailure) {
+            // The writer drains what was accepted before the release; cleared first, that would outlive the clear.
+            withContext(NonCancellable) { writer?.join() }
             return clearNow(reason, error, then)
         }
         return withContext(NonCancellable) { done.await() }

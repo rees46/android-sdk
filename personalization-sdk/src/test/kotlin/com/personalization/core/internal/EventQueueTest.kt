@@ -1525,6 +1525,63 @@ class EventQueueTest {
         assertFalse(bodies[1].has("source"))
     }
 
+    // The gaps of the coverage audit.
+
+    @Test
+    fun `a release while events wait to be written lets the clear that follows wait for them, so none outlives the deletion`() {
+        val queue = start()
+        connectivity.set(false)
+        val heard = List(3) { Heard() }
+        heard.forEachIndexed { index, listener -> event(queue, "$index", listener = listener) }
+        queue.release()
+        var wiped = false
+        val cleared = CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined).async {
+            queue.clear(LogReasons.DELETE_USER_CREDENTIALS, LegacyError(-1, null, SdkError.Cancelled)) { wiped = true; true }
+        }
+        run()
+
+        assertTrue(cleared.isCompleted)
+        assertTrue(cleared.getCompleted())
+        assertTrue(wiped)
+        assertTrue("the events accepted before the deletion went with it", files().isEmpty())
+        // Written after a cancelling release: nobody here sends them, and their listeners heard so.
+        heard.forEach { assertEquals(listOf<SdkError?>(SdkError.Cancelled), it.errors) }
+    }
+
+    @Test
+    fun `an event a release overtakes before it is written stays on disk, its listener hears -1 at once, and the next queue sends it`() {
+        val queue = start()
+        val heard = Heard()
+        val accepted = mutableListOf<SdkError?>()
+        queue.accept("push", JSONObject().put("event", "view").put("items", org.json.JSONArray().put(JSONObject().put("id", "late"))), heard) { accepted += it }
+        queue.release()
+        run()
+
+        assertEquals(listOf("error:-1"), heard.calls)
+        assertEquals(listOf<SdkError?>(SdkError.Cancelled), heard.errors)
+        assertEquals("accepted: written for the next launch", listOf<SdkError?>(null), accepted)
+        assertEquals(1, files().size)
+        assertTrue(sent.isEmpty())
+
+        val next = EventQueue(
+            shopId = SHOP,
+            store = QueueStore.of(storage.queuePath, SHOP),
+            init = inits.single(),
+            state = state,
+            send = { method, body ->
+                sent += Sent(method.method, JSONObject(body.toString()), settings.getSid())
+                HttpResult.Success(JSONObject())
+            },
+            connectivity = connectivity,
+            lifecycle = lifecycle,
+            dispatchers = dispatchers,
+            clock = clock,
+        ).also { queues += it }
+        next.start()
+        run()
+        assertEquals(listOf("late"), ids())
+    }
+
     // After the decisions of the contract's review.
 
     @Test
