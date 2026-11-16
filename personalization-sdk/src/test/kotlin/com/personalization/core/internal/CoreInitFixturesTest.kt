@@ -76,14 +76,11 @@ class CoreInitFixturesTest {
                 return MockResponse().setResponseCode(response.getInt("status")).setBody(body)
             }
         }
-        server.start(java.net.InetAddress.getByName("127.0.0.1"), 0)
+        server.start()
 
         val connectivity = FakeConnectivity(connected = true)
-        // By its address, not `localhost`: OkHttp repeats nothing by itself (core/network.md), so after the read
-        // timeout of a case without an answer it would not go on to the name's other address (`::1`).
-        val url = server.url("/").newBuilder().host("127.0.0.1").build().toString()
         val client = CoreHttpClient(
-            { url }, settings, connectivity, layout.shopId,
+            { server.url("/").toString() }, settings, connectivity, layout.shopId,
             timeouts = CoreTimeouts(initReadMs = 300),
         )
         val core = CoreV2(client, layout.shopId)

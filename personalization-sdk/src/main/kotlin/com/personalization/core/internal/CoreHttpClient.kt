@@ -14,19 +14,23 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Dispatcher
 import okhttp3.EventListener
-import okhttp3.Interceptor
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Interceptor
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okio.BufferedSink
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.IOException
 import java.net.InetSocketAddress
+import java.net.ProtocolException
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -44,9 +48,8 @@ internal data class CoreTimeouts(
  * What the process shares between the instances' clients: one connection pool and one dispatcher.
  *
  * The dispatcher lets 16 requests run at once to one host instead of OkHttp's 5: the old client had no
- * limit, and a screen of recommendation blocks should not wait in line. OkHttp sends nothing again by
- * itself ([CoreHttpClient]): its `retryOnConnectionFailure` would repeat a POST whose pooled connection
- * broke after the request went, and the server would get the event twice.
+ * limit, and a screen of recommendation blocks should not wait in line. OkHttp still moves on to a host's
+ * next address when it cannot connect, but never sends a request again once it went ([CoreHttpClient]).
  */
 internal object CoreHttp {
     private const val MAX_REQUESTS_PER_HOST = 16
@@ -54,7 +57,6 @@ internal object CoreHttp {
     val shared: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .dispatcher(Dispatcher().apply { maxRequestsPerHost = MAX_REQUESTS_PER_HOST })
-            .retryOnConnectionFailure(false)
             .build()
     }
 }
@@ -70,9 +72,10 @@ internal object CoreHttp {
  * - a request cancelled with the instance is `cancelled`.
  *
  * Without a network a request fails at once with `network`. The client never retries, nor lets OkHttp
- * repeat a request on another connection by itself. The log gets the method, the path and the code,
- * never the query, a body or the answer. An answer's `Retry-After` comes back with the failure, for the
- * caller that repeats ([CoreInit]).
+ * send a request again once it went ([OneShotBody], [SendOnceGuard]); OkHttp only moves on to a host's
+ * next address when it could not connect, before anything was sent. The log gets the method, the path and
+ * the code, never the query, a body or the answer. An answer's `Retry-After` comes back with the failure,
+ * for the caller that repeats ([CoreInit]).
  *
  * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
  * device), and no `segment`. A push event (`track/delivered` and the others) carries no `sid` or `seance`
@@ -93,10 +96,12 @@ internal class CoreHttpClient(
         .connectTimeout(timeouts.connectMs, TimeUnit.MILLISECONDS)
         .readTimeout(timeouts.readMs, TimeUnit.MILLISECONDS)
         .writeTimeout(timeouts.writeMs, TimeUnit.MILLISECONDS)
-        // No hidden repeats (core/network.md): a connection that breaks after the request went is `timeout`,
-        // and the queue repeats it by its own rules; one that breaks before is `network`.
-        .retryOnConnectionFailure(false)
+        // A connection that cannot be made moves on to the host's next address (a broken IPv6, one dead
+        // server); a request that went is never sent again (core/network.md): a connection that breaks after
+        // it went is `timeout`, which the queue repeats by its own rules, and one that breaks before is `network`.
+        .retryOnConnectionFailure(true)
         .eventListenerFactory(PhaseListener)
+        .addNetworkInterceptor(SendOnceGuard)
         .addNetworkInterceptor(RetryAfterGuard)
         .build()
 
@@ -159,7 +164,7 @@ internal class CoreHttpClient(
             }
             is NetworkMethod.POST -> {
                 val body = fields.toString()
-                Built(builder.url(url).post(body.toRequestBody(JSON)).build(), body)
+                Built(builder.url(url).post(OneShotBody(body.toRequestBody(JSON))).build(), body)
             }
         }
     }
@@ -248,7 +253,7 @@ internal class CoreHttpClient(
     /** No answer: cancelled with the instance, `timeout` once the request reached the server, `network` before. */
     private fun noAnswer(call: Call, phase: Phase): SdkError = when {
         call.isCanceled() -> SdkError.Cancelled
-        phase.requestSent -> SdkError.Timeout
+        phase.requestSent || phase.lostAfterSend -> SdkError.Timeout
         else -> SdkError.Network
     }
 
@@ -331,10 +336,46 @@ internal class CoreHttpClient(
 }
 
 /**
+ * A request body OkHttp may send only once: after a request with it started going out, OkHttp neither
+ * repeats it on another connection (its `retryOnConnectionFailure`) nor follows its answer up (`408`,
+ * `503`). A connection that could not be made still moves on to the host's next address: nothing was sent.
+ */
+internal class OneShotBody(private val body: RequestBody) : RequestBody() {
+    override fun contentType(): MediaType? = body.contentType()
+
+    override fun contentLength(): Long = body.contentLength()
+
+    override fun writeTo(sink: BufferedSink) = body.writeTo(sink)
+
+    override fun isOneShot(): Boolean = true
+}
+
+/**
+ * The same for a request without a body (a `GET`, `/init`), which OkHttp would send again on a new
+ * connection after one broke off: an attempt whose request went and got no answer marks its [Phase], and a
+ * later attempt of the call fails with a [ProtocolException], which OkHttp never repeats. The call fails as
+ * `timeout`. An answered attempt's follow-up (a redirect) goes as before.
+ */
+internal object SendOnceGuard : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val phase = chain.request().tag(Phase::class.java) ?: return chain.proceed(chain.request())
+        if (phase.lostAfterSend) throw ProtocolException("The request went once already: it is not sent again")
+        try {
+            return chain.proceed(chain.request())
+        } catch (e: IOException) {
+            if (phase.requestSent) phase.lostAfterSend = true
+            throw e
+        }
+    }
+}
+
+/**
  * Keeps OkHttp from repeating an answered request by itself. OkHttp sends a `408` again at once (unless
- * its `Retry-After` is positive) and a `503` whose `Retry-After` is `0`; it also parses that header as an
- * `Int` and throws on a larger number, on its own thread, which would end the app's process. For those
- * two codes the header is moved to [COPY] (empty without one), where the client reads it, and
+ * its `Retry-After` is positive) and a `503` whose `Retry-After` is `0`: a body sent only once ([OneShotBody])
+ * is never followed up, but a request without one is. OkHttp also parses that header as an `Int` — for a
+ * `503` whatever the body — and throws on a larger number, on its own thread, which would end the app's
+ * process.
+ * For those two codes the header is moved to [COPY] (empty without one), where the client reads it, and
  * `Retry-After: 1` takes its place: OkHttp hands the answer over as it is, and the core decides about
  * repeats (decision 0002). A header OkHttp would refuse to build (text outside ASCII) is copied as it is,
  * and dropped if even that fails: the guard itself never throws.
@@ -364,11 +405,15 @@ internal object RetryAfterGuard : Interceptor {
 internal class Phase {
     @Volatile
     var requestSent: Boolean = false
+
+    /** An attempt of the call broke off after its request went: no later attempt sends it ([SendOnceGuard]). */
+    @Volatile
+    var lostAfterSend: Boolean = false
 }
 
 /**
  * Follows each request of the core through its [Phase], found in the request's tags. A new connection
- * attempt (OkHttp recovering from a stale pooled connection) starts the phase over.
+ * attempt (OkHttp moving on to the host's next address) starts the phase over.
  */
 internal object PhaseListener : EventListener.Factory {
     override fun create(call: Call): EventListener {

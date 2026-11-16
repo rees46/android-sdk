@@ -8,6 +8,8 @@ import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import okhttp3.Dns
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.SocketPolicy
@@ -24,6 +26,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.concurrent.TimeUnit
 
@@ -205,6 +208,50 @@ class CoreHttpClientTest {
 
         assertEquals("the server got the event once", 2, server.requestCount)
         assertEquals("sent and not answered: the queue repeats it after a pause", SdkError.Timeout, second.error())
+    }
+
+    @Test
+    fun `OkHttp never sends a request without a body again by itself either`() {
+        reply(200, "{}")
+        server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
+        reply(200, "{}")
+        val client = client()
+
+        assertTrue(send(NetworkMethod.GET("products/get"), client = client) is HttpResult.Success)
+        val second = send(NetworkMethod.GET("products/get"), client = client)
+
+        assertEquals("the server got the request once", 2, server.requestCount)
+        assertEquals(SdkError.Timeout, second.error())
+    }
+
+    @Test
+    fun `a request goes to the host's next address when the first cannot be connected, once`() {
+        val live = MockWebServer()
+        live.start(InetAddress.getByName("127.0.0.1"), 0)
+        try {
+            // Nothing listens on the first address's port, or there is no IPv6 at all: it fails at once.
+            val dead = InetAddress.getByName("::1")
+            val asked = mutableListOf<String>()
+            val shared = OkHttpClient.Builder().dns(object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> =
+                    listOf(dead, InetAddress.getByName("127.0.0.1")).also { asked += hostname }
+            }).build()
+            val client = CoreHttpClient({ "http://sdk.test:${live.port}/" }, settings, connectivity, "shop", shared = shared)
+            live.enqueue(MockResponse().setBody("{\"ok\":true}"))
+            live.enqueue(MockResponse().setBody("{\"ok\":true}"))
+
+            // A POST, whose body goes only once, and a GET.
+            val posted = send(NetworkMethod.POST("push"), JSONObject().put("event", "view"), client)
+            val got = send(NetworkMethod.GET("products/get"), client = client)
+
+            assertEquals("{\"ok\":true}", posted.body().toString())
+            assertEquals("{\"ok\":true}", got.body().toString())
+            assertEquals("each went once", 2, live.requestCount)
+            assertEquals("/push", live.takeRequest().path)
+            assertTrue(asked.isNotEmpty())
+        } finally {
+            live.close()
+        }
     }
 
     @Test
