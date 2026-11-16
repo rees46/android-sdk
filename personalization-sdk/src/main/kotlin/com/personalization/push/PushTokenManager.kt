@@ -83,17 +83,7 @@ class PushTokenManager @Inject constructor(
      * [HmsTokenSource] there would throw NoClassDefFoundError. The guard keeps a provider off
      * unless the host opted in by adding its artifacts.
      */
-    private val sources: List<PushTokenSource> = buildList {
-        if (isOnClasspath(FCM_MARKER_CLASS)) add(FcmTokenSource())
-        if (isOnClasspath(HMS_MARKER_CLASS)) add(HmsTokenSource())
-    }
-
-    private fun isOnClasspath(className: String): Boolean = try {
-        Class.forName(className, false, javaClass.classLoader)
-        true
-    } catch (_: Throwable) {
-        false
-    }
+    private val sources: List<PushTokenSource> = sourceFactory()
 
     fun setOnPushTokenListener(listener: OnPushTokenListener) {
         this.listener = listener
@@ -233,6 +223,22 @@ class PushTokenManager @Inject constructor(
     }
 
     companion object {
+        /** The providers whose SDK is on the classpath; a test hands its own before the instance is made. */
+        @Volatile
+        internal var sourceFactory: () -> List<PushTokenSource> = ::classpathSources
+
+        internal fun classpathSources(): List<PushTokenSource> = buildList {
+            if (isOnClasspath(FCM_MARKER_CLASS)) add(FcmTokenSource())
+            if (isOnClasspath(HMS_MARKER_CLASS)) add(HmsTokenSource())
+        }
+
+        private fun isOnClasspath(className: String): Boolean = try {
+            Class.forName(className, false, PushTokenManager::class.java.classLoader)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+
         private const val TAG = "PushTokenManager"
         // Marker classes used to detect whether each provider's SDK is present at runtime.
         private const val FCM_MARKER_CLASS = "com.google.firebase.messaging.FirebaseMessaging"
