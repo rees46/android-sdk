@@ -109,15 +109,22 @@ internal class CoreHttpClient(
         .readTimeout(timeouts.initReadMs, TimeUnit.MILLISECONDS)
         .build()
 
-    /** The client for [method]: `/init` reads with its own timeout. */
-    internal fun clientFor(method: NetworkMethod): OkHttpClient =
-        if (method.method == INIT_PATH) initClient else client
+    /**
+     * The client for [method]: `/init` reads with its own timeout, and a request with [readTimeoutMs] with
+     * that one; the client of every other request stays as it is.
+     */
+    internal fun clientFor(method: NetworkMethod, readTimeoutMs: Long? = null): OkHttpClient = when {
+        readTimeoutMs != null -> client.newBuilder().readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS).build()
+        method.method == INIT_PATH -> initClient
+        else -> client
+    }
 
     /**
      * Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. With
-     * [commonFields] false the fields are all there already (the queue stamps its events itself).
+     * [commonFields] false the fields are all there already (the queue stamps its events itself). A method
+     * with a read timeout of its own passes it as [readTimeoutMs]: it holds for this request only.
      */
-    suspend fun send(method: NetworkMethod, params: JSONObject, commonFields: Boolean = true): HttpResult {
+    suspend fun send(method: NetworkMethod, params: JSONObject, commonFields: Boolean = true, readTimeoutMs: Long? = null): HttpResult {
         if (!connectivity.isConnected) {
             log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") {
                 context(method) + ("reason" to LogReasons.OFFLINE)
@@ -132,7 +139,7 @@ internal class CoreHttpClient(
             return HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
         }
         val started = clock.nowMillis()
-        val exchange = clientFor(method).newCall(built.request).exchange(phase)
+        val exchange = clientFor(method, readTimeoutMs).newCall(built.request).exchange(phase)
         report(method, built, exchange, clock.nowMillis() - started)
         return exchange.result
     }
@@ -212,7 +219,7 @@ internal class CoreHttpClient(
         }
         // OkHttp gives every answer it hands over a body; without one the answer is empty.
         val text = response.body?.string().orEmpty()
-        if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject()), status, text)
+        if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject(), empty = true), status, text)
         val json = try {
             JSONTokener(text).nextValue()
         } catch (e: JSONException) {
