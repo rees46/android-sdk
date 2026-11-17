@@ -4,7 +4,21 @@ import com.personalization.api.models.products.SortBy
 import com.personalization.api.models.products.SortDirection
 import com.personalization.api.models.search.SearchBlankResponse
 import com.personalization.api.models.search.SearchFullRequest
+import androidx.test.core.app.ApplicationProvider
+import com.personalization.core.SdkError
 import com.personalization.core.SdkResult
+import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.CoreHttpClient
+import com.personalization.core.internal.CoreTimeouts
+import com.personalization.core.internal.CoreV2
+import com.personalization.core.internal.FakeConnectivity
+import com.personalization.core.internal.NamespaceCalls
+import com.personalization.core.internal.startedCoreInit
+import com.personalization.sdk.domain.repositories.UserSettingsRepository
+import io.mockk.every
+import io.mockk.mockk
+import okhttp3.mockwebserver.MockWebServer
+import java.util.concurrent.TimeUnit
 import com.personalization.core.BridgeApi
 import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.argBoolean
@@ -17,13 +31,15 @@ import okhttp3.mockwebserver.MockResponse
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** `sdk.search` against the contract's fixtures (`contract/0/search.json`). */
+/** `sdk.search` against the contract's fixtures (`contract/0/search.json`), the search agent among them. */
 @OptIn(BridgeApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -51,6 +67,8 @@ class SearchApiFixturesTest {
                 excludedBrands = args.argStrings("excludedBrands"),
             )
             "full" -> search.full(args.getString("query"), args.optJSONObject("request")?.let(::fullRequest) ?: SearchFullRequest())
+            "agentDialog" -> search.agentDialog(args.argInt("sessionId"), args.argStrings("locations"))
+            "agent" -> search.agent(args.getString("message"), args.argInt("sessionId"), args.argStrings("locations"))
             else -> error("no search.$method")
         }
     }
@@ -68,6 +86,71 @@ class SearchApiFixturesTest {
         fixtures.server.enqueue(MockResponse().setResponseCode(200))
 
         assertEquals(SdkResult.Success(SearchBlankResponse()), fixtures.outcome { search.blank() })
+    }
+
+    @Test
+    fun `the agent's methods go to the host of API v3, and the other searches to the API's`() {
+        val app = MockWebServer().apply { start() }
+        val api = MockWebServer().apply { start() }
+        val settings = mockk<UserSettingsRepository>(relaxed = true) {
+            every { getShopId() } returns "agent-shop"
+            every { getDid() } returns "did-1"
+            every { getSid() } returns "sid-1"
+        }
+        val connectivity = FakeConnectivity(connected = true)
+        val client = CoreHttpClient({ api.url("/").toString() }, settings, connectivity, "agent-shop", appUrl = { app.url("/").toString() })
+        val core = CoreV2(client, "agent-shop").also {
+            it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings, connectivity, "agent-shop")
+        }
+        val search = SearchApiImpl(NamespaceCalls(core = { core }, dispatchers = { CoreDispatchers.DEFAULT }, shopId = { "agent-shop" }))
+        try {
+            app.enqueue(MockResponse().setBody("""{"sessions":[]}"""))
+            app.enqueue(MockResponse().setBody("""{"session":{"id":1},"message":{"id":2}}"""))
+            api.enqueue(MockResponse().setBody("{}"))
+
+            assertTrue(fixtures.outcome { search.agentDialog() } is SdkResult.Success)
+            assertTrue(fixtures.outcome { search.agent("hi") } is SdkResult.Success)
+            assertTrue(fixtures.outcome { search.blank() } is SdkResult.Success)
+
+            assertEquals(listOf("GET", "POST").map { it to "/" + SearchApiImpl.AGENT_PATH }, List(2) {
+                app.takeRequest(5, TimeUnit.SECONDS)!!.let { it.method to it.requestUrl!!.encodedPath }
+            })
+            assertEquals("/" + SearchApiImpl.BLANK_PATH, api.takeRequest(5, TimeUnit.SECONDS)!!.requestUrl!!.encodedPath)
+            assertEquals(2, app.requestCount)
+            assertEquals(1, api.requestCount)
+        } finally {
+            core.release()
+            app.close()
+            api.close()
+        }
+    }
+
+    @Test
+    fun `the agent's answer is read for 60 seconds, longer than the client's read timeout, which the dialog keeps`() {
+        val slow = NamespaceFixtures("agent-timeout-shop", CoreTimeouts(readMs = 300))
+        slow.start()
+        try {
+            val search = SearchApiImpl(slow.calls)
+            val late = { body: String -> MockResponse().setBody(body).setHeadersDelay(1, TimeUnit.SECONDS) }
+            slow.server.enqueue(late("""{"sessions":[]}"""))
+            slow.server.enqueue(late("""{"session":{"id":1},"message":{"id":2,"role":"assistant"}}"""))
+
+            assertEquals(SdkResult.Failure(SdkError.Timeout), slow.outcome { search.agentDialog() })
+            assertTrue(slow.outcome { search.agent("hi") } is SdkResult.Success)
+        } finally {
+            slow.stop()
+        }
+    }
+
+    @Test
+    fun `agentEnabled is what the last init answer said, false without one`() {
+        var enabled = false
+        val search = SearchApiImpl(fixtures.calls) { enabled }
+
+        assertFalse(search.agentEnabled)
+        enabled = true
+        assertTrue(search.agentEnabled)
+        assertFalse(SearchApiImpl(fixtures.calls).agentEnabled)
     }
 
     private fun fullRequest(json: JSONObject) = SearchFullRequest(

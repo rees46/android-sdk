@@ -26,9 +26,10 @@ import java.util.concurrent.TimeUnit
  * A namespace's methods against the contract's fixtures (`contract/0/<namespace>.json`), over a new core
  * that talks to a mock server: the request each call makes (or the `invalidArgument` it ends with, without
  * one), and what it makes of each answer. A test class starts it in `@Before` and stops it in `@After`,
- * builds its namespace over [calls], and says how to run a fixture's call ([Invoke]).
+ * builds its namespace over [calls], and says how to run a fixture's call ([Invoke]). The mock server
+ * stands for both hosts, the API's and that of API v3; [timeouts] are the client's.
  */
-internal class NamespaceFixtures(private val shop: String) {
+internal class NamespaceFixtures(private val shop: String, private val timeouts: CoreTimeouts = CoreTimeouts()) {
 
     /** Runs the method [method] of the namespace with the fixture's [args]; its value is what the method returns. */
     fun interface Invoke {
@@ -51,7 +52,10 @@ internal class NamespaceFixtures(private val shop: String) {
     fun start() {
         SdkLogs.reset()
         server.start()
-        val client = CoreHttpClient({ server.url("/").toString() }, settings, connectivity, shop)
+        val client = CoreHttpClient(
+            { server.url("/").toString() }, settings, connectivity, shop,
+            timeouts = timeouts, appUrl = { server.url("/").toString() },
+        )
         core = CoreV2(client, shop).also {
             it.init = startedCoreInit(ApplicationProvider.getApplicationContext(), settings, connectivity, shop)
         }

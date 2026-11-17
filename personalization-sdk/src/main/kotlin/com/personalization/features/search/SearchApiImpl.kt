@@ -1,6 +1,8 @@
 package com.personalization.features.search
 
 import com.personalization.api.managers.SearchApi
+import com.personalization.api.models.search.AgentDialogResponse
+import com.personalization.api.models.search.AgentResponse
 import com.personalization.api.models.search.Query
 import com.personalization.api.models.search.SearchBlankResponse
 import com.personalization.api.models.search.SearchFullRequest
@@ -15,6 +17,7 @@ import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.doubleOrNull
 import com.personalization.core.internal.intOrNull
+import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.objectOrNull
 import com.personalization.core.internal.putFilters
@@ -30,9 +33,18 @@ import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** [SearchApi] over the namespaces' path ([NamespaceCalls]). */
+/**
+ * [SearchApi] over the namespaces' path ([NamespaceCalls]). [agentSearch] tells whether the last `/init`
+ * answer turned the search agent on.
+ */
 @OptIn(BridgeApi::class)
-internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
+internal class SearchApiImpl(
+    private val calls: NamespaceCalls,
+    private val agentSearch: () -> Boolean = { false },
+) : SearchApi {
+
+    override val agentEnabled: Boolean
+        get() = agentSearch()
 
     override suspend fun blank(): SearchBlankResponse =
         calls.request(BLANK, NetworkMethod.GET(BLANK_PATH), read = ::readBlank)
@@ -61,6 +73,22 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
         return calls.request(FULL, NetworkMethod.GET(SEARCH_PATH), params, read = ::readFull)
     }
 
+    override suspend fun agentDialog(sessionId: Int?, locations: List<String>?): AgentDialogResponse {
+        val params = JSONObject().putIfNotNull(SESSION_ID, sessionId).putList(LOCATION, locations)
+        return calls.request(AGENT_DIALOG, NetworkMethod.GET(AGENT_PATH), params, read = AgentJson::dialog)
+    }
+
+    override suspend fun agent(message: String, sessionId: Int?, locations: List<String>?): AgentResponse {
+        val params = calls.checked(AGENT) {
+            requireNotBlank(message, "message")
+            if (message.codePointCount(0, message.length) > MESSAGE_MAX_LENGTH) {
+                invalidArgument("message must not be longer than $MESSAGE_MAX_LENGTH characters")
+            }
+            JSONObject().put(MESSAGE, message).putIfNotNull(SESSION_ID, sessionId).putList(LOCATION, locations)
+        }
+        return calls.request(AGENT, NetworkMethod.POST(AGENT_PATH), params, readTimeoutMs = AGENT_READ_TIMEOUT_MS, read = AgentJson::answer)
+    }
+
     override fun blank(listener: CompletionListener<SearchBlankResponse>) = calls.complete(listener) { blank() }
 
     override fun instant(
@@ -74,6 +102,12 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
     override fun full(query: String, request: SearchFullRequest, listener: CompletionListener<SearchFullResponse>) =
         calls.complete(listener) { full(query, request) }
 
+    override fun agentDialog(sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentDialogResponse>) =
+        calls.complete(listener) { agentDialog(sessionId, locations) }
+
+    override fun agent(message: String, sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentResponse>) =
+        calls.complete(listener) { agent(message, sessionId, locations) }
+
     internal companion object {
         const val BLANK = "search.blank"
         const val INSTANT = "search.instant"
@@ -84,6 +118,19 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
         private const val SEARCH_QUERY = "search_query"
         private const val INSTANT_SEARCH = "instant_search"
         private const val FULL_SEARCH = "full_search"
+
+        const val AGENT_DIALOG = "search.agentDialog"
+        const val AGENT = "search.agent"
+
+        /** The search agent, on the host of API v3 (`Rees46Config.appDomain`). */
+        const val AGENT_PATH = "api/v3/storefront/search/agent"
+
+        /** The agent may take 40 seconds and two more attempts: its answer is read for longer than the common 10. */
+        const val AGENT_READ_TIMEOUT_MS = 60_000L
+        private const val MESSAGE_MAX_LENGTH = 500
+        private const val MESSAGE = "message"
+        private const val SESSION_ID = "session_id"
+        private const val LOCATION = "location"
 
         /** The fields of [request] after their checks; the sort's direction goes as `order`, as the API's documentation names it. */
         private fun fullParams(request: SearchFullRequest, params: JSONObject): JSONObject = with(request) {
