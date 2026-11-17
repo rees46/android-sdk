@@ -16,6 +16,7 @@ import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CollectionsApi
 import com.personalization.api.managers.ProductsApi
+import com.personalization.api.managers.RecommendationsApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -69,6 +70,7 @@ import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
 import com.personalization.features.collection.CollectionsApiImpl
 import com.personalization.features.products.ProductsApiImpl
+import com.personalization.features.recommendation.RecommendationsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -240,6 +242,14 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val collections: CollectionsApi = CollectionsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's recommendation blocks: `sdk.recommendations.get("block-code")`. For the Flutter and React
+     * Native bridges, on the new core only, as [cart]; see [RecommendationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val recommendations: RecommendationsApi = RecommendationsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
