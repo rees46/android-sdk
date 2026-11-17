@@ -11,10 +11,13 @@ import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
 import com.personalization.api.models.tracking.putSource
 import com.personalization.api.params.ProductItemParams
+import com.personalization.core.BridgeApi
+import com.personalization.core.CompletionListener
 import com.personalization.core.SdkError
 import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
+import com.personalization.core.internal.NamespaceCalls
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
@@ -42,6 +45,11 @@ internal class TrackingApiImpl @Inject constructor(
      * True on the new core, whose queue keeps events; the legacy core sends them as before.
      */
     private val checksArguments: () -> Boolean = { false },
+    /**
+     * The path of the bridge-only events, [bannerView] and [bannerClick]: the new core's queue. Without the
+     * instance's core they fail with `notInitialized`.
+     */
+    private val events: NamespaceCalls = NamespaceCalls(core = { null }, dispatchers = { CoreDispatchers.DEFAULT }, shopId = { null }),
 ) : TrackingApi {
 
     /**
@@ -250,6 +258,29 @@ internal class TrackingApiImpl @Inject constructor(
         setTrackingSourceUseCase(type = source.type.value, code = source.code)
     }
 
+    @BridgeApi
+    override fun bannerView(bannerId: String, code: String, listener: CompletionListener<Unit>?) =
+        banner(BANNER_VIEW, BANNER_VIEW_EVENT, bannerId, code, listener)
+
+    @BridgeApi
+    override fun bannerClick(bannerId: String, code: String, listener: CompletionListener<Unit>?) =
+        banner(BANNER_CLICK, BANNER_CLICK_EVENT, bannerId, code, listener)
+
+    /**
+     * A banner's [event] for `track/slider`: `banner_id` as a number, `recommended_code` the slider's
+     * [code]; `recommended_by` the server does not read here. Only through the new core's queue.
+     */
+    private fun banner(call: String, event: String, bannerId: String, code: String, listener: CompletionListener<Unit>?) {
+        val id = bannerId.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }?.toLongOrNull()?.takeIf { it in 1..MAX_BANNER_ID }
+        val problem = when {
+            id == null -> "bannerId is not a positive whole number"
+            code.isBlank() -> "code is empty"
+            else -> null
+        }
+        val params = JSONObject().put(EVENT_PARAM, event).put(BANNER_ID_PARAM, id ?: 0L).put(RECOMMENDED_CODE_PARAM, code)
+        events.event(call, SLIDER_PATH, params, problem, listener)
+    }
+
     private fun Params.withSource(source: TrackingSource?): Params =
         source?.let { putSource(it) } ?: this
 
@@ -273,5 +304,17 @@ internal class TrackingApiImpl @Inject constructor(
         const val STORY_VIEW_EVENT = "view"
         const val STORY_CLICK_EVENT = "click"
         const val ITEMS_PARAM = "items"
+
+        const val BANNER_VIEW = "tracking.bannerView"
+        const val BANNER_CLICK = "tracking.bannerClick"
+        const val SLIDER_PATH = "track/slider"
+        const val BANNER_VIEW_EVENT = "view"
+        const val BANNER_CLICK_EVENT = "click"
+        const val EVENT_PARAM = "event"
+        const val BANNER_ID_PARAM = "banner_id"
+        const val RECOMMENDED_CODE_PARAM = "recommended_code"
+
+        /** `banner_id` is an unsigned 32-bit number on the server. */
+        const val MAX_BANNER_ID = 4_294_967_295L
     }
 }

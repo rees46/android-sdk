@@ -166,7 +166,13 @@ internal class CoreHttpClient(
         return when (method) {
             is NetworkMethod.GET -> {
                 val query = url.newBuilder()
-                fields.keys().forEach { key -> query.addQueryParameter(key, fields.getString(key)) }
+                fields.keys().forEach { key ->
+                    // A list goes as the key repeated, once per item: `promo_codes[]=A&promo_codes[]=B`.
+                    when (val value = fields.get(key)) {
+                        is JSONArray -> for (index in 0 until value.length()) query.addQueryParameter(key, value.get(index).toString())
+                        else -> query.addQueryParameter(key, fields.getString(key))
+                    }
+                }
                 Built(builder.url(query.build()).get().build(), null)
             }
             is NetworkMethod.POST -> {

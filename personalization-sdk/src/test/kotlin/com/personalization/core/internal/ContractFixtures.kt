@@ -13,6 +13,11 @@ import org.json.JSONObject
  *
  * `cart.json` is written in the fixtures' format from `contract/cart.md` and the server's answers in
  * `questions.md` (В19) ahead of the contract's own file, which takes it over as it is.
+ *
+ * So are `stories.json`, `predict.json`, `loyalty.json` and `sliders.json`, from their files of `contract/`
+ * and the answers of `questions.md`, the same files the iOS SDK tests by. In their `expect.result` an object
+ * lists the fields the case checks. `sliders.json` also holds the banner events, `tracking.bannerView` and
+ * `bannerClick` (their `call.namespace` says so), until the contract's `tracking.json` has them.
  */
 internal object ContractFixtures {
     const val VERSION = "0"

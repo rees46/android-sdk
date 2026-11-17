@@ -27,6 +27,8 @@ package com.personalization.core
  *   legacy core, where they do not run.
  * - `SDK.notifications` — the push events a bridge that parses its pushes reports itself, through the
  *   queue once per message, the push token and the push callbacks of one shop.
+ * - `TrackingApi.bannerView` and `bannerClick` — the banner events of `SDK.sliders`, through the new core's
+ *   queue only, in the public `tracking` namespace.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.
