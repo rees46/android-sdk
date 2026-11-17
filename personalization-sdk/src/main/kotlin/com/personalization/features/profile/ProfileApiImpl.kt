@@ -14,6 +14,7 @@ import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.requireAtLeast
+import com.personalization.core.internal.requireBirthday
 import com.personalization.core.internal.requireContact
 import com.personalization.core.internal.stringOrNull
 import com.personalization.core.internal.valueOfWire
@@ -60,7 +61,6 @@ internal class ProfileApiImpl(
         const val LAST_ORDER_PATH = "orders/last_for_user"
 
         private val CUSTOM_KEY = Regex("[a-z0-9_]+")
-        private val DATE = Regex("(\\d{4})-(\\d{2})-(\\d{2})")
 
         /** The fields of the request itself and those the SDK adds: a custom property may not take their names. */
         private val RESERVED_KEYS = setOf(
@@ -69,16 +69,19 @@ internal class ProfileApiImpl(
             "shop_id", "did", "sid", "seance", "segment", "stream",
         )
 
-        /** The request's fields after their checks ([ProfileUpdateRequest]). */
+        /**
+         * The request's fields after their checks ([ProfileUpdateRequest]). An empty [ProfileUpdateRequest.externalId],
+         * [ProfileUpdateRequest.telegramId] or [ProfileUpdateRequest.birthday] goes as `""`: the server erases
+         * them so. It does not erase `email`, `phone` or `loyalty_id` so: an empty one is refused. Any other
+         * string goes as it is.
+         */
         fun setParams(request: ProfileUpdateRequest): JSONObject = with(request) {
             requireContact(email, "email")
             requireContact(phone, "phone")
-            requireContact(externalId, "externalId")
             requireContact(loyaltyId, "loyaltyId")
-            requireContact(telegramId, "telegramId")
-            birthday?.let { requireDate(it, "birthday") }
+            birthday?.takeIf { it.isNotEmpty() }?.let { requireBirthday(it, "birthday") }
             requireAtLeast(age, 0, "age")
-            kids?.forEach { kid -> kid.birthday?.let { requireDate(it, "a kid's birthday") } }
+            kids?.forEach { kid -> kid.birthday?.let { requireBirthday(it, "a kid's birthday") } }
             val params = JSONObject()
                 .putIfNotNull("email", email)
                 .putIfNotNull("phone", phone)
@@ -121,19 +124,6 @@ internal class ProfileApiImpl(
                 value.forEach { (key, item) -> put(key as? String ?: return null, customValue(item) ?: return null) }
             }
             else -> null
-        }
-
-        /** Fails with `invalidArgument` unless [value] is a real date `YYYY-MM-DD`. */
-        private fun requireDate(value: String, name: String) {
-            val (year, month, day) = DATE.matchEntire(value)?.destructured?.toList()?.map { it.toInt() }
-                ?: invalidArgument("$name must be a date YYYY-MM-DD")
-            val days = when (month) {
-                1, 3, 5, 7, 8, 10, 12 -> 31
-                4, 6, 9, 11 -> 30
-                2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
-                else -> 0
-            }
-            if (day !in 1..days) invalidArgument("$name must be a date YYYY-MM-DD")
         }
 
         /** The profile; an answer that is not an object is null (`decoding`). */

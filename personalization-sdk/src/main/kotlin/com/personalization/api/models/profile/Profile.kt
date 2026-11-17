@@ -26,15 +26,19 @@ data class Profile(
 
 /**
  * The properties `sdk.profile.set` writes: only the fields given change, and a null field is not sent, so
- * its value on the server stays. An empty string erases [location]. A customer's id of another customer
- * ([email], [phone], [externalId], [loyaltyId], [telegramId]) moves the device to that customer's profile:
- * that is how a sign-in and a change of user on one device work.
+ * its value on the server stays. An empty string erases [externalId], [telegramId], [birthday], [fbId] and
+ * [vkId], and leaves [location], [firstName] and [lastName] empty; [age] 0 erases the age. The server does
+ * not erase [email], [phone] or [loyaltyId] with an empty string, so an empty one is refused. [gender] has
+ * no empty value: `set` cannot erase it. A customer's id of another customer ([email], [phone],
+ * [externalId], [loyaltyId], [telegramId]) moves the device to that customer's profile: that is how a
+ * sign-in and a change of user on one device work.
  *
- * The call fails with `invalidArgument`, before any request, when nothing is given; when an id is an empty
- * string; when [birthday] (a kid's too) is not a date `YYYY-MM-DD`; when [age] is negative; when a key of
- * [customProperties] is not of `a-z`, `0-9` and `_`, or is a field of this request or of the SDK
- * (`email`, `first_name`, `auto`, `did`, …); or when one of its values is not a string, a number, a boolean,
- * null, or a list or a map of these.
+ * The call fails with `invalidArgument`, before any request, when nothing is given; when [email], [phone]
+ * or [loyaltyId] is empty; when [birthday] (a kid's too) is not an existing day `YYYY-MM-DD` of the years
+ * 1000 to 2999 — the server would ignore it in silence —, the empty [birthday] that erases it aside (a
+ * kid's may not be empty); when [age] is negative; when a key of [customProperties] is not of `a-z`, `0-9`
+ * and `_`, or is a field of this request or of the SDK (`email`, `first_name`, `auto`, `did`, …); or when
+ * one of its values is not a string, a number, a boolean, null, or a list or a map of these.
  *
  * @property externalId the customer's id in the shop's own system; sent as both `id` and `external_id`.
  * @property loyaltyId the customer's id in an outside loyalty program.

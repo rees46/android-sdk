@@ -30,6 +30,37 @@ internal fun requireContact(value: String?, name: String) {
     if (value != null && value.isBlank()) invalidArgument("$name must not be empty")
 }
 
+private val DATE = Regex("""(\d{4})-(\d{2})-(\d{2})""")
+
+/** The year of [value] when it is a day of the calendar as `YYYY-MM-DD` (`2026-02-30` is none); null otherwise. */
+private fun calendarYear(value: String): Int? {
+    val (year, month, day) = DATE.matchEntire(value)?.destructured?.toList()?.map { it.toInt() } ?: return null
+    val days = when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+        else -> 0
+    }
+    return year.takeIf { day in 1..days }
+}
+
+/**
+ * Whether [value] is an existing day of the calendar as `YYYY-MM-DD`: `2026-02-30` is none. A birthday
+ * `loyalty/members/join` cannot read erases the date it has.
+ */
+internal fun isCalendarDate(value: String): Boolean = calendarYear(value) != null
+
+/**
+ * Whether [value] is a birthday `profile/set` takes: an existing day `YYYY-MM-DD` of the years 1000 to
+ * 2999. The server ignores any other in silence.
+ */
+internal fun isBirthday(value: String): Boolean = calendarYear(value)?.let { it in 1000..2999 } == true
+
+/** Fails with `invalidArgument` naming [name] unless [value] is a birthday `profile/set` takes ([isBirthday]). */
+internal fun requireBirthday(value: String, name: String) {
+    if (!isBirthday(value)) invalidArgument("$name must be a date YYYY-MM-DD of the years 1000 to 2999")
+}
+
 /** Fails with `invalidArgument` when [value] is given and is below [min]. */
 internal fun requireAtLeast(value: Int?, min: Int, name: String) {
     if (value != null && value < min) invalidArgument("$name must be at least $min")

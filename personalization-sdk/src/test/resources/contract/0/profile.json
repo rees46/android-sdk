@@ -46,9 +46,24 @@
       "error": { "type": "invalidArgument" }
     },
     {
-      "name": "set с пустым externalId",
-      "call": { "namespace": "profile", "method": "set", "args": { "request": { "externalId": "" } } },
+      "name": "set с пустым phone",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "phone": "" } } },
       "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым loyaltyId — сервер его не стирает",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "loyaltyId": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: пустая строка стирает externalId, telegramId и birthday — они уходят пустыми строками",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "externalId": "", "telegramId": "", "birthday": "" } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "id": "", "external_id": "", "telegram_id": "", "birthday": "" } }
+    },
+    {
+      "name": "set: age 0 стирает возраст",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "age": 0 } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "age": 0 } }
     },
     {
       "name": "set: birthday не в формате YYYY-MM-DD",
@@ -58,6 +73,21 @@
     {
       "name": "set: birthday — несуществующая дата",
       "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "2026-02-29" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday с годом до 1000",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "0999-12-31" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday с годом после 2999",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "3000-01-01" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday ребёнка — несуществующая дата",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [ { "birthday": "2015-02-29" } ] } } },
       "error": { "type": "invalidArgument" }
     },
     {
