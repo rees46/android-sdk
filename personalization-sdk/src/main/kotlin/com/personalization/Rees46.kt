@@ -74,8 +74,8 @@ object Rees46 {
      * Native kept `A` or `B` for each shop). The start takes it while the device has no A/B group of its
      * own, so the device stays in the group the server knows it by; a device that has one keeps it, and a
      * different [segment] is logged as `invalid_config` (`segment_kept`). A value the SDK never gives, any
-     * but `A` and `B`, is refused with `invalid_argument` (`invalid_segment`). Neither throws. The shop's
-     * group is [SDK.getSegment]: once that is the bridge's, the bridge may stop passing it.
+     * but `A` and `B`, is not taken and logged as `invalid_config` (`segment_invalid`). Neither throws.
+     * The shop's group is [SDK.getSegment]: once that is the bridge's, the bridge may stop passing it.
      *
      * Hidden from Java, which knows no opt-in: the bridges are Kotlin.
      *
@@ -592,10 +592,10 @@ object Rees46 {
         if (segment !in DeviceStorage.SEGMENTS) {
             SdkLogs.log(
                 LogLevel.WARNING,
-                LogCodes.INVALID_ARGUMENT,
+                LogCodes.INVALID_CONFIG,
                 "initializeBridge: the A/B group is not one the SDK gives; it is not taken",
                 config.shopId,
-                mapOf("reason" to LogReasons.INVALID_SEGMENT),
+                mapOf("reason" to LogReasons.SEGMENT_INVALID),
             )
             return
         }

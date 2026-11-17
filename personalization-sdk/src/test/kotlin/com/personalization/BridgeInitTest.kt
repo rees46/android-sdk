@@ -282,7 +282,7 @@ class BridgeInitTest {
             val sdk = Rees46.initializeBridge(context, config(), segment)
 
             assertTrue("'$segment'", sdk.core is CoreV2)
-            val refused = logs(LogCodes.INVALID_ARGUMENT, LogReasons.INVALID_SEGMENT).single()
+            val refused = logs(LogCodes.INVALID_CONFIG, LogReasons.SEGMENT_INVALID).single()
             assertEquals(LogLevel.WARNING, refused.level)
             assertEquals(SHOP, refused.shopId)
             assertTrue("'$segment'", sdk.getSegment() in DeviceStorage.SEGMENTS)

@@ -231,8 +231,8 @@ internal object LogReasons {
     /** The A/B group a bridge brought to `Rees46.initializeBridge` not taken: the device has its own (`invalid_config`). */
     const val SEGMENT_KEPT = "segment_kept"
 
-    /** The A/B group a bridge brought is none the SDK gives, `A` or `B` (`invalid_argument`). */
-    const val INVALID_SEGMENT = "invalid_segment"
+    /** The A/B group a bridge brought is none the SDK gives, `A` or `B` (`invalid_config`). */
+    const val SEGMENT_INVALID = "segment_invalid"
 
     /**
      * `coreV2 = true` from an app built against the releases that had `Rees46Config.coreV2`: the new core is the
