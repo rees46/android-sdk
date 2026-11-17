@@ -4,6 +4,7 @@ import com.personalization.api.models.products.CategoryRequest
 import com.personalization.api.models.products.ProductsListRequest
 import com.personalization.api.models.products.SortBy
 import com.personalization.api.models.products.SortDirection
+import com.personalization.api.responses.products.product.ProductParam
 import com.personalization.core.SdkResult
 import com.personalization.core.BridgeApi
 import com.personalization.core.internal.NamespaceFixtures
@@ -62,6 +63,39 @@ class ProductsApiFixturesTest {
     @Test
     fun `every method reads each answer of the contract into its result or its error`() {
         fixtures.checkAnswers("products", invoke)
+    }
+
+    /**
+     * The product card (`products/get`) sends `params` as an object of the parameter's name → `{"value", "searchable"}`,
+     * not as the lists' `[{"key", "values"}]`: the shape of the live answer, anonymized.
+     */
+    @Test
+    fun `a product card's params come as an object of the parameter's name, read in the card's order`() {
+        fixtures.server.enqueue(
+            MockResponse().setBody(
+                """{"uniqid":"1001","id":"1001","name":"Наушники","url":"https://shop.example/product/1001","price":"69990.0",
+                   "currency":"₽","params":{"merchant":{"value":["Shop"],"searchable":true},
+                   "stickers":{"value":["{\"slug\": \"0_0_24\", \"title\": \"0-0-24\"}"],"searchable":true},
+                   "Цвет":{"value":["Белый"],"searchable":true},"Время автономной работы, ч":{"value":[5, 30.5],"searchable":false},
+                   "Модель":{"value":"A1","searchable":true},"Серия":["S1","S2"],"":{"value":["no key"]}},
+                   "locations":{"7":{"price":69990,"stock_quantity":9999,"discount_percent":30}}}""",
+            ),
+        )
+
+        val card = (fixtures.outcome { products.getInfo("1001") } as SdkResult.Success).value as com.personalization.api.models.products.Product
+
+        assertEquals(
+            listOf(
+                ProductParam("merchant", listOf("Shop")),
+                ProductParam("stickers", listOf("""{"slug": "0_0_24", "title": "0-0-24"}""")),
+                ProductParam("Цвет", listOf("Белый")),
+                ProductParam("Время автономной работы, ч", listOf("5", "30.5")),
+                ProductParam("Модель", listOf("A1")),
+                ProductParam("Серия", listOf("S1", "S2")),
+            ),
+            card.params,
+        )
+        assertEquals(69990.0, card.price, 0.0)
     }
 
     @Test

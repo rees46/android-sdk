@@ -84,7 +84,7 @@ internal object CatalogJson {
             stockQuantity = json.intOrNull("stock_quantity"),
             categoryIds = json.arrayOrNull("category_ids")?.strings(),
             categories = json.arrayOrNull("categories")?.mapObjects(::category),
-            params = json.arrayOrNull("params")?.mapObjects(::param),
+            params = params(json),
             locationIds = json.arrayOrNull("location_ids")?.strings(),
         )
     }
@@ -110,11 +110,33 @@ internal object CatalogJson {
         )
     }
 
+    /**
+     * A product's parameters. The lists of products send them as `[{"key", "values"}]`; the product card
+     * (`products/get`) as an object of the parameter's name → `{"value": [...], "searchable"}`, in the
+     * catalog's order. Null without `params`.
+     */
+    private fun params(json: JSONObject): List<ProductParam>? = when (val params = json.valueOrNull("params")) {
+        is JSONArray -> params.mapObjects(::param)
+        is JSONObject -> params.keys().asSequence().mapNotNull { key ->
+            if (key.isBlank()) return@mapNotNull null
+            val values = when (val param = params.valueOrNull(key)) {
+                is JSONObject -> param.valuesOf("value") ?: param.valuesOf("values")
+                else -> params.valuesOf(key)
+            }
+            ProductParam(key = key, values = values.orEmpty())
+        }.toList()
+        else -> null
+    }
+
     /** A product's parameter; its values as strings, numbers among them. Null without a key. */
     private fun param(json: JSONObject): ProductParam? {
         val key = json.nonBlankStringOrNull("key") ?: return null
-        return ProductParam(key = key, values = json.arrayOrNull("values")?.strings().orEmpty())
+        return ProductParam(key = key, values = json.valuesOf("values").orEmpty())
     }
+
+    /** The values of [key]: a list's strings and numbers as strings, or one value as a list of it; null without them. */
+    private fun JSONObject.valuesOf(key: String): List<String>? =
+        arrayOrNull(key)?.strings() ?: stringOrNull(key)?.let(::listOf)
 
     fun categories(json: JSONObject): List<ProductCategory>? = json.arrayOrNull("categories")?.mapObjects(::category)
 

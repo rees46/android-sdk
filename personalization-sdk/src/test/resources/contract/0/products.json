@@ -102,7 +102,7 @@
       "error": { "type": "invalidArgument" }
     },
     {
-      "name": "getInfo: карточка товара — id из uniqid, цены строками, discount логическое, level строкой и числом, пустое описание — null",
+      "name": "getInfo: карточка товара — id из uniqid, цены строками, discount логическое, level строкой и числом, пустое описание — null, params словарём в порядке ответа",
       "call": { "namespace": "products", "method": "getInfo", "args": { "itemId": "9922" } },
       "response": { "status": 200,
                     "body": { "name": "Скамья Жасмин", "is_available": true, "description": "",
@@ -113,7 +113,7 @@
                               "sales_rate": null, "relative_sales_rate": null,
                               "categories": [ { "id": "23", "name": "Прихожие", "url": "https://shop.example/c/23", "branch": 1, "level": 1 },
                                               { "parent_id": "23", "id": "12023", "name": "Скамьи", "url": "https://shop.example/c/12023", "level": "2" } ],
-                              "params": [ { "key": "Цвет", "values": [ "графит" ] }, { "key": "Ширина", "values": [ 100, 120.5 ] } ],
+                              "params": { "Цвет": { "value": [ "графит" ], "searchable": true }, "Ширина": { "value": [ 100, 120.5 ], "searchable": false } },
                               "group_id": "9921", "id": "9922", "uniqid": "9922", "widgetable": true, "ignored": false, "locations": {},
                               "model": "LAK", "barcode": "УТ-70041501", "oldprice": "13450", "discount": true, "discount_percent": 20 } },
       "expect": { "result": { "id": "9922", "groupId": "9921", "name": "Скамья Жасмин", "brand": "БРВ Мебель", "model": "LAK",
@@ -164,7 +164,7 @@
       "expect": { "error": { "type": "network" } }
     },
     {
-      "name": "getList: страница с фасетами; товар без обязательного поля пропускается, бренд без количества пропускается",
+      "name": "getList: страница с фасетами; params списком; товар без обязательного поля пропускается, бренд без количества пропускается",
       "call": { "namespace": "products", "method": "getList", "args": {} },
       "response": { "status": 200,
                     "body": { "products_total": "2",
@@ -174,7 +174,7 @@
                                               "deeplink_android": "shop://p/37", "deeplink_ios": "shop://p/37",
                                               "image_url_resized": { "120": "https://shop.example/i/37-120.webp", "original": "https://shop.example/i/37.webp" },
                                               "sales_rate": 120, "relative_sales_rate": 0.5,
-                                              "category_ids": [ "5", 6 ] },
+                                              "category_ids": [ "5", 6 ], "params": [ { "key": "Размер", "values": [ 42, "43" ] } ] },
                                             { "id": "38", "name": "Без валюты", "url": "https://shop.example/p/38", "price": 100 } ],
                               "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5", "parent": "1", "count": 2, "alias": "obuv" } ],
                               "brands": [ { "name": "Nike", "count": 3, "picture": "https://shop.example/b/nike.png" }, { "name": "Без количества" } ],
@@ -190,7 +190,8 @@
                                               "isNew": true, "rating": 4, "stockQuantity": 7,
                                               "deeplinkAndroid": "shop://p/37", "deeplinkIos": "shop://p/37",
                                               "resizedImages": { "120": "https://shop.example/i/37-120.webp", "original": "https://shop.example/i/37.webp" },
-                                              "salesRate": 120, "relativeSalesRate": 0.5, "categoryIds": [ "5", "6" ] } ],
+                                              "salesRate": 120, "relativeSalesRate": 0.5, "categoryIds": [ "5", "6" ],
+                                              "params": [ { "key": "Размер", "values": [ "42", "43" ] } ] } ],
                               "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5", "parentId": "1", "count": 2, "alias": "obuv" } ],
                               "brands": [ { "name": "Nike", "count": 3 } ],
                               "locations": [ { "id": "msk", "name": "Москва", "type": "city" } ],
