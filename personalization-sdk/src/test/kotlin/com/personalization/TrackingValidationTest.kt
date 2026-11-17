@@ -113,7 +113,8 @@ class TrackingValidationTest {
     private fun sdk(coreV2: Boolean): SDK {
         val sdk = Rees46.initialize(
             context,
-            Rees46Config(shopId = SHOP, apiDomain = server.url("/").toString().trimEnd('/'), autoSendPushToken = false, coreV2 = coreV2),
+            Rees46Config(shopId = SHOP, apiDomain = server.url("/").toString().trimEnd('/'), autoSendPushToken = false),
+            coreV2,
         )
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         return sdk

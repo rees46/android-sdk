@@ -4,8 +4,8 @@ package com.personalization.core
  * Where an instance's initialization (`/init`) stands. Read it from `SDK.state`, follow it with
  * `SDK.onStateChange`.
  *
- * On the legacy core (`Rees46Config.coreV2 = false`) an instance only goes from [INITIALIZING] to
- * [READY]; it is never [RETRYING] or [REFUSED].
+ * On the legacy core (`Rees46.initialize`) an instance only goes from [INITIALIZING] to [READY]; it is
+ * never [RETRYING] or [REFUSED].
  */
 enum class SdkState {
     /** Not initialized yet, or released with `release()`: every call fails with `notInitialized`. */

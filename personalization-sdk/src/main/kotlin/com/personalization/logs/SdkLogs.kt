@@ -227,6 +227,18 @@ internal object LogReasons {
 
     /** `Rees46Config.deviceId` not taken because the shop has a `did` of its own (`invalid_config`, once per shop). */
     const val DEVICE_ID_KEPT = "device_id_kept"
+
+    /** The A/B group a bridge brought to `Rees46.initializeBridge` not taken: the device has its own (`invalid_config`). */
+    const val SEGMENT_KEPT = "segment_kept"
+
+    /** The A/B group a bridge brought is none the SDK gives, `A` or `B` (`invalid_config`). */
+    const val SEGMENT_INVALID = "segment_invalid"
+
+    /**
+     * `coreV2 = true` from an app built against the releases that had `Rees46Config.coreV2`: the new core is the
+     * bridges' (`invalid_config`).
+     */
+    const val BRIDGE_ONLY = "bridge_only"
     const val NOT_READY = "not_ready"
 
     /** A shop brought up only for a push has no `did`: its event cannot go (`push_dropped`). */

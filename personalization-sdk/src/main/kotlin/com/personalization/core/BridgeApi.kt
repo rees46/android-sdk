@@ -1,9 +1,9 @@
 package com.personalization.core
 
 /**
- * Members for the Flutter and React Native bridges, not for apps: the bridges forward the native SDK's
- * events and errors to Dart and JavaScript without losing anything, and apps get the same things
- * through the public API (`onStateChange`, `PushCallbacks`, the old listeners).
+ * Members for the Flutter and React Native bridges, not for apps: the bridges start their shops on the
+ * new core, and forward the native SDK's events and errors to Dart and JavaScript without losing
+ * anything; apps get those through the public API (`onStateChange`, `PushCallbacks`, the old listeners).
  *
  * What it marks may change in any release, without a deprecation. A bridge opts in once per module:
  *
@@ -14,6 +14,8 @@ package com.personalization.core
  * ```
  *
  * The members:
+ * - `Rees46.initializeBridge` — a shop on the new core, which apps cannot pick, with the A/B group the
+ *   bridge kept for the device;
  * - `SDK.onSessionChange` — every new `sid` of the new core;
  * - `Rees46.onPushEvent` and `Rees46.onPushToken` — every push event and token the SDK sees, beside the
  *   app's `PushCallbacks`;

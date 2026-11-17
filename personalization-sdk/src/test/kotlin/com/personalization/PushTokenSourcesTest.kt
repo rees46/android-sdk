@@ -130,11 +130,10 @@ class PushTokenSourcesTest {
         PushHub.reset()
     }
 
-    private fun config(shop: String = SHOP, coreV2: Boolean = true, autoSend: Boolean = true) = Rees46Config(
+    private fun config(shop: String = SHOP, autoSend: Boolean = true) = Rees46Config(
         shopId = shop,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = autoSend,
-        coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
     )
 
@@ -169,7 +168,7 @@ class PushTokenSourcesTest {
         val host = LinkedBlockingQueue<String>()
         val hold = CountDownLatch(1).also { holdInit = it }
 
-        val sdk = Rees46.initialize(context, config())
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         sdk.setOnPushTokenListener { token, provider -> host += "$provider:$token" }
         hold.countDown()
 
@@ -196,7 +195,7 @@ class PushTokenSourcesTest {
         val host = LinkedBlockingQueue<String>()
         val hold = CountDownLatch(1).also { holdInit = it }
 
-        val sdk = Rees46.initialize(context, config(coreV2 = false))
+        val sdk = Rees46.initialize(context, config())
         sdk.setOnPushTokenListener { token, provider -> host += "$provider:$token" }
         hold.countDown()
 
@@ -218,7 +217,7 @@ class PushTokenSourcesTest {
         val source = FakeSource(PushProvider.FCM, Result.failure(IOException("no token")))
         PushTokenManager.sourceFactory = { listOf(source) }
 
-        val sdk = Rees46.initialize(context, config())
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         ready(sdk)
         assertTrue(source.asked.await(5, TimeUnit.SECONDS))
         idle(sdk)
@@ -237,7 +236,7 @@ class PushTokenSourcesTest {
 
         val sdk = SDK()
         sdk.setOnPushTokenListener { token, _ -> host += token }
-        sdk.initializeWith(context, config(coreV2 = false))
+        sdk.initializeWith(context, config())
         assertTrue(source.asked.await(5, TimeUnit.SECONDS))
         idle(sdk)
 
@@ -254,7 +253,7 @@ class PushTokenSourcesTest {
         val sdk = SDK()
         sdk.setOnPushTokenListener { token, provider -> early += "$provider:$token" }
 
-        sdk.initializeWith(context, config(coreV2 = false))
+        sdk.initializeWith(context, config())
 
         assertEquals("tok", tokenRequests.poll(5, TimeUnit.SECONDS)?.getString("token"))
         idle(sdk)
@@ -270,8 +269,8 @@ class PushTokenSourcesTest {
 
     @Test
     fun `a new token FCM hands its service reaches every live shop, and each sends it once`() {
-        val shop = Rees46.initialize(context, config(SHOP))
-        val other = Rees46.initialize(context, config(OTHER))
+        val shop = Rees46.initialize(context, config(SHOP), coreV2 = true)
+        val other = Rees46.initialize(context, config(OTHER), coreV2 = true)
         listOf(shop, other).forEach { ready(it); idle(it) }
 
         MessagingService().onNewToken("t2")
@@ -289,7 +288,7 @@ class PushTokenSourcesTest {
 
     @Test
     fun `the instance's own onToken wins over the facade's, which hears each token once through the shops without one`() {
-        val shop = Rees46.initialize(context, config(SHOP, autoSend = false))
+        val shop = Rees46.initialize(context, config(SHOP, autoSend = false), coreV2 = true)
         ready(shop)
         val own = CopyOnWriteArrayList<String>()
         val facade = CopyOnWriteArrayList<String>()
@@ -307,7 +306,7 @@ class PushTokenSourcesTest {
         assertEquals(listOf("t", "t2"), bridge)
 
         // A shop without callbacks of its own: the facade hears each token once in the process.
-        val other = Rees46.initialize(context, config(OTHER, autoSend = false))
+        val other = Rees46.initialize(context, config(OTHER, autoSend = false), coreV2 = true)
         ready(other)
         SDK.onPushTokenReceived("t3", PushProvider.FCM)
         SDK.onPushTokenReceived("t3", PushProvider.FCM)

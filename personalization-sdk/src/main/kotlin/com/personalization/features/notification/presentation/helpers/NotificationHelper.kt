@@ -42,7 +42,7 @@ class NotificationHelper @Inject constructor(
     /**
      * Draws [data] as a notification.
      *
-     * On the new core ([com.personalization.Rees46Config.coreV2]), a push of the SDK — one with an `id` and
+     * On the new core ([com.personalization.Rees46.initializeBridge]), a push of the SDK — one with an `id` and
      * a `type` — is reported as shown (`Rees46.handlePush(push, PushEvent.OPENED)`: `track/opened` and the
      * `onOpened` callback) and its dismissal without a tap as closed (`track/closed`, `onClosed`), for the
      * shop the push names in its `shop_id`. The callbacks get the whole push as the SDK received it. A push

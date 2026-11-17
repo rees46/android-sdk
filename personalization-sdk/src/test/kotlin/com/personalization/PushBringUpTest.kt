@@ -147,11 +147,10 @@ class PushBringUpTest {
         PushHub.reset()
     }
 
-    private fun config(shop: String = SHOP, coreV2: Boolean = true, deviceId: String? = null) = Rees46Config(
+    private fun config(shop: String = SHOP, deviceId: String? = null) = Rees46Config(
         shopId = shop,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
-        coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
         deviceId = deviceId,
     )
@@ -191,7 +190,7 @@ class PushBringUpTest {
     /** A push-only instance of [config]'s shop whose own work waits for [scheduler], as the push's handling brings it up. */
     private fun heldPushInstance(config: Rees46Config, scheduler: TestCoroutineScheduler): SDK {
         val light = SDK().apply { dispatchers = testCoreDispatchers(scheduler) }
-        light.initializeForPush(context, config)
+        light.initializeForPush(context, config, coreV2 = true)
         assertTrue(light.pushOnly)
         return light
     }
@@ -201,7 +200,7 @@ class PushBringUpTest {
     @Test
     fun `on the legacy core a cold push for a shop without a did sends only init and track received, and the token and profile go once the app takes the instance`() {
         PushTokenManager.sourceFactory = { listOf(TokenSource("tok")) }
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false).copy(autoSendPushToken = true)))
+        Rees46.register(context, listOf(config(SHOP).copy(autoSendPushToken = true)))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
         val made = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
@@ -222,7 +221,7 @@ class PushBringUpTest {
         // Taken again, however: nothing more goes.
         assertTrue(Rees46.instance(SHOP) === made)
         assertTrue(SDK.instance === made)
-        assertTrue(Rees46.initialize(context, config(SHOP, coreV2 = false).copy(autoSendPushToken = true)) === made)
+        assertTrue(Rees46.initialize(context, config(SHOP).copy(autoSendPushToken = true)) === made)
         threads.awaitIdle()
         assertNull(next("mobile_push_tokens", "profile/set", timeoutMs = 1_000))
         assertEquals(listOf("init", "track/received"), seen.map { it.first }.filter { it != "mobile_push_tokens" && it != "profile/set" })
@@ -235,12 +234,12 @@ class PushBringUpTest {
     @Test
     fun `a push the app's first call overtakes before the push's instance read its did goes to the app's instance, not dropped for want of a did`() {
         val scheduler = TestCoroutineScheduler()
-        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")))
+        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")), coreV2 = true)
         // The push's instance, whose start has not read the disk yet: only the config brings a did.
         val light = heldPushInstance(config(SHOP, deviceId = "CONFIGURED"), scheduler)
         // The app's own instance takes its place; its /init has not answered yet.
         holdInit = CountDownLatch(1)
-        val full = Rees46.initialize(context, config(SHOP))
+        val full = Rees46.initialize(context, config(SHOP), coreV2 = true)
         assertTrue(full !== light)
         assertEquals(SdkState.NOT_INITIALIZED, light.state)
         assertEquals("", partition().getString(StorageKeys.DID, "").orEmpty())
@@ -264,7 +263,7 @@ class PushBringUpTest {
     fun `a tap handed to the app's instance sets its source before the app's next view goes`() {
         val scheduler = TestCoroutineScheduler()
         partition().edit().putString(StorageKeys.DID, "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         val light = heldPushInstance(config(SHOP), scheduler)
         val full = Rees46.instance(SHOP)
         assertTrue(full !== light)
@@ -293,7 +292,7 @@ class PushBringUpTest {
             .putString(StorageKeys.TRACKING_SOURCE_CODE, "kept")
             .putLong(StorageKeys.TRACKING_SOURCE_SAVED_AT, savedAt)
             .commit()
-        val sdk = Rees46.initialize(context, config(SHOP))
+        val sdk = Rees46.initialize(context, config(SHOP), coreV2 = true)
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         sdk.release()
 
@@ -315,7 +314,7 @@ class PushBringUpTest {
     @Test
     fun `SDK instance while only the push's instance lives is the shop's full instance, for the old calls and the deprecated initialize`() {
         partition().edit().putString(StorageKeys.DID, "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
         assertTrue(light.pushOnly)
@@ -341,7 +340,7 @@ class PushBringUpTest {
     @Test
     fun `the deprecated initialize of a new object takes the push's instance's place, and each event goes once`() {
         partition().edit().putString(StorageKeys.DID, "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
 
@@ -367,7 +366,7 @@ class PushBringUpTest {
         holdInit = CountDownLatch(1)
         // The push's instance without a did, as it starts should one come without one: /init for a did.
         val light = SDK()
-        light.initializeForPush(context, config(SHOP, coreV2 = false))
+        light.initializeForPush(context, config(SHOP), coreV2 = false)
         assertTrue(light.pushOnly)
         val heard = LinkedBlockingQueue<Int>()
         light.sendNetworkMethodUseCase.postAsync("track/received", JSONObject().put("code", "held").put("type", "bulk"), object : OnApiCallbackListener() {
@@ -381,7 +380,7 @@ class PushBringUpTest {
         })
         assertEquals(1, light.networkRepository.waitingForDid)
 
-        val full = Rees46.initialize(context, config(SHOP, coreV2 = false))
+        val full = Rees46.initialize(context, config(SHOP))
 
         assertEquals(SdkState.NOT_INITIALIZED, light.state)
         assertEquals("notInitialized, at once", -1, heard.poll(5, TimeUnit.SECONDS))
@@ -397,7 +396,7 @@ class PushBringUpTest {
     @Test
     fun `on the legacy core the push's instance that gave way still sends the tracking its push hands it later, with its did`() {
         partition().edit().putString(StorageKeys.DID, "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+        Rees46.register(context, listOf(config(SHOP)))
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
         assertTrue(light.pushOnly)
@@ -416,7 +415,7 @@ class PushBringUpTest {
 
     @Test
     fun `on the legacy core a shop whose did comes from the config or the store of an older release sends its push without init`() {
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false, deviceId = "CONFIGURED")))
+        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")))
         assertEquals(SHOP, Rees46.handlePush(push(code = "configured"), PushEvent.DELIVERED))
         assertTrue(SdkRegistry.byShopId(SHOP)?.pushOnly == true)
         assertEquals("CONFIGURED", next("track/received")?.second?.getString("did"))
@@ -424,7 +423,7 @@ class PushBringUpTest {
         // Only the store all shops shared before partitions has it.
         context.getSharedPreferences(PreferencesPartition.LEGACY_KEY, Context.MODE_PRIVATE).edit()
             .putString(StorageKeys.SHOP_ID, OTHER).putString(StorageKeys.DID, "OLD").commit()
-        Rees46.register(context, listOf(config(OTHER, coreV2 = false)))
+        Rees46.register(context, listOf(config(OTHER)))
         assertEquals(OTHER, Rees46.handlePush(push(code = "old", shop = OTHER), PushEvent.DELIVERED))
         assertTrue(SdkRegistry.byShopId(OTHER)?.pushOnly == true)
         assertEquals("OLD", next("track/received")?.second?.getString("did"))
@@ -439,7 +438,7 @@ class PushBringUpTest {
     fun `a repeat that comes while the first event of a message is handed over is tried again when no queue takes that one, and the message goes later`() {
         val scheduler = TestCoroutineScheduler()
         partition().edit().putString(StorageKeys.DID, "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         val light = heldPushInstance(config(SHOP), scheduler)
         Rees46.instance(SHOP).release()
         assertTrue(SdkRegistry.byShopId(SHOP) == null)
@@ -455,7 +454,7 @@ class PushBringUpTest {
         assertEquals(2, logged.count { it.message == "The push event was not accepted" })
 
         // Not taken, the message is not counted as sent: it goes when it comes again.
-        val sdk = Rees46.initialize(context, config(SHOP))
+        val sdk = Rees46.initialize(context, config(SHOP), coreV2 = true)
         assertEquals(SHOP, Rees46.handlePush(push(code = "m"), PushEvent.DELIVERED))
         flush(sdk)
         assertEquals("m", next("track/delivered")?.second?.getString("code"))

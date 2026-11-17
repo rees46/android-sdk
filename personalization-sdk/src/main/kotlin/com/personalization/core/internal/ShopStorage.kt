@@ -115,6 +115,9 @@ internal class ShopStorage(context: Context, val layout: StorageLayout) {
         return taken
     }
 
+    /** The A/B group the shop sends, as its partition holds it; null before the shop has one. */
+    fun segment(): String? = preferences.getString(StorageKeys.SEGMENT, null)?.takeIf { it.isNotEmpty() }
+
     /** The shop's `did` as its partition holds it; empty when there is none. */
     fun storedDid(): String = preferences.getString(StorageKeys.DID, null).orEmpty()
 

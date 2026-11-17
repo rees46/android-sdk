@@ -28,22 +28,13 @@ public class Rees46ConfigJavaTest {
 
         assertEquals("api.rees46.ru", config.getApiDomain());
         assertEquals("SDK", config.getTag());
-        assertFalse(config.getCoreV2());
+        assertEquals(LogLevel.WARNING, config.getLogLevel());
     }
 
     @Test
-    public void theNewCoreKeepsItsPlace() {
+    public void theStorageKeyFollowsTheLogLevel() {
         Rees46Config config = new Rees46Config(
-                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, true);
-
-        assertTrue(config.getCoreV2());
-        assertNull(config.getStorageKey());
-    }
-
-    @Test
-    public void theStorageKeyKeepsItsPlace() {
-        Rees46Config config = new Rees46Config(
-                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, false, "host");
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, "host");
 
         assertEquals("host", config.getStorageKey());
         assertNull(config.getDeviceId());
@@ -53,7 +44,7 @@ public class Rees46ConfigJavaTest {
     @Test
     public void theDeviceIdAndTheAdvertisingIdComeLast() {
         Rees46Config config = new Rees46Config(
-                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, false, null,
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, null,
                 "did-from-rn", true);
 
         assertEquals("did-from-rn", config.getDeviceId());

@@ -22,15 +22,20 @@ import com.personalization.logs.SdkLogs
  *    as before; the flag keeps a shop from taking it again after its data was deleted.
  * 3. **The device level** ([DeviceStorage]): the shop offers its A/B group, push tokens and advertising
  *    id, which the device takes while it has none of its own. A shop without an A/B group takes the
- *    device's, so every new shop of the device sends the same group.
+ *    device's, so every new shop of the device sends the same group; a device without one takes the
+ *    group a bridge kept for it (`Rees46.initializeBridge`), or else a random one.
  *
  * The writes go through `apply()`: the copy and its flag are one write, so a crash loses both or
  * neither, and the next start runs the migration again.
  */
 internal object StorageMigrations {
 
-    /** Runs what has not run yet for [layout]'s shop. A failure is logged and never stops the start. */
-    fun run(context: Context, layout: StorageLayout, device: DeviceStorage = DeviceStorage(context)) {
+    /**
+     * Runs what has not run yet for [layout]'s shop. A failure is logged and never stops the start.
+     * [segment] is the A/B group a bridge kept for the device, one of [DeviceStorage.SEGMENTS]: the device
+     * takes it while neither it nor the shop has a group.
+     */
+    fun run(context: Context, layout: StorageLayout, device: DeviceStorage = DeviceStorage(context), segment: String? = null) {
         val shopId = layout.shopId
         val partition = open(context, layout.partitionName, shopId, OP_OPEN_PARTITION) ?: return
         layout.namedFile?.let { name ->
@@ -39,7 +44,7 @@ internal object StorageMigrations {
             }
         }
         layout.legacyFile?.let { name -> step(shopId, OP_MIGRATE_LEGACY_FILE) { migrateLegacyFile(context, name, partition, shopId) } }
-        step(shopId, OP_MIGRATE_DEVICE_LEVEL) { adoptDeviceLevel(partition, device) }
+        step(shopId, OP_MIGRATE_DEVICE_LEVEL) { adoptDeviceLevel(partition, device, segment) }
     }
 
     private fun migrateLegacyFile(context: Context, legacyName: String, partition: SharedPreferences, shopId: String) {
@@ -80,7 +85,7 @@ internal object StorageMigrations {
         editor.putBoolean(flag, true).apply()
     }
 
-    private fun adoptDeviceLevel(partition: SharedPreferences, device: DeviceStorage) {
+    private fun adoptDeviceLevel(partition: SharedPreferences, device: DeviceStorage, offeredSegment: String?) {
         if (partition.getBoolean(StorageKeys.MIGRATED_DEVICE_LEVEL, false)) return
         val editor = partition.edit()
         val segment = partition.getString(StorageKeys.SEGMENT, null)?.takeIf { it.isNotEmpty() }
@@ -88,7 +93,7 @@ internal object StorageMigrations {
             // The shop keeps sending its own group; the device takes it if it is the first.
             device.adoptSegment(segment)
         } else {
-            editor.putString(StorageKeys.SEGMENT, device.adoptSegment(randomSegment()))
+            editor.putString(StorageKeys.SEGMENT, device.adoptSegment(offeredSegment ?: randomSegment()))
         }
         StorageKeys.PUSH_PROVIDERS.forEach { provider ->
             val token = partition.getString(StorageKeys.pushToken(provider), null)?.takeIf { it.isNotEmpty() }
@@ -100,7 +105,7 @@ internal object StorageMigrations {
     }
 
     /** The two groups of the server's A/B tests, picked at random once per device. */
-    internal fun randomSegment(): String = arrayOf("A", "B").random()
+    internal fun randomSegment(): String = DeviceStorage.SEGMENTS.random()
 
     private fun open(context: Context, name: String, shopId: String, op: String): SharedPreferences? = try {
         context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)

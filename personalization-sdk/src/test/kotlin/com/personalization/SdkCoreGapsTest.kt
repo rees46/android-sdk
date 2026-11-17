@@ -160,18 +160,17 @@ class SdkCoreGapsTest {
         PushHub.reset()
     }
 
-    private fun config(shop: String, coreV2: Boolean = true) = Rees46Config(
+    private fun config(shop: String) = Rees46Config(
         shopId = shop,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
-        coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
     )
 
     private fun ready(sdk: SDK, state: SdkState = SdkState.READY) =
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == state } } }
 
-    private fun sdk(shop: String, coreV2: Boolean = true): SDK = Rees46.initialize(context, config(shop, coreV2)).also { ready(it) }
+    private fun sdk(shop: String, coreV2: Boolean = true): SDK = Rees46.initialize(context, config(shop), coreV2).also { ready(it) }
 
     private fun flush(sdk: SDK) = runBlocking { withTimeout(5_000) { sdk.flush() } }
 
@@ -265,7 +264,7 @@ class SdkCoreGapsTest {
     @Test
     fun `deleting the customer of a refused shop asks init again, and its answer decides`() {
         initStatus[A] = 403
-        val sdk = Rees46.initialize(context, config(A))
+        val sdk = Rees46.initialize(context, config(A), coreV2 = true)
         ready(sdk, SdkState.REFUSED)
         assertTrue(partition(A).getBoolean(StorageKeys.REFUSED, false))
 
@@ -329,7 +328,7 @@ class SdkCoreGapsTest {
         listOf(false, true).forEach { coreV2 ->
             tearDown()
             setUp()
-            Rees46.register(context, listOf(config(A, coreV2), config(B, coreV2)), eagerInit = true)
+            Rees46.register(context, listOf(config(A), config(B)), eagerInit = true, coreV2 = coreV2)
 
             assertTrue(Rees46.isInitialized(A))
             assertTrue(Rees46.isInitialized(B))
@@ -345,7 +344,7 @@ class SdkCoreGapsTest {
 
     @Test
     fun `waiting for a shop registered but not created gets its full instance at once, with one init`() {
-        Rees46.register(context, listOf(config(A)))
+        Rees46.register(context, listOf(config(A)), coreV2 = true)
         var got: SDK? = null
 
         Rees46.awaitInstance(A) { got = it }
@@ -365,7 +364,7 @@ class SdkCoreGapsTest {
         val sdk = SDK()
         sdk.onSessionChange { throw IllegalStateException("the app's session listener") }
         sdk.onSessionChange { sessions += it }
-        sdk.initializeWith(context, config(A))
+        sdk.initializeWith(context, config(A), coreV2 = true)
         ready(sdk)
         assertTrue(eventually {
             shadowOf(Looper.getMainLooper()).idle()
@@ -416,7 +415,7 @@ class SdkCoreGapsTest {
 
             sdk.release()
             shadowOf(Looper.getMainLooper()).idle()
-            Rees46.initialize(context, config(A, coreV2)).also { ready(it) }
+            Rees46.initialize(context, config(A), coreV2).also { ready(it) }
             shadowOf(Looper.getMainLooper()).idle()
 
             assertEquals("core $coreV2", listOf(SdkState.READY, SdkState.NOT_INITIALIZED), states)
@@ -427,10 +426,10 @@ class SdkCoreGapsTest {
 
     @Test
     fun `a shop initialized with the other flag after a registration decided the process's core runs on that core and is warned once`() {
-        Rees46.register(context, listOf(config(A, coreV2 = true)))
+        Rees46.register(context, listOf(config(A)), coreV2 = true)
 
-        val b = Rees46.initialize(context, config(B, coreV2 = false))
-        Rees46.initialize(context, config(B, coreV2 = false))
+        val b = Rees46.initialize(context, config(B))
+        Rees46.initialize(context, config(B))
 
         assertTrue(b.core?.isV2 == true)
         assertEquals(1, logged.count { it.code == LogCodes.CORE_FLAG_MISMATCH && it.shopId == B })

@@ -358,7 +358,10 @@ open class SDK {
     /** The level of this instance's log; [Rees46Config.logLevel] sets it for instances made through [Rees46]. */
     internal var logLevel: LogLevel = LogLevel.WARNING
 
-    /** [Rees46Config.coreV2] of the instance; the process's core decides ([CoreSelection]). */
+    /**
+     * Whether the instance asked for the new core ([Rees46.initializeBridge]); the process's core decides
+     * ([CoreSelection]).
+     */
     internal var coreV2Requested: Boolean = false
 
     /** The instance's core, once it is initialized: the legacy one or [CoreV2]. */
@@ -483,19 +486,21 @@ open class SDK {
             tag = tag,
             enableAutoPopupPresentation = enableAutoPopupPresentation,
             logLevel = logLevel,
-            coreV2 = coreV2Requested,
             storageKey = preferencesKey.takeUnless { it == PreferencesPartition.LEGACY_KEY },
-        )
+        ),
+        coreV2 = coreV2Requested,
     )
 
     /**
-     * Initializes this object for [config]: the entry of [Rees46.initialize] and of the legacy
-     * [initialize]. An object live for the same shop is left as it is: it keeps the config it was made
-     * with, and a different [config] is logged as `invalid_config` (`already_initialized`).
+     * Initializes this object for [config], asking for the new core with [coreV2]: the entry of
+     * [Rees46.initialize], [Rees46.initializeBridge] and of the legacy [initialize]. An object live for the
+     * same shop is left as it is: it keeps the config it was made with, and a different [config] is logged
+     * as `invalid_config` (`already_initialized`).
      */
-    internal fun initializeWith(context: Context, config: Rees46Config) = start(
+    internal fun initializeWith(context: Context, config: Rees46Config, coreV2: Boolean = false) = start(
         context,
         config,
+        coreV2,
         autoSendPushToken = config.autoSendPushToken,
         needReInitialization = config.needReInitialization,
         pushOnly = false,
@@ -510,9 +515,10 @@ open class SDK {
      * app's first [Rees46.instance] or [Rees46.initialize] of the shop puts a full instance in its place,
      * and an initialize of this object makes it one.
      */
-    internal fun initializeForPush(context: Context, config: Rees46Config) = start(
+    internal fun initializeForPush(context: Context, config: Rees46Config, coreV2: Boolean) = start(
         context,
         config,
+        coreV2,
         autoSendPushToken = false,
         needReInitialization = false,
         pushOnly = true,
@@ -527,6 +533,7 @@ open class SDK {
     internal fun initializeForPushWithoutDid(context: Context, config: Rees46Config) = start(
         context,
         config,
+        coreV2 = false,
         autoSendPushToken = false,
         needReInitialization = false,
         pushOnly = false,
@@ -549,6 +556,7 @@ open class SDK {
     private fun start(
         context: Context,
         config: Rees46Config,
+        coreV2: Boolean,
         autoSendPushToken: Boolean,
         needReInitialization: Boolean,
         pushOnly: Boolean,
@@ -565,7 +573,7 @@ open class SDK {
         }
         enableAutoPopupPresentation = config.enableAutoPopupPresentation
         logLevel = config.logLevel
-        coreV2Requested = config.coreV2
+        coreV2Requested = coreV2
         // Both before the instance registers: a push-only one wakes nobody waiting for the shop's
         // instance, and whoever finds it in the registry has the config to put a full one in its place.
         this.pushOnly = pushOnly
@@ -1143,7 +1151,7 @@ open class SDK {
      * request's old callback gets `onError(-1)` (a request still waiting for a `did` too), and
      * [deleteUserCredentials] throws [SdkException] without deleting anything or asking `/init`.
      * [state] is [SdkState.NOT_INITIALIZED]: the state listeners hear it and are dropped. On the new
-     * core ([Rees46Config.coreV2]) the requests in flight are cancelled (`onError(-1)`) and `/init`
+     * core ([Rees46.initializeBridge]) the requests in flight are cancelled (`onError(-1)`) and `/init`
      * stops; the legacy one cannot cancel a request in flight. The shop's data stays on the device, and
      * a new [Rees46.initialize] for the shop makes a fresh instance.
      */
