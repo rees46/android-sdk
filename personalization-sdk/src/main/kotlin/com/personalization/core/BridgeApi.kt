@@ -24,7 +24,9 @@ package com.personalization.core
  * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted;
  * - the namespaces of the new core, `SDK.cart` the first: each method is a suspending function with a
  *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
- *   legacy core, where they do not run.
+ *   legacy core, where they do not run;
+ * - `SDK.reviews` — NPS, CSAT and CES ratings and their dictionaries on `Rees46Config.appDomain`, and the
+ *   reviews of products.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

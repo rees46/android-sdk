@@ -51,6 +51,10 @@ internal class NamespaceCalls(
      * answer without a body, and returns the method's value, or null when the answer does not fit it
      * (`decoding`). A method with a read timeout of its own passes [readTimeoutMs].
      *
+     * [refused] says which argument the contract refuses (`rate must be from 0 to 10`): the call then fails
+     * with [SdkError.InvalidArgument] and sends nothing, logged as `invalid_argument`. The core decides first,
+     * so on the legacy core such a call is [SdkError.NotInitialized] as every other.
+     *
      * @throws SdkException with the reason the call failed.
      */
     suspend fun <T : Any> request(
@@ -58,10 +62,15 @@ internal class NamespaceCalls(
         method: NetworkMethod,
         params: JSONObject = JSONObject(),
         readTimeoutMs: Long? = null,
+        refused: String? = null,
         read: (Any?) -> T?,
     ): T {
         val core = core()
         if (core !is CoreV2) throw notOnThisCore(call, core)
+        if (refused != null) {
+            SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "$call: $refused", shopId(), mapOf("call" to call))
+            throw SdkException(SdkError.InvalidArgument(refused))
+        }
         return when (val result = core.request(method, params, readTimeoutMs)) {
             is HttpResult.Failure -> throw SdkException(result.error)
             is HttpResult.Success -> readAnswer(call, method, result, read) ?: throw SdkException(SdkError.Decoding)

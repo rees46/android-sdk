@@ -24,6 +24,7 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.RecommendationManager
+import com.personalization.api.managers.ReviewsApi
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
@@ -65,6 +66,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.reviews.ReviewsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -220,6 +222,16 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val cart: CartApi = CartApiImpl(namespaceCalls)
+
+    /**
+     * NPS, CSAT and CES ratings, their dictionaries, and the reviews of products: `sdk.reviews.createNps(…)`.
+     * The polls go to [Rees46Config.appDomain]. For the Flutter and React Native bridges: it runs on the new
+     * core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [ReviewsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
