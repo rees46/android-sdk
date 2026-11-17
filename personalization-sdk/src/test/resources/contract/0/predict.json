@@ -1,0 +1,70 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "getProbabilityToPurchase",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "request": { "method": "GET", "path": "predict/probability-to-purchase", "query": {} }
+    },
+    {
+      "name": "покупатель найден",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "probability": 0.42, "client_id": 12345 } },
+      "expect": { "result": { "probability": 0.42, "clientId": "12345" } }
+    },
+    {
+      "name": "покупатель найден, событий нет",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "probability": 0, "client_id": "77" } },
+      "expect": { "result": { "probability": 0, "clientId": "77" } }
+    },
+    {
+      "name": "покупатель не найден — успех с пустым clientId",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "probability": 0, "client_id": null } },
+      "expect": { "result": { "probability": 0, "clientId": null } }
+    },
+    {
+      "name": "нет probability",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "client_id": 12345 } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "probability не число",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "probability": "high", "client_id": 12345 } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "400 — неизвестный магазин",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 400, "body": { "message": "Shop not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "402 — нет услуги cdp",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 402, "body": { "message": "Payment required" } },
+      "expect": { "error": { "type": "http", "code": 402 } }
+    },
+    {
+      "name": "503 от nginx на пути мобильных SDK (В42)",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 503, "body": null },
+      "expect": { "error": { "type": "http", "code": 503 } }
+    },
+    {
+      "name": "2xx со status error",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}

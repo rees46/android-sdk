@@ -15,6 +15,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.PredictApi
 import com.personalization.api.managers.StoriesApi
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -66,6 +67,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.predict.PredictApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
@@ -231,6 +233,14 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val stories: StoriesApi = StoriesApiImpl(namespaceCalls)
+
+    /**
+     * Forecasts of the customer's behaviour: `sdk.predict.getProbabilityToPurchase()`. For the bridges, on
+     * the new core only, as [stories]; see [PredictApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val predict: PredictApi = PredictApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
