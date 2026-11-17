@@ -1,0 +1,182 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "request": { "method": "GET", "path": "profile", "query": {} }
+    },
+    {
+      "name": "set со всеми полями: externalId уходит полями id и external_id, cars — полем auto, свои свойства — на верхнем уровне",
+      "call": { "namespace": "profile", "method": "set",
+                "args": { "request": { "email": "jane@example.com", "phone": "+79990000000", "externalId": "u-1", "loyaltyId": "l-1",
+                                       "telegramId": "t-1", "fbId": "fb-1", "vkId": "vk-1", "firstName": "Jane", "lastName": "Doe",
+                                       "gender": "female", "birthday": "1990-02-28", "age": 36, "location": "msk",
+                                       "kids": [ { "gender": "male", "birthday": "2016-02-29" }, { "gender": "female" } ],
+                                       "cars": [ { "brand": "Lada", "model": "Vesta", "vds": "XTA000000000" } ],
+                                       "customProperties": { "favorite_color": "green", "points": 120, "vip": true, "visited_at": null,
+                                                             "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } } },
+      "request": { "method": "POST", "path": "profile/set",
+                   "body": { "email": "jane@example.com", "phone": "+79990000000", "id": "u-1", "external_id": "u-1", "loyalty_id": "l-1",
+                             "telegram_id": "t-1", "fb_id": "fb-1", "vk_id": "vk-1", "first_name": "Jane", "last_name": "Doe",
+                             "gender": "f", "birthday": "1990-02-28", "age": 36, "location": "msk",
+                             "kids": [ { "gender": "m", "birthday": "2016-02-29" }, { "gender": "f" } ],
+                             "auto": [ { "brand": "Lada", "model": "Vesta", "vds": "XTA000000000" } ],
+                             "favorite_color": "green", "points": 120, "vip": true, "visited_at": null,
+                             "tags": [ "a", "b" ], "address": { "city": "Moscow" } } }
+    },
+    {
+      "name": "set: пустая строка стирает location",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "location": "" } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "location": "" } }
+    },
+    {
+      "name": "set: пустые списки не уходят — менять нечего",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [], "cars": [] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set без полей",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": {} } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым email",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым externalId",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "externalId": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday не в формате YYYY-MM-DD",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "28.02.1990" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday — несуществующая дата",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "2026-02-29" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday ребёнка не в формате",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [ { "birthday": "2016-2-1" } ] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: отрицательный age",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "age": -1 } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties не из [a-z0-9_]",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "Favorite-Color": "green" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties совпадает с полем запроса",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "first_name": "Jane" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties совпадает со служебным полем",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "did": "x" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getLastOrder",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "request": { "method": "GET", "path": "orders/last_for_user", "query": {} }
+    },
+    {
+      "name": "get: профиль; незнакомый пол — пустое поле, поля вне Profile не попадают в результат",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200,
+                    "body": { "id": 123, "has_email": true, "email_registered_at": "2026-11-01 10:00:00", "gender": "f",
+                              "computed_gender": "x", "bought_something": false, "email": "hidden@example.com",
+                              "custom_properties": { "favorite_color": "green", "points": 120, "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } },
+      "expect": { "result": { "id": "123", "hasEmail": true, "emailRegisteredAt": "2026-11-01 10:00:00", "gender": "female",
+                              "boughtSomething": false,
+                              "customProperties": { "favorite_color": "green", "points": 120, "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } }
+    },
+    {
+      "name": "get: пустой профиль",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200, "body": {} },
+      "expect": { "result": {} }
+    },
+    {
+      "name": "get: 404 — неизвестный did",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 404, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "get: ответ не объект",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200, "body": [] },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "set: успех",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 200, "body": { "status": "success" } },
+      "expect": { "result": null }
+    },
+    {
+      "name": "set: успех без тела",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 204, "body": null },
+      "expect": { "result": null }
+    },
+    {
+      "name": "set: 400 — сервер не принял email",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "not-an-email" } } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Invalid email" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "set: 2xx со status error",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "set: нет ответа",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "getLastOrder: товары последнего заказа",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200,
+                    "body": [ { "id": "37", "name": "Кроссовки", "url": "https://shop.example/p/37", "price": 4990, "currency": "₽",
+                                "oldprice": 5990, "is_new": true, "stock_quantity": 1000, "rating": 4, "leftovers": "lots",
+                                "categories": [ { "id": "5", "parent": null, "name": "Обувь", "url": "https://shop.example/c/5" } ] } ] },
+      "expect": { "result": [ { "id": "37", "name": "Кроссовки", "url": "https://shop.example/p/37", "price": 4990, "currency": "₽",
+                                "oldPrice": 5990, "isNew": true, "stockQuantity": 1000, "rating": 4,
+                                "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5" } ] } ] }
+    },
+    {
+      "name": "getLastOrder: заказов нет",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200, "body": [] },
+      "expect": { "result": [] }
+    },
+    {
+      "name": "getLastOrder: 400 — неизвестный did",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 400, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "getLastOrder: ответ не массив",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200, "body": { "products": [] } },
+      "expect": { "error": { "type": "decoding" } }
+    }
+  ]
+}

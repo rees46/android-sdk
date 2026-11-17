@@ -52,12 +52,12 @@ class StoriesApiFixturesTest {
 
     @Test
     fun `get makes the contract's request`() {
-        assertEquals(1, fixtures.checkRequests(FILE, NAMESPACE, invoke))
+        assertEquals(1, fixtures.checkRequests(FILE, invoke, NAMESPACE))
     }
 
     @Test
     fun `an empty code is invalidArgument without a request`() {
-        assertEquals(1, fixtures.checkErrors(FILE, NAMESPACE, invoke))
+        assertEquals(1, fixtures.checkErrors(FILE, invoke, NAMESPACE))
     }
 
     @Test
@@ -84,7 +84,7 @@ class StoriesApiFixturesTest {
 
     @Test
     fun `get reads every answer of the contract into its block or its error`() {
-        assertTrue(fixtures.checkAnswers(FILE, NAMESPACE, invoke) { block(it as StoriesBlock) } >= 9)
+        assertTrue(fixtures.checkAnswers(FILE, invoke, NAMESPACE, NamespaceFixtures.Json { block(it as StoriesBlock) }) >= 9)
     }
 
     @Test

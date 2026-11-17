@@ -10,9 +10,9 @@ import com.personalization.core.BridgeApi
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
 import com.personalization.core.internal.NamespaceFixtures
-import com.personalization.core.internal.NamespaceFixtures.Companion.flagOrNull
-import com.personalization.core.internal.NamespaceFixtures.Companion.stringsOrNull
-import com.personalization.core.internal.NamespaceFixtures.Companion.textOrNull
+import com.personalization.core.internal.argBoolean
+import com.personalization.core.internal.argStrings
+import com.personalization.core.internal.argString
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.mockwebserver.MockResponse
@@ -42,17 +42,17 @@ class LoyaltyApiFixturesTest {
         when (method) {
             "join" -> loyalty.join(
                 phone = args.getString("phone"),
-                firstName = args.textOrNull("firstName"),
-                lastName = args.textOrNull("lastName"),
-                gender = args.textOrNull("gender")?.let { name -> Gender.entries.single { it.name.lowercase() == name } },
-                birthday = args.textOrNull("birthday"),
+                firstName = args.argString("firstName"),
+                lastName = args.argString("lastName"),
+                gender = args.argString("gender")?.let { name -> Gender.entries.single { it.name.lowercase() == name } },
+                birthday = args.argString("birthday"),
             )
             "getStatus" -> loyalty.getStatus(args.getString("phone"))
             "getPromotions" -> loyalty.getPromotions(
-                locationId = args.textOrNull("locationId"),
-                promoCodes = args.stringsOrNull("promoCodes"),
-                chargeBonuses = args.flagOrNull("chargeBonuses"),
-                currentTime = args.textOrNull("currentTime"),
+                locationId = args.argString("locationId"),
+                promoCodes = args.argStrings("promoCodes"),
+                chargeBonuses = args.argBoolean("chargeBonuses"),
+                currentTime = args.argString("currentTime"),
             )
             else -> error("unknown method $method")
         }
@@ -81,17 +81,17 @@ class LoyaltyApiFixturesTest {
 
     @Test
     fun `each method makes the contract's request, promo codes as a Rails array`() {
-        assertEquals(5, fixtures.checkRequests(FILE, NAMESPACE, invoke))
+        assertEquals(5, fixtures.checkRequests(FILE, invoke, NAMESPACE))
     }
 
     @Test
     fun `wrong arguments are invalidArgument without a request`() {
-        assertEquals(5, fixtures.checkErrors(FILE, NAMESPACE, invoke))
+        assertEquals(5, fixtures.checkErrors(FILE, invoke, NAMESPACE))
     }
 
     @Test
     fun `every answer of the contract reads into the method's model or its error`() {
-        assertTrue(fixtures.checkAnswers(FILE, NAMESPACE, invoke, json) >= 15)
+        assertTrue(fixtures.checkAnswers(FILE, invoke, NAMESPACE, json) >= 15)
     }
 
     @Test

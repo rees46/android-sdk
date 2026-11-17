@@ -1,0 +1,144 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "manage: контакты и флаги; null не уходит",
+      "call": {"namespace": "subscriptions", "method": "manage", "args": {"request": {"email": "jane@example.com", "phone": "+79990000000", "externalId": "u-1", "loyaltyId": "l-1", "telegramId": "t-1", "emailBulk": true, "smsChain": false, "walletTransactional": true}}},
+      "request": {"method": "POST", "path": "subscriptions/manage", "body": {"email": "jane@example.com", "phone": "+79990000000", "external_id": "u-1", "loyalty_id": "l-1", "telegram_id": "t-1", "email_bulk": true, "sms_chain": false, "wallet_transactional": true}}
+    },
+    {
+      "name": "manage: все 24 флага",
+      "call": {"namespace": "subscriptions", "method": "manage", "args": {"request": {"emailBulk": true, "emailChain": true, "emailTransactional": true, "smsBulk": true, "smsChain": true, "smsTransactional": true, "webPushBulk": true, "webPushChain": true, "webPushTransactional": true, "mobilePushBulk": true, "mobilePushChain": true, "mobilePushTransactional": true, "telegramBulk": true, "telegramChain": true, "telegramTransactional": true, "whatsappBulk": true, "whatsappChain": true, "whatsappTransactional": true, "maxBulk": true, "maxChain": true, "maxTransactional": true, "walletBulk": true, "walletChain": true, "walletTransactional": true}}},
+      "request": {"method": "POST", "path": "subscriptions/manage", "body": {"email_bulk": true, "email_chain": true, "email_transactional": true, "sms_bulk": true, "sms_chain": true, "sms_transactional": true, "web_push_bulk": true, "web_push_chain": true, "web_push_transactional": true, "mobile_push_bulk": true, "mobile_push_chain": true, "mobile_push_transactional": true, "telegram_bulk": true, "telegram_chain": true, "telegram_transactional": true, "whatsapp_bulk": true, "whatsapp_chain": true, "whatsapp_transactional": true, "max_bulk": true, "max_chain": true, "max_transactional": true, "wallet_bulk": true, "wallet_chain": true, "wallet_transactional": true}}
+    },
+    {
+      "name": "manage без флагов",
+      "call": {"namespace": "subscriptions", "method": "manage", "args": {"request": {"email": "jane@example.com"}}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "manage с пустым email",
+      "call": {"namespace": "subscriptions", "method": "manage", "args": {"request": {"email": "", "emailBulk": true}}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "check",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "request": {"method": "GET", "path": "subscriptions/check", "query": {}}
+    },
+    {
+      "name": "subscribeForPriceDrop: товар полем item_id, цена полем price",
+      "call": {"namespace": "subscriptions", "method": "subscribeForPriceDrop", "args": {"itemId": "37", "currentPrice": 4990.5, "email": "jane@example.com"}},
+      "request": {"method": "POST", "path": "subscriptions/subscribe_for_product_price", "body": {"item_id": "37", "price": 4990.5, "email": "jane@example.com"}}
+    },
+    {
+      "name": "subscribeForPriceDrop с пустым itemId",
+      "call": {"namespace": "subscriptions", "method": "subscribeForPriceDrop", "args": {"itemId": "", "currentPrice": 4990}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "subscribeForPriceDrop с ценой 0",
+      "call": {"namespace": "subscriptions", "method": "subscribeForPriceDrop", "args": {"itemId": "37", "currentPrice": 0}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "subscribeForPriceDrop с пустым phone",
+      "call": {"namespace": "subscriptions", "method": "subscribeForPriceDrop", "args": {"itemId": "37", "currentPrice": 4990, "phone": ""}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "unsubscribeFromPriceDrop: item_ids строкой через запятую без пробелов",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromPriceDrop", "args": {"itemIds": ["37", "38"], "phone": "+79990000000"}},
+      "request": {"method": "POST", "path": "subscriptions/unsubscribe_from_product_price", "body": {"item_ids": "37,38", "phone": "+79990000000"}}
+    },
+    {
+      "name": "unsubscribeFromPriceDrop: пустой список — от всех товаров",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromPriceDrop", "args": {"itemIds": []}},
+      "request": {"method": "POST", "path": "subscriptions/unsubscribe_from_product_price", "body": {"item_ids": ""}}
+    },
+    {
+      "name": "unsubscribeFromPriceDrop: пустая строка в списке",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromPriceDrop", "args": {"itemIds": ["37", ""]}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "subscribeForBackInStock со свойствами варианта",
+      "call": {"namespace": "subscriptions", "method": "subscribeForBackInStock", "args": {"itemId": "37", "properties": {"fashionSize": "42", "fashionColor": "red", "barcode": "4600000000000"}, "phone": "+79990000000"}},
+      "request": {"method": "POST", "path": "subscriptions/subscribe_for_product_available", "body": {"item_id": "37", "properties": {"fashion_size": "42", "fashion_color": "red", "barcode": "4600000000000"}, "phone": "+79990000000"}}
+    },
+    {
+      "name": "subscribeForBackInStock: свойства без полей не уходят",
+      "call": {"namespace": "subscriptions", "method": "subscribeForBackInStock", "args": {"itemId": "37", "properties": {}}},
+      "request": {"method": "POST", "path": "subscriptions/subscribe_for_product_available", "body": {"item_id": "37"}}
+    },
+    {
+      "name": "subscribeForBackInStock с пустым itemId",
+      "call": {"namespace": "subscriptions", "method": "subscribeForBackInStock", "args": {"itemId": ""}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "unsubscribeFromBackInStock",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromBackInStock", "args": {"itemIds": ["37"], "email": "jane@example.com"}},
+      "request": {"method": "POST", "path": "subscriptions/unsubscribe_from_product_available", "body": {"item_ids": "37", "email": "jane@example.com"}}
+    },
+    {
+      "name": "unsubscribeFromBackInStock: пустая строка в списке",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromBackInStock", "args": {"itemIds": [""]}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "check: все 24 флага, пуш-токены и состояние email; незнакомые поля не мешают",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "response": {"status": 200, "body": {"exists": true, "email_bulk": true, "email_chain": false, "email_transactional": false, "sms_bulk": true, "sms_chain": false, "sms_transactional": false, "web_push_bulk": true, "web_push_chain": false, "web_push_transactional": false, "mobile_push_bulk": true, "mobile_push_chain": false, "mobile_push_transactional": false, "telegram_bulk": true, "telegram_chain": false, "telegram_transactional": false, "whatsapp_bulk": true, "whatsapp_chain": false, "whatsapp_transactional": false, "max_bulk": true, "max_chain": false, "max_transactional": false, "wallet_bulk": true, "wallet_chain": false, "wallet_transactional": false, "web_push": false, "mobile_push": true, "email_invalid": false, "email_blacklisted": false, "email_bounced": false, "email_suppressed": false, "email_confirmed": true, "unknown_flag": true}},
+      "expect": {"result": {"exists": true, "emailBulk": true, "emailChain": false, "emailTransactional": false, "smsBulk": true, "smsChain": false, "smsTransactional": false, "webPushBulk": true, "webPushChain": false, "webPushTransactional": false, "mobilePushBulk": true, "mobilePushChain": false, "mobilePushTransactional": false, "telegramBulk": true, "telegramChain": false, "telegramTransactional": false, "whatsappBulk": true, "whatsappChain": false, "whatsappTransactional": false, "maxBulk": true, "maxChain": false, "maxTransactional": false, "walletBulk": true, "walletChain": false, "walletTransactional": false, "hasWebPush": false, "hasMobilePush": true, "emailInvalid": false, "emailBlacklisted": false, "emailBounced": false, "emailSuppressed": false, "emailConfirmed": true}}
+    },
+    {
+      "name": "check: нет поля — false; логическое строкой и числом",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "response": {"status": 200, "body": {"exists": "1", "email_bulk": "true", "sms_bulk": 1}},
+      "expect": {"result": {"exists": true, "emailBulk": true, "emailChain": false, "emailTransactional": false, "smsBulk": true, "smsChain": false, "smsTransactional": false, "webPushBulk": false, "webPushChain": false, "webPushTransactional": false, "mobilePushBulk": false, "mobilePushChain": false, "mobilePushTransactional": false, "telegramBulk": false, "telegramChain": false, "telegramTransactional": false, "whatsappBulk": false, "whatsappChain": false, "whatsappTransactional": false, "maxBulk": false, "maxChain": false, "maxTransactional": false, "walletBulk": false, "walletChain": false, "walletTransactional": false, "hasWebPush": false, "hasMobilePush": false, "emailInvalid": false, "emailBlacklisted": false, "emailBounced": false, "emailSuppressed": false, "emailConfirmed": false}}
+    },
+    {
+      "name": "check: пустой ответ — всё false",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "response": {"status": 200, "body": {}},
+      "expect": {"result": {"exists": false, "emailBulk": false, "emailChain": false, "emailTransactional": false, "smsBulk": false, "smsChain": false, "smsTransactional": false, "webPushBulk": false, "webPushChain": false, "webPushTransactional": false, "mobilePushBulk": false, "mobilePushChain": false, "mobilePushTransactional": false, "telegramBulk": false, "telegramChain": false, "telegramTransactional": false, "whatsappBulk": false, "whatsappChain": false, "whatsappTransactional": false, "maxBulk": false, "maxChain": false, "maxTransactional": false, "walletBulk": false, "walletChain": false, "walletTransactional": false, "hasWebPush": false, "hasMobilePush": false, "emailInvalid": false, "emailBlacklisted": false, "emailBounced": false, "emailSuppressed": false, "emailConfirmed": false}}
+    },
+    {
+      "name": "check: 400 — неизвестный did",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "response": {"status": 400, "body": {"status": "error", "message": "Client not found"}},
+      "expect": {"error": {"type": "http", "code": 400}}
+    },
+    {
+      "name": "check: ответ не объект",
+      "call": {"namespace": "subscriptions", "method": "check", "args": {}},
+      "response": {"status": 200, "body": []},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "manage: успех",
+      "call": {"namespace": "subscriptions", "method": "manage", "args": {"request": {"emailBulk": true}}},
+      "response": {"status": 200, "body": {"status": "success"}},
+      "expect": {"result": null}
+    },
+    {
+      "name": "subscribeForBackInStock: 400 — свойство не из списка сервера",
+      "call": {"namespace": "subscriptions", "method": "subscribeForBackInStock", "args": {"itemId": "37", "properties": {"fashionSize": "42"}}},
+      "response": {"status": 400, "body": {"status": "error", "message": "Incorrect product property"}},
+      "expect": {"error": {"type": "http", "code": 400}}
+    },
+    {
+      "name": "unsubscribeFromPriceDrop: 2xx со status error",
+      "call": {"namespace": "subscriptions", "method": "unsubscribeFromPriceDrop", "args": {"itemIds": ["37"]}},
+      "response": {"status": 200, "body": {"status": "error", "message": "Something went wrong"}},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "subscribeForPriceDrop: нет ответа",
+      "call": {"namespace": "subscriptions", "method": "subscribeForPriceDrop", "args": {"itemId": "37", "currentPrice": 4990}},
+      "response": {"status": null},
+      "expect": {"error": {"type": "network"}}
+    }
+  ]
+}

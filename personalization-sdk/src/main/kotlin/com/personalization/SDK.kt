@@ -14,6 +14,13 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
+import com.personalization.api.managers.CollectionsApi
+import com.personalization.api.managers.ProductsApi
+import com.personalization.api.managers.RecommendationsApi
+import com.personalization.api.managers.SearchApi
+import com.personalization.api.managers.ProfileApi
+import com.personalization.api.managers.SegmentsApi
+import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.NotificationsApi
 import com.personalization.api.managers.LoyaltyApi
@@ -77,6 +84,13 @@ import com.personalization.features.predict.PredictApiImpl
 import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.reviews.ReviewsApiImpl
+import com.personalization.features.collection.CollectionsApiImpl
+import com.personalization.features.products.ProductsApiImpl
+import com.personalization.features.recommendation.RecommendationsApiImpl
+import com.personalization.features.search.SearchApiImpl
+import com.personalization.features.profile.ProfileApiImpl
+import com.personalization.features.segments.SegmentsApiImpl
+import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -139,7 +153,7 @@ open class SDK {
 
     private var onMessageListener: OnMessageListener? = null
     private var onPushTokenListener: OnPushTokenListener? = null
-    private var search: Search = Search(JSONObject())
+    private var blankSearch: Search = Search(JSONObject())
 
     /**
      * True once initialize() has wired the Dagger graph. A push can reach the SDK in a process
@@ -285,6 +299,68 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's catalog: `sdk.products.getInfo("37")`, `getList`, `getCounters`, `getCategory`. For the
+     * Flutter and React Native bridges, on the new core only, as [cart]; see [ProductsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val products: ProductsApi = ProductsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's product collections: `sdk.collections.get("12")`. For the Flutter and React Native
+     * bridges, on the new core only, as [cart]; see [CollectionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val collections: CollectionsApi = CollectionsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's recommendation blocks: `sdk.recommendations.get("block-code")`. For the Flutter and React
+     * Native bridges, on the new core only, as [cart]; see [RecommendationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val recommendations: RecommendationsApi = RecommendationsApiImpl(namespaceCalls)
+
+    /**
+     * Search in the shop's catalog: `sdk.search.blank()`, `instant`, `full`. For the Flutter and React
+     * Native bridges, on the new core only, as [cart]; see [SearchApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val search: SearchApi = SearchApiImpl(namespaceCalls)
+
+    /**
+     * The customer's profile: `sdk.profile.get()`, `set`, `getLastOrder`. For the Flutter and React Native
+     * bridges, on the new core only, as [cart]; see [ProfileApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val profile: ProfileApi = ProfileApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's subscriptions to channels and to products: `sdk.subscriptions.manage(…)`, `check`,
+     * `subscribeForPriceDrop` and the others. For the Flutter and React Native bridges, on the new core only,
+     * as [cart]; see [SubscriptionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val subscriptions: SubscriptionsApi =
+        SubscriptionsApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's segments and the device's A/B group: `sdk.segments.add(12)`, `remove`, `get`,
+     * `getAbGroup`. For the Flutter and React Native bridges, on the new core only, as [cart]; see
+     * [SegmentsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val segments: SegmentsApi = SegmentsApiImpl(
+        namespaceCalls,
+        abGroup = { if (::userSettingsRepository.isInitialized) userSettingsRepository.getSegmentForABTesting() else null },
+    ) { type, signature -> popupsV3?.onContextChange(type, signature) }
 
     @Inject
     lateinit var searchManager: SearchManager
@@ -1450,7 +1526,7 @@ open class SDK {
         params: SearchParams,
         listener: OnApiCallbackListener
     ) {
-        if (search != null) {
+        if (blankSearch != null) {
             params.put(InternalParameter.SEARCH_TYPE, type.value)
                 .put(InternalParameter.SEARCH_QUERY, query)
             getAsync(SEARCH_FIELD, params.build(), listener)
@@ -1467,11 +1543,11 @@ open class SDK {
         )
     )
     fun searchBlank(listener: OnApiCallbackListener) {
-        if (search != null) {
-            if (search?.blank == null) {
+        if (blankSearch != null) {
+            if (blankSearch?.blank == null) {
                 getAsync(BLANK_SEARCH_FIELD, Params().build(), object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        search?.blank = response
+                        blankSearch?.blank = response
                         listener.onSuccess(response)
                     }
 
@@ -1480,7 +1556,7 @@ open class SDK {
                     }
                 })
             } else {
-                listener.onSuccess(search?.blank)
+                listener.onSuccess(blankSearch?.blank)
             }
         } else {
             log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")

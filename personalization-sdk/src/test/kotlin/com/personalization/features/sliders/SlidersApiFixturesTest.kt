@@ -5,8 +5,8 @@ import com.personalization.api.models.sliders.Slider
 import com.personalization.api.models.sliders.SliderBanner
 import com.personalization.core.BridgeApi
 import com.personalization.core.internal.NamespaceFixtures
-import com.personalization.core.internal.NamespaceFixtures.Companion.stringsOrNull
-import com.personalization.core.internal.NamespaceFixtures.Companion.textOrNull
+import com.personalization.core.internal.argStrings
+import com.personalization.core.internal.argString
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.mockwebserver.MockResponse
@@ -35,7 +35,7 @@ class SlidersApiFixturesTest {
 
     private val invoke = NamespaceFixtures.Invoke { method, args ->
         check(method == "get") { "unknown method $method" }
-        sliders.get(args.getString("code"), args.stringsOrNull("tags"), args.textOrNull("locationId"))
+        sliders.get(args.getString("code"), args.argStrings("tags"), args.argString("locationId"))
     }
 
     @Before
@@ -49,12 +49,12 @@ class SlidersApiFixturesTest {
 
     @Test
     fun `get makes the contract's request, tags joined by commas`() {
-        assertEquals(2, fixtures.checkRequests(FILE, NAMESPACE, invoke))
+        assertEquals(2, fixtures.checkRequests(FILE, invoke, NAMESPACE))
     }
 
     @Test
     fun `an empty code, an empty tag or one with a comma is invalidArgument without a request`() {
-        assertEquals(3, fixtures.checkErrors(FILE, NAMESPACE, invoke))
+        assertEquals(3, fixtures.checkErrors(FILE, invoke, NAMESPACE))
     }
 
     @Test
@@ -73,7 +73,7 @@ class SlidersApiFixturesTest {
             }
         }
 
-        assertTrue(fixtures.checkAnswers(FILE, NAMESPACE, invoke, json) >= 8)
+        assertTrue(fixtures.checkAnswers(FILE, invoke, NAMESPACE, json) >= 8)
     }
 
     @Test

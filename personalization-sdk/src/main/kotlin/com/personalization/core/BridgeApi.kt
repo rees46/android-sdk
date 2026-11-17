@@ -31,6 +31,8 @@ package com.personalization.core
  *   queue only, in the public `tracking` namespace.
  * - `SDK.reviews` — NPS, CSAT and CES ratings and their dictionaries on `Rees46Config.appDomain`, and the
  *   reviews of products.
+ * - `SDK.products`, `SDK.collections`, `SDK.recommendations` and `SDK.search` — the catalog's namespaces.
+ * - `SDK.profile`, `SDK.subscriptions` and `SDK.segments` — the customer's namespaces.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

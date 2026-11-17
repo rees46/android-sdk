@@ -38,7 +38,7 @@ class PredictApiFixturesTest {
 
     @Test
     fun `the request has no field of its own, the customer is the device's did`() {
-        assertEquals(1, fixtures.checkRequests(FILE, NAMESPACE, invoke))
+        assertEquals(1, fixtures.checkRequests(FILE, invoke, NAMESPACE))
     }
 
     @Test
@@ -47,7 +47,7 @@ class PredictApiFixturesTest {
             (value as PurchaseProbability).let { mapOf("probability" to it.probability, "clientId" to it.clientId) }
         }
 
-        assertTrue(fixtures.checkAnswers(FILE, NAMESPACE, invoke, json) >= 10)
+        assertTrue(fixtures.checkAnswers(FILE, invoke, NAMESPACE, json) >= 10)
     }
 
     @Test
