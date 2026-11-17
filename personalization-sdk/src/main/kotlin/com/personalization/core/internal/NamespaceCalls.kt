@@ -118,6 +118,18 @@ internal class NamespaceCalls(
             mapOf("call" to call, "method" to method.type, "path" to method.method))
     }
 
+    /**
+     * The new core for [call], a method that makes no request through [request] (an event of the queue, a
+     * value the SDK keeps): on the legacy core or without one it fails as [request] does, the log included.
+     *
+     * @throws SdkException with [SdkError.NotInitialized].
+     */
+    fun requireNewCore(call: String): CoreV2 {
+        val core = core()
+        if (core !is CoreV2) throw notOnThisCore(call, core)
+        return core
+    }
+
     /** The failure of [call] on an instance whose core is not the new one: [core] is the legacy one, or none. */
     private fun notOnThisCore(call: String, core: Core?): SdkException {
         if (core == null) return SdkException(SdkError.NotInitialized)

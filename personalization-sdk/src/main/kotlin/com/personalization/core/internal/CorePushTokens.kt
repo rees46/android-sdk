@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import com.personalization.LogLevel
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.PushToken
 import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
 import com.personalization.logs.LogReasons
@@ -95,6 +96,22 @@ internal class CorePushTokens(
 
     /** The device's token of [provider], or the one this shop sent last. */
     fun token(provider: PushProvider): String? = device.pushToken(provider.id) ?: sentToken(provider)
+
+    /**
+     * `notifications.getPushToken`: the token of [provider] ([token]); without one, that of the provider
+     * whose token this shop sent last, or — when it sent none — the device's, FCM before HMS. Null when there
+     * is none, and after [release]. Reads the storage, never the network.
+     */
+    fun known(provider: PushProvider?): PushToken? {
+        if (synchronized(lock) { released }) return null
+        val providers = if (provider != null) {
+            listOf(provider)
+        } else {
+            val sent = PushProvider.entries.filter { sentToken(it) != null }.sortedByDescending(::sentDate)
+            sent + (PushProvider.entries - sent.toSet())
+        }
+        return providers.firstNotNullOfOrNull { candidate -> token(candidate)?.let { PushToken(it, candidate) } }
+    }
 
     /**
      * A token FCM or HMS gave: kept and sent, when the shop takes them, once the instance is ready. A shop

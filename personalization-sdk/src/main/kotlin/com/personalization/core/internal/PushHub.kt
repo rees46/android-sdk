@@ -60,6 +60,12 @@ internal object PushHub {
      */
     private val reserved = HashMap<String, MutableList<() -> Unit>>()
 
+    /**
+     * What the repeats parked beside [reserved] hear when the first one is accepted ([confirm]): the
+     * `notifications` methods, whose caller waits for a result, end there. Guarded like [reserved].
+     */
+    private val parkedRepeats = HashMap<String, MutableList<() -> Unit>>()
+
     /** What [reserve] decided for one event of one message. */
     enum class Reservation {
         /** Taken: the caller hands the event to its queue, then [confirm]s or [release]s it. */
@@ -90,26 +96,39 @@ internal object PushHub {
      * Whether [event] of the message [code] may go to [shopId]'s queue now: once per process. The event
      * counts as sent only once a queue accepted it ([confirm]); one the queue did not take is [release]d
      * and may go when it comes again. A repeat that comes while the first is being handed over is
-     * [Reservation.PARKED]: [retry] runs if the first is released, so the two are never lost together.
+     * [Reservation.PARKED]: [retry] runs if the first is released, so the two are never lost together, and
+     * [repeat] if the first is accepted, as a repeat.
      */
-    fun reserve(shopId: String, event: PushEvent, code: String, retry: () -> Unit): Reservation = synchronized(seen) {
+    fun reserve(shopId: String, event: PushEvent, code: String, repeat: () -> Unit = {}, retry: () -> Unit): Reservation = synchronized(seen) {
         val key = key(shopId, event, code)
         if (seen.containsKey(key)) return Reservation.REPEAT
         val waiting = reserved[key]
         if (waiting != null) {
             waiting += retry
+            parkedRepeats.getOrPut(key) { ArrayList() } += repeat
             return Reservation.PARKED
         }
         reserved[key] = ArrayList()
         Reservation.TAKEN
     }
 
-    /** A queue accepted the event [reserve] took: a repeat sends nothing from now on, the parked ones included. */
+    /**
+     * A queue accepted the event [reserve] took: a repeat sends nothing from now on, the parked ones included,
+     * which hear their `repeat` now, on this thread.
+     */
     fun confirm(shopId: String, event: PushEvent, code: String) {
         val key = key(shopId, event, code)
-        synchronized(seen) {
+        val repeats = synchronized(seen) {
             reserved.remove(key)
             seen[key] = true
+            parkedRepeats.remove(key)
+        }.orEmpty()
+        repeats.forEach { repeat ->
+            try {
+                repeat()
+            } catch (e: Exception) {
+                SdkLogs.log(LogLevel.ERROR, LogCodes.PUSH_FAILED, "A repeat of a push event could not be told it was sent", shopId, throwable = e)
+            }
         }
     }
 
@@ -118,7 +137,11 @@ internal object PushHub {
      * parked meanwhile try again now, on this thread.
      */
     fun release(shopId: String, event: PushEvent, code: String) {
-        val parked = synchronized(seen) { reserved.remove(key(shopId, event, code)) }.orEmpty()
+        val parked = synchronized(seen) {
+            // The repeats try again, and each tells its own end.
+            parkedRepeats.remove(key(shopId, event, code))
+            reserved.remove(key(shopId, event, code))
+        }.orEmpty()
         parked.forEach { retry ->
             try {
                 retry()
@@ -227,6 +250,7 @@ internal object PushHub {
         synchronized(seen) {
             seen.clear()
             reserved.clear()
+            parkedRepeats.clear()
         }
         forgetPushes()
         facadeReported.clear()
