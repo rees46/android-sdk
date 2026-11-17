@@ -371,7 +371,7 @@ class SdkLegacyApiTest {
     fun `a bridge's listener gets the answer as a success, an object or an array, on both cores`() {
         listOf(false, true).forEach { coreV2 ->
             if (coreV2) tearDown().also { setUp() }
-            val sdk = Rees46.initialize(context, Rees46Config(shopId = SHOP, apiDomain = apiDomain, autoSendPushToken = false, coreV2 = coreV2))
+            val sdk = Rees46.initialize(context, Rees46Config(shopId = SHOP, apiDomain = apiDomain, autoSendPushToken = false), coreV2)
             awaitState(sdk, SdkState.READY)
             val results = LinkedBlockingQueue<SdkResult<Any?>>()
 

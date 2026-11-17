@@ -129,9 +129,9 @@ class NotificationHelperUnseenPushTest {
                 shopId = SHOP,
                 apiDomain = server.url("/").toString().trimEnd('/'),
                 autoSendPushToken = false,
-                coreV2 = true,
                 logLevel = LogLevel.DEBUG,
             ),
+            coreV2 = true,
         )
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         return sdk

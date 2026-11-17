@@ -128,7 +128,7 @@ class SdkInstanceTest {
         SdkLogs.handlerExecutor = defaultExecutor
     }
 
-    private fun config(shopId: String = SHOP, coreV2: Boolean = false, stream: String = "android", needReInitialization: Boolean = false, deviceId: String? = null) =
+    private fun config(shopId: String = SHOP, stream: String = "android", needReInitialization: Boolean = false, deviceId: String? = null) =
         Rees46Config(
             shopId = shopId,
             apiDomain = server.url("/").toString().trimEnd('/'),
@@ -136,7 +136,6 @@ class SdkInstanceTest {
             autoSendPushToken = false,
             needReInitialization = needReInitialization,
             logLevel = LogLevel.DEBUG,
-            coreV2 = coreV2,
             deviceId = deviceId,
         )
 
@@ -191,10 +190,10 @@ class SdkInstanceTest {
     fun `initialize for a shop again returns its instance and sends no second init`() {
         listOf(false, true).forEach { coreV2 ->
             if (coreV2) tearDown().also { setUp() }
-            val first = Rees46.initialize(context, config(coreV2 = coreV2))
+            val first = Rees46.initialize(context, config(), coreV2)
             nextRequest("init")
 
-            val second = Rees46.initialize(context, config(coreV2 = coreV2))
+            val second = Rees46.initialize(context, config(), coreV2)
 
             assertSame(first, second)
             assertEquals(1, SdkRegistry.count())
@@ -282,7 +281,7 @@ class SdkInstanceTest {
     fun `after release every call fails with notInitialized and nothing is sent or deleted, on both cores`() {
         listOf(false, true).forEach { coreV2 ->
             if (coreV2) tearDown().also { setUp() }
-            val sdk = Rees46.initialize(context, config(coreV2 = coreV2))
+            val sdk = Rees46.initialize(context, config(), coreV2)
             nextRequest("init")
             awaitState(sdk, SdkState.READY)
             val did = sdk.deviceId
@@ -324,10 +323,10 @@ class SdkInstanceTest {
 
     @Test
     fun `after release initialize makes a fresh instance`() {
-        val first = Rees46.initialize(context, config(coreV2 = true))
+        val first = Rees46.initialize(context, config(), coreV2 = true)
         first.release()
 
-        val second = Rees46.initialize(context, config(coreV2 = true))
+        val second = Rees46.initialize(context, config(), coreV2 = true)
 
         assertNotSame(first, second)
         assertSame(second, Rees46.instance(SHOP))
@@ -394,7 +393,7 @@ class SdkInstanceTest {
 
     @Test
     fun `the new core's init carries the stream of the config and tz, and no advertising id`() {
-        val sdk = Rees46.initialize(context, config(coreV2 = true, stream = "flutter"))
+        val sdk = Rees46.initialize(context, config(stream = "flutter"), coreV2 = true)
 
         val init = nextRequest("init")
         assertTrue(sdk.core is CoreV2)
@@ -415,7 +414,7 @@ class SdkInstanceTest {
             answer.await(5, TimeUnit.SECONDS)
             MockResponse().setBody(JSONObject().put("did", did.ifEmpty { "new-did" }).put("seance", "S").toString())
         }
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         nextRequest("init")
         assertEquals(SdkState.INITIALIZING, sdk.state)
 
@@ -431,7 +430,7 @@ class SdkInstanceTest {
     @Test
     fun `on the new core a refused shop fails every request with 402 and stays refused at the next launch`() {
         initAnswer = { MockResponse().setResponseCode(403) }
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         awaitState(sdk, SdkState.REFUSED)
 
         assertEquals("error:402", request(sdk))
@@ -439,7 +438,7 @@ class SdkInstanceTest {
 
         sdk.release()
         initAnswer = { did -> MockResponse().setBody(JSONObject().put("did", did.ifEmpty { "paid-did" }).toString()) }
-        val next = Rees46.initialize(context, config(coreV2 = true))
+        val next = Rees46.initialize(context, config(), coreV2 = true)
         assertEquals(SdkState.REFUSED, next.state)
         awaitState(next, SdkState.READY)
         assertEquals("success", request(next))
@@ -450,7 +449,7 @@ class SdkInstanceTest {
         partition().edit().putString("did", "old-did").putString("sid", "old-sid").commit()
         initAnswer = { did -> MockResponse().setBody(JSONObject().put("did", did.ifEmpty { "fresh-did" }).put("seance", "S").toString()) }
 
-        val sdk = Rees46.initialize(context, config(coreV2 = true, needReInitialization = true))
+        val sdk = Rees46.initialize(context, config(needReInitialization = true), coreV2 = true)
 
         assertNull(nextRequest("init").queryParameter("did"))
         awaitState(sdk, SdkState.READY)
@@ -465,7 +464,7 @@ class SdkInstanceTest {
         val main = HeldMain()
         val sdk = SDK().apply { dispatchers = CoreDispatchers(main = { main }) }
         sdk.onSessionChange { heard += it to (Looper.myLooper() == Looper.getMainLooper()) }
-        sdk.initializeWith(context, config(coreV2 = true))
+        sdk.initializeWith(context, config(), coreV2 = true)
         nextRequest("init")
         awaitState(sdk, SdkState.READY)
         // Handed to the main thread from the io dispatcher: run it here, on the test's main thread.
@@ -479,7 +478,7 @@ class SdkInstanceTest {
     fun `on the new core the v3 clients check the session's window and take the live sid`() {
         var seance = "S1"
         initAnswer = { _ -> MockResponse().setBody(JSONObject().put("did", "D1").put("seance", seance).toString()) }
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         nextRequest("init")
         awaitState(sdk, SdkState.READY)
         // Two hours without an event: the window ended, and the sid with it.
@@ -498,7 +497,7 @@ class SdkInstanceTest {
     fun `on the new core a stored did is ready at once and its init still goes`() {
         partition().edit().putString("did", "stored-did").commit()
 
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
 
         assertEquals(SdkState.READY, sdk.state)
         assertEquals("stored-did", nextRequest("init").queryParameter("did"))
@@ -506,7 +505,7 @@ class SdkInstanceTest {
 
     @Test
     fun `on the new core deleting the customer holds requests until the new did`() {
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         awaitState(sdk, SdkState.READY)
         requests.clear()
         val second = CountDownLatch(1)

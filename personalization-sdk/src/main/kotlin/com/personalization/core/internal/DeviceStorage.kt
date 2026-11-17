@@ -64,6 +64,9 @@ internal class DeviceStorage(context: Context) {
 
         const val SEGMENT = StorageKeys.SEGMENT
 
+        /** The two groups of the server's A/B tests: the only values the SDK gives a device. */
+        val SEGMENTS: List<String> = listOf("A", "B")
+
         /** One lock for the process: the instances of every shop share the file. */
         private val LOCK = Any()
     }

@@ -139,12 +139,11 @@ class PushTokenWeekTest {
         PushHub.reset()
     }
 
-    private fun config(coreV2: Boolean, needReInitialization: Boolean = false) = Rees46Config(
+    private fun config(needReInitialization: Boolean = false) = Rees46Config(
         shopId = SHOP,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = true,
         needReInitialization = needReInitialization,
-        coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
     )
 
@@ -183,7 +182,7 @@ class PushTokenWeekTest {
     fun `on the new core needReInitialization sends the token sent this week to the new did at once`() {
         sentYesterday("D0")
 
-        val sdk = Rees46.initialize(context, config(coreV2 = true, needReInitialization = true))
+        val sdk = Rees46.initialize(context, config(needReInitialization = true), coreV2 = true)
 
         assertFalse("/init asks for a new did", next("init")?.has("did") ?: true)
         val token = next("mobile_push_tokens") ?: throw AssertionError("the token waited for a week")
@@ -198,7 +197,7 @@ class PushTokenWeekTest {
         sentYesterday("D0")
         PushTokenManager.sourceFactory = { listOf(Fcm()) }
 
-        val sdk = Rees46.initialize(context, config(coreV2 = false, needReInitialization = true))
+        val sdk = Rees46.initialize(context, config(needReInitialization = true))
 
         val token = next("mobile_push_tokens") ?: throw AssertionError("the token waited for a week")
         assertEquals("D1", token.getString("did"))
@@ -212,7 +211,7 @@ class PushTokenWeekTest {
         sentYesterday("D1")
         PushTokenManager.sourceFactory = { listOf(Fcm()) }
 
-        val sdk = Rees46.initialize(context, config(coreV2 = false, needReInitialization = true))
+        val sdk = Rees46.initialize(context, config(needReInitialization = true))
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         next("init")
         threads.awaitIdle()
@@ -226,7 +225,7 @@ class PushTokenWeekTest {
     fun `a token send on its way when the customer is deleted goes again for the new did at once`() {
         dids += listOf("D1", "D2")
         holdTokens = CountDownLatch(1)
-        val sdk = Rees46.initialize(context, config(coreV2 = true))
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         sdk.setPushToken("tok", PushProvider.FCM)
         // The server has the send and has not answered yet.

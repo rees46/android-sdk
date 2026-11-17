@@ -1,5 +1,6 @@
 package com.personalization.sdk.data.repositories.userSettings
 
+import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.StorageKeys
 import com.personalization.sdk.data.repositories.preferences.PreferencesDataSource
 import com.personalization.sdk.data.utils.AdvertisingUtils
@@ -119,5 +120,5 @@ class UserSettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun generateRandomSegmentValue(): String = arrayOf("A", "B").random()
+    private fun generateRandomSegmentValue(): String = DeviceStorage.SEGMENTS.random()
 }

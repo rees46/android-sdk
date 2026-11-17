@@ -8,6 +8,7 @@ import com.personalization.Rees46Config
 import com.personalization.SDK
 import com.personalization.SdkRegistry
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.BridgeApi
 import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
 import io.mockk.every
@@ -118,8 +119,9 @@ class CoreFunnelTest {
         verify(exactly = 1) { settings.updateSidLastActTime() }
     }
 
+    @OptIn(BridgeApi::class)
     @Test
-    fun `an instance made with coreV2 runs on the new core, its requests on the new client`() {
+    fun `an instance a bridge starts runs on the new core, its requests on the new client`() {
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"did":"server-did","seance":"S"}"""))
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         // Robolectric's default network has no internet capability: give it one, as a device's has.
@@ -128,13 +130,12 @@ class CoreFunnelTest {
         shadowOf(capabilities).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         shadowOf(manager).setNetworkCapabilities(manager.activeNetwork, capabilities)
 
-        val sdk = Rees46.initialize(
+        val sdk = Rees46.initializeBridge(
             context,
             Rees46Config(
                 shopId = "core-shop",
                 apiDomain = server.url("/").toString().trimEnd('/'),
                 autoSendPushToken = false,
-                coreV2 = true,
             )
         )
 

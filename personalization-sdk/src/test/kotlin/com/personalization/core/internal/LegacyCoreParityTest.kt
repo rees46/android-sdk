@@ -21,7 +21,7 @@ import java.net.ServerSocket
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * The answers of the legacy core (`coreV2 = false`) as 2.49.0 gave them to the old callbacks, which the
+ * The answers of the legacy core (`Rees46.initialize`) as 2.49.0 gave them to the old callbacks, which the
  * new core gives differently (commit 92e214e): a `2xx` that is not JSON, or JSON cut short, succeeds with
  * an empty object, and so does one whose connection closes midway through the body; a JSON array reaches
  * `onSuccess(JSONArray)`; no connection is `onError(504)`. Each request runs on [TrackingThreads], so a test waits

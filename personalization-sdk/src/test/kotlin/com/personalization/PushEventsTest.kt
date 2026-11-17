@@ -152,17 +152,16 @@ class PushEventsTest {
         PushDismissReceiver.work = defaultWork
     }
 
-    private fun config(shop: String = SHOP, coreV2: Boolean = true, deviceId: String? = null) = Rees46Config(
+    private fun config(shop: String = SHOP, deviceId: String? = null) = Rees46Config(
         shopId = shop,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
-        coreV2 = coreV2,
         logLevel = LogLevel.DEBUG,
         deviceId = deviceId,
     )
 
     private fun sdk(shop: String = SHOP, coreV2: Boolean = true): SDK {
-        val sdk = Rees46.initialize(context, config(shop, coreV2))
+        val sdk = Rees46.initialize(context, config(shop), coreV2)
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         return sdk
     }
@@ -268,7 +267,7 @@ class PushEventsTest {
         Rees46.setPushCallbacks(PushCallbacks(onClicked = { clicked += it.code }))
         Rees46.onPushEvent { _, payload -> bridge += payload.code }
         initStatus = 403
-        val refused = Rees46.initialize(context, config())
+        val refused = Rees46.initialize(context, config(), coreV2 = true)
         runBlocking { withTimeout(5_000) { refused.instanceState.changes.first { it == SdkState.REFUSED } } }
         assertEquals(SHOP, Rees46.handlePush(push(code = "again"), PushEvent.CLICKED))
         // The queue's refusal comes off the caller's thread.
@@ -340,7 +339,7 @@ class PushEventsTest {
     fun `a shop registered but not created sends its push with its stored did and no init, and becomes a full instance on use`() {
         // An earlier launch's did; the server would hand out another one.
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP).copy(autoSendPushToken = true)))
+        Rees46.register(context, listOf(config(SHOP).copy(autoSendPushToken = true)), coreV2 = true)
         assertFalse(Rees46.isInitialized(SHOP))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
@@ -368,11 +367,11 @@ class PushEventsTest {
     @Test
     fun `initializing the instance brought up for a push makes it a full one, and its push still goes`() {
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
 
-        light.initializeWith(context, config(SHOP))
+        light.initializeWith(context, config(SHOP), coreV2 = true)
 
         assertFalse(light.pushOnly)
         assertTrue(SdkRegistry.byShopId(SHOP) === light)
@@ -384,7 +383,7 @@ class PushEventsTest {
     @Test
     fun `the instance brought up for a push never reaches the app, nor becomes the default`() {
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
         assertTrue(light.pushOnly)
@@ -397,7 +396,7 @@ class PushEventsTest {
         assertFalse(full.pushOnly)
         assertTrue(Rees46.instance(SHOP) === full)
         assertTrue(Rees46.instance() === full)
-        assertTrue(Rees46.initialize(context, config(SHOP)) === full)
+        assertTrue(Rees46.initialize(context, config(SHOP), coreV2 = true) === full)
         assertTrue(SdkRegistry.current() === full)
         assertTrue(SDK.instance === full)
     }
@@ -405,11 +404,11 @@ class PushEventsTest {
     @Test
     fun `initialize of a shop a push brought up gives the app a full instance`() {
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
 
-        val full = Rees46.initialize(context, config(SHOP))
+        val full = Rees46.initialize(context, config(SHOP), coreV2 = true)
 
         assertTrue(full !== light)
         assertFalse(full.pushOnly)
@@ -424,7 +423,7 @@ class PushEventsTest {
                 setUp()
             }
             partition().edit().putString("did", "STORED").commit()
-            Rees46.register(context, listOf(config(SHOP)))
+            Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
             val barrier = CyclicBarrier(2)
             val app = AtomicReference<SDK>()
             val failure = AtomicReference<Throwable>()
@@ -463,7 +462,7 @@ class PushEventsTest {
     @Test
     fun `a push event that reaches the instance a push brought up after it gave way goes to the app's instance`() {
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
         Rees46.handlePush(push(code = "first"), PushEvent.DELIVERED)
         val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
         val full = Rees46.instance(SHOP)
@@ -512,7 +511,7 @@ class PushEventsTest {
 
     @Test
     fun `a shop registered but not created and without a did drops its push`() {
-        Rees46.register(context, listOf(config(SHOP)))
+        Rees46.register(context, listOf(config(SHOP)), coreV2 = true)
 
         assertNull(Rees46.handlePush(push(code = "no-did"), PushEvent.DELIVERED))
         val dropped = logged.last { it.code == LogCodes.PUSH_DROPPED }
@@ -527,14 +526,14 @@ class PushEventsTest {
     @Test
     fun `a shop a push brings up takes its did from the config or the saved init answer, not only the stored one`() {
         // Only the app's config brings it.
-        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")))
+        Rees46.register(context, listOf(config(SHOP, deviceId = "CONFIGURED")), coreV2 = true)
         assertEquals(SHOP, Rees46.handlePush(push(code = "configured"), PushEvent.DELIVERED))
         flush(SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance"))
         assertEquals("CONFIGURED", next("track/delivered")?.second?.getString("did"))
 
         // Only the saved answer of an earlier /init has it.
         ShopStorage(context, StorageLayout(OTHER, null)).saveInitAnswer(JSONObject().put("did", "SAVED").put("seance", "S0"))
-        Rees46.register(context, listOf(config(OTHER)))
+        Rees46.register(context, listOf(config(OTHER)), coreV2 = true)
         assertEquals(OTHER, Rees46.handlePush(push(code = "saved", shop = OTHER), PushEvent.DELIVERED))
         flush(SdkRegistry.byShopId(OTHER) ?: throw AssertionError("no instance"))
         assertEquals("SAVED", next("track/delivered")?.second?.getString("did"))
@@ -545,7 +544,7 @@ class PushEventsTest {
 
     @Test
     fun `on the legacy core a push for a shop without a did makes its full instance as before, with one init`() {
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+        Rees46.register(context, listOf(config(SHOP)))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
         val made = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
@@ -566,7 +565,7 @@ class PushEventsTest {
     fun `on the legacy core the push of a shop a push brought up does not keep its ended session alive`() {
         val ended = System.currentTimeMillis() - 3 * 60 * 60 * 1000L
         partition().edit().putString("did", "STORED").putString("sid", "OLD").putLong("sid_last_act", ended).commit()
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+        Rees46.register(context, listOf(config(SHOP)))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
         assertEquals("STORED", next("track/received")?.second?.getString("did"))
@@ -581,7 +580,7 @@ class PushEventsTest {
     @Test
     fun `on the legacy core a shop registered but not created sends its push with its stored did and no init, and without one starts as before`() {
         partition().edit().putString("did", "STORED").commit()
-        Rees46.register(context, listOf(config(SHOP, coreV2 = false)))
+        Rees46.register(context, listOf(config(SHOP)))
 
         assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
         assertEquals("STORED", next("track/received")?.second?.getString("did"))
@@ -591,7 +590,7 @@ class PushEventsTest {
         assertEquals(SdkState.READY, SdkRegistry.byShopId(SHOP)?.state)
 
         // Without a did it starts as it always did: /init for a did, then the push's event with it.
-        Rees46.register(context, listOf(config(OTHER, coreV2 = false)))
+        Rees46.register(context, listOf(config(OTHER)))
         assertEquals(OTHER, Rees46.handlePush(push(code = "cold", shop = OTHER), PushEvent.DELIVERED))
         assertEquals(OTHER, next("init")?.second?.getString("shop_id"))
         assertEquals("D1", next("track/received")?.second?.getString("did"))
@@ -685,7 +684,7 @@ class PushEventsTest {
         val hold = java.util.concurrent.CountDownLatch(1).also { holdInit = it }
         val heardTokens = CopyOnWriteArrayList<String>()
         Rees46.setPushCallbacks(PushCallbacks(onToken = { heardTokens += it.token }))
-        val sdk = Rees46.initialize(context, config().copy(autoSendPushToken = true))
+        val sdk = Rees46.initialize(context, config().copy(autoSendPushToken = true), coreV2 = true)
         val answered = LinkedBlockingQueue<String>()
 
         SDK.onPushTokenReceived("tok", PushProvider.FCM)
@@ -912,7 +911,7 @@ class PushEventsTest {
         // The completions are handed to the main thread: the test runs them on its own.
         val main = com.personalization.core.internal.HeldMain()
         val sdk = SDK().apply { dispatchers = com.personalization.core.internal.CoreDispatchers(main = { main }) }
-        sdk.initializeWith(context, config())
+        sdk.initializeWith(context, config(), coreV2 = true)
         runBlocking { withTimeout(5_000) { sdk.instanceState.changes.first { it == SdkState.READY } } }
         val ends = LinkedBlockingQueue<com.personalization.core.SdkResult<Unit>>()
         val completions = com.personalization.core.CompletionListener<Unit> { ends += it }

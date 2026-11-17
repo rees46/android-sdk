@@ -130,7 +130,6 @@ class SdkInitRequestTest {
         apiDomain = apiDomain,
         autoSendPushToken = false,
         logLevel = LogLevel.DEBUG,
-        coreV2 = true,
         sendAdvertisingId = sendAdvertisingId,
     )
 
@@ -170,7 +169,7 @@ class SdkInitRequestTest {
     private fun start(sendAdvertisingId: Boolean, advertising: Advertising): SDK {
         val gate = Gate()
         val sdk = SDK().apply { dispatchers = CoreDispatchers(io = gate) }
-        sdk.initializeWith(context, config(sendAdvertisingId))
+        sdk.initializeWith(context, config(sendAdvertisingId), coreV2 = true)
         sdk.initializeAdvertisingIdUseCase = InitializeAdvertisingIdUseCase(advertising, sdk.userSettingsRepository, context)
         gate.open()
         return sdk
@@ -282,7 +281,7 @@ class SdkInitRequestTest {
             tearDown()
             setUp()
             CookieHandler.setDefault(handler)
-            val sdk = Rees46.initialize(context, config())
+            val sdk = Rees46.initialize(context, config(), coreV2 = true)
             next("init")
             awaitState(sdk, SdkState.READY)
 
@@ -302,7 +301,7 @@ class SdkInitRequestTest {
 
     @Test
     fun `an init that cannot be built is logged as such, nothing goes, and it is repeated as retrying`() {
-        val sdk = Rees46.initialize(context, config(apiDomain = "bad domain"))
+        val sdk = Rees46.initialize(context, config(apiDomain = "bad domain"), coreV2 = true)
 
         awaitState(sdk, SdkState.RETRYING)
         awaitLog(LogCodes.INIT_RETRY)
@@ -318,7 +317,7 @@ class SdkInitRequestTest {
     @Test
     fun `an init answered with JSON cut short is decoding, and repeated as retrying without a did`() {
         initBody = { """{"did":"D""" }
-        val sdk = Rees46.initialize(context, config())
+        val sdk = Rees46.initialize(context, config(), coreV2 = true)
 
         awaitState(sdk, SdkState.RETRYING)
         awaitLog(LogCodes.INIT_RETRY)

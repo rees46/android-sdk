@@ -117,7 +117,6 @@ class LegacyPushClickTest {
         shopId = SHOP,
         apiDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
-        coreV2 = false,
         logLevel = LogLevel.DEBUG,
     )
 

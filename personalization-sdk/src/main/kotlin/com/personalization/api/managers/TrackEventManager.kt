@@ -8,7 +8,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 /**
  * The tracking methods of earlier releases; [TrackingApi] (`sdk.tracking`) replaces them.
  *
- * On the new core (`Rees46Config.coreV2`) every event goes through the queue: the method returns at
+ * On the new core (`Rees46.initializeBridge`) every event goes through the queue: the method returns at
  * once, and a `listener` is kept until the event is sent — after a launch without a network that may be
  * as long as the queue keeps an event, 7 days — then hears the server's answer, or the error that
  * dropped the event. Whatever the listener holds stays alive that long.

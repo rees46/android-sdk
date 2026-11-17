@@ -12,6 +12,7 @@ import com.personalization.core.PushEvent
 import com.personalization.core.PushPayload
 import com.personalization.core.PushTokenListener
 import com.personalization.core.internal.CoreSelection
+import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.PushHub
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
@@ -38,7 +39,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object Rees46 {
 
-    private data class PendingInit(val context: Context, val config: Rees46Config)
+    /** A shop registered and not yet made, with the core it asked for. */
+    private data class PendingInit(val context: Context, val config: Rees46Config, val coreV2: Boolean)
 
     private val pending = ConcurrentHashMap<String, PendingInit>()
 
@@ -54,10 +56,71 @@ object Rees46 {
      * from the one it was made with, `invalid_config` (`already_initialized`) is logged and the instance
      * keeps its own. After [SDK.release] a call makes a fresh instance. Calls from several threads at
      * once make one instance.
+     *
+     * The instance asks for the legacy core. The process has one core, decided by the first
+     * [initialize], [register] or [initializeBridge]: an instance that asks for the other one runs on the
+     * process's and logs `core_flag_mismatch`.
      */
-    fun initialize(context: Context, config: Rees46Config): SDK = synchronized(lock) {
+    fun initialize(context: Context, config: Rees46Config): SDK = initialize(context, config, coreV2 = false)
+
+    /**
+     * For the bridges: [initialize] on the new core. The SDK's Flutter and React Native bridges start their
+     * shops here; apps use [initialize]. The rule of one core per process stands: a process whose core is
+     * the legacy one already (an [initialize] or [register] came first) runs this instance on it too and
+     * logs `core_flag_mismatch`. So a bridge does not [register] its shops, which asks for the legacy core:
+     * it starts each shop here, a lazy one on its first use.
+     *
+     * [segment] is the A/B group the bridge kept for this device before it ran on the native SDK (React
+     * Native kept `A` or `B` for each shop). The start takes it while the device has no A/B group of its
+     * own, so the device stays in the group the server knows it by; a device that has one keeps it, and a
+     * different [segment] is logged as `invalid_config` (`segment_kept`). A value the SDK never gives, any
+     * but `A` and `B`, is refused with `invalid_argument` (`invalid_segment`). Neither throws. The shop's
+     * group is [SDK.getSegment]: once that is the bridge's, the bridge may stop passing it.
+     *
+     * Hidden from Java, which knows no opt-in: the bridges are Kotlin.
+     *
+     * The new core differs from the legacy one in:
+     * - its network client: requests go through OkHttp, a request without a network fails at once,
+     *   `release()` cancels the instance's requests, and a failure without an answer is `onError(-1)` (no
+     *   connection used to be `504`), as is a `2xx` whose body is not JSON (it used to succeed empty);
+     * - its `/init`: repeated with growing pauses until it gets an answer; a shop that answers `402`,
+     *   `403`, `404` or another `4xx` is refused ([com.personalization.core.SdkState.REFUSED]) until a
+     *   later launch's `/init` succeeds, and every request of a refused shop fails with `onError(402)`;
+     * - a request waits until the instance is ready, within its own read timeout, instead of going out
+     *   without a `did`: a new device's first requests fail with `onError(-1)` if `/init` does not answer
+     *   in time;
+     * - [Rees46Config.needReInitialization] really gives the device a new `did`; [Rees46Config.stream]
+     *   goes with `/init` too; the advertising id is read and sent only with
+     *   [Rees46Config.sendAdvertisingId];
+     * - its session: the `sid` is the server's, and a session two hours without events ends — the next
+     *   request or event sends `/init` first; requests with a result no longer extend it;
+     * - its event queue: tracking events (`/push`, `/push/custom`, `track/stories`, `popup/showed`) are
+     *   kept on disk and sent in order, repeated after failures and after a restart, for up to 7 days;
+     *   their listeners hear the server's answer once the event went, or the error that dropped it, and an
+     *   empty id is refused at once; [SDK.flush] sends the queue now; the stored tracking source goes on
+     *   `/push` only, and a popup in an event's answer is shown only within 10 s of the event and in the
+     *   foreground;
+     * - cookies: the new core's requests never send or keep a cookie. The legacy core's requests, and those
+     *   of the stories v3 and popups v3 clients on either core, follow the app's global
+     *   `java.net.CookieHandler`: an app that installs one (`CookieHandler.setDefault`) has them keep the
+     *   cookies the server sets, the API's year-long `did` cookie among them, and send them back.
+     */
+    @BridgeApi
+    @JvmSynthetic
+    fun initializeBridge(context: Context, config: Rees46Config, segment: String? = null): SDK {
+        segment?.let { offerSegment(context, config, it) }
+        return initialize(context, config, coreV2 = true)
+    }
+
+    /**
+     * [initialize] asking for the core of [coreV2]: the new one for [initializeBridge], which tests use
+     * through here too. The process's core decides ([CoreSelection]).
+     */
+    internal fun initialize(context: Context, config: Rees46Config, coreV2: Boolean): SDK = synchronized(lock) {
         val existing = SdkRegistry.byShopId(config.shopId)
         if (existing != null && !existing.pushOnly) {
+            // The instance runs on the process's core: one that asks for the other hears it.
+            CoreSelection.resolve(coreV2, config.shopId)
             existing.keepConfig(config)
             pending.remove(config.shopId)
             return existing.handedToApp()
@@ -65,7 +128,7 @@ object Rees46 {
         val sdk = SDK()
         // A shop brought up only to track a push gives way to the full instance once it is registered; the
         // push's tracking in flight still gets through.
-        sdk.initializeWith(context, config)
+        sdk.initializeWith(context, config, coreV2)
         // Removed once the instance is registered: a lookup meanwhile still finds the shop.
         pending.remove(config.shopId)
         sdk
@@ -76,11 +139,22 @@ object Rees46 {
      * [instance] for a shop — the region case, where only the current region is needed. Pass
      * [eagerInit] = true to initialize every shop up front — the super-shop case, where instances must
      * stay consistent.
+     *
+     * The shops ask for the legacy core, and a registration decides the process's core as [initialize]
+     * does.
      */
     fun register(
         context: Context,
         configs: List<Rees46Config>,
         eagerInit: Boolean = false
+    ) = register(context, configs, eagerInit, coreV2 = false)
+
+    /** [register] asking for the core of [coreV2]: for tests, the bridges have [initializeBridge]. */
+    internal fun register(
+        context: Context,
+        configs: List<Rees46Config>,
+        eagerInit: Boolean = false,
+        coreV2: Boolean,
     ) {
         val appContext = context.applicationContext
         // A lazily registered shop initializes on first use, usually after the first activity
@@ -88,11 +162,11 @@ object Rees46 {
         ForegroundActivity.install(appContext)
         configs.forEach { config ->
             // A registration decides the process's core as an initialize does.
-            CoreSelection.resolve(config.coreV2, config.shopId)
+            CoreSelection.resolve(coreV2, config.shopId)
             if (eagerInit) {
-                initialize(appContext, config)
+                initialize(appContext, config, coreV2)
             } else {
-                pending[config.shopId] = PendingInit(appContext, config)
+                pending[config.shopId] = PendingInit(appContext, config, coreV2)
             }
         }
     }
@@ -226,7 +300,7 @@ object Rees46 {
      *    `shop_id` while several shops are registered, drops the push (`push_dropped`) instead of handing it
      *    to the wrong shop. A shop registered without `eagerInit` is brought up just to send the event: the
      *    app may have been started by the push itself.
-     * 3. The event goes to the shop. On the new core ([Rees46Config.coreV2]) through its queue to
+     * 3. The event goes to the shop. On the new core ([initializeBridge]) through its queue to
      *    `track/delivered`, `track/opened`, `track/clicked` or `track/closed`, once per message in a process:
      *    a repeat sends nothing and still returns the shop. A tap also sets the tracking source for 48 hours,
      *    which the `/push` events carry as `source`. The legacy core sends a delivery to `track/received`
@@ -431,10 +505,10 @@ object Rees46 {
     private fun materializeForPush(shopId: String): SDK? = synchronized(lock) {
         SdkRegistry.byShopId(shopId)?.let { return it }
         val pendingInit = pending[shopId] ?: return null
-        if (!CoreSelection.resolve(pendingInit.config.coreV2, shopId) && !legacyHasDid(pendingInit.context, pendingInit.config)) {
+        if (!CoreSelection.resolve(pendingInit.coreV2, shopId) && !legacyHasDid(pendingInit.context, pendingInit.config)) {
             return SDK().apply { initializeForPushWithoutDid(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
         }
-        SDK().apply { initializeForPush(pendingInit.context, pendingInit.config) }.also { pending.remove(shopId) }
+        SDK().apply { initializeForPush(pendingInit.context, pendingInit.config, pendingInit.coreV2) }.also { pending.remove(shopId) }
     }
 
     /**
@@ -485,9 +559,9 @@ object Rees46 {
             if (live != null && !live.pushOnly) return live.handedToApp()
             val pendingInit = pending[shopId]
             when {
-                pendingInit != null -> initialize(pendingInit.context, pendingInit.config)
+                pendingInit != null -> initialize(pendingInit.context, pendingInit.config, pendingInit.coreV2)
                 // Its config is set before it registers: an instance found in the registry has one.
-                live != null -> live.config?.let { initialize(live.context, it) }
+                live != null -> live.config?.let { initialize(live.context, it, live.coreV2Requested) }
                 else -> null
             }
         }
@@ -506,6 +580,37 @@ object Rees46 {
         StorageMigrations.run(context, layout)
         val storage = ShopStorage(context, layout)
         return storage.storedDid().isNotEmpty() || storage.takesConfiguredDid(config.deviceId)
+    }
+
+    /**
+     * The A/B group a bridge brings to [initializeBridge]: offered to the shop's one-shot move of its data to
+     * the device level ([StorageMigrations]), which takes it while neither the device nor the shop has a
+     * group. Runs before the shop's start, whose own run of the migrations then finds them done. Reads and
+     * writes the disk.
+     */
+    private fun offerSegment(context: Context, config: Rees46Config, segment: String) {
+        if (segment !in DeviceStorage.SEGMENTS) {
+            SdkLogs.log(
+                LogLevel.WARNING,
+                LogCodes.INVALID_ARGUMENT,
+                "initializeBridge: the A/B group is not one the SDK gives; it is not taken",
+                config.shopId,
+                mapOf("reason" to LogReasons.INVALID_SEGMENT),
+            )
+            return
+        }
+        val layout = StorageLayout(config.shopId, config.storageKey)
+        StorageMigrations.run(context, layout, segment = segment)
+        val kept = ShopStorage(context, layout).segment() ?: return
+        if (kept != segment) {
+            SdkLogs.log(
+                LogLevel.WARNING,
+                LogCodes.INVALID_CONFIG,
+                "initializeBridge: the A/B group is not taken: the device keeps the one it has",
+                config.shopId,
+                mapOf("reason" to LogReasons.SEGMENT_KEPT),
+            )
+        }
     }
 
     private fun registeredShopIds(): List<String> =

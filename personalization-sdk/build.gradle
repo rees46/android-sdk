@@ -126,7 +126,7 @@ dependencies {
     // through lifecycle-process; declared because the SDK now relies on it directly.
     implementation 'androidx.startup:startup-runtime:1.1.1'
     implementation 'com.google.code.gson:gson:2.11.0'
-    // The new core's HTTP client (Rees46Config.coreV2): one connection pool for the process. 4.12, not 5:
+    // The new core's HTTP client (Rees46.initializeBridge): one connection pool for the process. 4.12, not 5:
     // OkHttp 5 brings kotlin-stdlib 2.2, which asks apps for a Kotlin compiler of 2.1 or later, and adds an
     // androidx.startup initializer to their manifest. 4.12 brings neither: its kotlin-stdlib is older than
     // the SDK's own.
