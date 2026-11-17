@@ -168,12 +168,14 @@ internal class NamespaceFixtures(private val shop: String) {
 internal object ContractJson {
 
     fun of(value: Any?): Any? = when (value) {
-        null -> null
+        null, JSONObject.NULL -> null
         is String, is Boolean, is Number, is JSONObject, is JSONArray -> value
-        is Enum<*> -> value.name
+        // An enum value by the contract's name: FEMALE is `female`, INSTANT_SEARCH is `instantSearch`.
+        is Enum<*> -> value.name.lowercase().split('_').let { words -> words.first() + words.drop(1).joinToString("") { it.replaceFirstChar(Char::uppercase) } }
         is List<*> -> JSONArray().apply { value.forEach { put(of(it) ?: JSONObject.NULL) } }
         is Map<*, *> -> JSONObject().apply { value.forEach { (key, item) -> of(item)?.let { put(key.toString(), it) } } }
-        is Unit -> JSONObject()
+        // A method that returns nothing: `"result": null`.
+        is Unit -> null
         else -> JSONObject().apply {
             value.javaClass.declaredFields
                 .filter { !Modifier.isStatic(it.modifiers) && !it.isSynthetic }
@@ -221,4 +223,14 @@ internal fun JSONObject.argStrings(key: String): List<String>? =
 /** A map of strings to lists of strings, such as `filters`. */
 internal fun JSONObject.argStringLists(key: String): Map<String, List<String>>? = optJSONObject(key)?.let { map ->
     map.keys().asSequence().associateWith { name -> map.getJSONArray(name).let { array -> List(array.length()) { array.getString(it) } } }
+}
+
+/** A free-form map of a fixture's `args` as plain Kotlin values: maps, lists, strings, numbers, booleans and null. */
+internal fun JSONObject.argMap(key: String): Map<String, Any?>? = optJSONObject(key)?.let { plainArg(it) as Map<String, Any?> }
+
+private fun plainArg(value: Any?): Any? = when (value) {
+    null, JSONObject.NULL -> null
+    is JSONObject -> value.keys().asSequence().associateWith { plainArg(value.opt(it)) }
+    is JSONArray -> List(value.length()) { plainArg(value.opt(it)) }
+    else -> value
 }

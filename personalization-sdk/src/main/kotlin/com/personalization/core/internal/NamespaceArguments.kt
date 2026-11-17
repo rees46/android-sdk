@@ -38,6 +38,11 @@ internal fun invalidArgument(message: String): Nothing = throw SdkException(SdkE
 internal fun requireNotBlank(value: String, name: String): String =
     value.takeIf { it.isNotBlank() } ?: invalidArgument("$name must not be empty")
 
+/** Fails with `invalidArgument` when a contact or a customer's id is given and is empty: null is "not sent", not "". */
+internal fun requireContact(value: String?, name: String) {
+    if (value != null && value.isBlank()) invalidArgument("$name must not be empty")
+}
+
 /** Fails with `invalidArgument` when [value] is given and is below [min]. */
 internal fun requireAtLeast(value: Int?, min: Int, name: String) {
     if (value != null && value < min) invalidArgument("$name must be at least $min")
