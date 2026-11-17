@@ -19,6 +19,7 @@ import com.personalization.api.managers.ProductsApi
 import com.personalization.api.managers.RecommendationsApi
 import com.personalization.api.managers.SearchApi
 import com.personalization.api.managers.ProfileApi
+import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -75,6 +76,7 @@ import com.personalization.features.products.ProductsApiImpl
 import com.personalization.features.recommendation.RecommendationsApiImpl
 import com.personalization.features.search.SearchApiImpl
 import com.personalization.features.profile.ProfileApiImpl
+import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -270,6 +272,16 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val profile: ProfileApi = ProfileApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's subscriptions to channels and to products: `sdk.subscriptions.manage(…)`, `check`,
+     * `subscribeForPriceDrop` and the others. For the Flutter and React Native bridges, on the new core only,
+     * as [cart]; see [SubscriptionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val subscriptions: SubscriptionsApi =
+        SubscriptionsApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
 
     @Inject
     lateinit var searchManager: SearchManager
