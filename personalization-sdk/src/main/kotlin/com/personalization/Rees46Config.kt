@@ -1,6 +1,7 @@
 package com.personalization
 
 import com.personalization.logs.LogCodes
+import kotlin.jvm.internal.DefaultConstructorMarker
 import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 
@@ -45,6 +46,9 @@ import com.personalization.logs.SdkLogs
  * device-level data (A/B group, push token, advertising id) is the app's and has no prefix. Android's
  * Auto Backup restores these files on the user's new device, the `did` among them; see
  * [SDK.deleteUserCredentials] for the files an app excludes from its backup rules to avoid that.
+ * @property appDomain the host of API v3, without a scheme: `app.rees46.ru`, unless the shop's cluster has
+ * its own. The SDK's methods that call API v3 go there. Popups v3 and stories v3 keep their own settings
+ * of it (`sdk.popups.appHost`, `PersonalizationStories.apiV3Domain`).
  *
  * Nothing here picks the core: [Rees46.initialize] and [Rees46.register] ask for the legacy one, and
  * the new core is for the SDK's Flutter and React Native bridges, which start it with
@@ -70,7 +74,68 @@ data class Rees46Config @JvmOverloads constructor(
     val storageKey: String? = null,
     val deviceId: String? = null,
     val sendAdvertisingId: Boolean = false,
+    val appDomain: String = "app.rees46.ru",
 ) {
+
+    /**
+     * The constructor of 2.52 and earlier, without [appDomain], in the form Kotlin compiles a call that
+     * leaves parameters to their defaults: [defaults] marks those parameters, one bit each, in order.
+     * Apps built against those releases call it; [appDomain] takes its default. Its plain form is one of
+     * the overloads above.
+     */
+    @Deprecated(message = BEFORE_APP_DOMAIN, level = DeprecationLevel.HIDDEN)
+    @Suppress("UNUSED_PARAMETER")
+    constructor(
+        shopId: String,
+        apiDomain: String?,
+        stream: String?,
+        autoSendPushToken: Boolean,
+        needReInitialization: Boolean,
+        addTrailingSlash: Boolean,
+        tag: String?,
+        enableAutoPopupPresentation: Boolean,
+        logLevel: LogLevel?,
+        storageKey: String?,
+        deviceId: String?,
+        sendAdvertisingId: Boolean,
+        defaults: Int,
+        marker: DefaultConstructorMarker?,
+    ) : this(
+        shopId = shopId,
+        apiDomain = apiDomain.takeUnless { defaults.leaves(1) } ?: DEFAULTS.apiDomain,
+        stream = stream.takeUnless { defaults.leaves(2) } ?: DEFAULTS.stream,
+        autoSendPushToken = if (defaults.leaves(3)) DEFAULTS.autoSendPushToken else autoSendPushToken,
+        needReInitialization = if (defaults.leaves(4)) DEFAULTS.needReInitialization else needReInitialization,
+        addTrailingSlash = if (defaults.leaves(5)) DEFAULTS.addTrailingSlash else addTrailingSlash,
+        tag = tag.takeUnless { defaults.leaves(6) } ?: DEFAULTS.tag,
+        enableAutoPopupPresentation = if (defaults.leaves(7)) DEFAULTS.enableAutoPopupPresentation else enableAutoPopupPresentation,
+        logLevel = logLevel.takeUnless { defaults.leaves(8) } ?: DEFAULTS.logLevel,
+        storageKey = if (defaults.leaves(9)) DEFAULTS.storageKey else storageKey,
+        deviceId = if (defaults.leaves(10)) DEFAULTS.deviceId else deviceId,
+        sendAdvertisingId = if (defaults.leaves(11)) DEFAULTS.sendAdvertisingId else sendAdvertisingId,
+    )
+
+    /** The `copy` of 2.52 and earlier, without [appDomain], for apps built against them: [appDomain] stays as it is. */
+    @Deprecated(message = BEFORE_APP_DOMAIN, level = DeprecationLevel.HIDDEN)
+    fun copy(
+        shopId: String = this.shopId,
+        apiDomain: String = this.apiDomain,
+        stream: String = this.stream,
+        autoSendPushToken: Boolean = this.autoSendPushToken,
+        needReInitialization: Boolean = this.needReInitialization,
+        addTrailingSlash: Boolean = this.addTrailingSlash,
+        tag: String = this.tag,
+        enableAutoPopupPresentation: Boolean = this.enableAutoPopupPresentation,
+        logLevel: LogLevel = this.logLevel,
+        storageKey: String? = this.storageKey,
+        deviceId: String? = this.deviceId,
+        sendAdvertisingId: Boolean = this.sendAdvertisingId,
+    ): Rees46Config = copy(
+        shopId = shopId, apiDomain = apiDomain, stream = stream, autoSendPushToken = autoSendPushToken,
+        needReInitialization = needReInitialization, addTrailingSlash = addTrailingSlash, tag = tag,
+        enableAutoPopupPresentation = enableAutoPopupPresentation, logLevel = logLevel, storageKey = storageKey,
+        deviceId = deviceId, sendAdvertisingId = sendAdvertisingId, appDomain = appDomain,
+    )
 
     /**
      * The constructor of the releases with `coreV2`, for apps built against them: `coreV2` is ignored,
@@ -123,6 +188,14 @@ data class Rees46Config @JvmOverloads constructor(
     }
 
     private companion object {
+        const val BEFORE_APP_DOMAIN = "The form of Rees46Config before appDomain, for apps built against 2.52 and earlier."
+
+        /** The defaults of the primary constructor, for the forms of earlier releases. */
+        val DEFAULTS = Rees46Config(shopId = "")
+
+        /** Whether a call in the compiled form of a default call left parameter [index] to its default. */
+        fun Int.leaves(index: Int): Boolean = this and (1 shl index) != 0
+
         const val BRIDGE_ONLY_CORE = "Rees46Config.coreV2 is gone: the new core is for the SDK's Flutter and " +
             "React Native bridges, which start it with Rees46.initializeBridge."
 

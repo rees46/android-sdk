@@ -306,7 +306,8 @@ class BridgeInitTest {
         Boolean::class.javaPrimitiveType, String::class.java, String::class.java, Boolean::class.javaPrimitiveType,
     )
 
-    private val newParameters = oldParameters.filterIndexed { index, _ -> index != 9 }
+    /** Today's constructor: without `coreV2`, with `appDomain` last. */
+    private val newParameters = oldParameters.filterIndexed { index, _ -> index != 9 } + String::class.java
 
     @Test
     fun `apps get no way to the new core, no constructor or copy takes it and Java does not see the bridges' entry`() {
@@ -314,7 +315,7 @@ class BridgeInitTest {
         visible.forEach { constructor ->
             assertEquals(newParameters.take(constructor.parameterCount), constructor.parameterTypes.toList())
         }
-        assertEquals((1..12).toList(), visible.map { it.parameterCount }.sorted())
+        assertEquals((1..13).toList(), visible.map { it.parameterCount }.sorted())
         val copies = Rees46Config::class.java.methods.filter { it.name == "copy" && !it.isSynthetic }
         assertEquals(listOf(newParameters), copies.map { it.parameterTypes.toList() })
         val bridgeEntries = Rees46::class.java.methods.filter { it.name.startsWith("initializeBridge") }
