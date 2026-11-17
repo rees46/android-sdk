@@ -17,6 +17,7 @@ import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.LoyaltyApi
 import com.personalization.api.managers.PredictApi
+import com.personalization.api.managers.SlidersApi
 import com.personalization.api.managers.StoriesApi
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -70,6 +71,7 @@ import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
 import com.personalization.features.loyalty.LoyaltyApiImpl
 import com.personalization.features.predict.PredictApiImpl
+import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
@@ -251,6 +253,14 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val loyalty: LoyaltyApi = LoyaltyApiImpl(namespaceCalls)
+
+    /**
+     * Banner sliders: `sdk.sliders.get(code)`; their banners' events are `tracking.bannerView` and
+     * `bannerClick`. For the bridges, on the new core only, as [stories]; see [SlidersApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val sliders: SlidersApi = SlidersApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager

@@ -1,0 +1,123 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "request": { "method": "GET", "path": "slider", "query": { "code": "homepage_mobile" } }
+    },
+    {
+      "name": "get с тегами и локацией: теги через запятую",
+      "call": { "namespace": "sliders", "method": "get",
+                "args": { "code": "homepage_mobile", "tags": [ "sale", "new" ], "locationId": "msk-1" } },
+      "request": { "method": "GET", "path": "slider", "query": { "code": "homepage_mobile", "tags": "sale,new", "location": "msk-1" } }
+    },
+    {
+      "name": "get с пустым code",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "get с запятой в теге",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile", "tags": [ "sale,new" ] } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "get с пустым тегом",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile", "tags": [ "sale", "" ] } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "слайдер с баннерами: список — payload.slides, id из banner_id строкой (В54, В55)",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "properties": { "code": "homepage_mobile", "width": 1000, "height": 160 },
+                                           "slides": [
+                                             { "banner_id": 12, "recommended_code": "homepage_mobile",
+                                               "image_url": "https://cdn.example/b12.jpg", "url": "https://shop.example/sale",
+                                               "deeplink_ios": "app://sale", "deeplink_android": "app://sale",
+                                               "content_type": "image", "content": "x", "html": null },
+                                             { "banner_id": "13", "recommended_code": "homepage_mobile",
+                                               "image_url": null, "url": null, "html": "<div>Sale</div>" } ] } } },
+      "expect": { "result": {
+        "code": "homepage_mobile", "width": 1000, "height": 160,
+        "banners": [
+          { "id": "12", "code": "homepage_mobile", "imageUrl": "https://cdn.example/b12.jpg", "url": "https://shop.example/sale",
+            "deeplinkIos": "app://sale", "deeplinkAndroid": "app://sale", "html": null },
+          { "id": "13", "code": "homepage_mobile", "imageUrl": null, "url": null, "deeplinkIos": null, "deeplinkAndroid": null,
+            "html": "<div>Sale</div>" } ] } }
+    },
+    {
+      "name": "пустой слайдер",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "properties": { "code": "homepage_mobile", "width": "1000", "height": "160" }, "slides": [] } } },
+      "expect": { "result": { "code": "homepage_mobile", "width": 1000, "height": 160, "banners": [] } }
+    },
+    {
+      "name": "404 — неизвестный или неактивный слайдер (В53)",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "nope" } },
+      "response": { "status": 404, "body": { "status": "error", "message": "Slider not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "403 с пустым телом — неизвестный или отключённый магазин",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 403, "body": null },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "402 — услуга слайдеров не оплачена",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 402, "body": { "status": "error", "message": "Payment required" } },
+      "expect": { "error": { "type": "http", "code": 402 } }
+    },
+    {
+      "name": "2xx со status error из документации",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 200, "body": { "status": "error", "payload": { "message": "Invalid slider code" } } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "ответ без payload",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": 200, "body": { "status": "success" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "sliders", "method": "get", "args": { "code": "homepage_mobile" } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "bannerView",
+      "call": { "namespace": "tracking", "method": "bannerView", "args": { "bannerId": "12", "code": "homepage_mobile" } },
+      "request": { "method": "POST", "path": "track/slider",
+                   "body": { "event": "view", "banner_id": 12, "recommended_code": "homepage_mobile" } }
+    },
+    {
+      "name": "bannerClick",
+      "call": { "namespace": "tracking", "method": "bannerClick", "args": { "bannerId": "12", "code": "homepage_mobile" } },
+      "request": { "method": "POST", "path": "track/slider",
+                   "body": { "event": "click", "banner_id": 12, "recommended_code": "homepage_mobile" } }
+    },
+    {
+      "name": "bannerView с пустым bannerId",
+      "call": { "namespace": "tracking", "method": "bannerView", "args": { "bannerId": "", "code": "homepage_mobile" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "bannerClick с bannerId не целым числом",
+      "call": { "namespace": "tracking", "method": "bannerClick", "args": { "bannerId": "b-12", "code": "homepage_mobile" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "bannerView с пустым code",
+      "call": { "namespace": "tracking", "method": "bannerView", "args": { "bannerId": "12", "code": "" } },
+      "error": { "type": "invalidArgument" }
+    }
+  ]
+}
