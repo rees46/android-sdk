@@ -9,6 +9,7 @@ import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
+import com.personalization.utils.DomainFormattingUtils
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -80,6 +81,9 @@ internal object CoreHttp {
  * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
  * device), and no `segment`. A push event (`track/delivered` and the others) carries no `sid` or `seance`
  * and no empty field.
+ *
+ * A path under `api/v3/` goes to the host of API v3, [appUrl] (`Rees46Config.appDomain`); every other path
+ * to the API's, [baseUrl]. Both get the common fields.
  */
 internal class CoreHttpClient(
     private val baseUrl: () -> String,
@@ -89,6 +93,7 @@ internal class CoreHttpClient(
     shared: OkHttpClient = CoreHttp.shared,
     internal val timeouts: CoreTimeouts = CoreTimeouts(),
     private val clock: Clock = Clock.SYSTEM,
+    private val appUrl: () -> String = { appUrlOf(null) },
 ) {
 
     /** This instance's client; [OkHttpClient.newBuilder] keeps the shared pool and dispatcher. */
@@ -159,7 +164,8 @@ internal class CoreHttpClient(
             fields.remove(UserBasicParams.SEANCE)
             fields.keys().asSequence().toList().forEach { key -> if (fields.opt(key) == "") fields.remove(key) }
         }
-        val url = (baseUrl() + method.method).toHttpUrl()
+        val base = if (method.method.startsWith(API_V3_PATH)) appUrl() else baseUrl()
+        val url = (base + method.method).toHttpUrl()
         val builder = Request.Builder()
             .header(USER_AGENT, SDK.userAgent())
             .tag(Phase::class.java, phase)
@@ -339,6 +345,20 @@ internal class CoreHttpClient(
         private const val ERROR_TIMEOUT = "timeout"
         private val HTTP_SUCCESS = 200..299
         private val JSON = "application/json; charset=utf-8".toMediaType()
+
+        /** The paths of API v3, which live on the host of `Rees46Config.appDomain`. */
+        const val API_V3_PATH = "api/v3/"
+        private const val DEFAULT_APP_DOMAIN = "app.rees46.ru"
+
+        /**
+         * The base URL of API v3 for [appDomain] (`Rees46Config.appDomain`): `https://` unless it names its
+         * scheme, a trailing slash; a missing or blank one is `app.rees46.ru`. Throws for a scheme other than
+         * `http` or `https`: read when a request is built, it fails that request only.
+         */
+        fun appUrlOf(appDomain: String?): String = DomainFormattingUtils.formatApiDomain(
+            apiDomain = appDomain?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_APP_DOMAIN,
+            addTrailingSlash = true,
+        )
     }
 }
 
