@@ -1,6 +1,8 @@
 package com.personalization.features.recommendation
 
 import com.personalization.api.models.recommendations.RecommendationRequest
+import com.personalization.api.models.recommendations.RecommendationResponse
+import com.personalization.core.SdkResult
 import com.personalization.core.BridgeApi
 import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.argBoolean
@@ -10,6 +12,9 @@ import com.personalization.core.internal.argStrings
 import okhttp3.mockwebserver.MockResponse
 import org.json.JSONObject
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,6 +58,19 @@ class RecommendationsApiFixturesTest {
     @Test
     fun `get reads each answer of the contract into its result or its error`() {
         fixtures.checkAnswers("recommendations", invoke)
+    }
+
+    @Test
+    fun `a blank title or link of the block is no value, as on iOS`() {
+        fixtures.server.enqueue(MockResponse().setBody("""{"title":"","link":"  ","recommends":["1"]}"""))
+
+        val result = fixtures.outcome { recommendations.get("block-1") }
+
+        assertTrue("$result", result is SdkResult.Success)
+        val response = (result as SdkResult.Success).value as RecommendationResponse
+        assertNull(response.title)
+        assertNull(response.link)
+        assertEquals(listOf("1"), response.itemIds)
     }
 
     private fun request(json: JSONObject) = RecommendationRequest(

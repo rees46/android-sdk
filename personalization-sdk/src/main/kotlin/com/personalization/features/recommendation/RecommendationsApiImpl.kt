@@ -10,6 +10,7 @@ import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
+import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.pathSegment
 import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.putList
@@ -67,8 +68,8 @@ internal class RecommendationsApiImpl(private val calls: NamespaceCalls) : Recom
             val itemIds = products.map { it.id }.ifEmpty { recommends?.strings()?.filter { it.isNotBlank() }.orEmpty() }
             return RecommendationResponse(
                 id = body.intOrNull("id"),
-                title = body.stringOrNull("title"),
-                link = body.stringOrNull("link"),
+                title = body.nonBlankStringOrNull("title"),
+                link = body.nonBlankStringOrNull("link"),
                 products = products,
                 itemIds = itemIds,
             )
