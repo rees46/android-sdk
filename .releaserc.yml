@@ -2,7 +2,15 @@
   branches: ['master'],
   plugins:
     [
-      '@semantic-release/commit-analyzer',
+      [
+        '@semantic-release/commit-analyzer',
+        {
+          # The merged release PR's commit, feat(release): version, records a version already cut;
+          # counted as a feature it would make the next push to master cut a minor of its own.
+          # Every other commit falls through to the default rules.
+          'releaseRules': [{ 'type': 'feat', 'scope': 'release', 'release': false }],
+        },
+      ],
       '@semantic-release/release-notes-generator',
       [
         '@semantic-release/github',
