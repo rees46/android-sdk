@@ -15,6 +15,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.LoyaltyApi
 import com.personalization.api.managers.PredictApi
 import com.personalization.api.managers.StoriesApi
 import com.personalization.api.managers.CategoryManager
@@ -67,6 +68,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.loyalty.LoyaltyApiImpl
 import com.personalization.features.predict.PredictApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
@@ -241,6 +243,14 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val predict: PredictApi = PredictApiImpl(namespaceCalls)
+
+    /**
+     * The loyalty program on the customer's side: `sdk.loyalty.join(phone)`, `getStatus(phone)`,
+     * `getPromotions()`. For the bridges, on the new core only, as [stories]; see [LoyaltyApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val loyalty: LoyaltyApi = LoyaltyApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
