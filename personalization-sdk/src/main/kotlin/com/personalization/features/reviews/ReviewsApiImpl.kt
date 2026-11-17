@@ -17,9 +17,12 @@ import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.doubleOrNull
 import com.personalization.core.internal.intOrNull
+import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
+import com.personalization.core.internal.putIfNotNull
+import com.personalization.core.internal.requireNotBlank
 import com.personalization.core.internal.valueOfWire
 import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONObject
@@ -56,22 +59,18 @@ internal class ReviewsApiImpl(private val calls: NamespaceCalls) : ReviewsApi {
         calls.request(GET_CES_CAMPAIGNS, NetworkMethod.GET(CES_CAMPAIGNS), read = listAt("campaigns", ::readCesCampaign))
 
     override suspend fun getProductReviews(itemId: String, limit: Int?, offset: Int?): ProductReviewsResponse {
-        val refused = when {
-            itemId.isBlank() -> "itemId must not be empty"
-            limit != null && limit !in LIMITS -> "limit must be from ${LIMITS.first} to ${LIMITS.last}"
-            offset != null && offset < 0 -> "offset must not be negative"
-            else -> null
+        val params = calls.checked(GET_PRODUCT_REVIEWS) {
+            requireNotBlank(itemId, "itemId")
+            if (limit != null && limit !in LIMITS) invalidArgument("limit must be from ${LIMITS.first} to ${LIMITS.last}")
+            if (offset != null && offset < 0) invalidArgument("offset must not be negative")
+            JSONObject().put("product", itemId).putIfNotNull("limit", limit).putIfNotNull("offset", offset)
         }
-        val params = JSONObject().put("product", itemId)
-        limit?.let { params.put("limit", it) }
-        offset?.let { params.put("offset", it) }
-        return calls.request(GET_PRODUCT_REVIEWS, NetworkMethod.GET(PRODUCT_REVIEWS), params, refused = refused, read = ::readProductReviews)
+        return calls.request(GET_PRODUCT_REVIEWS, NetworkMethod.GET(PRODUCT_REVIEWS), params, read = ::readProductReviews)
     }
 
     override suspend fun getClientReviews(orderId: String): List<ClientReview> {
-        val refused = if (orderId.isBlank()) "orderId must not be empty" else null
-        val params = JSONObject().put("order", orderId)
-        return calls.request(GET_CLIENT_REVIEWS, NetworkMethod.GET(CLIENT_REVIEWS), params, refused = refused, read = listAt("reviews", ::readClientReview))
+        val params = calls.checked(GET_CLIENT_REVIEWS) { JSONObject().put("order", requireNotBlank(orderId, "orderId")) }
+        return calls.request(GET_CLIENT_REVIEWS, NetworkMethod.GET(CLIENT_REVIEWS), params, read = listAt("reviews", ::readClientReview))
     }
 
     override fun createNps(
@@ -112,17 +111,14 @@ internal class ReviewsApiImpl(private val calls: NamespaceCalls) : ReviewsApi {
         call: String, path: String, rate: Int, rates: IntRange, channel: String, subject: String, code: String,
         orderId: String?, comment: String?, label: String?,
     ): PollReview {
-        val refused = when {
-            rate !in rates -> "rate must be from ${rates.first} to ${rates.last}"
-            channel.isBlank() -> "channel must not be empty"
-            code.isBlank() -> "$subject must not be empty"
-            else -> null
+        val params = calls.checked(call) {
+            if (rate !in rates) invalidArgument("rate must be from ${rates.first} to ${rates.last}")
+            JSONObject().put("rate", rate).put("channel", requireNotBlank(channel, "channel")).put(subject, requireNotBlank(code, subject))
         }
-        val params = JSONObject().put("rate", rate).put("channel", channel).put(subject, code)
         listOf("order_id" to orderId, "comment" to comment, "label" to label).forEach { (key, value) ->
             if (!value.isNullOrBlank()) params.put(key, value)
         }
-        return calls.request(call, NetworkMethod.POST(path), params, refused = refused, read = ::readPollReview)
+        return calls.request(call, NetworkMethod.POST(path), params, read = ::readPollReview)
     }
 
     internal companion object {

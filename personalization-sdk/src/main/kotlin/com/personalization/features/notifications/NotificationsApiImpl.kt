@@ -13,8 +13,10 @@ import com.personalization.core.PushEvent
 import com.personalization.core.PushToken
 import com.personalization.core.SdkError
 import com.personalization.core.SdkException
+import com.personalization.core.SdkResult
 import com.personalization.core.internal.CorePushTokens
 import com.personalization.core.internal.NamespaceCalls
+import com.personalization.core.internal.invalidArgument
 import com.personalization.logs.LogCodes
 import kotlinx.coroutines.CompletableDeferred
 import org.json.JSONArray
@@ -23,7 +25,8 @@ import org.json.JSONObject
 /**
  * [NotificationsApi] over the instance's push machinery: its queue for the push events
  * ([SDK.trackPushEvent], once per message in a process), its [CorePushTokens] for the token, its push
- * callbacks. Each call first asks [NamespaceCalls] for the new core: the legacy one refuses it.
+ * callbacks. Each call first passes [NamespaceCalls.checked]: the legacy core refuses it, and an empty code
+ * or type of a push event is `invalidArgument`.
  */
 @OptIn(BridgeApi::class)
 internal class NotificationsApiImpl(private val sdk: SDK, private val calls: NamespaceCalls) : NotificationsApi {
@@ -46,7 +49,7 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
     }
 
     override suspend fun setPushToken(token: String, provider: PushProvider) {
-        calls.requireNewCore(SET_PUSH_TOKEN)
+        calls.checked(SET_PUSH_TOKEN) {}
         val tokens = tokens() ?: throw SdkException(SdkError.NotInitialized)
         val ended = CompletableDeferred<SdkError?>()
         // An empty token is refused there, with its log line; one that went this week ends in success.
@@ -79,14 +82,15 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
      * were reported in; [listener] hears how it ended on the main thread.
      */
     private fun track(event: PushEvent, call: String, code: String, type: String, listener: CompletionListener<Unit>?) {
-        val refused = try {
-            calls.requireNewCore(call)
-            argumentError(call, code, type)
-        } catch (e: SdkException) {
-            e.error
+        val empty = when {
+            code.isBlank() -> FIELD_CODE
+            type.isBlank() -> FIELD_TYPE
+            else -> null
         }
-        if (refused != null) {
-            listener?.let { calls.complete(it) { throw SdkException(refused) } }
+        try {
+            calls.checked(call, reason = empty?.let { "empty_$it" }) { empty?.let { invalidArgument("$it is empty") } }
+        } catch (e: SdkException) {
+            calls.tell(listener, SdkResult.Failure(e.error))
             return
         }
         val ended = CompletableDeferred<SdkError?>()
@@ -94,21 +98,9 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
         listener?.let { calls.complete(it) { ended.await()?.let { error -> throw SdkException(error) } } }
     }
 
-    /** [SdkError.InvalidArgument] for an empty [code] or [type] of [call], logged; null when both are there. */
-    private fun argumentError(call: String, code: String, type: String): SdkError? {
-        val empty = when {
-            code.isBlank() -> FIELD_CODE
-            type.isBlank() -> FIELD_TYPE
-            else -> return null
-        }
-        val message = "$empty is empty"
-        sdk.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "$call was refused: $message", mapOf("reason" to "empty_$empty", "call" to call))
-        return SdkError.InvalidArgument(message)
-    }
-
     /** Whether [call] may run: the new core; otherwise `notInitialized`, logged on the legacy core. */
     private fun onNewCore(call: String): Boolean = try {
-        calls.requireNewCore(call)
+        calls.checked(call) {}
         true
     } catch (e: SdkException) {
         false

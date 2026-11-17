@@ -18,6 +18,7 @@ import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
 import com.personalization.core.internal.NamespaceCalls
+import com.personalization.core.internal.invalidArgument
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
@@ -270,16 +271,13 @@ internal class TrackingApiImpl @Inject constructor(
      * A banner's [event] for `track/slider`: `banner_id` as a number, `recommended_code` the slider's
      * [code]; `recommended_by` the server does not read here. Only through the new core's queue.
      */
-    private fun banner(call: String, event: String, bannerId: String, code: String, listener: CompletionListener<Unit>?) {
-        val id = bannerId.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }?.toLongOrNull()?.takeIf { it in 1..MAX_BANNER_ID }
-        val problem = when {
-            id == null -> "bannerId is not a positive whole number"
-            code.isBlank() -> "code is empty"
-            else -> null
+    private fun banner(call: String, event: String, bannerId: String, code: String, listener: CompletionListener<Unit>?) =
+        events.event(call, SLIDER_PATH, listener) {
+            val id = bannerId.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }?.toLongOrNull()?.takeIf { it in 1..MAX_BANNER_ID }
+                ?: invalidArgument("bannerId is not a positive whole number")
+            if (code.isBlank()) invalidArgument("code is empty")
+            JSONObject().put(EVENT_PARAM, event).put(BANNER_ID_PARAM, id).put(RECOMMENDED_CODE_PARAM, code)
         }
-        val params = JSONObject().put(EVENT_PARAM, event).put(BANNER_ID_PARAM, id ?: 0L).put(RECOMMENDED_CODE_PARAM, code)
-        events.event(call, SLIDER_PATH, params, problem, listener)
-    }
 
     private fun Params.withSource(source: TrackingSource?): Params =
         source?.let { putSource(it) } ?: this

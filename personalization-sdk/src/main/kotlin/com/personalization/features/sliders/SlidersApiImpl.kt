@@ -8,9 +8,12 @@ import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.intOrNull
+import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
+import com.personalization.core.internal.putIfNotNull
+import com.personalization.core.internal.putList
 import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONObject
 
@@ -19,16 +22,12 @@ import org.json.JSONObject
 internal class SlidersApiImpl(private val calls: NamespaceCalls) : SlidersApi {
 
     override suspend fun get(code: String, tags: List<String>?, locationId: String?): Slider {
-        val problem = when {
-            code.isBlank() -> "code is empty"
+        val params = calls.checked(GET) {
+            if (code.isBlank()) invalidArgument("code is empty")
             // Tags go joined by commas: a tag with one would read as two.
-            tags?.any { it.isBlank() || it.contains(',') } == true -> "tags has an empty tag or one with a comma"
-            else -> null
+            if (tags?.any { it.isBlank() || it.contains(',') } == true) invalidArgument("tags has an empty tag or one with a comma")
+            JSONObject().put(CODE, code).putList(TAGS, tags).putIfNotNull(LOCATION, locationId)
         }
-        calls.checkArguments(GET, problem)
-        val params = JSONObject().put(CODE, code)
-        if (!tags.isNullOrEmpty()) params.put(TAGS, tags.joinToString(","))
-        locationId?.let { params.put(LOCATION, it) }
         return calls.request(GET, NetworkMethod.GET(PATH), params) { body -> readSlider(body, code) }
     }
 

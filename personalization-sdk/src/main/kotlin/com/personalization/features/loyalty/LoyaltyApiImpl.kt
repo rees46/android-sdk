@@ -15,7 +15,9 @@ import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
+import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.objectOrNull
+import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.stringOrNull
 import com.personalization.core.internal.valueOfWire
 import com.personalization.sdk.domain.models.NetworkMethod
@@ -40,23 +42,24 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
         gender: Gender?,
         birthday: String?,
     ): LoyaltyMember {
-        val problem = when {
-            phone.isBlank() -> "phone is empty"
-            birthday != null && !isDate(birthday) -> "birthday is not a date as YYYY-MM-DD"
-            else -> null
+        val params = calls.checked(JOIN) {
+            if (phone.isBlank()) invalidArgument("phone is empty")
+            if (birthday != null && !isDate(birthday)) invalidArgument("birthday is not a date as YYYY-MM-DD")
+            JSONObject().put(PHONE, phone)
+                .putIfNotNull(FIRST_NAME, firstName)
+                .putIfNotNull(LAST_NAME, lastName)
+                .putIfNotNull(GENDER, gender?.value)
+                .putIfNotNull(BIRTHDAY, birthday)
         }
-        calls.checkArguments(JOIN, problem)
-        val params = JSONObject().put(PHONE, phone)
-            .putIfGiven(FIRST_NAME, firstName)
-            .putIfGiven(LAST_NAME, lastName)
-            .putIfGiven(GENDER, gender?.value)
-            .putIfGiven(BIRTHDAY, birthday)
         return calls.request(JOIN, NetworkMethod.POST(JOIN_PATH), params, read = ::readMember)
     }
 
     override suspend fun getStatus(phone: String): LoyaltyStatus {
-        calls.checkArguments(GET_STATUS, if (phone.isBlank()) "phone is empty" else null)
-        return calls.request(GET_STATUS, NetworkMethod.GET(STATUS_PATH), JSONObject().put(IDENTIFIER, phone), read = ::readStatus)
+        val params = calls.checked(GET_STATUS) {
+            if (phone.isBlank()) invalidArgument("phone is empty")
+            JSONObject().put(IDENTIFIER, phone)
+        }
+        return calls.request(GET_STATUS, NetworkMethod.GET(STATUS_PATH), params, read = ::readStatus)
     }
 
     override suspend fun getPromotions(
@@ -65,18 +68,16 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
         chargeBonuses: Boolean?,
         currentTime: String?,
     ): List<LoyaltyPromotion> {
-        val problem = when {
-            currentTime != null && !TIME.matches(currentTime) -> "currentTime is not HH:MM"
-            promoCodes?.any { it.isBlank() } == true -> "promoCodes has an empty code"
-            else -> null
+        val params = calls.checked(GET_PROMOTIONS) {
+            if (currentTime != null && !TIME.matches(currentTime)) invalidArgument("currentTime is not HH:MM")
+            if (promoCodes?.any { it.isBlank() } == true) invalidArgument("promoCodes has an empty code")
+            val params = JSONObject()
+                .putIfNotNull(LOCATION_ID, locationId)
+                .putIfNotNull(CURRENT_TIME, currentTime)
+            // Only as a Rails array, `promo_codes[]=A&promo_codes[]=B`: the server drops a string with commas.
+            if (!promoCodes.isNullOrEmpty()) params.put(PROMO_CODES, JSONArray(promoCodes))
+            params.putIfNotNull(CHARGE_BONUSES, chargeBonuses)
         }
-        calls.checkArguments(GET_PROMOTIONS, problem)
-        val params = JSONObject()
-            .putIfGiven(LOCATION_ID, locationId)
-            .putIfGiven(CURRENT_TIME, currentTime)
-        // Only as a Rails array, `promo_codes[]=A&promo_codes[]=B`: the server drops a string with commas.
-        if (!promoCodes.isNullOrEmpty()) params.put(PROMO_CODES, JSONArray(promoCodes))
-        chargeBonuses?.let { params.put(CHARGE_BONUSES, it) }
         return calls.request(GET_PROMOTIONS, NetworkMethod.GET(PROMOTIONS_PATH), params, read = ::readPromotions)
     }
 
@@ -130,8 +131,6 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
             val position = ParsePosition(0)
             return format.parse(value, position) != null && position.index == value.length
         }
-
-        private fun JSONObject.putIfGiven(key: String, value: String?): JSONObject = if (value == null) this else put(key, value)
 
         /** `payload.identifier`; null (`decoding`) without one. */
         fun readMember(body: Any?): LoyaltyMember? {

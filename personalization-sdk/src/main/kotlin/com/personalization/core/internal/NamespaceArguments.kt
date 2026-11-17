@@ -9,29 +9,16 @@ import java.net.URLEncoder
 
 /*
  * Checking a namespace method's arguments and writing them as the request's fields, by the contract's
- * rules (`contract/README.md`, "Параметры"; `contract/products.md`, `ProductsListRequest`): a wrong
- * argument is `invalidArgument` before any request, `null` is a field not sent, a list goes as one string
- * joined with commas and no spaces, an empty list is not sent, a fractional number goes without trailing
- * zeros (`100`, not `100.0`).
+ * rules (`contract/README.md`, "Параметры"; `contract/products.md`, `ProductsListRequest`), inside
+ * [NamespaceCalls.checked]: a wrong argument is `invalidArgument` before any request, `null` is a field not
+ * sent, a list goes as one string joined with commas and no spaces, an empty list is not sent, a fractional
+ * number goes without trailing zeros (`100`, not `100.0`).
  */
 
 /**
- * What [build] makes of a method's arguments — the request's fields, a path — for the namespace method
- * [call], checked as [NamespaceCalls.checkArguments] checks them: off the new core the call fails with
- * `notInitialized` first, whatever the arguments; then a wrong argument, which [build] reports with
- * [invalidArgument], fails it with [SdkError.InvalidArgument], logged as `invalid_argument`. Nothing is sent.
+ * Ends the call with [SdkError.InvalidArgument]: [message] names the argument and the rule it breaks, never
+ * its value. Inside [NamespaceCalls.checked], which logs it.
  */
-internal inline fun <T> NamespaceCalls.checked(call: String, build: () -> T): T {
-    checkArguments(call, null)
-    return try {
-        build()
-    } catch (e: SdkException) {
-        (e.error as? SdkError.InvalidArgument)?.let { checkArguments(call, it.message) }
-        throw e
-    }
-}
-
-/** Ends the call with [SdkError.InvalidArgument]: [message] names the argument and the rule it breaks. */
 internal fun invalidArgument(message: String): Nothing = throw SdkException(SdkError.InvalidArgument(message))
 
 /** [value] when it is not blank; otherwise the call fails with `invalidArgument` naming [name]. */

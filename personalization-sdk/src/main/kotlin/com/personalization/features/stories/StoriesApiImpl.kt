@@ -18,20 +18,21 @@ import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.doubleOrNull
 import com.personalization.core.internal.intOrNull
+import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.objectOrNull
+import com.personalization.core.internal.pathSegment
 import com.personalization.core.internal.stringOrNull
 import com.personalization.core.internal.valueOrNull
 import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONObject
-import java.net.URLEncoder
 
 /** [StoriesApi] over the namespaces' path ([NamespaceCalls]). */
 @OptIn(BridgeApi::class)
 internal class StoriesApiImpl(private val calls: NamespaceCalls) : StoriesApi {
 
     override suspend fun get(code: String): StoriesBlock {
-        calls.checkArguments(GET, if (code.isBlank()) "code is empty" else null)
+        calls.checked(GET) { if (code.isBlank()) invalidArgument("code is empty") }
         return calls.request(GET, NetworkMethod.GET(path(code)), read = ::readBlock)
     }
 
@@ -42,7 +43,7 @@ internal class StoriesApiImpl(private val calls: NamespaceCalls) : StoriesApi {
         const val PATH = "stories/"
 
         /** `stories/{code}`, the code encoded as one segment of the path. */
-        fun path(code: String): String = PATH + URLEncoder.encode(code, Charsets.UTF_8.name()).replace("+", "%20")
+        fun path(code: String): String = PATH + pathSegment(code)
 
         /*
          * Read as the Flutter SDK reads the same answer, and the answer of API v3 with it: numbers may come

@@ -5,7 +5,6 @@ import com.personalization.api.models.collections.CollectionResponse
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
-import com.personalization.core.internal.checked
 import com.personalization.core.internal.pathSegment
 import com.personalization.core.internal.requireNotBlank
 import com.personalization.features.products.CatalogJson

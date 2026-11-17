@@ -8,7 +8,6 @@ import com.personalization.api.models.profile.ProfileUpdateRequest
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
-import com.personalization.core.internal.checked
 import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects

@@ -12,7 +12,6 @@ import com.personalization.api.models.search.SearchRedirect
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
-import com.personalization.core.internal.checked
 import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.doubleOrNull

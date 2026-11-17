@@ -14,30 +14,30 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
-import com.personalization.api.managers.CollectionsApi
-import com.personalization.api.managers.ProductsApi
-import com.personalization.api.managers.RecommendationsApi
-import com.personalization.api.managers.SearchApi
-import com.personalization.api.managers.ProfileApi
-import com.personalization.api.managers.SegmentsApi
-import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.CartManager
-import com.personalization.api.managers.NotificationsApi
-import com.personalization.api.managers.LoyaltyApi
-import com.personalization.api.managers.PredictApi
-import com.personalization.api.managers.SlidersApi
-import com.personalization.api.managers.StoriesApi
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
+import com.personalization.api.managers.CollectionsApi
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.LoyaltyApi
 import com.personalization.api.managers.LoyaltyManager
+import com.personalization.api.managers.NotificationsApi
 import com.personalization.api.managers.OrdersManager
-import com.personalization.api.managers.ProductsManager
-import com.personalization.api.managers.ProfileManager
+import com.personalization.api.managers.PredictApi
 import com.personalization.api.managers.PredictManager
+import com.personalization.api.managers.ProductsApi
+import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.ProfileApi
+import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.RecommendationManager
+import com.personalization.api.managers.RecommendationsApi
 import com.personalization.api.managers.ReviewsApi
+import com.personalization.api.managers.SearchApi
 import com.personalization.api.managers.SearchManager
+import com.personalization.api.managers.SegmentsApi
+import com.personalization.api.managers.SlidersApi
+import com.personalization.api.managers.StoriesApi
+import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
@@ -78,18 +78,18 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
-import com.personalization.features.notifications.NotificationsApiImpl
+import com.personalization.features.collection.CollectionsApiImpl
 import com.personalization.features.loyalty.LoyaltyApiImpl
+import com.personalization.features.notifications.NotificationsApiImpl
 import com.personalization.features.predict.PredictApiImpl
+import com.personalization.features.products.ProductsApiImpl
+import com.personalization.features.profile.ProfileApiImpl
+import com.personalization.features.recommendation.RecommendationsApiImpl
+import com.personalization.features.reviews.ReviewsApiImpl
+import com.personalization.features.search.SearchApiImpl
+import com.personalization.features.segments.SegmentsApiImpl
 import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
-import com.personalization.features.reviews.ReviewsApiImpl
-import com.personalization.features.collection.CollectionsApiImpl
-import com.personalization.features.products.ProductsApiImpl
-import com.personalization.features.recommendation.RecommendationsApiImpl
-import com.personalization.features.search.SearchApiImpl
-import com.personalization.features.profile.ProfileApiImpl
-import com.personalization.features.segments.SegmentsApiImpl
 import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
@@ -248,59 +248,6 @@ open class SDK {
     val cart: CartApi = CartApiImpl(namespaceCalls)
 
     /**
-     * This shop's push token, the push events the app reports itself and its push callbacks:
-     * `sdk.notifications.trackClicked(code, type)`. For the Flutter and React Native bridges: it runs on the
-     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
-     * [SdkError.NotInitialized]; see [NotificationsApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val notifications: NotificationsApi = NotificationsApiImpl(this, namespaceCalls)
-
-    /**
-     * The stories blocks: `sdk.stories.get(code)`. For the Flutter and React Native bridges: it runs on the
-     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
-     * [SdkError.NotInitialized]; see [StoriesApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val stories: StoriesApi = StoriesApiImpl(namespaceCalls)
-
-    /**
-     * Forecasts of the customer's behaviour: `sdk.predict.getProbabilityToPurchase()`. For the bridges, on
-     * the new core only, as [stories]; see [PredictApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val predict: PredictApi = PredictApiImpl(namespaceCalls)
-
-    /**
-     * The loyalty program on the customer's side: `sdk.loyalty.join(phone)`, `getStatus(phone)`,
-     * `getPromotions()`. For the bridges, on the new core only, as [stories]; see [LoyaltyApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val loyalty: LoyaltyApi = LoyaltyApiImpl(namespaceCalls)
-
-    /**
-     * Banner sliders: `sdk.sliders.get(code)`; their banners' events are `tracking.bannerView` and
-     * `bannerClick`. For the bridges, on the new core only, as [stories]; see [SlidersApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val sliders: SlidersApi = SlidersApiImpl(namespaceCalls)
-
-    /**
-     * NPS, CSAT and CES ratings, their dictionaries, and the reviews of products: `sdk.reviews.createNps(…)`.
-     * The polls go to [Rees46Config.appDomain]. For the Flutter and React Native bridges: it runs on the new
-     * core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
-     * [SdkError.NotInitialized]; see [ReviewsApi]. Hidden from Java.
-     */
-    @BridgeApi
-    @get:JvmSynthetic
-    val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
-
-    /**
      * The shop's catalog: `sdk.products.getInfo("37")`, `getList`, `getCounters`, `getCategory`. For the
      * Flutter and React Native bridges, on the new core only, as [cart]; see [ProductsApi]. Hidden from Java.
      */
@@ -366,6 +313,59 @@ open class SDK {
         namespaceCalls,
         abGroup = { if (::userSettingsRepository.isInitialized) userSettingsRepository.getSegmentForABTesting() else null },
     ) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * This shop's push token, the push events the app reports itself and its push callbacks:
+     * `sdk.notifications.trackClicked(code, type)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [NotificationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val notifications: NotificationsApi = NotificationsApiImpl(this, namespaceCalls)
+
+    /**
+     * The stories blocks: `sdk.stories.get(code)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [StoriesApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val stories: StoriesApi = StoriesApiImpl(namespaceCalls)
+
+    /**
+     * Forecasts of the customer's behaviour: `sdk.predict.getProbabilityToPurchase()`. For the bridges, on
+     * the new core only, as [stories]; see [PredictApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val predict: PredictApi = PredictApiImpl(namespaceCalls)
+
+    /**
+     * The loyalty program on the customer's side: `sdk.loyalty.join(phone)`, `getStatus(phone)`,
+     * `getPromotions()`. For the bridges, on the new core only, as [stories]; see [LoyaltyApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val loyalty: LoyaltyApi = LoyaltyApiImpl(namespaceCalls)
+
+    /**
+     * Banner sliders: `sdk.sliders.get(code)`; their banners' events are `tracking.bannerView` and
+     * `bannerClick`. For the bridges, on the new core only, as [stories]; see [SlidersApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val sliders: SlidersApi = SlidersApiImpl(namespaceCalls)
+
+    /**
+     * NPS, CSAT and CES ratings, their dictionaries, and the reviews of products: `sdk.reviews.createNps(…)`.
+     * The polls go to [Rees46Config.appDomain]. For the Flutter and React Native bridges: it runs on the new
+     * core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [ReviewsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager

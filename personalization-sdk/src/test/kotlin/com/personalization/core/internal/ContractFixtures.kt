@@ -11,13 +11,13 @@ import org.json.JSONObject
  * cases; update them by copying the new files into a folder of the new contract version. Beside them,
  * `logging.md` of `sdk/core`, whose table of log codes the logs are checked against.
  *
- * `cart.json` is written in the fixtures' format from `contract/cart.md` and the server's answers in
- * `questions.md` (В19) ahead of the contract's own file, which takes it over as it is.
- *
- * So are `stories.json`, `predict.json`, `loyalty.json` and `sliders.json`, from their files of `contract/`
- * and the answers of `questions.md`, the same files the iOS SDK tests by. In their `expect.result` an object
- * lists the fields the case checks. `sliders.json` also holds the banner events, `tracking.bannerView` and
- * `bannerClick` (their `call.namespace` says so), until the contract's `tracking.json` has them.
+ * The namespaces' files (`cart.json` and those after it) are written in the fixtures' format from their files
+ * of `contract/` and the server's answers in `questions.md`, ahead of the contract's own files, which take
+ * them over as they are. `cart.json`, `notifications.json`, `stories.json`, `predict.json`, `loyalty.json`,
+ * `sliders.json` and `reviews.json` are the files the iOS SDK tests by. In the `expect.result` of
+ * `stories.json`, `predict.json`, `loyalty.json` and `sliders.json` an object lists the fields the case
+ * checks. `sliders.json` also holds the banner events, `tracking.bannerView` and `bannerClick` (their
+ * `call.namespace` says so), until the contract's `tracking.json` has them.
  */
 internal object ContractFixtures {
     const val VERSION = "0"

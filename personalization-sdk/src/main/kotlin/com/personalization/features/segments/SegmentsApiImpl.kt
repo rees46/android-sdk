@@ -5,7 +5,6 @@ import com.personalization.api.models.segments.Segment
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
-import com.personalization.core.internal.checked
 import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.invalidArgument
 import com.personalization.core.internal.mapObjects
