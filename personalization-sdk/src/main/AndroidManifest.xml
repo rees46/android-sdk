@@ -1,14 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- Neither AD_ID nor cleartext traffic: an app that needs them declares them (see Rees46Config). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The new core asks whether there is a network before a request. Firebase Messaging declares it too. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <application
-        android:usesCleartextTraffic="true"
-        tools:targetApi="m">
+    <application>
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="@string/notification_channel_id" />

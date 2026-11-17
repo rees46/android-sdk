@@ -13,7 +13,10 @@ import com.personalization.logs.SdkLogs
  * [PreferencesPartition].
  *
  * @property shopId the shop key; also the partition key and the id used by [Rees46.instance].
- * @property apiDomain API host the instance talks to (a region points here).
+ * @property apiDomain API host the instance talks to (a region points here). The SDK's manifest does not
+ * allow cleartext traffic: a host given with `http://`, like images and videos of stories, popups and
+ * pushes served over `http://`, needs the app's own `android:usesCleartextTraffic="true"` or network
+ * security config.
  * @property stream traffic stream label sent with every request.
  * @property autoSendPushToken whether the SDK registers push tokens with the backend on its own.
  * @property needReInitialization forces a fresh `init` request instead of reusing stored session data.
@@ -27,7 +30,10 @@ import com.personalization.logs.SdkLogs
  * only while the shop has no `did` of its own, and sent with the next `/init`. Ignored with
  * [needReInitialization].
  * @property sendAdvertisingId sends the advertising id with `/init`; off by default, and then the new
- * core does not read it. The legacy core keeps sending it as before, whatever this says.
+ * core does not read it. The legacy core keeps sending it as before, whatever this says. The SDK's
+ * manifest does not declare `com.google.android.gms.permission.AD_ID`: on Android 13 and later Google
+ * Play services give an app without it a zeroed id, so an app that wants the advertising id sent
+ * declares the permission in its own manifest.
  * @property storageKey a prefix for the shop's storage, when the app needs its own split of it: the
  * shop's `SharedPreferences` file becomes `<storageKey>_personalization_sdk_<shopId>` instead of
  * `personalization_sdk_<shopId>`. A file named exactly [storageKey] (the whole store of
