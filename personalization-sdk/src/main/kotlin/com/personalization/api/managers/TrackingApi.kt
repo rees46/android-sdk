@@ -4,6 +4,10 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
+import com.personalization.api.models.sliders.SliderBanner
+import com.personalization.core.BridgeApi
+import com.personalization.core.CompletionListener
+import com.personalization.core.SdkError
 
 /**
  * Standard tracking events — the `tracking` namespace of the SDK.
@@ -154,4 +158,24 @@ interface TrackingApi {
      * Same behaviour and same wire shape as iOS.
      */
     fun setSource(source: TrackingSource)
+
+    /**
+     * A banner of a slider was shown (`track/slider`, `view`): once, when it first became visible in this
+     * showing of the slider. [bannerId] and [code] are the banner's [SliderBanner.id] and [SliderBanner.code]
+     * from [SlidersApi.get].
+     *
+     * For the Flutter and React Native bridges, on the new core only: the event goes through the queue, and
+     * [listener] hears once, on the main thread, that the queue accepted it, or why not —
+     * [SdkError.InvalidArgument] for a [bannerId] that is not a positive whole number or an empty [code],
+     * [SdkError.ShopBlocked], or [SdkError.NotInitialized] after `release()` and on the legacy core, where
+     * nothing is sent. Hidden from Java.
+     */
+    @BridgeApi
+    @JvmSynthetic
+    fun bannerView(bannerId: String, code: String, listener: CompletionListener<Unit>? = null)
+
+    /** A banner of a slider was tapped (`track/slider`, `click`); otherwise as [bannerView]. Hidden from Java. */
+    @BridgeApi
+    @JvmSynthetic
+    fun bannerClick(bannerId: String, code: String, listener: CompletionListener<Unit>? = null)
 }

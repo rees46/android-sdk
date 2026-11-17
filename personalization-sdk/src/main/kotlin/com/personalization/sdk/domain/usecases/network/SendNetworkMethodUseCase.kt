@@ -1,6 +1,7 @@
 package com.personalization.sdk.domain.usecases.network
 
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.internal.Core
 import com.personalization.sdk.data.repositories.network.NetworkRepositoryImpl
 import com.personalization.sdk.domain.repositories.NetworkRepository
 import javax.inject.Inject
@@ -16,6 +17,10 @@ class SendNetworkMethodUseCase @Inject constructor(
      */
     internal val queuesEvents: Boolean
         get() = (networkRepository as? NetworkRepositoryImpl)?.core?.isV2 == true
+
+    /** The instance's core, legacy or new; null for a repository of a test. */
+    internal val core: Core?
+        get() = (networkRepository as? NetworkRepositoryImpl)?.core
 
     /**
      * Direct query execution

@@ -25,6 +25,8 @@ package com.personalization.core
  * - the namespaces of the new core, `SDK.cart` the first: each method is a suspending function with a
  *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
  *   legacy core, where they do not run.
+ * - `TrackingApi.bannerView` and `bannerClick` — the banner events of `SDK.sliders`, through the new core's
+ *   queue only, in the public `tracking` namespace.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.
