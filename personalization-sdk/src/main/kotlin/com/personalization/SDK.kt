@@ -14,6 +14,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
+import com.personalization.api.managers.CollectionsApi
 import com.personalization.api.managers.ProductsApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
@@ -66,6 +67,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.collection.CollectionsApiImpl
 import com.personalization.features.products.ProductsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
@@ -230,6 +232,14 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val products: ProductsApi = ProductsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's product collections: `sdk.collections.get("12")`. For the Flutter and React Native
+     * bridges, on the new core only, as [cart]; see [CollectionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val collections: CollectionsApi = CollectionsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager

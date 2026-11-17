@@ -1,0 +1,62 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "request": { "method": "GET", "path": "collection/12", "query": {} }
+    },
+    {
+      "name": "get: идентификатор в пути URL-кодирован",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "a b/c" } },
+      "request": { "method": "GET", "path": "collection/a%20b%2Fc", "query": {} }
+    },
+    {
+      "name": "get с пустым collectionId",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "товары коллекции",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "response": { "status": 200,
+                    "body": { "products": [ { "id": "37", "group_id": "_37_", "name": "Кроссовки", "url": "https://shop.example/p/37",
+                                              "price": 4990, "currency": "₽", "oldprice": 5990,
+                                              "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5" } ] },
+                                            { "id": "38", "name": "Без цены", "url": "https://shop.example/p/38", "currency": "₽" } ] } },
+      "expect": { "result": { "products": [ { "id": "37", "groupId": "_37_", "name": "Кроссовки", "url": "https://shop.example/p/37",
+                                              "price": 4990, "currency": "₽", "oldPrice": 5990, "isNew": false,
+                                              "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5" } ] } ] } }
+    },
+    {
+      "name": "пустая коллекция",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "response": { "status": 200, "body": { "products": [] } },
+      "expect": { "result": { "products": [] } }
+    },
+    {
+      "name": "400 — неизвестная или неактивная коллекция",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "999" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Collection with id 999 was not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "ответ без products",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "response": { "status": 200, "body": {} },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "2xx со status error",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "collections", "method": "get", "args": { "collectionId": "12" } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}
