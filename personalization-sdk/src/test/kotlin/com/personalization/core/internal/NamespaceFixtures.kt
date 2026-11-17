@@ -292,6 +292,8 @@ internal fun JSONObject.argString(key: String): String? = if (isNull(key)) null 
 
 internal fun JSONObject.argInt(key: String): Int? = if (isNull(key)) null else getInt(key)
 
+internal fun JSONObject.argLong(key: String): Long? = if (isNull(key)) null else getLong(key)
+
 internal fun JSONObject.argDouble(key: String): Double? = if (isNull(key)) null else getDouble(key)
 
 internal fun JSONObject.argBoolean(key: String): Boolean? = if (isNull(key)) null else getBoolean(key)

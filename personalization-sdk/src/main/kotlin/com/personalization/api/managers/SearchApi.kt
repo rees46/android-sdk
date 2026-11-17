@@ -73,11 +73,14 @@ interface SearchApi {
      * agent's window opens. The products of the messages come with their current price and stock; a product
      * no longer available is left out.
      *
+     * [sessionId] is 64-bit, as [com.personalization.api.models.search.AgentSession.id].
+     *
      * Besides the errors of every method: `http(404)` for a session not found or of another customer,
      * `http(429)` over the limit (60 requests a minute from a device), `http(503)` when the agent is
-     * unavailable — show [blank] instead; `http(402)` when the shop has no search service.
+     * unavailable or the customer is in the control group of search — show [blank] instead; `http(402)`
+     * when the shop has no search service; `http(403)` for an inactive shop.
      */
-    suspend fun agentDialog(sessionId: Int? = null, locations: List<String>? = null): AgentDialogResponse
+    suspend fun agentDialog(sessionId: Long? = null, locations: List<String>? = null): AgentDialogResponse
 
     /**
      * Sends the customer's [message] to the search agent and returns its answer
@@ -86,9 +89,10 @@ interface SearchApi {
      * answer is read for up to 60 seconds. An empty [message], or one longer than 500 characters, is
      * `invalidArgument`. Besides the errors of every method: `http(400)` before the device has its `did`,
      * `http(404)`, `http(429)` over the limit (10 messages a minute from a device), `http(503)` when the
-     * agent did not answer — show [blank] instead; `http(402)`.
+     * agent did not answer or the customer is in the control group of search — show [blank] instead;
+     * `http(402)`; `http(403)`.
      */
-    suspend fun agent(message: String, sessionId: Int? = null, locations: List<String>? = null): AgentResponse
+    suspend fun agent(message: String, sessionId: Long? = null, locations: List<String>? = null): AgentResponse
 
     /** [blank] for Java and for code outside coroutines: [listener] gets its result once, on the main thread. */
     fun blank(listener: CompletionListener<SearchBlankResponse>)
@@ -106,8 +110,8 @@ interface SearchApi {
     fun full(query: String, request: SearchFullRequest, listener: CompletionListener<SearchFullResponse>)
 
     /** [agentDialog] for Java and for code outside coroutines: [listener] gets its result once, on the main thread. */
-    fun agentDialog(sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentDialogResponse>)
+    fun agentDialog(sessionId: Long?, locations: List<String>?, listener: CompletionListener<AgentDialogResponse>)
 
     /** [agent] for Java and for code outside coroutines: [listener] gets its result once, on the main thread. */
-    fun agent(message: String, sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentResponse>)
+    fun agent(message: String, sessionId: Long?, locations: List<String>?, listener: CompletionListener<AgentResponse>)
 }

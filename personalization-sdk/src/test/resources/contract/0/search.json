@@ -234,6 +234,16 @@
       "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "а есть подешевле?", "session_id": 12, "location": "msk"}}
     },
     {
+      "name": "agent: id сессии больше 2^31",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "ещё", "sessionId": 3000000012}},
+      "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "ещё", "session_id": 3000000012}}
+    },
+    {
+      "name": "agentDialog: id сессии больше 2^31 уходит строкой",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {"sessionId": 3000000012}},
+      "request": {"method": "GET", "path": "api/v3/storefront/search/agent", "query": {"session_id": "3000000012"}}
+    },
+    {
       "name": "agent: сообщение в 500 символов",
       "call": {"namespace": "search", "method": "agent", "args": {"message": "яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя"}},
       "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя"}}
@@ -273,6 +283,12 @@
       "expect": {"result": {"session": {"id": 13, "messages": []}, "message": {"id": 1, "role": "system", "content": "Агент обновлён", "products": []}}}
     },
     {
+      "name": "agent: id сессии и сообщения больше 2^31",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "ещё", "sessionId": 3000000012}},
+      "response": {"status": 200, "body": {"session": {"id": 3000000012, "title": "Флешка"}, "message": {"id": 3000000099, "role": "assistant", "content": "Вот ещё", "products": []}}},
+      "expect": {"result": {"session": {"id": 3000000012, "title": "Флешка", "messages": []}, "message": {"id": 3000000099, "role": "assistant", "content": "Вот ещё", "products": []}}}
+    },
+    {
       "name": "agent: ответ без message",
       "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
       "response": {"status": 200, "body": {"session": {"id": 13}}},
@@ -295,6 +311,18 @@
       "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
       "response": {"status": 402, "body": {"status": "fail", "message": "Search is not paid"}},
       "expect": {"error": {"type": "http", "code": 402}}
+    },
+    {
+      "name": "agent: 403 — магазин неактивен или неверный секрет",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 403, "body": {"status": "fail", "message": "Access denied"}},
+      "expect": {"error": {"type": "http", "code": 403}}
+    },
+    {
+      "name": "agentDialog: 403 — магазин неактивен",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "response": {"status": 403, "body": {"status": "fail", "message": "Access denied"}},
+      "expect": {"error": {"type": "http", "code": 403}}
     },
     {
       "name": "agentDialog: 404 — сессия не найдена или чужая",
@@ -324,6 +352,18 @@
       "name": "agent: 503 — агент не ответил",
       "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
       "response": {"status": 503, "body": {"error": "Agent is unavailable"}},
+      "expect": {"error": {"type": "http", "code": 503}}
+    },
+    {
+      "name": "agent: 503 — посетитель в контрольной группе поиска, показать blank",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 503, "body": {"error": "agent is unavailable"}},
+      "expect": {"error": {"type": "http", "code": 503}}
+    },
+    {
+      "name": "agentDialog: 503 — посетитель в контрольной группе поиска, показать blank",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {"sessionId": 3000000012}},
+      "response": {"status": 503, "body": {"error": "agent is unavailable"}},
       "expect": {"error": {"type": "http", "code": 503}}
     },
     {

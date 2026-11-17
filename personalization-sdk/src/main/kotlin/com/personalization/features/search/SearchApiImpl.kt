@@ -72,12 +72,12 @@ internal class SearchApiImpl(
         return calls.request(FULL, NetworkMethod.GET(SEARCH_PATH), params, read = ::readFull)
     }
 
-    override suspend fun agentDialog(sessionId: Int?, locations: List<String>?): AgentDialogResponse {
+    override suspend fun agentDialog(sessionId: Long?, locations: List<String>?): AgentDialogResponse {
         val params = JSONObject().putIfNotNull(SESSION_ID, sessionId).putList(LOCATION, locations)
         return calls.request(AGENT_DIALOG, NetworkMethod.GET(AGENT_PATH), params, read = AgentJson::dialog)
     }
 
-    override suspend fun agent(message: String, sessionId: Int?, locations: List<String>?): AgentResponse {
+    override suspend fun agent(message: String, sessionId: Long?, locations: List<String>?): AgentResponse {
         val params = calls.checked(AGENT) {
             requireNotBlank(message, "message")
             if (message.codePointCount(0, message.length) > MESSAGE_MAX_LENGTH) {
@@ -101,10 +101,10 @@ internal class SearchApiImpl(
     override fun full(query: String, request: SearchFullRequest, listener: CompletionListener<SearchFullResponse>) =
         calls.complete(listener) { full(query, request) }
 
-    override fun agentDialog(sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentDialogResponse>) =
+    override fun agentDialog(sessionId: Long?, locations: List<String>?, listener: CompletionListener<AgentDialogResponse>) =
         calls.complete(listener) { agentDialog(sessionId, locations) }
 
-    override fun agent(message: String, sessionId: Int?, locations: List<String>?, listener: CompletionListener<AgentResponse>) =
+    override fun agent(message: String, sessionId: Long?, locations: List<String>?, listener: CompletionListener<AgentResponse>) =
         calls.complete(listener) { agent(message, sessionId, locations) }
 
     internal companion object {

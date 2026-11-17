@@ -23,27 +23,28 @@ data class AgentResponse(
 )
 
 /**
- * A session of the dialog.
+ * A session of the dialog; [id] is 64-bit, as the server's ids of sessions, and is what `agentDialog` and
+ * `agent` take as `sessionId`.
  *
  * @property title the start of the customer's first message.
  * @property updatedAt when the last message came, ISO 8601.
  * @property messages empty in the list of sessions and in [AgentResponse].
  */
 data class AgentSession(
-    val id: Int,
+    val id: Long,
     val title: String? = null,
     val updatedAt: String? = null,
     val messages: List<AgentMessage> = emptyList(),
 )
 
 /**
- * A message of the dialog.
+ * A message of the dialog; [id] is 64-bit, as the server's ids of messages.
  *
  * @property createdAt ISO 8601.
  * @property products the products the agent offered; empty in the customer's messages.
  */
 data class AgentMessage(
-    val id: Int,
+    val id: Long,
     val role: AgentMessageRole? = null,
     val content: String? = null,
     val createdAt: String? = null,

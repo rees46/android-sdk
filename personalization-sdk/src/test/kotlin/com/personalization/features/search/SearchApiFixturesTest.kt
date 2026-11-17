@@ -24,6 +24,7 @@ import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.argBoolean
 import com.personalization.core.internal.argDouble
 import com.personalization.core.internal.argInt
+import com.personalization.core.internal.argLong
 import com.personalization.core.internal.argString
 import com.personalization.core.internal.argStringLists
 import com.personalization.core.internal.argStrings
@@ -67,8 +68,8 @@ class SearchApiFixturesTest {
                 excludedBrands = args.argStrings("excludedBrands"),
             )
             "full" -> search.full(args.getString("query"), args.optJSONObject("request")?.let(::fullRequest) ?: SearchFullRequest())
-            "agentDialog" -> search.agentDialog(args.argInt("sessionId"), args.argStrings("locations"))
-            "agent" -> search.agent(args.getString("message"), args.argInt("sessionId"), args.argStrings("locations"))
+            "agentDialog" -> search.agentDialog(args.argLong("sessionId"), args.argStrings("locations"))
+            "agent" -> search.agent(args.getString("message"), args.argLong("sessionId"), args.argStrings("locations"))
             else -> error("no search.$method")
         }
     }

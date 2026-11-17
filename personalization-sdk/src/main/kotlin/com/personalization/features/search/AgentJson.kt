@@ -8,7 +8,7 @@ import com.personalization.api.models.search.AgentResponse
 import com.personalization.api.models.search.AgentSession
 import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.doubleOrNull
-import com.personalization.core.internal.intOrNull
+import com.personalization.core.internal.longOrNull
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
@@ -40,7 +40,7 @@ internal object AgentJson {
     }
 
     private fun session(json: JSONObject): AgentSession? {
-        val id = json.intOrNull("id") ?: return null
+        val id = json.longOrNull("id") ?: return null
         return AgentSession(
             id = id,
             title = json.stringOrNull("title"),
@@ -50,7 +50,7 @@ internal object AgentJson {
     }
 
     private fun message(json: JSONObject): AgentMessage? {
-        val id = json.intOrNull("id") ?: return null
+        val id = json.longOrNull("id") ?: return null
         return AgentMessage(
             id = id,
             role = json.nonBlankStringOrNull("role")?.let(::AgentMessageRole),
