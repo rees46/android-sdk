@@ -847,6 +847,7 @@ open class SDK {
         )
 
         initNetworkUseCase(url = baseUrl)
+        networkRepository.appDomain = config.appDomain
         released = false
         val coreV2 = CoreSelection.resolve(coreV2Requested, shopId)
         if (coreV2) {

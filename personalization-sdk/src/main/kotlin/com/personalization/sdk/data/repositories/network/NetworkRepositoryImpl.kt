@@ -26,7 +26,14 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private lateinit var baseUrl: String
 
-    private val legacyCore = LegacyCore(userSettingsRepository) { baseUrl }
+    /**
+     * The host of API v3 (`Rees46Config.appDomain`) for the legacy core's paths under `api/v3/`;
+     * `app.rees46.ru` without one. The new core gets its own in [useCoreV2].
+     */
+    @Volatile
+    internal var appDomain: String? = null
+
+    private val legacyCore = LegacyCore(userSettingsRepository, appUrl = { CoreHttpClient.appUrlOf(appDomain) }) { baseUrl }
 
     /** The core the requests go to: the legacy one until [useCoreV2]. */
     @Volatile
