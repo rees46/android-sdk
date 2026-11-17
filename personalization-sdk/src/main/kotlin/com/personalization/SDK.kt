@@ -748,7 +748,7 @@ open class SDK {
             val lifecycle = ProcessAppLifecycle()
             lateinit var init: CoreInit
             // The core gets its /init and its queue before it takes a request: none goes without them.
-            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
+            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers, config.appDomain) { core ->
                 init = createCoreInit(core, connectivity, lifecycle, context, config, storage, autoSendPushToken, needReInitialization, pushOnly)
                 core.init = init
                 // The token's rules are the new core's from the start: one FCM gives before /init waits for it.
