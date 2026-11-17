@@ -261,7 +261,7 @@ class ReviewsApiFixturesTest {
 
     /** The value of a method by the contract's field names in a case's `result`. */
     private fun expected(method: String, result: Any): Any = when (method) {
-        "createNps", "createCsat", "createCes" -> PollReview((result as JSONObject).getInt("id"))
+        "createNps", "createCsat", "createCes" -> PollReview((result as JSONObject).getLong("id"))
         "getNpsCategories" -> (result as JSONArray).objects().map {
             NpsCategory(
                 it.getString("code"), it.getString("name"),
@@ -294,13 +294,13 @@ class ReviewsApiFixturesTest {
                     ratings = ratings.keys().asSequence().associate { it.toInt() to ratings.getInt(it) },
                 ),
                 reviews = response.getJSONArray("reviews").objects().map {
-                    ProductReview(it.getInt("id"), it.getInt("rating"), it.text("comment"), it.text("author"), it.getString("createdAt"))
+                    ProductReview(it.getLong("id"), it.getInt("rating"), it.text("comment"), it.text("author"), it.getString("createdAt"))
                 },
             )
         }
         "getClientReviews" -> (result as JSONArray).objects().map {
             ClientReview(
-                id = it.getInt("id"), itemId = it.getString("itemId"), orderId = it.getString("orderId"),
+                id = it.getLong("id"), itemId = it.getString("itemId"), orderId = it.getString("orderId"),
                 rating = it.getInt("rating"), comment = it.text("comment"),
                 state = it.text("state")?.let { state -> ReviewState.entries.single { value -> value.value == state } },
                 createdAt = it.getString("createdAt"),

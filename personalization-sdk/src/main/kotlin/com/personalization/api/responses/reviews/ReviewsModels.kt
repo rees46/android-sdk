@@ -6,8 +6,11 @@ package com.personalization.api.responses.reviews
  * left empty is null.
  */
 
-/** A rating saved by `createNps`, `createCsat` or `createCes`: [id] of the review the server saved, or updated when it was sent again the same day. */
-data class PollReview(val id: Int)
+/**
+ * A rating saved by `createNps`, `createCsat` or `createCes`: [id] of the review the server saved, or of the
+ * earlier one it updated. A 64-bit id: the server's ids of reviews are `bigint`.
+ */
+data class PollReview(val id: Long)
 
 /**
  * An NPS category — what the customer rates (`checkout`, `delivery`) — with the question to ask after the
@@ -80,9 +83,9 @@ data class ProductRatingSummary(
     val ratings: Map<Int, Int> = emptyMap(),
 )
 
-/** One published review of a product. */
+/** One published review of a product; [id] is 64-bit, as the server's ids of reviews. */
 data class ProductReview(
-    val id: Int,
+    val id: Long,
     /** 1 to 5. */
     val rating: Int,
     /** Null when the customer gave only a rating. */
@@ -93,9 +96,9 @@ data class ProductReview(
     val createdAt: String,
 )
 
-/** A review the device's customer wrote of a product of an order, in any state of moderation. */
+/** A review the device's customer wrote of a product of an order, in any state of moderation; [id] is 64-bit. */
 data class ClientReview(
-    val id: Int,
+    val id: Long,
     val itemId: String,
     val orderId: String,
     /** 1 to 5. */

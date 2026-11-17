@@ -50,8 +50,11 @@ interface ReviewsApi {
      * ([getNpsCategories]) for the rating. An empty or blank [orderId], [comment] or [label] is not sent.
      *
      * Sent again the same day with the same channel, category, order and label, it does not make a new
-     * review: the server updates the rating and the comment of the earlier one — a repeat without a comment
-     * erases the earlier comment — and [PollReview.id] is that review's.
+     * review: the server updates the earlier one, and [PollReview.id] is that review's. A repeat with the
+     * same rating and no comment keeps the earlier comment; a changed rating without a comment clears it.
+     * A rating with a comment — the answer to the question after the rating — goes to the latest review of
+     * the last 90 days with the same channel, category, order, label and rating and no comment, if there is
+     * one, rather than making another.
      *
      * @param rate 0 to 10.
      * @param channel the code of the channel in the shop's account (`android_app`), not empty.

@@ -18,6 +18,7 @@ import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.doubleOrNull
 import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.invalidArgument
+import com.personalization.core.internal.longOrNull
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
@@ -151,7 +152,7 @@ internal class ReviewsApiImpl(private val calls: NamespaceCalls) : ReviewsApi {
 
         /** The review a rating saved or updated: `payload.review.id`; null (`decoding`) without it. */
         fun readPollReview(body: Any?): PollReview? {
-            val id = (body as? JSONObject)?.objectOrNull("payload")?.objectOrNull("review")?.intOrNull("id") ?: return null
+            val id = (body as? JSONObject)?.objectOrNull("payload")?.objectOrNull("review")?.longOrNull("id") ?: return null
             return PollReview(id)
         }
 
@@ -252,7 +253,7 @@ internal class ReviewsApiImpl(private val calls: NamespaceCalls) : ReviewsApi {
 
         /** A review, left out without its id, rating or time. */
         private fun readProductReview(json: JSONObject): ProductReview? {
-            val id = json.intOrNull("id") ?: return null
+            val id = json.longOrNull("id") ?: return null
             val rating = json.intOrNull("rating") ?: return null
             val createdAt = json.nonBlankStringOrNull("created_at") ?: return null
             return ProductReview(
@@ -266,7 +267,7 @@ internal class ReviewsApiImpl(private val calls: NamespaceCalls) : ReviewsApi {
 
         /** A review of the customer, left out without its id, product, order, rating or time; a state this release does not know is null. */
         fun readClientReview(json: JSONObject): ClientReview? {
-            val id = json.intOrNull("id") ?: return null
+            val id = json.longOrNull("id") ?: return null
             val itemId = json.nonBlankStringOrNull("product") ?: return null
             val orderId = json.nonBlankStringOrNull("order") ?: return null
             val rating = json.intOrNull("rating") ?: return null

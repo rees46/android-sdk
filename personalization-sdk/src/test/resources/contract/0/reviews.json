@@ -169,6 +169,13 @@
       "expect": { "result": { "id": 512 } }
     },
     {
+      "name": "createNps — id больше 2^31",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 10, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "review": { "id": 3000000512, "rate": 10, "comment": null } } } },
+      "expect": { "result": { "id": 3000000512 } }
+    },
+    {
       "name": "createCsat — id строкой",
       "call": { "namespace": "reviews", "method": "createCsat",
                 "args": { "rate": 5, "channel": "ios_app", "campaign": "support" } },
@@ -310,9 +317,9 @@
       "expect": { "error": { "type": "decoding" } }
     },
     {
-      "name": "getCesCampaigns — 403, нет did",
+      "name": "getCesCampaigns — 403, проект неактивен",
       "call": { "namespace": "reviews", "method": "getCesCampaigns", "args": {} },
-      "response": { "status": 403, "body": { "status": "fail", "message": "Forbidden" } },
+      "response": { "status": 403, "body": { "status": "fail", "message": "Access denied" } },
       "expect": { "error": { "type": "http", "code": 403 } }
     },
     {
@@ -335,6 +342,17 @@
           { "id": 11, "rating": 5, "comment": "Отлично", "author": "Анна", "createdAt": "2026-11-10T12:00:00+03:00" },
           { "id": 10, "rating": 3, "createdAt": "2026-11-09T08:30:00+03:00" }
         ] } }
+    },
+    {
+      "name": "getProductReviews — id отзыва больше 2^31",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "summary": { "count": 1, "average_rating": 5.0, "ratings": { "5": 1 } },
+                                           "reviews": [ { "id": 3000000011, "rating": 5, "created_at": "2026-11-10T12:00:00+03:00" } ] } } },
+      "expect": { "result": {
+        "summary": { "count": 1, "averageRating": 5, "ratings": { "5": 1 } },
+        "reviews": [ { "id": 3000000011, "rating": 5, "createdAt": "2026-11-10T12:00:00+03:00" } ] } }
     },
     {
       "name": "getProductReviews — нет отзывов",
@@ -376,6 +394,18 @@
         { "id": 22, "itemId": "38", "orderId": "A-1001", "rating": 2,
           "state": "moderation", "createdAt": "2026-11-10T12:05:00+03:00" },
         { "id": 23, "itemId": "39", "orderId": "A-1001", "rating": 1, "createdAt": "2026-11-10T12:10:00+03:00" }
+      ] }
+    },
+    {
+      "name": "getClientReviews — id отзыва больше 2^31",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "reviews": [
+                                { "id": 3000000021, "product": "37", "order": "A-1001", "rating": 4,
+                                  "state": "published", "created_at": "2026-11-10T12:00:00+03:00" } ] } } },
+      "expect": { "result": [
+        { "id": 3000000021, "itemId": "37", "orderId": "A-1001", "rating": 4, "state": "published", "createdAt": "2026-11-10T12:00:00+03:00" }
       ] }
     },
     {
