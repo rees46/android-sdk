@@ -13,6 +13,8 @@ import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.argBoolean
 import com.personalization.core.internal.argStrings
 import com.personalization.core.internal.argString
+import com.personalization.core.internal.isBirthday
+import com.personalization.core.internal.isCalendarDate
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.mockwebserver.MockResponse
@@ -86,7 +88,7 @@ class LoyaltyApiFixturesTest {
 
     @Test
     fun `wrong arguments are invalidArgument without a request`() {
-        assertEquals(5, fixtures.checkErrors(FILE, invoke, NAMESPACE))
+        assertEquals(7, fixtures.checkErrors(FILE, invoke, NAMESPACE))
     }
 
     @Test
@@ -123,14 +125,19 @@ class LoyaltyApiFixturesTest {
     fun `a promotion without a whole id is left out`() {
         val body = JSONObject("""{"status":"success","payload":{"promotions":[{"name":"A"},{"id":"x"},{"id":2.0,"name":"B"}]}}""")
 
-        assertEquals(listOf(2), LoyaltyApiImpl.readPromotions(body)?.map { it.id })
+        assertEquals(listOf(2L), LoyaltyApiImpl.readPromotions(body)?.map { it.id })
     }
 
     @Test
-    fun `a birthday is a real date of the calendar as YYYY-MM-DD`() {
-        listOf("1990-05-17", "2000-02-29").forEach { assertTrue(it, LoyaltyApiImpl.isDate(it)) }
-        listOf("1990-5-17", "17.05.1990", "1990-02-30", "2001-02-29", "1990-13-01", "1990-05-17T00:00", " 1990-05-17", "")
-            .forEach { assertFalse(it, LoyaltyApiImpl.isDate(it)) }
+    fun `a birthday is an existing date of the calendar as YYYY-MM-DD`() {
+        listOf("1990-05-17", "2000-02-29", "0999-12-31", "3000-01-01").forEach { assertTrue(it, isCalendarDate(it)) }
+        listOf(
+            "1990-5-17", "17.05.1990", "1990-02-30", "2001-02-29", "1900-02-29", "1990-13-01", "1990-00-10", "1990-05-00",
+            "1990-05-17T00:00", " 1990-05-17", "", "１９９０-05-17",
+        ).forEach { assertFalse(it, isCalendarDate(it)) }
+        // profile.set takes the years 1000 to 2999 only.
+        listOf("1000-01-01", "2999-12-31").forEach { assertTrue(it, isBirthday(it)) }
+        listOf("0999-12-31", "3000-01-01", "2001-02-29").forEach { assertFalse(it, isBirthday(it)) }
     }
 
     private fun promotion(promotion: LoyaltyPromotion): Map<String, Any?> = mapOf(

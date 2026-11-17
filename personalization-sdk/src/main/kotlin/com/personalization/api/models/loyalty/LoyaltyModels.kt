@@ -28,7 +28,8 @@ data class LoyaltyLevel(
 
 /** An active promotion that suits the customer and their cart (`loyalty.getPromotions`). */
 data class LoyaltyPromotion(
-    val id: Int,
+    /** A 64-bit id: the server's ids of promotions are `bigint`. */
+    val id: Long,
     val name: String,
     val description: String?,
     /** `YYYY-MM-DD`. */

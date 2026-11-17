@@ -262,7 +262,7 @@ class StoriesPredictLoyaltySlidersTest {
 
         val outcome = outcome { sdk.loyalty.join("79991234567", birthday = "17.05.1990") }
 
-        assertEquals(SdkResult.Failure(SdkError.InvalidArgument("birthday is not a date as YYYY-MM-DD")), outcome)
+        assertEquals(SdkResult.Failure(SdkError.InvalidArgument("birthday must be an existing date YYYY-MM-DD")), outcome)
         val line = logged.single { it.code == LogCodes.INVALID_ARGUMENT }
         assertEquals("loyalty.join", line.context["call"])
         assertFalse(line.message.contains("17.05.1990") || line.message.contains("79991234567"))

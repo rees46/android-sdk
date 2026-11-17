@@ -12,10 +12,11 @@ import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.arrayOrNull
 import com.personalization.core.internal.booleanOrNull
-import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.invalidArgument
+import com.personalization.core.internal.isCalendarDate
+import com.personalization.core.internal.longOrNull
 import com.personalization.core.internal.objectOrNull
 import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.stringOrNull
@@ -23,9 +24,6 @@ import com.personalization.core.internal.valueOfWire
 import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.ParsePosition
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 /**
  * [LoyaltyApi] over the namespaces' path ([NamespaceCalls]). Whether `members/join` and `members/status`
@@ -44,7 +42,8 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
     ): LoyaltyMember {
         val params = calls.checked(JOIN) {
             if (phone.isBlank()) invalidArgument("phone is empty")
-            if (birthday != null && !isDate(birthday)) invalidArgument("birthday is not a date as YYYY-MM-DD")
+            // A birthday the server cannot read erases the one it has: only a real date goes.
+            if (birthday != null && !isCalendarDate(birthday)) invalidArgument("birthday must be an existing date YYYY-MM-DD")
             JSONObject().put(PHONE, phone)
                 .putIfNotNull(FIRST_NAME, firstName)
                 .putIfNotNull(LAST_NAME, lastName)
@@ -121,16 +120,7 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
         private const val CURRENT_TIME = "current_time"
         private const val PAYLOAD = "payload"
 
-        private val DATE = Regex("""\d{4}-\d{2}-\d{2}""")
         private val TIME = Regex("""([01]\d|2[0-3]):[0-5]\d""")
-
-        /** A real date of the calendar as `YYYY-MM-DD`: `2026-02-30` is not one. */
-        fun isDate(value: String): Boolean {
-            if (!DATE.matches(value)) return false
-            val format = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
-            val position = ParsePosition(0)
-            return format.parse(value, position) != null && position.index == value.length
-        }
 
         /** `payload.identifier`; null (`decoding`) without one. */
         fun readMember(body: Any?): LoyaltyMember? {
@@ -157,7 +147,7 @@ internal class LoyaltyApiImpl(private val calls: NamespaceCalls) : LoyaltyApi {
         }
 
         private fun readPromotion(promotion: JSONObject): LoyaltyPromotion? {
-            val id = promotion.intOrNull("id") ?: return null
+            val id = promotion.longOrNull("id") ?: return null
             return LoyaltyPromotion(
                 id = id,
                 name = promotion.stringOrNull("name").orEmpty(),

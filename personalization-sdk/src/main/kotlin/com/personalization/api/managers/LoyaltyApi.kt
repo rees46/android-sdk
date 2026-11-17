@@ -32,7 +32,9 @@ interface LoyaltyApi {
      * creates the customer by it. A phone already registered is a success with the same member, and the
      * server updates the name, gender and birthday.
      *
-     * [SdkError.InvalidArgument] for an empty [phone], or a [birthday] that is not a date as `YYYY-MM-DD`.
+     * [SdkError.InvalidArgument] for an empty [phone], or a [birthday] that is not an existing date as
+     * `YYYY-MM-DD`: a birthday the server cannot read erases the one it has.
+     * [gender] goes as `m` or `f`, the only values the server takes.
      */
     suspend fun join(
         phone: String,
