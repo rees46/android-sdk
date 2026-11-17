@@ -21,7 +21,10 @@ package com.personalization.core
  *   app's `PushCallbacks`;
  * - `BridgeErrors` — the whole [SdkError] behind an old `onError(code, message)`, and listeners that
  *   report [SdkResult];
- * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted.
+ * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted;
+ * - the namespaces of the new core, `SDK.cart` the first: each method is a suspending function with a
+ *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
+ *   legacy core, where they do not run.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

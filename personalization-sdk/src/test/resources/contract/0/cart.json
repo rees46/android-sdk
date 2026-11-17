@@ -1,0 +1,74 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "request": { "method": "GET", "path": "products/cart", "query": {} }
+    },
+    {
+      "name": "корзина в форме data.items",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "data": { "items": [ { "uniqid": "37", "quantity": 2 }, { "uniqid": "38", "quantity": 1 } ] } } },
+      "expect": { "result": [ { "id": "37", "quantity": 2 }, { "id": "38", "quantity": 1 } ] }
+    },
+    {
+      "name": "корзина в форме payload.cart_items из документации",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success", "payload": { "cart_items": [ { "uniqid": "37", "quantity": 2 } ] } } },
+      "expect": { "result": [ { "id": "37", "quantity": 2 } ] }
+    },
+    {
+      "name": "пустая корзина",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "data": { "items": [] } } },
+      "expect": { "result": [] }
+    },
+    {
+      "name": "числа строкой, позиция без uniqid пропускается, без quantity — 1, незнакомые поля не мешают",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "data": { "items": [ { "uniqid": 37, "quantity": "3", "price": 999.5 },
+                                                   { "quantity": 1 },
+                                                   { "uniqid": "", "quantity": 1 },
+                                                   { "uniqid": "38" },
+                                                   { "uniqid": "39", "quantity": null } ],
+                                        "total": 4 } } },
+      "expect": { "result": [ { "id": "37", "quantity": 3 }, { "id": "38", "quantity": 1 }, { "id": "39", "quantity": 1 } ] }
+    },
+    {
+      "name": "404 — неизвестный did",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 404, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "403 — отказ услуги или магазина, состояние SDK не меняется",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 403, "body": null },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "2xx со status error",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "ответ ни в одной из двух форм",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "items": [ { "uniqid": "37", "quantity": 1 } ] } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "cart", "method": "get", "args": {} },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
+import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
@@ -51,6 +52,7 @@ import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.InitHooks
 import com.personalization.core.internal.InitSetup
 import com.personalization.core.internal.InstanceState
+import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.EventQueue
 import com.personalization.core.internal.ProcessAppLifecycle
 import com.personalization.core.internal.PushHub
@@ -62,6 +64,7 @@ import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.cart.CartApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -112,10 +115,10 @@ private const val GAID_KEY = "google_advertising_id"
 /**
  * One shop's instance of the SDK: made by [Rees46.initialize], found with [Rees46.instance].
  *
- * The class stays `open` for apps that subclassed it in earlier releases. The members this release
- * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush] and
- * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
- * that declares one of them needs to rename its own.
+ * The class stays `open` for apps that subclassed it in earlier releases. The members later releases
+ * added — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush], [deleteUserCredentials]
+ * and the namespaces, such as [cart] — may clash with members of the same name in such a subclass: a
+ * subclass that declares one of them needs to rename its own.
  */
 @OptIn(InternalPersonalizationV3Api::class, BridgeApi::class)
 open class SDK {
@@ -205,6 +208,18 @@ open class SDK {
     )
     @Inject
     lateinit var trackEventManager: TrackEventManager
+
+    /** The path of the namespaces' methods: requests with a result on the new core. */
+    private val namespaceCalls = NamespaceCalls(core = { core }, dispatchers = { dispatchers }, shopId = { logShopId })
+
+    /**
+     * The customer's cart on the server: `sdk.cart.get()`. For the Flutter and React Native bridges: it runs
+     * on the new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [CartApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val cart: CartApi = CartApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
