@@ -17,14 +17,15 @@ import com.personalization.core.SdkException
 interface PredictApi {
 
     /**
-     * How likely the customer is to buy (`GET /predict/probability-to-purchase`), from the products they
-     * viewed, put in the cart or in favorites over the last days. It waits for the instance's first `/init`,
-     * which gives the device its `did`.
+     * How likely the customer is to buy (`GET /api/v3/cdp/users/probability-to-purchase` on
+     * `Rees46Config.appDomain`), from the products they viewed, put in the cart or in favorites over the last
+     * days. It waits for the instance's first `/init`, which gives the device its `did`.
      *
      * @throws SdkException with [SdkError.NotInitialized] (the legacy core, an instance not initialized or
-     * released), [SdkError.ShopBlocked], [SdkError.Network], [SdkError.Timeout], [SdkError.Http] (`400` for
-     * an unknown shop, `402` for one that does not pay for the service), [SdkError.Decoding] (an answer
-     * without a numeric `probability`) or [SdkError.Cancelled] (`release()`).
+     * released), [SdkError.ShopBlocked], [SdkError.Network], [SdkError.Timeout], [SdkError.Http] (`400`
+     * without a `did`, `402` for a shop that does not pay or has no `cdp` service, `403` for an inactive or
+     * restricted one, `404` for an unknown one), [SdkError.Decoding] (an answer without a numeric
+     * `probability`) or [SdkError.Cancelled] (`release()`).
      */
     suspend fun getProbabilityToPurchase(): PurchaseProbability
 

@@ -125,6 +125,8 @@ class StoriesPredictLoyaltySlidersTest {
     private fun config() = Rees46Config(
         shopId = SHOP,
         apiDomain = server.url("/").toString().trimEnd('/'),
+        // `predict` asks API v3: the same server stands for the host of the shop's account.
+        appDomain = server.url("/").toString().trimEnd('/'),
         autoSendPushToken = false,
         logLevel = LogLevel.DEBUG,
     )
@@ -164,7 +166,7 @@ class StoriesPredictLoyaltySlidersTest {
 
     private val methods = listOf(
         Method("stories.get", "stories/main", { it.stories.get("main") }, { sdk, l -> sdk.stories.get("main", l.of()) }),
-        Method("predict.getProbabilityToPurchase", "predict/probability-to-purchase", { it.predict.getProbabilityToPurchase() },
+        Method("predict.getProbabilityToPurchase", "api/v3/cdp/users/probability-to-purchase", { it.predict.getProbabilityToPurchase() },
             { sdk, l -> sdk.predict.getProbabilityToPurchase(l.of()) }),
         Method("loyalty.join", "loyalty/members/join", { it.loyalty.join("79991234567") },
             { sdk, l -> sdk.loyalty.join("79991234567", null, null, null, null, l.of()) }),
@@ -281,7 +283,7 @@ class StoriesPredictLoyaltySlidersTest {
         val ANSWERS = mapOf(
             "init" to """{"did":"D1","seance":"S1"}""",
             "stories/main" to """{"id":7,"stories":[]}""",
-            "predict/probability-to-purchase" to """{"probability":0.42,"client_id":9}""",
+            "api/v3/cdp/users/probability-to-purchase" to """{"status":"success","payload":{"probability":0.42,"client_id":9}}""",
             "loyalty/members/join" to """{"status":"success","payload":{"identifier":"79991234567"}}""",
             "loyalty/members/status" to """{"status":"success","payload":{"member":true,"level":{"code":"gold","name":"Gold","expiration_date":null}}}""",
             "loyalty/promos/for-client" to """{"status":"success","payload":{"promotions":[{"id":1,"name":"A","reward_type":"discount"}]}}""",
