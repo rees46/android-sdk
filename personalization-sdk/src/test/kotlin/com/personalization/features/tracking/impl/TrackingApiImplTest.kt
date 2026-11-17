@@ -297,6 +297,15 @@ class TrackingApiImplTest {
         assertEquals(42, capturedBody(path = StoriesManager.TRACK_STORIES_METHOD).getInt("story_id"))
     }
 
+    /** The server's story ids run to 4294967295; one past `Int.MAX_VALUE` is still a number on the wire. */
+    @Test
+    fun storyId_pastIntMax_goesAsANumber() {
+        tracking.storyClick(storyId = "3000000000", slideId = "3", code = "main_stories")
+
+        val storyId = capturedBody(path = StoriesManager.TRACK_STORIES_METHOD).get("story_id")
+        assertEquals(3_000_000_000L, (storyId as Number).toLong())
+    }
+
     // endregion
 
     // region attribution

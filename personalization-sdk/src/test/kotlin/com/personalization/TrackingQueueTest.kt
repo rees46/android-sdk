@@ -237,6 +237,19 @@ class TrackingQueueTest {
     }
 
     @Test
+    fun `a story id past Int's range goes as a number on both cores`() {
+        listOf(true, false).forEach { coreV2 ->
+            if (!coreV2) tearDown().also { setUp() }
+            val sdk = sdk(coreV2)
+
+            sdk.tracking.storyView("3000000000", "34", "main_stories")
+
+            val storyId = next("track/stories").get("story_id")
+            assertEquals("core v2: $coreV2", 3_000_000_000L, (storyId as? Number)?.toLong())
+        }
+    }
+
+    @Test
     fun `the Java form of flush ends once on the main thread`() {
         val main = HeldMain()
         val sdk = SDK().apply { dispatchers = CoreDispatchers(main = { main }) }

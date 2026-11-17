@@ -166,11 +166,13 @@ class StoriesManager @Inject constructor(
 
     /**
      * A numeric id keeps going on the wire as a number, the way `trackStory(storyId: Int)` always sent
-     * it. Converted only when the number renders back to the same text, so ids like `"0123"` — which
-     * `toInt()` would turn into `123` — stay strings instead of being silently rewritten.
+     * it — one past `Int.MAX_VALUE` too, since the server's story ids run to 4294967295 (contract
+     * `tracking`: `story_id` a number). Converted only when the number renders back to the same text, so
+     * ids like `"0123"` — which `toLong()` would turn into `123` — stay strings instead of being silently
+     * rewritten.
      */
     private fun String.asWireStoryId(): Any =
-        toIntOrNull()?.takeIf { it.toString() == this } ?: this
+        toLongOrNull()?.takeIf { it.toString() == this } ?: this
 
     private fun getStories(json: JSONObject): List<Story> {
         val stories = ArrayList<Story>()
