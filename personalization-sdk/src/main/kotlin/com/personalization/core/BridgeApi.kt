@@ -25,6 +25,7 @@ package com.personalization.core
  * - the namespaces of the new core, `SDK.cart` the first: each method is a suspending function with a
  *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
  *   legacy core, where they do not run.
+ * - `SDK.products`, `SDK.collections`, `SDK.recommendations` and `SDK.search` — the catalog's namespaces.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.
