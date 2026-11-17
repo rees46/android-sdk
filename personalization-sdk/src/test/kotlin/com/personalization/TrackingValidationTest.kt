@@ -8,6 +8,8 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseItemRequest
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingItem
+import com.personalization.api.models.tracking.TrackingSource
+import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.core.BridgeApi
 import com.personalization.core.BridgeErrors
 import com.personalization.core.SdkError
@@ -215,6 +217,54 @@ class TrackingValidationTest {
         val story = sent.single { it.first == "track/stories" }.second
         assertEquals("", story.getString("slide_id"))
         assertFalse(sent.any { it.first == "push" && it.second.optString("event") == "view" })
+    }
+
+    @Test
+    fun `on both cores an event's transactional or webPushDigest source is invalidArgument and sends nothing, and setSource still takes them`() {
+        listOf(true, false).forEach { coreV2 ->
+            if (!coreV2) tearDown().also { setUp() }
+            val sdk = sdk(coreV2)
+            val tracking = sdk.tracking
+            val order = PurchaseTrackingRequest(orderId = "A-1", orderPrice = 10.0, items = listOf(PurchaseItemRequest("37", 1, 10.0)))
+            val refused = listOf(TrackingSourceType.TRANSACTIONAL, TrackingSourceType.WEB_PUSH_DIGEST).flatMap { type ->
+                val source = TrackingSource(type, "c-1")
+                val message = "source ${type.value} is not accepted for an event"
+                listOf<Triple<String, Int, (OnApiCallbackListener) -> Unit>>(
+                    Triple(message, -1) { listener -> tracking.productView("37", source, listener) },
+                    Triple(message, -1) { listener -> tracking.addToCart(TrackingItem("37"), source, listener) },
+                    Triple(message, -1) { listener -> tracking.addToFavorites("37", source, listener) },
+                    // The code of purchase's other argument errors.
+                    Triple(message, -2) { listener -> tracking.purchase(order, source, listener) },
+                )
+            }
+
+            refused.forEachIndexed { index, (message, code, call) ->
+                val name = "core v2 $coreV2, call $index"
+                val heard = Heard(Thread.currentThread())
+                call(heard)
+
+                val refusal = heard.refusal(name)
+                assertEquals(name, SdkError.InvalidArgument(message), refusal.error)
+                assertEquals(name, code, refusal.code)
+                // Off the caller's thread on the new core, as its other refusals; the legacy core answers at once.
+                assertEquals(name, coreV2, refusal.offCaller)
+            }
+            assertEquals("core v2 $coreV2", emptyList<Pair<String, JSONObject>>(), events(sdk).filter { it.first == "push" })
+
+            // The same source kept for 48 hours goes as before, in its own field and not as recommended_by;
+            // an accepted source of the event goes as recommended_by.
+            tracking.setSource(TrackingSource(TrackingSourceType.TRANSACTIONAL, "t-1"))
+            tracking.productView("37", TrackingSource(TrackingSourceType.DYNAMIC, "block-1"))
+            events(sdk)
+            // The legacy core hands the request to its threads a moment later.
+            val deadline = System.currentTimeMillis() + 5_000
+            while (requests.none { it.first == "push" } && System.currentTimeMillis() < deadline) Thread.sleep(20)
+            val view = requests.singleOrNull { it.first == "push" }?.second ?: throw AssertionError("core v2 $coreV2: no single push in $requests")
+            assertEquals("core v2 $coreV2", "transactional", view.getJSONObject("source").getString("from"))
+            assertEquals("core v2 $coreV2", "t-1", view.getJSONObject("source").getString("code"))
+            assertEquals("core v2 $coreV2", "dynamic", view.getString("recommended_by"))
+            assertEquals("core v2 $coreV2", "block-1", view.getString("recommended_code"))
+        }
     }
 
     /** Calls the `tracking` method of a fixture with its contract arguments. */

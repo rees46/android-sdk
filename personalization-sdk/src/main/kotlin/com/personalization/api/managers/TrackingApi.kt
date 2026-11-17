@@ -4,6 +4,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
+import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.models.sliders.SliderBanner
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
@@ -20,10 +21,21 @@ import com.personalization.core.SdkError
  * dropped the event. An event the queue refuses at once (an empty id, a released instance, a refused
  * shop) tells the listener at once. Whatever the listener holds stays alive that long: keep it free of
  * screens and other short-lived objects.
+ *
+ * An event's own `source` takes every [TrackingSourceType] but [TrackingSourceType.TRANSACTIONAL] and
+ * [TrackingSourceType.WEB_PUSH_DIGEST]: the server does not take them in `recommended_by` and would reject
+ * the whole event, so on both cores such a call sends nothing and the listener hears `onError` behind
+ * [SdkError.InvalidArgument] — off the caller's thread on the new core. [setSource] still takes them.
+ * Earlier releases sent such an event, and the server refused it.
  */
 interface TrackingApi {
 
-    /** Product page opened (`view`). */
+    /**
+     * Product page opened (`view`).
+     *
+     * A [source] of [TrackingSourceType.TRANSACTIONAL] or [TrackingSourceType.WEB_PUSH_DIGEST] is
+     * [SdkError.InvalidArgument] and sends nothing (see [TrackingApi]).
+     */
     fun productView(
         itemId: String,
         source: TrackingSource? = null,
@@ -48,7 +60,7 @@ interface TrackingApi {
         listener: OnApiCallbackListener? = null,
     )
 
-    /** One product added to the cart (`cart`). */
+    /** One product added to the cart (`cart`). A [source] is checked as in [productView]. */
     fun addToCart(
         item: TrackingItem,
         source: TrackingSource? = null,
@@ -72,7 +84,7 @@ interface TrackingApi {
         listener: OnApiCallbackListener? = null,
     )
 
-    /** One product added to favorites (`wish`). */
+    /** One product added to favorites (`wish`). A [source] is checked as in [productView]. */
     fun addToFavorites(
         itemId: String,
         source: TrackingSource? = null,
@@ -115,7 +127,8 @@ interface TrackingApi {
     /**
      * Completed order (`purchase`).
      *
-     * [source] attributes the order; an attribution already set on [request] wins over it.
+     * [source] attributes the order; an attribution already set on [request] wins over it. A [source] is
+     * checked as in [productView], with the code of purchase's other argument errors, `-2`.
      */
     fun purchase(
         request: PurchaseTrackingRequest,
@@ -153,7 +166,8 @@ interface TrackingApi {
      * Use it when the source outlives a single call — a user entering the catalog from a recommender
      * block. It is stored per SDK instance and survives a cold start, and it travels in its own
      * `source` field rather than the `recommended_by` a per-call [source] uses. For a single event
-     * prefer that per-call parameter.
+     * prefer that per-call parameter. Every [TrackingSourceType] is taken here, the ones an event's own
+     * source refuses among them.
      *
      * Same behaviour and same wire shape as iOS.
      */

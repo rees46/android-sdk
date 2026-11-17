@@ -9,16 +9,19 @@ import com.personalization.api.managers.TrackingApi
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingItem
 import com.personalization.api.models.tracking.TrackingSource
+import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.models.tracking.putSource
 import com.personalization.api.params.ProductItemParams
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.SdkError
+import com.personalization.core.internal.ArgumentRefusals
 import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.invalidArgument
+import com.personalization.features.trackEvent.impl.PurchaseTrackingJsonBuilder
 import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.sdk.domain.usecases.trackingSource.SetTrackingSourceUseCase
@@ -68,6 +71,21 @@ internal class TrackingApiImpl @Inject constructor(
     private val delivery = LegacyDelivery { level, code, message, throwable -> SdkLogs.log(level, code, message, throwable = throwable) }
 
     /**
+     * Refuses an event's [source] the server does not take in `recommended_by` — [TrackingSourceType.TRANSACTIONAL]
+     * and [TrackingSourceType.WEB_PUSH_DIGEST]: it would reject the whole event (contract `tracking`). On both
+     * cores the listener hears `onError([code])` behind `invalidArgument` — off the caller's thread on the new
+     * core, as its other refusals — and nothing is sent. True when refused.
+     */
+    private fun refusedSource(source: TrackingSource?, listener: OnApiCallbackListener?, code: Int = LegacyErrors.NO_ANSWER): Boolean {
+        val type = source?.type ?: return false
+        if (type != TrackingSourceType.TRANSACTIONAL && type != TrackingSourceType.WEB_PUSH_DIGEST) return false
+        val message = "source ${type.value} is not accepted for an event"
+        SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "A tracking call was refused: $message", null, mapOf("reason" to "unsupported_source"))
+        ArgumentRefusals.refuse(listener, code, message, offThread = checksArguments())
+        return true
+    }
+
+    /**
      * On the new core, a slide `track/stories` does not take — a story id that is not a positive whole
      * number (a product campaign's virtual slide, `{story_id}_{index}`), or a slide id that is not one in
      * digits — is not sent and is no error (contract `tracking`): the listener hears an empty success.
@@ -90,7 +108,7 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
-        if (refused("itemId", itemId, listener)) return
+        if (refused("itemId", itemId, listener) || refusedSource(source, listener)) return
         trackEventManager.track(
             event = TrackEvent.VIEW,
             params = Params().put(ProductItemParams(itemId)).withSource(source),
@@ -125,7 +143,7 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
-        if (refused("itemId", item.id, listener)) return
+        if (refused("itemId", item.id, listener) || refusedSource(source, listener)) return
         trackEventManager.track(
             event = TrackEvent.CART,
             params = Params().put(item.toProductParams()).withSource(source),
@@ -155,7 +173,7 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
-        if (refused("itemId", itemId, listener)) return
+        if (refused("itemId", itemId, listener) || refusedSource(source, listener)) return
         trackEventManager.track(
             event = TrackEvent.WISH,
             params = Params().put(ProductItemParams(itemId)).withSource(source),
@@ -219,6 +237,8 @@ internal class TrackingApiImpl @Inject constructor(
         source: TrackingSource?,
         listener: OnApiCallbackListener?,
     ) {
+        // The code purchase's other argument errors have.
+        if (refusedSource(source, listener, PurchaseTrackingJsonBuilder.CLIENT_VALIDATION_ERROR_CODE)) return
         // An attribution already set on the request is the more specific one — it was built with the
         // order — so [source] only fills the gap when the caller left it empty. This one is per-call:
         // it colours this order and nothing else, which is why it does not go through setSource.
