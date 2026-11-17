@@ -14,7 +14,8 @@ import com.personalization.api.responses.search.PriceRange
 
 /*
  * What `sdk.search` asks for and answers with. In each answer the products are never null (empty when the
- * search found none); any other field the answer leaves out is null.
+ * search found none; an instant or a full search's answer without them is `decoding`); any other field the
+ * answer leaves out is null.
  */
 
 /**

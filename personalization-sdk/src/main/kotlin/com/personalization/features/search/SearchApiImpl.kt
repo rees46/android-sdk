@@ -132,6 +132,7 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
             )
         }
 
+        /** An instant search's results; an answer without `products` is null (`decoding`). */
         fun readInstant(body: Any?): SearchInstantResponse? {
             if (body !is JSONObject) return null
             return SearchInstantResponse(
@@ -139,7 +140,7 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
                 searchQueryOriginal = body.stringOrNull("search_query_original"),
                 clarification = body.booleanOrNull("clarification"),
                 productsTotal = body.intOrNull("products_total"),
-                products = CatalogJson.products(body).orEmpty(),
+                products = CatalogJson.products(body) ?: return null,
                 categories = CatalogJson.categories(body),
                 queries = queries(body, "queries"),
                 locations = CatalogJson.locations(body),
@@ -153,6 +154,7 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
             )
         }
 
+        /** A full search's results; an answer without `products` is null (`decoding`). */
         fun readFull(body: Any?): SearchFullResponse? {
             if (body !is JSONObject) return null
             return SearchFullResponse(
@@ -160,7 +162,7 @@ internal class SearchApiImpl(private val calls: NamespaceCalls) : SearchApi {
                 searchQueryOriginal = body.stringOrNull("search_query_original"),
                 clarification = body.booleanOrNull("clarification"),
                 productsTotal = body.intOrNull("products_total"),
-                products = CatalogJson.products(body).orEmpty(),
+                products = CatalogJson.products(body) ?: return null,
                 categories = CatalogJson.categories(body),
                 brands = CatalogJson.brands(body),
                 locations = CatalogJson.locations(body),

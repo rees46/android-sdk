@@ -178,6 +178,18 @@
                               "priceMedian": 4990 } }
     },
     {
+      "name": "instant: ответ без products",
+      "call": { "namespace": "search", "method": "instant", "args": { "query": "iphone" } },
+      "response": { "status": 200, "body": { "queries": [] } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "full: ответ без products",
+      "call": { "namespace": "search", "method": "full", "args": { "query": "iphone" } },
+      "response": { "status": 200, "body": { "products_total": 0 } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
       "name": "full: ответ не объект",
       "call": { "namespace": "search", "method": "full", "args": { "query": "iphone" } },
       "response": { "status": 200, "body": [] },
