@@ -25,6 +25,8 @@ package com.personalization.core
  * - the namespaces of the new core, `SDK.cart` the first: each method is a suspending function with a
  *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
  *   legacy core, where they do not run.
+ * - `SDK.notifications` — the push events a bridge that parses its pushes reports itself, through the
+ *   queue once per message, the push token and the push callbacks of one shop.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

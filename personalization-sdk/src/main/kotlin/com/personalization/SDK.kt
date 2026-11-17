@@ -15,6 +15,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.NotificationsApi
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
 import com.personalization.api.managers.InAppNotificationManager
@@ -65,6 +66,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.notifications.NotificationsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -220,6 +222,16 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val cart: CartApi = CartApiImpl(namespaceCalls)
+
+    /**
+     * This shop's push token, the push events the app reports itself and its push callbacks:
+     * `sdk.notifications.trackClicked(code, type)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [NotificationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val notifications: NotificationsApi = NotificationsApiImpl(this, namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
@@ -1980,18 +1992,40 @@ open class SDK {
      * it as `source`) before it is handed over: a `/push` that goes while the tap is on its way — to the
      * instance that took this one's place — carries it too. When no queue takes the tap, the source is put
      * back as it was.
+     *
+     * [ended] hears, once, how the call ended: null once a queue accepted the event, or for a repeat — one
+     * accepted already, or one parked meanwhile once the first is accepted — otherwise why no queue took it.
      */
-    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
-        if (core !is CoreV2) return
-        val reservation = PushHub.reserve(shopId, event, code) { queuePushEvent(event, code, type, accepted) }
+    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit, ended: (SdkError?) -> Unit = {}) {
+        if (core !is CoreV2) {
+            ended(SdkError.NotInitialized)
+            return
+        }
+        val reservation = PushHub.reserve(shopId, event, code, repeat = { ended(null) }) { queuePushEvent(event, code, type, accepted, ended) }
         if (reservation != PushHub.Reservation.TAKEN) {
             val message = if (reservation == PushHub.Reservation.REPEAT) "The push event was handled already"
             else "The push event is being handled already: this one goes only if that one is not accepted"
             log(LogLevel.DEBUG, LogCodes.PUSH, message, mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
+            if (reservation == PushHub.Reservation.REPEAT) ended(null)
             return
         }
         val undoSource = if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) setTapSource(type, code) else null
-        offerPushEvent(event, code, type, undoSource, accepted)
+        offerPushEvent(event, code, type, undoSource, accepted, ended)
+    }
+
+    /**
+     * For `sdk.notifications`: the push [event] of the message [code] of mailing [type] that the app reports
+     * itself, through the queue like one [Rees46.handlePush] sees ([queuePushEvent]) — once per message in a
+     * process, a tap with its tracking source — but without the push callbacks: the app knows of it already.
+     * [ended] hears null once the event is accepted or was accepted already, otherwise why it was not:
+     * `notInitialized` after [release], `shopBlocked` for a refused shop. The new core only.
+     */
+    internal fun trackPushEvent(event: PushEvent, code: String, type: String, ended: (SdkError?) -> Unit) {
+        if (released) {
+            ended(SdkError.NotInitialized)
+            return
+        }
+        queuePushEvent(event, code, type, accepted = {}, ended = ended)
     }
 
     /**
@@ -2036,25 +2070,28 @@ open class SDK {
      *   brought up for a push gave way to the app's): it goes to that one.
      * - Refused otherwise (the instance released, the shop refused): it is not sent and may come again
      *   ([PushHub.release]); a tap's source goes back as it was ([undoSource]).
+     * [ended] hears null when it is accepted, otherwise the refusal.
      */
-    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit) {
+    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit, ended: (SdkError?) -> Unit = {}) {
         val shop = shopId
         val core = core as? CoreV2
         if (core == null) {
             undoSource?.invoke()
             PushHub.release(shop, event, code)
+            ended(SdkError.NotInitialized)
             return
         }
         core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
             if (refused == null) {
                 PushHub.confirm(shop, event, code)
                 accepted(this)
+                ended(null)
                 return@accept
             }
             val live = SdkRegistry.byShopId(shop)
             if (refused == SdkError.NotInitialized && live != null && live !== this) {
                 log(LogLevel.DEBUG, LogCodes.PUSH, "The push event goes to the shop's instance that took this one's place", mapOf("event" to event.name.lowercase(Locale.ROOT)))
-                live.offerPushEvent(event, code, type, undoSource, accepted)
+                live.offerPushEvent(event, code, type, undoSource, accepted, ended)
                 return@accept
             }
             // Before the repeats parked meanwhile try again: one of them may set the source anew.
@@ -2065,6 +2102,7 @@ open class SDK {
             }
             PushHub.release(shop, event, code)
             log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
+            ended(refused)
         }
     }
 
