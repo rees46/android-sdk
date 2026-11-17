@@ -29,6 +29,8 @@ package com.personalization.core
  *   queue once per message, the push token and the push callbacks of one shop.
  * - `TrackingApi.bannerView` and `bannerClick` — the banner events of `SDK.sliders`, through the new core's
  *   queue only, in the public `tracking` namespace.
+ * - `SDK.reviews` — NPS, CSAT and CES ratings and their dictionaries on `Rees46Config.appDomain`, and the
+ *   reviews of products.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

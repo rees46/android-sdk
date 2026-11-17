@@ -29,6 +29,7 @@ import com.personalization.api.managers.ProductsManager
 import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.RecommendationManager
+import com.personalization.api.managers.ReviewsApi
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
@@ -75,6 +76,7 @@ import com.personalization.features.loyalty.LoyaltyApiImpl
 import com.personalization.features.predict.PredictApiImpl
 import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
+import com.personalization.features.reviews.ReviewsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -273,6 +275,16 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val sliders: SlidersApi = SlidersApiImpl(namespaceCalls)
+
+    /**
+     * NPS, CSAT and CES ratings, their dictionaries, and the reviews of products: `sdk.reviews.createNps(…)`.
+     * The polls go to [Rees46Config.appDomain]. For the Flutter and React Native bridges: it runs on the new
+     * core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [ReviewsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
@@ -761,7 +773,7 @@ open class SDK {
             val lifecycle = ProcessAppLifecycle()
             lateinit var init: CoreInit
             // The core gets its /init and its queue before it takes a request: none goes without them.
-            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
+            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers, config.appDomain) { core ->
                 init = createCoreInit(core, connectivity, lifecycle, context, config, storage, autoSendPushToken, needReInitialization, pushOnly)
                 core.init = init
                 // The token's rules are the new core's from the start: one FCM gives before /init waits for it.
