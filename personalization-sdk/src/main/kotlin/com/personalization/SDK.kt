@@ -15,6 +15,7 @@ import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
 import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
+import com.personalization.api.managers.StoriesApi
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
 import com.personalization.api.managers.InAppNotificationManager
@@ -65,6 +66,7 @@ import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
 import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -220,6 +222,15 @@ open class SDK {
     @BridgeApi
     @get:JvmSynthetic
     val cart: CartApi = CartApiImpl(namespaceCalls)
+
+    /**
+     * The stories blocks: `sdk.stories.get(code)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [StoriesApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val stories: StoriesApi = StoriesApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
