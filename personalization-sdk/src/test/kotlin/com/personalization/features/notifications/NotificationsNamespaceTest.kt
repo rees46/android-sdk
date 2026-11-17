@@ -87,6 +87,9 @@ class NotificationsNamespaceTest {
     @Volatile
     private var initAnswer: MockResponse = MockResponse().setBody("""{"did":"D1","seance":"S1"}""")
 
+    @Volatile
+    private var tokenAnswer: MockResponse = MockResponse().setBody("""{"status":"success"}""")
+
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
@@ -120,7 +123,7 @@ class NotificationsNamespaceTest {
                 seen += path to body
                 return when (path) {
                     "init" -> initAnswer
-                    "mobile_push_tokens" -> MockResponse().setBody("""{"status":"success"}""")
+                    "mobile_push_tokens" -> tokenAnswer
                     else -> MockResponse().setBody("{}")
                 }
             }
@@ -348,6 +351,21 @@ class NotificationsNamespaceTest {
         assertNull("sent this week", next("mobile_push_tokens", timeoutMs = 300))
         assertEquals(PushToken("fcm-1", PushProvider.FCM), sdk.notifications.getPushToken(PushProvider.FCM))
         assertEquals(PushToken("hms-1", PushProvider.HMS), sdk.notifications.getPushToken(PushProvider.HMS))
+    }
+
+    @Test
+    fun `setPushToken on a 2xx answer that says error is decoding, and the same token goes again since the week stays free`() {
+        val sdk = sdk()
+        tokenAnswer = MockResponse().setBody("""{"status":"error","message":"Something went wrong"}""")
+
+        assertEquals(SdkResult.Failure(SdkError.Decoding), setPushToken(sdk, "fcm-2", PushProvider.FCM))
+        assertEquals("fcm-2", next("mobile_push_tokens")?.second?.getString("token"))
+        assertNull("not recorded as sent", partition().getString(StorageKeys.pushToken("fcm"), null))
+
+        tokenAnswer = MockResponse().setBody("""{"status":"success"}""")
+        assertEquals(SdkResult.Success(Unit), setPushToken(sdk, "fcm-2", PushProvider.FCM))
+        assertEquals("sent again", "fcm-2", next("mobile_push_tokens")?.second?.getString("token"))
+        assertEquals("fcm-2", partition().getString(StorageKeys.pushToken("fcm"), null))
     }
 
     @Test

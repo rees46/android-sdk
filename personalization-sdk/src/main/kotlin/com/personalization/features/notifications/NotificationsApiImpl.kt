@@ -1,6 +1,5 @@
 package com.personalization.features.notifications
 
-import com.personalization.LogLevel
 import com.personalization.PushProvider
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
@@ -17,7 +16,6 @@ import com.personalization.core.SdkResult
 import com.personalization.core.internal.CorePushTokens
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.invalidArgument
-import com.personalization.logs.LogCodes
 import kotlinx.coroutines.CompletableDeferred
 import org.json.JSONArray
 import org.json.JSONObject
@@ -52,10 +50,11 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
         calls.checked(SET_PUSH_TOKEN) {}
         val tokens = tokens() ?: throw SdkException(SdkError.NotInitialized)
         val ended = CompletableDeferred<SdkError?>()
-        // An empty token is refused there, with its log line; one that went this week ends in success.
+        // An empty token is refused there, with its log line; one that went this week ends in success, and a
+        // `2xx` answer `{"status": "error"}` in `decoding`, the week left free.
         tokens.set(token, provider, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                ended.complete(if (response?.optString(STATUS) == STATUS_ERROR) refusedWith2xx() else null)
+                ended.complete(null)
             }
 
             override fun onSuccess(response: JSONArray) {
@@ -113,13 +112,6 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
         null
     }
 
-    /** A `2xx` answer that says it failed: `decoding`, as every namespace reads it. */
-    private fun refusedWith2xx(): SdkError {
-        sdk.log(LogLevel.WARNING, LogCodes.DECODING_FAILED, "The answer to POST ${CorePushTokens.PATH} is an error with a 2xx status",
-            mapOf("call" to SET_PUSH_TOKEN, "method" to "POST", "path" to CorePushTokens.PATH))
-        return SdkError.Decoding
-    }
-
     internal companion object {
         const val TRACK_DELIVERED = "notifications.trackDelivered"
         const val TRACK_OPENED = "notifications.trackOpened"
@@ -131,7 +123,5 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
 
         private const val FIELD_CODE = "code"
         private const val FIELD_TYPE = "type"
-        private const val STATUS = "status"
-        private const val STATUS_ERROR = "error"
     }
 }
