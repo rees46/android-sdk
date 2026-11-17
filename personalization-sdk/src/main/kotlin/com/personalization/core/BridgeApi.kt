@@ -26,6 +26,7 @@ package com.personalization.core
  *   twin that ends in a [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the
  *   legacy core, where they do not run.
  * - `SDK.products`, `SDK.collections`, `SDK.recommendations` and `SDK.search` — the catalog's namespaces.
+ * - `SDK.profile`, `SDK.subscriptions` and `SDK.segments` — the customer's namespaces.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

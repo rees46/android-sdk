@@ -19,6 +19,7 @@ import com.personalization.api.managers.ProductsApi
 import com.personalization.api.managers.RecommendationsApi
 import com.personalization.api.managers.SearchApi
 import com.personalization.api.managers.ProfileApi
+import com.personalization.api.managers.SegmentsApi
 import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
@@ -76,6 +77,7 @@ import com.personalization.features.products.ProductsApiImpl
 import com.personalization.features.recommendation.RecommendationsApiImpl
 import com.personalization.features.search.SearchApiImpl
 import com.personalization.features.profile.ProfileApiImpl
+import com.personalization.features.segments.SegmentsApiImpl
 import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
@@ -282,6 +284,18 @@ open class SDK {
     @get:JvmSynthetic
     val subscriptions: SubscriptionsApi =
         SubscriptionsApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's segments and the device's A/B group: `sdk.segments.add(12)`, `remove`, `get`,
+     * `getAbGroup`. For the Flutter and React Native bridges, on the new core only, as [cart]; see
+     * [SegmentsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val segments: SegmentsApi = SegmentsApiImpl(
+        namespaceCalls,
+        abGroup = { if (::userSettingsRepository.isInitialized) userSettingsRepository.getSegmentForABTesting() else null },
+    ) { type, signature -> popupsV3?.onContextChange(type, signature) }
 
     @Inject
     lateinit var searchManager: SearchManager
