@@ -324,13 +324,18 @@ open class SDK {
     @get:JvmSynthetic
     val recommendations: RecommendationsApi = RecommendationsApiImpl(namespaceCalls)
 
+    /** Whether the last `/init` answer of the new core turned the search agent on (`search.blank_mode`). */
+    @Volatile
+    private var agentSearchEnabled = false
+
     /**
-     * Search in the shop's catalog: `sdk.search.blank()`, `instant`, `full`. For the Flutter and React
-     * Native bridges, on the new core only, as [cart]; see [SearchApi]. Hidden from Java.
+     * Search in the shop's catalog: `sdk.search.blank()`, `instant`, `full`, and the search agent:
+     * `agentEnabled`, `agentDialog`, `agent`. For the Flutter and React Native bridges, on the new core
+     * only, as [cart]; see [SearchApi]. Hidden from Java.
      */
     @BridgeApi
     @get:JvmSynthetic
-    val search: SearchApi = SearchApiImpl(namespaceCalls)
+    val search: SearchApi = SearchApiImpl(namespaceCalls) { agentSearchEnabled }
 
     /**
      * The customer's profile: `sdk.profile.get()`, `set`, `getLastOrder`. For the Flutter and React Native
@@ -1017,6 +1022,7 @@ open class SDK {
             },
             hooks = object : InitHooks {
                 override fun onAnswer(answer: JSONObject, fresh: Boolean) {
+                    agentSearchEnabled = answer.optJSONObject(INIT_SEARCH)?.optString(INIT_BLANK_MODE) == BLANK_MODE_AGENT
                     val response = answer.mapToSdkInitResponse()
                     // A popup is shown from a fresh answer only, never again from the saved one.
                     if (fresh) response?.popupDto?.let { inAppNotificationManager.shopPopUp(popupDto = it) }
@@ -2323,6 +2329,9 @@ open class SDK {
         private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
+        private const val INIT_SEARCH = "search"
+        private const val INIT_BLANK_MODE = "blank_mode"
+        private const val BLANK_MODE_AGENT = "agent"
         private const val SEARCH_FIELD = "search"
         private const val REMOVE_FIELD = "remove"
         private const val CODE_FIELD = "code"

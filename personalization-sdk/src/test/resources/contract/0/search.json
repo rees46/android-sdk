@@ -212,6 +212,125 @@
       "call": { "namespace": "search", "method": "blank", "args": {} },
       "response": { "status": null },
       "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "agentDialog без параметров — последняя сессия, локация из профиля",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "request": {"method": "GET", "path": "api/v3/storefront/search/agent", "query": {}}
+    },
+    {
+      "name": "agentDialog с сессией и локациями: location через запятую",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {"sessionId": 12, "locations": ["msk", "spb"]}},
+      "request": {"method": "GET", "path": "api/v3/storefront/search/agent", "query": {"session_id": "12", "location": "msk,spb"}}
+    },
+    {
+      "name": "agent: новая сессия, тело — JSON",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "нужна флешка на 1тб"}},
+      "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "нужна флешка на 1тб"}}
+    },
+    {
+      "name": "agent в сессии с локацией",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "а есть подешевле?", "sessionId": 12, "locations": ["msk"]}},
+      "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "а есть подешевле?", "session_id": 12, "location": "msk"}}
+    },
+    {
+      "name": "agent: сообщение в 500 символов",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя"}},
+      "request": {"method": "POST", "path": "api/v3/storefront/search/agent", "body": {"message": "яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя"}}
+    },
+    {
+      "name": "agent с пустым сообщением",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": ""}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "agent: сообщение длиннее 500 символов",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "agentDialog: сессии и сообщения выбранной; товар без id пропускается",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "response": {"status": 200, "body": {"sessions": [{"id": 12, "title": "Флешка на 1 ТБ", "updated_at": "2026-11-01T12:00:00Z"}, {"id": 9, "title": "Наушники", "updated_at": "2026-10-30T08:15:00Z"}], "session": {"id": 12, "title": "Флешка на 1 ТБ", "updated_at": "2026-11-01T12:00:00Z", "messages": [{"id": 1, "role": "user", "content": "нужна флешка на 1тб", "products": [], "created_at": "2026-11-01T11:59:40Z"}, {"id": 2, "role": "assistant", "content": "Нашёл три флешки на 1 ТБ с USB 3.2...", "created_at": "2026-11-01T12:00:00Z", "products": [{"id": "123", "name": "Флешка Example 1 ТБ", "price": 1990.0, "oldprice": 2490.0, "price_formatted": "1 990 ₽", "oldprice_formatted": "2 490 ₽", "picture": "https://example.com/images/123.jpg", "url": "https://example.com/p/123?recommended_by=agent_search&recommended_code=12", "reason": "Объём 1 ТБ, USB 3.2"}, {"name": "Без id", "price": 100.0}]}]}}},
+      "expect": {"result": {"sessions": [{"id": 12, "title": "Флешка на 1 ТБ", "updatedAt": "2026-11-01T12:00:00Z", "messages": []}, {"id": 9, "title": "Наушники", "updatedAt": "2026-10-30T08:15:00Z", "messages": []}], "session": {"id": 12, "title": "Флешка на 1 ТБ", "updatedAt": "2026-11-01T12:00:00Z", "messages": [{"id": 1, "role": "user", "content": "нужна флешка на 1тб", "createdAt": "2026-11-01T11:59:40Z", "products": []}, {"id": 2, "role": "assistant", "content": "Нашёл три флешки на 1 ТБ с USB 3.2...", "createdAt": "2026-11-01T12:00:00Z", "products": [{"id": "123", "name": "Флешка Example 1 ТБ", "price": 1990, "oldPrice": 2490, "priceFormatted": "1 990 ₽", "oldPriceFormatted": "2 490 ₽", "picture": "https://example.com/images/123.jpg", "url": "https://example.com/p/123?recommended_by=agent_search&recommended_code=12", "reason": "Объём 1 ТБ, USB 3.2"}]}]}}}
+    },
+    {
+      "name": "agentDialog: сессий ещё нет",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "response": {"status": 200, "body": {"sessions": [], "session": null}},
+      "expect": {"result": {"sessions": []}}
+    },
+    {
+      "name": "agent: ответ агента; старая цена 0.0 — пусто",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "а есть подешевле?", "sessionId": 12}},
+      "response": {"status": 200, "body": {"session": {"id": 12, "title": "Флешка на 1 ТБ", "updated_at": "2026-11-01T12:01:10Z"}, "message": {"id": 4, "role": "assistant", "content": "Вот варианты дешевле 1 500 ₽...", "created_at": "2026-11-01T12:01:10Z", "products": [{"id": "456", "name": "Флешка Example Lite 1 ТБ", "price": 1390.0, "oldprice": 0.0, "price_formatted": "1 390 ₽", "oldprice_formatted": null, "picture": null, "url": null, "reason": ""}]}}},
+      "expect": {"result": {"session": {"id": 12, "title": "Флешка на 1 ТБ", "updatedAt": "2026-11-01T12:01:10Z", "messages": []}, "message": {"id": 4, "role": "assistant", "content": "Вот варианты дешевле 1 500 ₽...", "createdAt": "2026-11-01T12:01:10Z", "products": [{"id": "456", "name": "Флешка Example Lite 1 ТБ", "price": 1390, "priceFormatted": "1 390 ₽", "reason": ""}]}}}
+    },
+    {
+      "name": "agent: незнакомая роль читается как есть — открытый набор",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 200, "body": {"session": {"id": 13}, "message": {"id": 1, "role": "system", "content": "Агент обновлён"}}},
+      "expect": {"result": {"session": {"id": 13, "messages": []}, "message": {"id": 1, "role": "system", "content": "Агент обновлён", "products": []}}}
+    },
+    {
+      "name": "agent: ответ без message",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 200, "body": {"session": {"id": 13}}},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "agentDialog: ответ не объект",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "response": {"status": 200, "body": []},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "agent: 400 — нет did",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 400, "body": {"error": "did is required"}},
+      "expect": {"error": {"type": "http", "code": 400}}
+    },
+    {
+      "name": "agent: 402 — услуга поиска не подключена",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 402, "body": {"status": "fail", "message": "Search is not paid"}},
+      "expect": {"error": {"type": "http", "code": 402}}
+    },
+    {
+      "name": "agentDialog: 404 — сессия не найдена или чужая",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {"sessionId": 99}},
+      "response": {"status": 404, "body": {"error": "Session not found"}},
+      "expect": {"error": {"type": "http", "code": 404}}
+    },
+    {
+      "name": "agent: 422 — сообщение длиннее 500 символов по счёту сервера",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 422, "body": {"error": "Message is too long"}},
+      "expect": {"error": {"type": "http", "code": 422}}
+    },
+    {
+      "name": "agent: 429 — превышен лимит",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 429, "body": {"error": "Too many requests"}},
+      "expect": {"error": {"type": "http", "code": 429}}
+    },
+    {
+      "name": "agentDialog: 503 — агент недоступен, показать blank",
+      "call": {"namespace": "search", "method": "agentDialog", "args": {}},
+      "response": {"status": 503, "body": {"error": "Agent is unavailable"}},
+      "expect": {"error": {"type": "http", "code": 503}}
+    },
+    {
+      "name": "agent: 503 — агент не ответил",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": 503, "body": {"error": "Agent is unavailable"}},
+      "expect": {"error": {"type": "http", "code": 503}}
+    },
+    {
+      "name": "agent: нет ответа",
+      "call": {"namespace": "search", "method": "agent", "args": {"message": "привет"}},
+      "response": {"status": null},
+      "expect": {"error": {"type": "network"}}
     }
   ]
 }
