@@ -118,6 +118,63 @@ internal class NamespaceCalls(
             mapOf("call" to call, "method" to method.type, "path" to method.method))
     }
 
+    /**
+     * Turns [call] down before it asks anything, the way the contract checks arguments: off the new core
+     * with [SdkError.NotInitialized], as [request] does — so on the legacy core every call ends the same
+     * way, whatever its arguments — then with [SdkError.InvalidArgument] when [problem] says what is wrong
+     * with them. Returns when the call may go on to [request].
+     *
+     * @throws SdkException with the reason.
+     */
+    fun checkArguments(call: String, problem: String?) {
+        val core = core()
+        if (core !is CoreV2) throw notOnThisCore(call, core)
+        if (problem != null) throw invalidArgument(call, problem)
+    }
+
+    /**
+     * An event of the namespace method [call] (`tracking.bannerView`): its fields [params] to [path]
+     * through the new core's queue, which adds the common fields and sends it. The queue gets it on the
+     * caller's thread, so events keep the order of the calls. [listener] hears once, on the main thread:
+     * success once the queue accepted the event, or why it did not — [SdkError.NotInitialized] off the new
+     * core (logged as `core_flag_mismatch`) or after `release()`, [SdkError.InvalidArgument] for [problem],
+     * [SdkError.ShopBlocked] for a refused shop. A refused event is not sent.
+     */
+    fun event(call: String, path: String, params: JSONObject, problem: String?, listener: CompletionListener<Unit>?) {
+        val core = core()
+        if (core !is CoreV2) {
+            tell(listener, SdkResult.Failure(notOnThisCore(call, core).error))
+            return
+        }
+        if (problem != null) {
+            tell(listener, SdkResult.Failure(invalidArgument(call, problem).error))
+            return
+        }
+        core.accept(path, params) { refused ->
+            tell(listener, if (refused == null) SdkResult.Success(Unit) else SdkResult.Failure(refused))
+        }
+    }
+
+    /** Hands [listener] its [result] once, on the main thread; one that throws is logged as `callback_failed`. */
+    private fun <T> tell(listener: CompletionListener<T>?, result: SdkResult<T>) {
+        if (listener == null) return
+        scope.launch {
+            withContext(dispatchers().main) {
+                try {
+                    listener.onComplete(result)
+                } catch (e: Exception) {
+                    SdkLogs.log(LogLevel.ERROR, LogCodes.CALLBACK_FAILED, "The app's CompletionListener threw", shopId(), throwable = e)
+                }
+            }
+        }
+    }
+
+    /** The failure of [call] for an argument [problem] names; the log says which argument, never its value. */
+    private fun invalidArgument(call: String, problem: String): SdkException {
+        SdkLogs.log(LogLevel.WARNING, LogCodes.INVALID_ARGUMENT, "$call was refused: $problem", shopId(), mapOf("call" to call))
+        return SdkException(SdkError.InvalidArgument(problem))
+    }
+
     /** The failure of [call] on an instance whose core is not the new one: [core] is the legacy one, or none. */
     private fun notOnThisCore(call: String, core: Core?): SdkException {
         if (core == null) return SdkException(SdkError.NotInitialized)
