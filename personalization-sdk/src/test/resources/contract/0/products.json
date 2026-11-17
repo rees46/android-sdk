@@ -102,7 +102,7 @@
       "error": { "type": "invalidArgument" }
     },
     {
-      "name": "getInfo: карточка товара — id из uniqid, цены строками, discount логическое, level строкой и числом",
+      "name": "getInfo: карточка товара — id из uniqid, цены строками, discount логическое, level строкой и числом, пустое описание — null",
       "call": { "namespace": "products", "method": "getInfo", "args": { "itemId": "9922" } },
       "response": { "status": 200,
                     "body": { "name": "Скамья Жасмин", "is_available": true, "description": "",
@@ -117,7 +117,7 @@
                               "group_id": "9921", "id": "9922", "uniqid": "9922", "widgetable": true, "ignored": false, "locations": {},
                               "model": "LAK", "barcode": "УТ-70041501", "oldprice": "13450", "discount": true, "discount_percent": 20 } },
       "expect": { "result": { "id": "9922", "groupId": "9921", "name": "Скамья Жасмин", "brand": "БРВ Мебель", "model": "LAK",
-                              "description": "", "barcode": "УТ-70041501", "url": "https://shop.example/p/9922",
+                              "barcode": "УТ-70041501", "url": "https://shop.example/p/9922",
                               "imageUrl": "https://shop.example/i/9922.webp", "picture": "https://shop.example/i/9922-180.webp",
                               "resizedImages": {}, "price": 10760, "priceFormatted": "10 760 ₽", "priceFull": 10760,
                               "priceFullFormatted": "10 760.00 ₽", "oldPrice": 13450, "currency": "₽", "discountPercent": 20,

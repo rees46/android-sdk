@@ -37,7 +37,8 @@ import org.json.JSONObject
 /**
  * Reading the catalog's answers into the models of `products`, `collections`, `recommendations` and
  * `search` (`contract/products.md`), tolerantly: a number may come as a string, a field missing or of the
- * wrong kind is null, and an element of a list that lacks what its model cannot do without is left out.
+ * wrong kind is null, a product's optional text that is empty is null too, and an element of a list that
+ * lacks what its model cannot do without is left out.
  */
 internal object CatalogJson {
 
@@ -53,29 +54,29 @@ internal object CatalogJson {
             id = id,
             groupId = json.nonBlankStringOrNull("group_id"),
             name = json.stringOrNull("name") ?: return null,
-            brand = json.stringOrNull("brand"),
-            model = json.stringOrNull("model"),
-            description = json.stringOrNull("description"),
-            barcode = json.stringOrNull("barcode"),
+            brand = json.textOrNull("brand"),
+            model = json.textOrNull("model"),
+            description = json.textOrNull("description"),
+            barcode = json.textOrNull("barcode"),
             url = json.stringOrNull("url") ?: return null,
-            deeplinkAndroid = json.stringOrNull("deeplink_android"),
-            deeplinkIos = json.stringOrNull("deeplink_ios"),
-            imageUrl = json.stringOrNull("image_url"),
-            picture = json.stringOrNull("picture"),
+            deeplinkAndroid = json.textOrNull("deeplink_android"),
+            deeplinkIos = json.textOrNull("deeplink_ios"),
+            imageUrl = json.textOrNull("image_url"),
+            picture = json.textOrNull("picture"),
             resizedImages = json.mapOrNull("image_url_resized")?.let(::stringMap),
             price = json.doubleOrNull("price") ?: return null,
-            priceFormatted = json.stringOrNull("price_formatted"),
+            priceFormatted = json.textOrNull("price_formatted"),
             priceFull = json.doubleOrNull("price_full"),
-            priceFullFormatted = json.stringOrNull("price_full_formatted"),
+            priceFullFormatted = json.textOrNull("price_full_formatted"),
             // The server sends 0 for a product without an old price.
             oldPrice = json.doubleOrNull("oldprice")?.takeIf { it != 0.0 },
-            oldPriceFormatted = json.stringOrNull("oldprice_formatted"),
+            oldPriceFormatted = json.textOrNull("oldprice_formatted"),
             oldPriceFull = json.doubleOrNull("oldprice_full")?.takeIf { it != 0.0 },
-            oldPriceFullFormatted = json.stringOrNull("oldprice_full_formatted"),
+            oldPriceFullFormatted = json.textOrNull("oldprice_full_formatted"),
             currency = json.stringOrNull("currency") ?: return null,
             // `discount` is a flag in the product card (never a number) and the percent elsewhere.
             discountPercent = json.intOrNull("discount_percent") ?: json.intOrNull("discount"),
-            discountFormatted = json.stringOrNull("discount_formatted"),
+            discountFormatted = json.textOrNull("discount_formatted"),
             salesRate = json.intOrNull("sales_rate"),
             relativeSalesRate = json.doubleOrNull("relative_sales_rate"),
             rating = json.intOrNull("rating"),
@@ -87,6 +88,9 @@ internal object CatalogJson {
             locationIds = json.arrayOrNull("location_ids")?.strings(),
         )
     }
+
+    /** [key] as a string; null for an empty one as for a missing one: a product's optional text has a value or none. */
+    private fun JSONObject.textOrNull(key: String): String? = stringOrNull(key)?.takeIf { it.isNotEmpty() }
 
     /** The products of [key]; an element that is not a whole product is left out. Null without the list. */
     fun products(json: JSONObject, key: String = "products"): List<Product>? =

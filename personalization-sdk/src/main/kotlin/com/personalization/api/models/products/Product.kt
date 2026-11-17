@@ -5,7 +5,8 @@ import com.personalization.api.responses.products.product.ProductParam
 /**
  * A product in every answer of the catalog's namespaces: the product card (`sdk.products.getInfo`), a
  * listing, a category, a collection, recommendations and search. [id], [name], [url], [price] and
- * [currency] are always there; any other field the answer leaves out is null, never an empty string or 0.
+ * [currency] are always there; any other field the answer leaves out, or sends as an empty string, is null,
+ * never an empty string or 0.
  *
  * @property id the shop's own product id (`uniqid` in the product card, `id` elsewhere).
  * @property groupId the group of the product's variants (`group_id`); for a product without a group the
