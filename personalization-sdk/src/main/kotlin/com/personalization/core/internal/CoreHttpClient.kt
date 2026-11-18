@@ -128,8 +128,18 @@ internal class CoreHttpClient(
      * Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. With
      * [commonFields] false the fields are all there already (the queue stamps its events itself). A method
      * with a read timeout of its own passes it as [readTimeoutMs]: it holds for this request only.
+     *
+     * A request with the shop's secret ([secret]: its [params] carry `shop_secret`) gets `shop_id` and none of
+     * the device's fields — no `did`, `sid`, `seance`, `segment` or `stream` — and the app's network logger
+     * gets it with the secret's value hidden. The log never has the query or the body anyway.
      */
-    suspend fun send(method: NetworkMethod, params: JSONObject, commonFields: Boolean = true, readTimeoutMs: Long? = null): HttpResult {
+    suspend fun send(
+        method: NetworkMethod,
+        params: JSONObject,
+        commonFields: Boolean = true,
+        readTimeoutMs: Long? = null,
+        secret: Boolean = false,
+    ): HttpResult {
         if (!connectivity.isConnected) {
             log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") {
                 context(method) + ("reason" to LogReasons.OFFLINE)
@@ -138,7 +148,7 @@ internal class CoreHttpClient(
         }
         val phase = Phase()
         val built = try {
-            build(method, params, phase, commonFields)
+            if (secret) buildSecret(method, params, phase) else build(method, params, phase, commonFields)
         } catch (e: Exception) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "${line(method)}: the request could not be built", e) { context(method) }
             return HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
@@ -149,7 +159,22 @@ internal class CoreHttpClient(
         return exchange.result
     }
 
-    private class Built(val request: Request, val body: String?)
+    /**
+     * [request] as it goes; [loggedUrl] and [body] as the app's network logger gets them — the request's own
+     * unless it carries the shop's secret ([buildSecret]).
+     */
+    private class Built(val request: Request, val body: String?, val loggedUrl: String = request.url.toString())
+
+    /** A request with the shop's secret: `shop_id` and the method's fields only, the secret hidden from the network logger. */
+    private fun buildSecret(method: NetworkMethod, params: JSONObject, phase: Phase): Built {
+        params.put(UserBasicParams.SHOP_ID, settings.getShopId())
+        val built = build(method, params, phase, commonFields = false)
+        val hidden = JSONObject(params.toString()).apply { if (has(SHOP_SECRET)) put(SHOP_SECRET, HIDDEN) }
+        val loggedUrl = built.request.url.newBuilder().apply {
+            if (built.request.url.queryParameter(SHOP_SECRET) != null) setQueryParameter(SHOP_SECRET, HIDDEN)
+        }.build().toString()
+        return Built(built.request, built.body?.let { hidden.toString() }, loggedUrl)
+    }
 
     private fun build(method: NetworkMethod, params: JSONObject, phase: Phase, commonFields: Boolean): Built {
         val fields = if (commonFields) CommonFields.addTo(params, settings) else params
@@ -304,7 +329,7 @@ internal class CoreHttpClient(
         try {
             networkLogger.onHttpCall(
                 method = method.type,
-                url = built.request.url.toString(),
+                url = built.loggedUrl,
                 requestBody = built.body,
                 responseCode = exchange.status,
                 responseBody = exchange.responseText,
@@ -341,6 +366,9 @@ internal class CoreHttpClient(
 
     internal companion object {
         const val INIT_PATH = "init"
+        /** The field of the shop's secret, in the requests of the server methods that take it. */
+        const val SHOP_SECRET = "shop_secret"
+        private const val HIDDEN = "<hidden>"
         private const val USER_AGENT = "User-Agent"
         private const val RETRY_AFTER = "Retry-After"
 

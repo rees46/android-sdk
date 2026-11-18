@@ -1,9 +1,11 @@
 package com.personalization.features.notifications
 
+import com.google.gson.Gson
 import com.personalization.PushProvider
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.NotificationsApi
+import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.core.BridgeApi
 import com.personalization.core.BridgeErrors
 import com.personalization.core.CompletionListener
@@ -16,6 +18,14 @@ import com.personalization.core.SdkResult
 import com.personalization.core.internal.CorePushTokens
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.invalidArgument
+import com.personalization.core.internal.isCalendarDate
+import com.personalization.core.internal.putCustomer
+import com.personalization.core.internal.putIfNotNull
+import com.personalization.core.internal.requireAtLeast
+import com.personalization.core.internal.requireContact
+import com.personalization.core.internal.requireNotBlank
+import com.personalization.core.internal.secretRequest
+import com.personalization.sdk.domain.models.NetworkMethod
 import kotlinx.coroutines.CompletableDeferred
 import org.json.JSONArray
 import org.json.JSONObject
@@ -72,6 +82,55 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
     override fun setPushToken(token: String, provider: PushProvider, listener: CompletionListener<Unit>) =
         calls.complete(listener) { setPushToken(token, provider) }
 
+    override suspend fun getHistory(
+        shopSecret: String,
+        type: String,
+        phone: String?,
+        email: String?,
+        externalId: String?,
+        loyaltyId: String?,
+        channel: String?,
+        limit: Int?,
+        page: Int?,
+        dateFrom: String?,
+        did: String?,
+    ): GetAllNotificationsResponse {
+        val params = calls.checked(GET_HISTORY) {
+            val request = secretRequest(shopSecret).put(HISTORY_TYPE, requireNotBlank(type, "type"))
+            request.putCustomer(
+                Triple("phone", "phone", phone),
+                Triple("email", "email", email),
+                Triple("externalId", "external_id", externalId),
+                Triple("loyaltyId", "loyalty_id", loyaltyId),
+                Triple("did", "did", did),
+            )
+            if (dateFrom == null || !isCalendarDate(dateFrom)) invalidArgument("dateFrom must be a date YYYY-MM-DD")
+            requireContact(channel, "channel")
+            requireAtLeast(limit, 1, "limit")
+            requireAtLeast(page, 1, "page")
+            request.put(HISTORY_DATE_FROM, dateFrom)
+                .putIfNotNull(HISTORY_CHANNEL, channel)
+                .putIfNotNull(HISTORY_PAGE, page)
+                .putIfNotNull(HISTORY_LIMIT, limit)
+        }
+        return calls.request(GET_HISTORY, NetworkMethod.GET(HISTORY_PATH), params, secret = true, read = ::readHistory)
+    }
+
+    override fun getHistory(
+        shopSecret: String,
+        type: String,
+        phone: String?,
+        email: String?,
+        externalId: String?,
+        loyaltyId: String?,
+        channel: String?,
+        limit: Int?,
+        page: Int?,
+        dateFrom: String?,
+        did: String?,
+        listener: CompletionListener<GetAllNotificationsResponse>,
+    ) = calls.complete(listener) { getHistory(shopSecret, type, phone, email, externalId, loyaltyId, channel, limit, page, dateFrom, did) }
+
     override fun setCallbacks(callbacks: PushCallbacks) {
         if (onNewCore(SET_CALLBACKS)) sdk.setPushCallbacks(callbacks)
     }
@@ -120,6 +179,25 @@ internal class NotificationsApiImpl(private val sdk: SDK, private val calls: Nam
         const val GET_PUSH_TOKEN = "notifications.getPushToken"
         const val SET_PUSH_TOKEN = "notifications.setPushToken"
         const val SET_CALLBACKS = "notifications.setCallbacks"
+        const val GET_HISTORY = "notifications.getHistory"
+        const val HISTORY_PATH = "notifications"
+
+        // The fields the root method sends (`GetAllNotificationsParams`).
+        private const val HISTORY_TYPE = "type"
+        private const val HISTORY_CHANNEL = "channel"
+        private const val HISTORY_DATE_FROM = "date_from"
+        private const val HISTORY_PAGE = "page"
+        private const val HISTORY_LIMIT = "limit"
+
+        /**
+         * A history answer, `{"status": "success", "payload": {"messages": [...]}}`, read into the released
+         * [GetAllNotificationsResponse] as the root method reads it; null (`decoding`) without its messages.
+         */
+        fun readHistory(body: Any?): GetAllNotificationsResponse? {
+            val json = body as? JSONObject ?: return null
+            if (json.optJSONObject("payload")?.optJSONArray("messages") == null) return null
+            return Gson().fromJson(json.toString(), GetAllNotificationsResponse::class.java)
+        }
 
         private const val FIELD_CODE = "code"
         private const val FIELD_TYPE = "type"

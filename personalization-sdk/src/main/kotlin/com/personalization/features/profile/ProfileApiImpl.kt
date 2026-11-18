@@ -1,21 +1,26 @@
 package com.personalization.features.profile
 
+import com.google.gson.Gson
 import com.personalization.api.managers.ProfileApi
 import com.personalization.api.models.products.Product
 import com.personalization.api.models.profile.Gender
 import com.personalization.api.models.profile.Profile
 import com.personalization.api.models.profile.ProfileUpdateRequest
+import com.personalization.api.responses.orders.Order
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.booleanOrNull
 import com.personalization.core.internal.invalidArgument
+import com.personalization.core.internal.isCalendarDate
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
+import com.personalization.core.internal.putCustomer
 import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.requireAtLeast
 import com.personalization.core.internal.requireBirthday
 import com.personalization.core.internal.requireContact
+import com.personalization.core.internal.secretRequest
 import com.personalization.core.internal.stringOrNull
 import com.personalization.core.internal.valueOfWire
 import com.personalization.core.internal.valueOrNull
@@ -46,11 +51,46 @@ internal class ProfileApiImpl(
     override suspend fun getLastOrder(): List<Product> =
         calls.request(GET_LAST_ORDER, NetworkMethod.GET(LAST_ORDER_PATH), read = ::readLastOrder)
 
+    override suspend fun getOrders(
+        shopSecret: String,
+        did: String?,
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        dateFrom: String?,
+    ): List<Order> {
+        val params = calls.checked(GET_ORDERS) {
+            secretRequest(shopSecret).putCustomer(
+                Triple("did", "did", did),
+                Triple("email", "email", email),
+                Triple("phone", "phone", phone),
+                Triple("loyaltyId", "loyalty_id", loyaltyId),
+                Triple("externalId", "external_id", externalId),
+            ).also { request ->
+                dateFrom?.let { if (!isCalendarDate(it)) invalidArgument("dateFrom must be a date YYYY-MM-DD") }
+                request.putIfNotNull("date_from", dateFrom)
+            }
+        }
+        return calls.request(GET_ORDERS, NetworkMethod.GET(ORDERS_PATH), params, secret = true, read = ::readOrders)
+    }
+
     override fun get(listener: CompletionListener<Profile>) = calls.complete(listener) { get() }
 
     override fun set(request: ProfileUpdateRequest, listener: CompletionListener<Unit>) = calls.complete(listener) { set(request) }
 
     override fun getLastOrder(listener: CompletionListener<List<Product>>) = calls.complete(listener) { getLastOrder() }
+
+    override fun getOrders(
+        shopSecret: String,
+        did: String?,
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        dateFrom: String?,
+        listener: CompletionListener<List<Order>>,
+    ) = calls.complete(listener) { getOrders(shopSecret, did, email, phone, loyaltyId, externalId, dateFrom) }
 
     internal companion object {
         const val GET = "profile.get"
@@ -59,6 +99,17 @@ internal class ProfileApiImpl(
         const val GET_PATH = "profile"
         const val SET_PATH = "profile/set"
         const val LAST_ORDER_PATH = "orders/last_for_user"
+        const val GET_ORDERS = "profile.getOrders"
+        const val ORDERS_PATH = "orders/by_user"
+
+        /**
+         * The orders of a `by_user` answer, `{"status": "success", "data": {"orders": [...]}}`, read into the
+         * released [Order] as the root method reads them; null (`decoding`) without the list.
+         */
+        fun readOrders(body: Any?): List<Order>? {
+            val orders = (body as? JSONObject)?.optJSONObject("data")?.optJSONArray("orders") ?: return null
+            return Gson().fromJson(orders.toString(), Array<Order>::class.java)?.toList()
+        }
 
         private val CUSTOM_KEY = Regex("[a-z0-9_]+")
 

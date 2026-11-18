@@ -69,6 +69,8 @@ internal class NamespaceCalls(
      * gets the answer's [JSONObject] or [org.json.JSONArray], or null for an answer without a body, and
      * returns the method's value, or null when the answer does not fit it (`decoding`). A method with a read
      * timeout of its own passes [readTimeoutMs]. A method with arguments builds [params] in [checked] first.
+     * A server method whose [params] carry the shop's secret passes [secret]: the request then carries no
+     * field of the device, and the secret reaches neither the log nor the app's network logger.
      *
      * @throws SdkException with the reason the call failed.
      */
@@ -77,9 +79,10 @@ internal class NamespaceCalls(
         method: NetworkMethod,
         params: JSONObject = JSONObject(),
         readTimeoutMs: Long? = null,
+        secret: Boolean = false,
         read: (Any?) -> T?,
     ): T {
-        return when (val result = newCore(call).request(method, params, readTimeoutMs)) {
+        return when (val result = newCore(call).request(method, params, readTimeoutMs, secret)) {
             is HttpResult.Failure -> throw SdkException(result.error)
             is HttpResult.Success -> readAnswer(call, method, result, read) ?: throw SdkException(SdkError.Decoding)
         }

@@ -10,6 +10,8 @@ import com.personalization.core.internal.intOrNull
 import com.personalization.core.internal.mapObjects
 import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
+import com.personalization.core.internal.putCustomer
+import com.personalization.core.internal.secretRequest
 import com.personalization.sdk.domain.models.NetworkMethod
 import org.json.JSONObject
 
@@ -22,9 +24,36 @@ internal class CartApiImpl(private val calls: NamespaceCalls) : CartApi {
 
     override fun get(listener: CompletionListener<List<CartItem>>) = calls.complete(listener) { get() }
 
+    override suspend fun clear(shopSecret: String, email: String?, phone: String?, loyaltyId: String?, externalId: String?, telegramId: String?) {
+        val params = calls.checked(CLEAR) {
+            secretRequest(shopSecret).putCustomer(
+                Triple("email", "email", email),
+                Triple("phone", "phone", phone),
+                Triple("loyaltyId", "loyalty_id", loyaltyId),
+                Triple("externalId", "external_id", externalId),
+                Triple("telegramId", "telegram_id", telegramId),
+            )
+        }
+        calls.request(CLEAR, NetworkMethod.GET(CLEAR_PATH), params, secret = true) { body ->
+            Unit.takeIf { (body as? JSONObject)?.optString("status") == "success" }
+        }
+    }
+
+    override fun clear(
+        shopSecret: String,
+        email: String?,
+        phone: String?,
+        loyaltyId: String?,
+        externalId: String?,
+        telegramId: String?,
+        listener: CompletionListener<Unit>,
+    ) = calls.complete(listener) { clear(shopSecret, email, phone, loyaltyId, externalId, telegramId) }
+
     internal companion object {
         const val GET = "cart.get"
         const val PATH = "products/cart"
+        const val CLEAR = "cart.clear"
+        const val CLEAR_PATH = "products/cart/clear"
 
         /**
          * The items of a cart answer: `{"data": {"items": [...]}}`, as the server sends it, or

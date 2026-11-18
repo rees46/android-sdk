@@ -108,3 +108,23 @@ internal fun plainNumber(value: Double): String = BigDecimal.valueOf(value).stri
 
 /** [value] encoded for one segment of a path: `a/b c` is `a%2Fb%20c`. */
 internal fun pathSegment(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+/**
+ * The request of a server method — one that takes the shop's secret key: [shopSecret] under `shop_secret`.
+ * Blank, it fails with `invalidArgument`; its value is never in a message. Sent with
+ * `NamespaceCalls.request(secret = true)`, which keeps it out of the log and from the app's network logger.
+ */
+internal fun secretRequest(shopSecret: String): JSONObject =
+    JSONObject().put(CoreHttpClient.SHOP_SECRET, requireNotBlank(shopSecret, "shopSecret"))
+
+/**
+ * Puts the customer's ids a server method was given — each a triple of the argument's name, the field and the
+ * value — under their fields. An id given must not be blank, and one at least is needed: the request carries
+ * no field of the device, so the server finds the customer by these alone.
+ */
+internal fun JSONObject.putCustomer(vararg ids: Triple<String, String, String?>): JSONObject {
+    ids.forEach { (name, _, value) -> requireContact(value, name) }
+    if (ids.all { it.third == null }) invalidArgument("one of ${ids.joinToString { it.first }} is needed")
+    ids.forEach { (_, field, value) -> putIfNotNull(field, value) }
+    return this
+}

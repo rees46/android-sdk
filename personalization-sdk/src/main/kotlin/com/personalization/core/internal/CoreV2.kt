@@ -150,10 +150,13 @@ internal class CoreV2(
      * After [release] it fails with `notInitialized` without a request, and [release] ends one in flight
      * with `cancelled`. Cancelling the caller cancels the request too, and the caller gets its own
      * [CancellationException], as a cancelled coroutine does.
+     *
+     * A request with the shop's [secret] carries `shop_id` and none of the device's fields
+     * ([CoreHttpClient.send]); it waits for the instance to be ready, not for a session.
      */
-    suspend fun request(method: NetworkMethod, params: JSONObject, readTimeoutMs: Long? = null): HttpResult {
+    suspend fun request(method: NetworkMethod, params: JSONObject, readTimeoutMs: Long? = null, secret: Boolean = false): HttpResult {
         if (released) return HttpResult.Failure(SdkError.NotInitialized)
-        val call = requests.async { perform(method, params, readTimeoutMs = readTimeoutMs) }
+        val call = requests.async { perform(method, params, needsSession = !secret, readTimeoutMs = readTimeoutMs, secret = secret) }
         return try {
             call.await()
         } catch (e: CancellationException) {
@@ -171,7 +174,13 @@ internal class CoreV2(
      * One request: waits for the instance — with [needsSession] for a live session too — within
      * [readTimeoutMs] or the client's read timeout, then sends. Every failure is a result.
      */
-    private suspend fun perform(method: NetworkMethod, params: JSONObject, needsSession: Boolean = true, readTimeoutMs: Long? = null): HttpResult {
+    private suspend fun perform(
+        method: NetworkMethod,
+        params: JSONObject,
+        needsSession: Boolean = true,
+        readTimeoutMs: Long? = null,
+        secret: Boolean = false,
+    ): HttpResult {
         val waitMs = readTimeoutMs ?: readyWaitMs
         val waited = if (needsSession) awaitInstance(waitMs) else awaitReady(waitMs)
         if (waited != null) {
@@ -182,7 +191,7 @@ internal class CoreV2(
             return HttpResult.Failure(waited)
         }
         return try {
-            client.send(method, params, readTimeoutMs = readTimeoutMs)
+            client.send(method, params, readTimeoutMs = readTimeoutMs, secret = secret)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

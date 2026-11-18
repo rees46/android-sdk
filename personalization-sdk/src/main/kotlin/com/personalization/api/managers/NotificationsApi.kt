@@ -1,6 +1,7 @@
 package com.personalization.api.managers
 
 import com.personalization.PushProvider
+import com.personalization.api.responses.notifications.GetAllNotificationsResponse
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.PushCallbacks
@@ -17,6 +18,8 @@ import com.personalization.core.SdkException
  * accepted — written to disk — not once the server has it, and the SDK adds `shop_id`, `did`, `stream` and
  * `segment` itself, never `sid`. One event of one message (its `code`) goes once per process: a repeat sends
  * nothing and ends in success.
+ *
+ * [getHistory] is a server method: it asks the history of a customer's messages with the shop's secret key.
  *
  * For the Flutter and React Native bridges: it runs on the new core only (`Rees46.initializeBridge`). On an
  * instance of the legacy core a call sends nothing, a call with a result fails with
@@ -78,4 +81,55 @@ interface NotificationsApi {
      * `PushCallbacks()` clears them. Nothing on the legacy core.
      */
     fun setCallbacks(callbacks: PushCallbacks)
+
+    /**
+     * The messages the shop sent the customer (`GET /notifications`): mailings of [type] (`bulk`, `chain` or
+     * `trigger`, `transactional`, several joined with commas) on [channel] (`email`, `mobile_push`, `web_push`,
+     * `sms` and the others, several joined with commas; without one the server answers an empty list), sent
+     * since [dateFrom] (`YYYY-MM-DD`, which the server needs). [limit] and [page] go when given. The released
+     * [GetAllNotificationsResponse].
+     *
+     * A server method: it takes the shop's secret key, [shopSecret], which the caller passes and the SDK
+     * neither keeps nor writes to the log or hands to the app's network logger. A secret in an app's binary
+     * gives whoever unpacks it the shop's server access — whether such methods stay in the SDK is decided in
+     * DEV-4723. The request carries `shop_id` and none of the device's fields, so the customer is the one of
+     * [phone], [email], [externalId], [loyaltyId] or [did], whichever are given: [did] goes only when passed
+     * (the device's own is `SDK.getDid()`).
+     *
+     * @throws SdkException with [SdkError.InvalidArgument] for an empty [shopSecret] or [type], an empty id,
+     * no id at all, a [dateFrom] that is missing or no date `YYYY-MM-DD`, or a [limit] or [page] below 1, before
+     * any request; [SdkError.Http] `400` for a wrong secret, `404` for a customer the server does not find;
+     * [SdkError.NotInitialized] (the legacy core, an instance not initialized or released),
+     * [SdkError.ShopBlocked], [SdkError.Network], [SdkError.Timeout], [SdkError.Decoding] or
+     * [SdkError.Cancelled] (`release()`).
+     */
+    suspend fun getHistory(
+        shopSecret: String,
+        type: String,
+        phone: String? = null,
+        email: String? = null,
+        externalId: String? = null,
+        loyaltyId: String? = null,
+        channel: String? = null,
+        limit: Int? = null,
+        page: Int? = null,
+        dateFrom: String? = null,
+        did: String? = null,
+    ): GetAllNotificationsResponse
+
+    /** [getHistory] for Java and for code outside coroutines: [listener] gets its result once, on the main thread. */
+    fun getHistory(
+        shopSecret: String,
+        type: String,
+        phone: String?,
+        email: String?,
+        externalId: String?,
+        loyaltyId: String?,
+        channel: String?,
+        limit: Int?,
+        page: Int?,
+        dateFrom: String?,
+        did: String?,
+        listener: CompletionListener<GetAllNotificationsResponse>,
+    )
 }
