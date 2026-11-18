@@ -35,7 +35,7 @@ class CoreHarnessTest {
     }
 
     @Test
-    fun `tracking fixtures pair a call with a request or an error`() {
+    fun `tracking fixtures pair a call with a request, an error, no request and a success, or an answer and a result`() {
         val cases = ContractFixtures.cases("tracking")
         assertTrue(cases.isNotEmpty())
         cases.forEach { case ->
@@ -43,8 +43,11 @@ class CoreHarnessTest {
             val call = case.getJSONObject("call")
             assertEquals(name, "tracking", call.getString("namespace"))
             assertTrue(name, call.getString("method").isNotEmpty())
-            assertTrue(name, case.has("request") xor case.has("error"))
-            if (case.has("request")) {
+            assertEquals(name, 1, listOf("request", "error", "response").count { case.has(it) })
+            // No request (`"request": null`) and an answer both end as the case expects.
+            if (case.has("response") || case.has("request") && case.isNull("request")) {
+                assertTrue(name, case.getJSONObject("expect").has("result"))
+            } else if (case.has("request")) {
                 val request = case.getJSONObject("request")
                 assertTrue(name, request.getString("method") in setOf("GET", "POST"))
                 assertFalse(name, request.getString("path").startsWith("/"))

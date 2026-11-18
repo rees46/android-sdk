@@ -8,8 +8,8 @@ private const val QUERY_TELEGRAM_ID = "telegram_id"
 private const val QUERY_LOYALTY_ID = "loyalty_id"
 
 /**
- * Optional query parameters for [com.personalization.api.managers.PredictManager.getProbabilityToPurchase].
- * Device id and shop id are added by the SDK network layer.
+ * Contacts [com.personalization.api.managers.PredictManager.getProbabilityToPurchase] takes, and no longer
+ * sends: the server finds the customer by the device's `did`, which the SDK sends with every request.
  */
 data class PurchasePredictParams(
     val email: String? = null,

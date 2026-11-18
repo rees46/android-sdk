@@ -1,0 +1,82 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "getProbabilityToPurchase — API v3 на appDomain (В42)",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "request": { "method": "GET", "path": "api/v3/cdp/users/probability-to-purchase", "query": {} }
+    },
+    {
+      "name": "покупатель найден",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "probability": 0.42, "client_id": 12345 } } },
+      "expect": { "result": { "probability": 0.42, "clientId": "12345" } }
+    },
+    {
+      "name": "покупатель найден, событий нет; client_id больше 2^31",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "probability": 0.0, "client_id": 3000000001 } } },
+      "expect": { "result": { "probability": 0, "clientId": "3000000001" } }
+    },
+    {
+      "name": "покупатель не найден — успех с пустым clientId",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "probability": 0.0, "client_id": null } } },
+      "expect": { "result": { "probability": 0, "clientId": null } }
+    },
+    {
+      "name": "ответ без payload — форма старого пути",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "probability": 0.42, "client_id": 12345 } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет probability",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "client_id": 12345 } } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "probability не число",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "probability": "high", "client_id": 12345 } } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "400 — нет did",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 400, "body": { "status": "fail", "message": "Invalid request parameters" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "402 — у магазина не подключена услуга cdp или он не оплачен",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 402, "body": { "status": "fail", "message": "Payment required" } },
+      "expect": { "error": { "type": "http", "code": 402 } }
+    },
+    {
+      "name": "403 — магазин неактивен или ограничен",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 403, "body": { "status": "fail", "message": "Access denied" } },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "404 — неизвестный магазин",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 404, "body": { "status": "fail", "message": "Resource not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "2xx со status error",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "predict", "method": "getProbabilityToPurchase", "args": {} },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}

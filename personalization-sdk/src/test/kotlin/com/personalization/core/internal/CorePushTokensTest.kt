@@ -222,6 +222,28 @@ class CorePushTokensTest {
     }
 
     @Test
+    fun `a 2xx answer that says error is decoding and gives the week back, so the token goes again`() {
+        val tokens = tokens()
+        val heard = Heard()
+        tokens.set("t1", PushProvider.FCM, heard)
+        run()
+        answers.removeAt(0).onSuccess(JSONObject().put("status", "error").put("message", "Something went wrong"))
+        run()
+
+        assertEquals(listOf("error:-1"), heard.calls)
+        assertEquals(listOf<SdkError?>(SdkError.Decoding), heard.errors.toList())
+        assertTrue(logged.any { it.code == LogCodes.PUSH_TOKEN_FAILED && it.context["error"] == "decoding" })
+        assertTrue(logged.none { it.code == LogCodes.PUSH_TOKEN_SENT })
+
+        val again = Heard()
+        tokens.set("t1", PushProvider.FCM, again)
+        run()
+        assertEquals("the week was not taken", 2, sent.size)
+        ok()
+        assertEquals(listOf("success"), again.calls)
+    }
+
+    @Test
     fun `setPushToken waits for ready, says success without a request inside the week, and refuses an empty token or a refused shop`() {
         val tokens = tokens()
         val first = Heard()

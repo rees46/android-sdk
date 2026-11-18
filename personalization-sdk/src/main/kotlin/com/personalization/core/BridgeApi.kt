@@ -21,7 +21,25 @@ package com.personalization.core
  *   app's `PushCallbacks`;
  * - `BridgeErrors` — the whole [SdkError] behind an old `onError(code, message)`, and listeners that
  *   report [SdkResult];
- * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted.
+ * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted;
+ * - the namespaces of the new core, where each method is a suspending function with a twin that ends in a
+ *   [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the legacy core, where
+ *   they do not run, and [SdkError.InvalidArgument], before any request, for an argument the contract
+ *   refuses:
+ *   - `SDK.cart` — the customer's cart;
+ *   - `SDK.products`, `SDK.collections`, `SDK.recommendations` and `SDK.search` — the catalog, its
+ *     collections and recommendation blocks, and the search, the search agent on `Rees46Config.appDomain`
+ *     among it;
+ *   - `SDK.profile`, `SDK.subscriptions` and `SDK.segments` — the customer's profile, subscriptions and
+ *     segments, and the device's A/B group;
+ *   - `SDK.notifications` — the push events a bridge that parses its pushes reports itself, through the
+ *     queue once per message, the push token and the push callbacks of one shop;
+ *   - `SDK.stories`, `SDK.predict` and `SDK.loyalty` — the stories blocks, the probability to purchase, and
+ *     the loyalty program on the customer's side;
+ *   - `SDK.sliders` — banner sliders, whose banners' events are `TrackingApi.bannerView` and `bannerClick`,
+ *     through the new core's queue only, in the public `tracking` namespace;
+ *   - `SDK.reviews` — NPS, CSAT and CES ratings and their dictionaries on `Rees46Config.appDomain`, and the
+ *     reviews of products.
  *
  * The instance's state needs nothing of its own: `SDK.onStateChange` tells the current state at once,
  * then every change.

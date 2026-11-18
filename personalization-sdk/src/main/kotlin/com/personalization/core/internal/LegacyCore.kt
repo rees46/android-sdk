@@ -30,9 +30,13 @@ import java.util.concurrent.Executor
  * success, an empty answer or one that is not JSON succeeds with an empty object, no connection is
  * `504` and a failure without an answer `-1`. It cannot cancel a request in flight; after [release] a
  * request fails at once with `notInitialized` (`onError(-1)`).
+ *
+ * A path under `api/v3/` goes to the host of API v3, [appUrl] (`Rees46Config.appDomain`), as on the new
+ * core; every other path to the API's, [baseUrl].
  */
 internal class LegacyCore(
     private val settings: UserSettingsRepository,
+    private val appUrl: () -> String = { CoreHttpClient.appUrlOf(null) },
     private val baseUrl: () -> String,
 ) : Core {
 
@@ -88,7 +92,7 @@ internal class LegacyCore(
             // The outcome is decided first and delivered once the connection is done with, so a
             // callback that throws cannot change it.
             val outcome: Outcome = try {
-                logUrl = baseUrl() + networkMethod.method
+                logUrl = baseOf(networkMethod) + networkMethod.method
                 val buildUri = build(networkMethod, params)
                 val url = getUrl(networkMethod, buildUri)
                 logUrl = url.toString()
@@ -169,12 +173,16 @@ internal class LegacyCore(
         return Outcome.Success(if (json is JSONObject || json is JSONArray) json else JSONObject())
     }
 
+    /** The host of [networkMethod]'s path; read when the request is built, so a bad `appDomain` fails that request only. */
+    private fun baseOf(networkMethod: NetworkMethod): String =
+        if (networkMethod.method.startsWith(CoreHttpClient.API_V3_PATH)) appUrl() else baseUrl()
+
     private fun build(
         networkMethod: NetworkMethod,
         params: JSONObject
     ): Uri {
 
-        val builder = Uri.parse(baseUrl() + networkMethod.method).buildUpon()
+        val builder = Uri.parse(baseOf(networkMethod) + networkMethod.method).buildUpon()
 
         val it = params.keys()
         while (it.hasNext()) {
@@ -191,7 +199,7 @@ internal class LegacyCore(
     ): URL {
 
         return if (networkMethod is NetworkMethod.POST) {
-            URL(baseUrl() + networkMethod.method)
+            URL(baseOf(networkMethod) + networkMethod.method)
         } else {
             URL(buildUri.toString())
         }

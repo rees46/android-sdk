@@ -1,0 +1,193 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "trackDelivered",
+      "call": { "namespace": "notifications", "method": "trackDelivered", "args": { "code": "m-delivered", "type": "bulk" } },
+      "request": { "method": "POST", "path": "track/delivered", "body": { "code": "m-delivered", "type": "bulk" } }
+    },
+    {
+      "name": "trackOpened",
+      "call": { "namespace": "notifications", "method": "trackOpened", "args": { "code": "m-opened", "type": "chain" } },
+      "request": { "method": "POST", "path": "track/opened", "body": { "code": "m-opened", "type": "chain" } }
+    },
+    {
+      "name": "trackClicked",
+      "call": { "namespace": "notifications", "method": "trackClicked", "args": { "code": "m-clicked", "type": "transactional" } },
+      "request": { "method": "POST", "path": "track/clicked", "body": { "code": "m-clicked", "type": "transactional" } }
+    },
+    {
+      "name": "trackClosed с типом digest",
+      "call": { "namespace": "notifications", "method": "trackClosed", "args": { "code": "m-closed", "type": "digest" } },
+      "request": { "method": "POST", "path": "track/closed", "body": { "code": "m-closed", "type": "digest" } }
+    },
+    {
+      "name": "trackDelivered с пустым code",
+      "call": { "namespace": "notifications", "method": "trackDelivered", "args": { "code": "", "type": "bulk" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "trackClicked с пустым type",
+      "call": { "namespace": "notifications", "method": "trackClicked", "args": { "code": "m-1", "type": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "setPushToken FCM на Android",
+      "platform": "android",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "fcm-token-1", "provider": "fcm" } },
+      "request": { "method": "POST", "path": "mobile_push_tokens",
+                   "body": { "token": "fcm-token-1", "platform": "android", "push_provider": "firebase" } }
+    },
+    {
+      "name": "setPushToken HMS на Android",
+      "platform": "android",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "hms-token-1", "provider": "hms" } },
+      "request": { "method": "POST", "path": "mobile_push_tokens",
+                   "body": { "token": "hms-token-1", "platform": "android", "push_provider": "huawei" } }
+    },
+    {
+      "name": "setPushToken APNs на iOS",
+      "platform": "ios",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "apns-token-1", "provider": "apns" } },
+      "request": { "method": "POST", "path": "mobile_push_tokens", "body": { "token": "apns-token-1", "platform": "ios" } }
+    },
+    {
+      "name": "setPushToken FCM на iOS",
+      "platform": "ios",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "fcm-token-2", "provider": "fcm" } },
+      "request": { "method": "POST", "path": "mobile_push_tokens", "body": { "token": "fcm-token-2", "platform": "ios_firebase" } }
+    },
+    {
+      "name": "setPushToken APNs на Android",
+      "platform": "android",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "apns-token-2", "provider": "apns" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "setPushToken HMS на iOS",
+      "platform": "ios",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "hms-token-2", "provider": "hms" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "setPushToken с пустым токеном",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "", "provider": "fcm" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "setPushToken: 200 success",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-200", "provider": "fcm" } },
+      "response": { "status": 200, "body": { "status": "success" } },
+      "expect": { "result": null }
+    },
+    {
+      "name": "setPushToken: 2xx без тела — успех",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-empty", "provider": "fcm" } },
+      "response": { "status": 200, "body": null },
+      "expect": { "result": null }
+    },
+    {
+      "name": "setPushToken: 400 — клиент не найден",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-400", "provider": "fcm" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "setPushToken: 403 — неизвестный или отключённый магазин, пустое тело",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-403", "provider": "fcm" } },
+      "response": { "status": 403, "body": null },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "setPushToken: 404 — нет shop_id, пустое тело",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-404", "provider": "fcm" } },
+      "response": { "status": 404, "body": null },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "setPushToken: 2xx со status error",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-2xx-error", "provider": "fcm" } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "setPushToken: нет ответа",
+      "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-no-answer", "provider": "fcm" } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "getHistory: секрет, типы, каналы, страница и dateFrom, из служебных полей — только shop_id",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk,chain,transactional", "email": "jane@example.com",
+                          "channel": "email,mobile_push", "limit": 20, "page": 2, "dateFrom": "2026-11-01" } },
+      "request": { "method": "GET", "path": "notifications",
+                   "query": { "shop_secret": "secret-1", "type": "bulk,chain,transactional", "email": "jane@example.com",
+                              "channel": "email,mobile_push", "limit": "20", "page": "2", "date_from": "2026-11-01" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getHistory: did уходит, только если его передали",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "did": "did-of-customer", "dateFrom": "2026-11-01" } },
+      "request": { "method": "GET", "path": "notifications",
+                   "query": { "shop_secret": "secret-1", "type": "bulk", "did": "did-of-customer", "date_from": "2026-11-01" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getHistory без dateFrom — сервер ответил бы 400",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory с пустым type",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory с limit 0",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01",
+                          "limit": 0 } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory без идентификатора клиента",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "dateFrom": "2026-11-01" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory: пустая история на Android — GetAllNotificationsResponse",
+      "platform": "android",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "messages": [] } } },
+      "expect": { "result": { "payload": { "messages": [] } } }
+    },
+    {
+      "name": "getHistory: пустая история на iOS — UserPayloadResponse",
+      "platform": "ios",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "messages": [] } } },
+      "expect": { "result": { "notifications": [] } }
+    },
+    {
+      "name": "getHistory: 400 — неверный секрет",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Incorrect shop credentials" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "getHistory: 404 — клиент не найден",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 404, "body": { "status": "error", "message": "User is not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    }
+  ]
+}

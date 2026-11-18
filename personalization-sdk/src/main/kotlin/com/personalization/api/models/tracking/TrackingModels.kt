@@ -34,10 +34,14 @@ enum class TrackingSourceType(val value: String) {
     DYNAMIC("dynamic"),
     CHAIN("chain"),
     BULK("bulk"),
+
+    /** Only for `tracking.setSource`: as an event's own source it is `invalidArgument` (see `TrackingApi`). */
     TRANSACTIONAL("transactional"),
     INSTANT_SEARCH("instant_search"),
     FULL_SEARCH("full_search"),
     STORIES("stories"),
+
+    /** Only for `tracking.setSource`: as an event's own source it is `invalidArgument` (see `TrackingApi`). */
     WEB_PUSH_DIGEST("web_push_digest"),
     ;
 

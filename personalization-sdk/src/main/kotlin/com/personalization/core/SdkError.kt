@@ -52,5 +52,10 @@ sealed class SdkError {
     }
 }
 
-/** An [SdkError] as an exception, for the suspending methods. */
-class SdkException(val error: SdkError) : Exception(error.message)
+/**
+ * An [SdkError] as an exception, for the suspending methods. Its message is the error's, or one that says
+ * more about this failure: a method of the new core called on the legacy one says so.
+ */
+class SdkException internal constructor(val error: SdkError, message: String) : Exception(message) {
+    constructor(error: SdkError) : this(error, error.message)
+}

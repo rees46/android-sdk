@@ -297,6 +297,15 @@ class TrackingApiImplTest {
         assertEquals(42, capturedBody(path = StoriesManager.TRACK_STORIES_METHOD).getInt("story_id"))
     }
 
+    /** The server's story ids run to 4294967295; one past `Int.MAX_VALUE` is still a number on the wire. */
+    @Test
+    fun storyId_pastIntMax_goesAsANumber() {
+        tracking.storyClick(storyId = "3000000000", slideId = "3", code = "main_stories")
+
+        val storyId = capturedBody(path = StoriesManager.TRACK_STORIES_METHOD).get("story_id")
+        assertEquals(3_000_000_000L, (storyId as Number).toLong())
+    }
+
     // endregion
 
     // region attribution
@@ -611,17 +620,32 @@ class TrackingApiImplTest {
         assertEquals(0, body.getJSONArray("items").length())
     }
 
+    /** The server rejects the whole event with these in `recommended_by` (contract `tracking`). */
     @Test
-    fun webPushDigestSource_usesItsOwnCodeField() {
-        tracking.productView(
-            itemId = "sku-1",
-            source = TrackingSource(TrackingSourceType.WEB_PUSH_DIGEST, "digest-7")
+    fun anEventsTransactionalOrWebPushDigestSource_isRefusedAndNothingIsPosted() {
+        val heard = mutableListOf<Int>()
+        val listener = object : OnApiCallbackListener() {
+            override fun onSuccess(response: JSONObject?) = Unit
+            override fun onError(code: Int, msg: String?) {
+                heard += code
+            }
+        }
+        val order = PurchaseTrackingRequest(
+            orderId = "order-1",
+            orderPrice = 100.0,
+            items = listOf(PurchaseItemRequest(id = "sku-1", amount = 1, price = 100.0))
         )
 
-        val body = capturedBody(path = "push")
-        assertEquals("web_push_digest", body.getString("recommended_by"))
-        assertEquals("digest-7", body.getString("web_push_digest_code"))
-        assertFalse(body.has("recommended_code"))
+        listOf(TrackingSourceType.TRANSACTIONAL, TrackingSourceType.WEB_PUSH_DIGEST).forEach { type ->
+            val source = TrackingSource(type, "digest-7")
+            tracking.productView(itemId = "sku-1", source = source, listener = listener)
+            tracking.addToCart(TrackingItem(id = "sku-1"), source = source, listener = listener)
+            tracking.addToFavorites(itemId = "sku-1", source = source, listener = listener)
+            tracking.purchase(order, source = source, listener = listener)
+        }
+
+        assertEquals(listOf(-1, -1, -1, -2, -1, -1, -1, -2), heard)
+        verify(exactly = 0) { sendNetworkMethodUseCase.postAsync(any(), any(), any()) }
     }
 
     @Test

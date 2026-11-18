@@ -26,7 +26,14 @@ class NetworkRepositoryImpl @Inject constructor(
 
     private lateinit var baseUrl: String
 
-    private val legacyCore = LegacyCore(userSettingsRepository) { baseUrl }
+    /**
+     * The host of API v3 (`Rees46Config.appDomain`) for the legacy core's paths under `api/v3/`;
+     * `app.rees46.ru` without one. The new core gets its own in [useCoreV2].
+     */
+    @Volatile
+    internal var appDomain: String? = null
+
+    private val legacyCore = LegacyCore(userSettingsRepository, appUrl = { CoreHttpClient.appUrlOf(appDomain) }) { baseUrl }
 
     /** The core the requests go to: the legacy one until [useCoreV2]. */
     @Volatile
@@ -79,16 +86,19 @@ class NetworkRepositoryImpl @Inject constructor(
     /**
      * Sends this instance's requests through the new core from now on. [attach] runs before the core
      * takes any request: it gives the core its `/init`, so no request goes without waiting for it.
+     * [appDomain] is the host of API v3 (`Rees46Config.appDomain`), `app.rees46.ru` without one.
      */
     internal fun useCoreV2(
         shopId: String,
         connectivity: ConnectivityMonitor,
         dispatchers: CoreDispatchers = CoreDispatchers.DEFAULT,
+        appDomain: String? = null,
         client: CoreHttpClient = CoreHttpClient(
             baseUrl = { baseUrl },
             settings = userSettingsRepository,
             connectivity = connectivity,
             shopId = shopId,
+            appUrl = { CoreHttpClient.appUrlOf(appDomain) },
         ),
         attach: (CoreV2) -> Unit = {},
     ): CoreV2 = CoreV2(client, shopId, dispatchers).also {

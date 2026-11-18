@@ -71,6 +71,28 @@ class PushHubTest {
         assertEquals(listOf("second:TAKEN", "third:PARKED"), retried)
     }
 
+    @Test
+    fun `a parked repeat hears it was a repeat once the first is accepted, and only then`() {
+        val repeats = mutableListOf<String>()
+        reserve("first")
+        PushHub.reserve(SHOP, PushEvent.CLICKED, "m-1", repeat = { repeats += "second" }) { retried += "second" }
+
+        PushHub.confirm(SHOP, PushEvent.CLICKED, "m-1")
+        PushHub.confirm(SHOP, PushEvent.CLICKED, "m-1")
+
+        assertEquals("once", listOf("second"), repeats)
+        assertEquals(emptyList<String>(), retried)
+
+        // Released instead: the repeat tries again and tells its own end; it is not told it was a repeat.
+        PushHub.reserve(SHOP, PushEvent.OPENED, "m-2") {}
+        PushHub.reserve(SHOP, PushEvent.OPENED, "m-2", repeat = { repeats += "opened" }) { retried += "opened" }
+        PushHub.release(SHOP, PushEvent.OPENED, "m-2")
+        PushHub.confirm(SHOP, PushEvent.OPENED, "m-2")
+
+        assertEquals(listOf("second"), repeats)
+        assertEquals(listOf("opened"), retried)
+    }
+
     private companion object {
         const val SHOP = "hub-shop"
     }

@@ -12,7 +12,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -30,7 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * `track/stories`, `track/slider`, `popup/showed`) go to the [EventQueue] instead, once it is set.
  *
  * Every request ends in exactly one callback, on a background thread as today: the answer, or the
- * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [release] cancels the requests in
+ * error mapped to the old `onError(code, msg)` by [LegacyErrors]. [request] is the same path for the
+ * namespaces: it returns the outcome with its [SdkError] instead. [release] cancels the requests in
  * flight (`cancelled`) and stops `/init`, and a request made after it fails with `notInitialized`.
  */
 internal class CoreV2(
@@ -126,28 +130,7 @@ internal class CoreV2(
     }
 
     private fun sendNow(method: NetworkMethod, params: JSONObject, needsSession: Boolean = true, answer: (HttpResult) -> Boolean) {
-        val request = requests.launch {
-            val waited = if (needsSession) awaitInstance() else awaitReady()
-            if (waited != null) {
-                if (waited == SdkError.Timeout) {
-                    SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: the SDK is not ready", shopId,
-                        mapOf("method" to method.type, "path" to method.method, "reason" to LogReasons.NOT_READY))
-                }
-                answer(HttpResult.Failure(waited))
-                return@launch
-            }
-            val result = try {
-                client.send(method, params)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // The client turns every failure into a result; this is the net under it.
-                SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: no answer", shopId,
-                    mapOf("method" to method.type, "path" to method.method), e)
-                HttpResult.Failure(SdkError.Network)
-            }
-            answer(result)
-        }
+        val request = requests.launch { answer(perform(method, params, needsSession)) }
         // Cancelled before or while it ran: the request still gets its one answer.
         request.invokeOnCompletion { cause ->
             if (cause != null) endings.launch {
@@ -160,12 +143,72 @@ internal class CoreV2(
     }
 
     /**
-     * Waits, within the read timeout, for the instance's `/init` to be set, for the instance to be ready
-     * and, when the session's window ended, for the `/init` of a new session ([CoreInit.usable]); then
-     * the request gets its own full timeout. Null when it may go.
+     * A request with a result, for the namespaces: it waits for the instance as [send] does, within
+     * [readTimeoutMs] (the client's read timeout without one), goes once and returns its outcome. Nothing
+     * repeats it: whether to ask again is the caller's choice.
+     *
+     * After [release] it fails with `notInitialized` without a request, and [release] ends one in flight
+     * with `cancelled`. Cancelling the caller cancels the request too, and the caller gets its own
+     * [CancellationException], as a cancelled coroutine does.
+     *
+     * A request with the shop's [secret] carries `shop_id` and none of the device's fields
+     * ([CoreHttpClient.send]); it waits for the instance to be ready, not for a session.
      */
-    private suspend fun awaitInstance(): SdkError? {
-        val waited = withTimeoutOrNull(readyWaitMs) {
+    suspend fun request(method: NetworkMethod, params: JSONObject, readTimeoutMs: Long? = null, secret: Boolean = false): HttpResult {
+        if (released) return HttpResult.Failure(SdkError.NotInitialized)
+        val call = requests.async { perform(method, params, needsSession = !secret, readTimeoutMs = readTimeoutMs, secret = secret) }
+        return try {
+            call.await()
+        } catch (e: CancellationException) {
+            call.cancel()
+            // The caller was cancelled: its cancellation goes on.
+            currentCoroutineContext().ensureActive()
+            // The instance was released while the request waited or went.
+            SdkLogs.log(LogLevel.DEBUG, LogCodes.REQUEST_CANCELLED, "${method.type} ${method.method}: cancelled", shopId,
+                mapOf("method" to method.type, "path" to method.method))
+            HttpResult.Failure(SdkError.Cancelled)
+        }
+    }
+
+    /**
+     * One request: waits for the instance — with [needsSession] for a live session too — within
+     * [readTimeoutMs] or the client's read timeout, then sends. Every failure is a result.
+     */
+    private suspend fun perform(
+        method: NetworkMethod,
+        params: JSONObject,
+        needsSession: Boolean = true,
+        readTimeoutMs: Long? = null,
+        secret: Boolean = false,
+    ): HttpResult {
+        val waitMs = readTimeoutMs ?: readyWaitMs
+        val waited = if (needsSession) awaitInstance(waitMs) else awaitReady(waitMs)
+        if (waited != null) {
+            if (waited == SdkError.Timeout) {
+                SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: the SDK is not ready", shopId,
+                    mapOf("method" to method.type, "path" to method.method, "reason" to LogReasons.NOT_READY))
+            }
+            return HttpResult.Failure(waited)
+        }
+        return try {
+            client.send(method, params, readTimeoutMs = readTimeoutMs, secret = secret)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // The client turns every failure into a result; this is the net under it.
+            SdkLogs.log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${method.type} ${method.method}: no answer", shopId,
+                mapOf("method" to method.type, "path" to method.method), e)
+            HttpResult.Failure(SdkError.Network)
+        }
+    }
+
+    /**
+     * Waits, within [waitMs] (the read timeout), for the instance's `/init` to be set, for the instance to
+     * be ready and, when the session's window ended, for the `/init` of a new session ([CoreInit.usable]);
+     * then the request gets its own full timeout. Null when it may go.
+     */
+    private suspend fun awaitInstance(waitMs: Long = readyWaitMs): SdkError? {
+        val waited = withTimeoutOrNull(waitMs) {
             val current = initFlow.filterNotNull().first()
             Verdict(current.usable())
         }
@@ -173,8 +216,8 @@ internal class CoreV2(
     }
 
     /** [awaitInstance] for what needs only a `did`: the instance ready, whatever its session. Null when it may go. */
-    private suspend fun awaitReady(): SdkError? {
-        val waited = withTimeoutOrNull(readyWaitMs) {
+    private suspend fun awaitReady(waitMs: Long = readyWaitMs): SdkError? {
+        val waited = withTimeoutOrNull(waitMs) {
             val current = initFlow.filterNotNull().first()
             Verdict(current.ready())
         }

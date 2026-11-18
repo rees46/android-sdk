@@ -1,0 +1,430 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "createNps",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "request": { "method": "POST", "path": "api/v3/polls/nps/reviews",
+                   "body": { "rate": 9, "channel": "ios_app", "category": "delivery" } }
+    },
+    {
+      "name": "createNps с оценкой 0, заказом, комментарием и меткой",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 0, "channel": "ios_app", "category": "delivery",
+                          "orderId": "A-1001", "comment": "Долго везли", "label": "checkout" } },
+      "request": { "method": "POST", "path": "api/v3/polls/nps/reviews",
+                   "body": { "rate": 0, "channel": "ios_app", "category": "delivery",
+                             "order_id": "A-1001", "comment": "Долго везли", "label": "checkout" } }
+    },
+    {
+      "name": "createNps с пустыми необязательными полями — они не уходят",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 10, "channel": "ios_app", "category": "delivery",
+                          "orderId": "", "comment": "", "label": "" } },
+      "request": { "method": "POST", "path": "api/v3/polls/nps/reviews",
+                   "body": { "rate": 10, "channel": "ios_app", "category": "delivery" } }
+    },
+    {
+      "name": "createNps с оценкой 11",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 11, "channel": "ios_app", "category": "delivery" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createNps с оценкой -1",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": -1, "channel": "ios_app", "category": "delivery" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createNps с пустым каналом",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "", "category": "delivery" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createNps с пустой категорией",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": " " } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCsat",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 5, "channel": "ios_app", "campaign": "support" } },
+      "request": { "method": "POST", "path": "api/v3/polls/csat/reviews",
+                   "body": { "rate": 5, "channel": "ios_app", "campaign": "support" } }
+    },
+    {
+      "name": "createCsat с оценкой 0",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 0, "channel": "ios_app", "campaign": "support" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCsat с оценкой 6",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 6, "channel": "ios_app", "campaign": "support" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCsat с пустой кампанией",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 4, "channel": "ios_app", "campaign": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCes с заказом",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 7, "channel": "ios_app", "campaign": "checkout", "orderId": "A-1001" } },
+      "request": { "method": "POST", "path": "api/v3/polls/ces/reviews",
+                   "body": { "rate": 7, "channel": "ios_app", "campaign": "checkout", "order_id": "A-1001" } }
+    },
+    {
+      "name": "createCes с оценкой 0",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 0, "channel": "ios_app", "campaign": "checkout" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCes с оценкой 8",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 8, "channel": "ios_app", "campaign": "checkout" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createCes с пустым каналом",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 3, "channel": "", "campaign": "checkout" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getNpsCategories",
+      "call": { "namespace": "reviews", "method": "getNpsCategories", "args": {} },
+      "request": { "method": "GET", "path": "api/v3/polls/nps/categories", "query": {} }
+    },
+    {
+      "name": "getNpsChannels",
+      "call": { "namespace": "reviews", "method": "getNpsChannels", "args": {} },
+      "request": { "method": "GET", "path": "api/v3/polls/nps/channels", "query": {} }
+    },
+    {
+      "name": "getCsatCampaigns",
+      "call": { "namespace": "reviews", "method": "getCsatCampaigns", "args": {} },
+      "request": { "method": "GET", "path": "api/v3/polls/csat/campaigns", "query": {} }
+    },
+    {
+      "name": "getCesCampaigns",
+      "call": { "namespace": "reviews", "method": "getCesCampaigns", "args": {} },
+      "request": { "method": "GET", "path": "api/v3/polls/ces/campaigns", "query": {} }
+    },
+    {
+      "name": "getProductReviews",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "request": { "method": "GET", "path": "reviews/product", "query": { "product": "37" } }
+    },
+    {
+      "name": "getProductReviews со страницей",
+      "call": { "namespace": "reviews", "method": "getProductReviews",
+                "args": { "itemId": "37", "limit": 10, "offset": 20 } },
+      "request": { "method": "GET", "path": "reviews/product",
+                   "query": { "product": "37", "limit": "10", "offset": "20" } }
+    },
+    {
+      "name": "getProductReviews с пустым itemId",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getProductReviews с limit 0",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37", "limit": 0 } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getProductReviews с limit 101",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37", "limit": 101 } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getProductReviews с отрицательным offset",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37", "offset": -1 } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getClientReviews",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "request": { "method": "GET", "path": "reviews/client", "query": { "order": "A-1001" } }
+    },
+    {
+      "name": "getClientReviews с пустым orderId",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "createNps — сохранённый отзыв",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "review": { "id": 512 } } } },
+      "expect": { "result": { "id": 512 } }
+    },
+    {
+      "name": "createNps — id больше 2^31",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 10, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "review": { "id": 3000000512, "rate": 10, "comment": null } } } },
+      "expect": { "result": { "id": 3000000512 } }
+    },
+    {
+      "name": "createCsat — id строкой",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 5, "channel": "ios_app", "campaign": "support" } },
+      "response": { "status": 201, "body": { "status": "success", "payload": { "review": { "id": "77" } } } },
+      "expect": { "result": { "id": 77 } }
+    },
+    {
+      "name": "createCes — ответ без payload.review.id",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 7, "channel": "ios_app", "campaign": "checkout" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": {} } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "createNps — пустой ответ",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 200, "body": null },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "createNps — 400, оценка не прошла проверку",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 400, "body": { "status": "fail", "message": "Comment is too long" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "createNps — 404, нет канала",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 404, "body": { "status": "fail", "message": "Channel not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "createCsat — 402, проект не оплачен",
+      "call": { "namespace": "reviews", "method": "createCsat",
+                "args": { "rate": 5, "channel": "ios_app", "campaign": "support" } },
+      "response": { "status": 402, "body": { "status": "fail", "message": "Payment required" } },
+      "expect": { "error": { "type": "http", "code": 402 } }
+    },
+    {
+      "name": "createCes — 429, больше 30 оценок в минуту",
+      "call": { "namespace": "reviews", "method": "createCes",
+                "args": { "rate": 7, "channel": "ios_app", "campaign": "checkout" } },
+      "response": { "status": 429, "body": { "status": "fail", "message": "Too many requests" } },
+      "expect": { "error": { "type": "http", "code": 429 } }
+    },
+    {
+      "name": "createNps — 2xx со status error",
+      "call": { "namespace": "reviews", "method": "createNps",
+                "args": { "rate": 9, "channel": "ios_app", "category": "delivery" } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "getNpsCategories — элемент без code пропускается, пустые тексты — пусто",
+      "call": { "namespace": "reviews", "method": "getNpsCategories", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "categories": [
+                                { "code": "delivery", "name": "Доставка",
+                                  "detractor_question": "Что пошло не так?", "passive_question": "Что улучшить?",
+                                  "promoter_question": "Что понравилось?",
+                                  "detractor_success": "Разберёмся", "passive_success": "Спасибо",
+                                  "promoter_success": "Спасибо!", "button_label": "Готово", "position": 1 },
+                                { "code": "support", "name": "Поддержка",
+                                  "detractor_question": null, "passive_question": "",
+                                  "promoter_question": "Что понравилось?" },
+                                { "name": "Без кода" }
+                              ] } } },
+      "expect": { "result": [
+        { "code": "delivery", "name": "Доставка",
+          "detractorQuestion": "Что пошло не так?", "passiveQuestion": "Что улучшить?",
+          "promoterQuestion": "Что понравилось?",
+          "detractorSuccess": "Разберёмся", "passiveSuccess": "Спасибо",
+          "promoterSuccess": "Спасибо!", "buttonLabel": "Готово" },
+        { "code": "support", "name": "Поддержка", "promoterQuestion": "Что понравилось?" }
+      ] }
+    },
+    {
+      "name": "getNpsChannels — справочник",
+      "call": { "namespace": "reviews", "method": "getNpsChannels", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "channels": [ { "code": "ios_app", "name": "Приложение iOS" },
+                                                         { "code": "web", "name": "Сайт" } ] } } },
+      "expect": { "result": [ { "code": "ios_app", "name": "Приложение iOS" }, { "code": "web", "name": "Сайт" } ] }
+    },
+    {
+      "name": "getCsatCampaigns — справочник",
+      "call": { "namespace": "reviews", "method": "getCsatCampaigns", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "campaigns": [
+                                { "code": "support", "name": "Поддержка",
+                                  "dissatisfied_question": "Что не так?", "neutral_question": "Что улучшить?",
+                                  "satisfied_question": "Что понравилось?",
+                                  "dissatisfied_success": "Разберёмся", "neutral_success": "Спасибо",
+                                  "satisfied_success": "Спасибо!", "button_label": "Готово" }
+                              ] } } },
+      "expect": { "result": [
+        { "code": "support", "name": "Поддержка",
+          "dissatisfiedQuestion": "Что не так?", "neutralQuestion": "Что улучшить?",
+          "satisfiedQuestion": "Что понравилось?",
+          "dissatisfiedSuccess": "Разберёмся", "neutralSuccess": "Спасибо",
+          "satisfiedSuccess": "Спасибо!", "buttonLabel": "Готово" }
+      ] }
+    },
+    {
+      "name": "getCesCampaigns — справочник",
+      "call": { "namespace": "reviews", "method": "getCesCampaigns", "args": {} },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "campaigns": [
+                                { "code": "checkout", "name": "Оформление заказа",
+                                  "difficult_question": "Что мешало?", "neutral_question": "Что улучшить?",
+                                  "easy_question": "Что помогло?",
+                                  "difficult_success": "Разберёмся", "neutral_success": "Спасибо",
+                                  "easy_success": "Спасибо!", "button_label": null }
+                              ] } } },
+      "expect": { "result": [
+        { "code": "checkout", "name": "Оформление заказа",
+          "difficultQuestion": "Что мешало?", "neutralQuestion": "Что улучшить?",
+          "easyQuestion": "Что помогло?",
+          "difficultSuccess": "Разберёмся", "neutralSuccess": "Спасибо", "easySuccess": "Спасибо!" }
+      ] }
+    },
+    {
+      "name": "getCsatCampaigns — нет кампаний",
+      "call": { "namespace": "reviews", "method": "getCsatCampaigns", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "campaigns": [] } } },
+      "expect": { "result": [] }
+    },
+    {
+      "name": "getNpsChannels — ответ без payload.channels",
+      "call": { "namespace": "reviews", "method": "getNpsChannels", "args": {} },
+      "response": { "status": 200, "body": { "status": "success", "channels": [ { "code": "web", "name": "Сайт" } ] } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "getCesCampaigns — 403, проект неактивен",
+      "call": { "namespace": "reviews", "method": "getCesCampaigns", "args": {} },
+      "response": { "status": 403, "body": { "status": "fail", "message": "Access denied" } },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "getProductReviews — сводка и отзывы, числа строкой, отзыв без created_at пропускается",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "summary": { "count": 3, "average_rating": 4.3,
+                                                        "ratings": { "1": 0, "2": 0, "3": 1, "4": 0, "5": "2" } },
+                                           "reviews": [
+                                             { "id": 11, "rating": 5, "comment": "Отлично", "author": "Анна",
+                                               "created_at": "2026-11-10T12:00:00+03:00" },
+                                             { "id": "10", "rating": "3", "comment": null, "author": null,
+                                               "created_at": "2026-11-09T08:30:00+03:00" },
+                                             { "id": 9, "rating": 5 }
+                                           ] } } },
+      "expect": { "result": {
+        "summary": { "count": 3, "averageRating": 4.3, "ratings": { "1": 0, "2": 0, "3": 1, "4": 0, "5": 2 } },
+        "reviews": [
+          { "id": 11, "rating": 5, "comment": "Отлично", "author": "Анна", "createdAt": "2026-11-10T12:00:00+03:00" },
+          { "id": 10, "rating": 3, "createdAt": "2026-11-09T08:30:00+03:00" }
+        ] } }
+    },
+    {
+      "name": "getProductReviews — id отзыва больше 2^31",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "summary": { "count": 1, "average_rating": 5.0, "ratings": { "5": 1 } },
+                                           "reviews": [ { "id": 3000000011, "rating": 5, "created_at": "2026-11-10T12:00:00+03:00" } ] } } },
+      "expect": { "result": {
+        "summary": { "count": 1, "averageRating": 5, "ratings": { "5": 1 } },
+        "reviews": [ { "id": 3000000011, "rating": 5, "createdAt": "2026-11-10T12:00:00+03:00" } ] } }
+    },
+    {
+      "name": "getProductReviews — нет отзывов",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "summary": { "count": 0, "average_rating": null, "ratings": {} },
+                                           "reviews": [] } } },
+      "expect": { "result": { "summary": { "count": 0, "ratings": {} }, "reviews": [] } }
+    },
+    {
+      "name": "getProductReviews — 403, услуга не подключена",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 403, "body": { "status": "error", "payload": { "message": "Service is not enabled" } } },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "getProductReviews — ответ без summary",
+      "call": { "namespace": "reviews", "method": "getProductReviews", "args": { "itemId": "37" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "reviews": [] } } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "getClientReviews — незнакомый state пустой",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "reviews": [
+                                { "id": 21, "product": "37", "order": "A-1001", "rating": 4, "comment": "Хорошо",
+                                  "state": "published", "created_at": "2026-11-10T12:00:00+03:00" },
+                                { "id": 22, "product": 38, "order": "A-1001", "rating": 2,
+                                  "state": "moderation", "created_at": "2026-11-10T12:05:00+03:00" },
+                                { "id": 23, "product": "39", "order": "A-1001", "rating": 1,
+                                  "state": "archived", "created_at": "2026-11-10T12:10:00+03:00" }
+                              ] } } },
+      "expect": { "result": [
+        { "id": 21, "itemId": "37", "orderId": "A-1001", "rating": 4, "comment": "Хорошо",
+          "state": "published", "createdAt": "2026-11-10T12:00:00+03:00" },
+        { "id": 22, "itemId": "38", "orderId": "A-1001", "rating": 2,
+          "state": "moderation", "createdAt": "2026-11-10T12:05:00+03:00" },
+        { "id": 23, "itemId": "39", "orderId": "A-1001", "rating": 1, "createdAt": "2026-11-10T12:10:00+03:00" }
+      ] }
+    },
+    {
+      "name": "getClientReviews — id отзыва больше 2^31",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "payload": { "reviews": [
+                                { "id": 3000000021, "product": "37", "order": "A-1001", "rating": 4,
+                                  "state": "published", "created_at": "2026-11-10T12:00:00+03:00" } ] } } },
+      "expect": { "result": [
+        { "id": 3000000021, "itemId": "37", "orderId": "A-1001", "rating": 4, "state": "published", "createdAt": "2026-11-10T12:00:00+03:00" }
+      ] }
+    },
+    {
+      "name": "getClientReviews — нет отзывов",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "reviews": [] } } },
+      "expect": { "result": [] }
+    },
+    {
+      "name": "getClientReviews — 404, чужой заказ",
+      "call": { "namespace": "reviews", "method": "getClientReviews", "args": { "orderId": "A-1001" } },
+      "response": { "status": 404, "body": { "status": "error", "payload": { "message": "Order not found" } } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "getNpsCategories — нет ответа",
+      "call": { "namespace": "reviews", "method": "getNpsCategories", "args": {} },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}

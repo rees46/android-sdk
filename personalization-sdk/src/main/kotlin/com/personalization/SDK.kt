@@ -13,17 +13,31 @@ import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
 import com.personalization.api.models.tracking.TrackingSourceType
+import com.personalization.api.managers.CartApi
 import com.personalization.api.managers.CartManager
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.managers.CollectionManager
+import com.personalization.api.managers.CollectionsApi
 import com.personalization.api.managers.InAppNotificationManager
+import com.personalization.api.managers.LoyaltyApi
 import com.personalization.api.managers.LoyaltyManager
+import com.personalization.api.managers.NotificationsApi
 import com.personalization.api.managers.OrdersManager
-import com.personalization.api.managers.ProductsManager
-import com.personalization.api.managers.ProfileManager
+import com.personalization.api.managers.PredictApi
 import com.personalization.api.managers.PredictManager
+import com.personalization.api.managers.ProductsApi
+import com.personalization.api.managers.ProductsManager
+import com.personalization.api.managers.ProfileApi
+import com.personalization.api.managers.ProfileManager
 import com.personalization.api.managers.RecommendationManager
+import com.personalization.api.managers.RecommendationsApi
+import com.personalization.api.managers.ReviewsApi
+import com.personalization.api.managers.SearchApi
 import com.personalization.api.managers.SearchManager
+import com.personalization.api.managers.SegmentsApi
+import com.personalization.api.managers.SlidersApi
+import com.personalization.api.managers.StoriesApi
+import com.personalization.api.managers.SubscriptionsApi
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.ProfileParams
@@ -51,6 +65,7 @@ import com.personalization.core.internal.DeviceStorage
 import com.personalization.core.internal.InitHooks
 import com.personalization.core.internal.InitSetup
 import com.personalization.core.internal.InstanceState
+import com.personalization.core.internal.NamespaceCalls
 import com.personalization.core.internal.EventQueue
 import com.personalization.core.internal.ProcessAppLifecycle
 import com.personalization.core.internal.PushHub
@@ -62,6 +77,20 @@ import com.personalization.core.internal.StorageLayout
 import com.personalization.core.internal.StorageMigrations
 import com.personalization.di.AppModule
 import com.personalization.di.DaggerSdkComponent
+import com.personalization.features.cart.CartApiImpl
+import com.personalization.features.collection.CollectionsApiImpl
+import com.personalization.features.loyalty.LoyaltyApiImpl
+import com.personalization.features.notifications.NotificationsApiImpl
+import com.personalization.features.predict.PredictApiImpl
+import com.personalization.features.products.ProductsApiImpl
+import com.personalization.features.profile.ProfileApiImpl
+import com.personalization.features.recommendation.RecommendationsApiImpl
+import com.personalization.features.reviews.ReviewsApiImpl
+import com.personalization.features.search.SearchApiImpl
+import com.personalization.features.segments.SegmentsApiImpl
+import com.personalization.features.sliders.SlidersApiImpl
+import com.personalization.features.stories.StoriesApiImpl
+import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
@@ -112,10 +141,10 @@ private const val GAID_KEY = "google_advertising_id"
 /**
  * One shop's instance of the SDK: made by [Rees46.initialize], found with [Rees46.instance].
  *
- * The class stays `open` for apps that subclassed it in earlier releases. The members this release
- * adds — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush] and
- * [deleteUserCredentials] — may clash with members of the same name in such a subclass: a subclass
- * that declares one of them needs to rename its own.
+ * The class stays `open` for apps that subclassed it in earlier releases. The members later releases
+ * added — [shopId], [deviceId], [sessionId], [state], [onStateChange], [flush], [deleteUserCredentials]
+ * and the namespaces, such as [cart] — may clash with members of the same name in such a subclass: a
+ * subclass that declares one of them needs to rename its own.
  */
 @OptIn(InternalPersonalizationV3Api::class, BridgeApi::class)
 open class SDK {
@@ -124,7 +153,7 @@ open class SDK {
 
     private var onMessageListener: OnMessageListener? = null
     private var onPushTokenListener: OnPushTokenListener? = null
-    private var search: Search = Search(JSONObject())
+    private var blankSearch: Search = Search(JSONObject())
 
     /**
      * True once initialize() has wired the Dagger graph. A push can reach the SDK in a process
@@ -205,6 +234,138 @@ open class SDK {
     )
     @Inject
     lateinit var trackEventManager: TrackEventManager
+
+    /** The path of the namespaces' methods: requests with a result on the new core. */
+    private val namespaceCalls = NamespaceCalls(core = { core }, dispatchers = { dispatchers }, shopId = { logShopId })
+
+    /**
+     * The customer's cart on the server: `sdk.cart.get()`. For the Flutter and React Native bridges: it runs
+     * on the new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [CartApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val cart: CartApi = CartApiImpl(namespaceCalls)
+
+    /**
+     * The shop's catalog: `sdk.products.getInfo("37")`, `getList`, `getCounters`, `getCategory`. For the
+     * Flutter and React Native bridges, on the new core only, as [cart]; see [ProductsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val products: ProductsApi = ProductsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's product collections: `sdk.collections.get("12")`. For the Flutter and React Native
+     * bridges, on the new core only, as [cart]; see [CollectionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val collections: CollectionsApi = CollectionsApiImpl(namespaceCalls)
+
+    /**
+     * The shop's recommendation blocks: `sdk.recommendations.get("block-code")`. For the Flutter and React
+     * Native bridges, on the new core only, as [cart]; see [RecommendationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val recommendations: RecommendationsApi = RecommendationsApiImpl(namespaceCalls)
+
+    /** Whether the last `/init` answer of the new core turned the search agent on (`search.blank_mode`). */
+    @Volatile
+    private var agentSearchEnabled = false
+
+    /**
+     * Search in the shop's catalog: `sdk.search.blank()`, `instant`, `full`, and the search agent:
+     * `agentEnabled`, `agentDialog`, `agent`. For the Flutter and React Native bridges, on the new core
+     * only, as [cart]; see [SearchApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val search: SearchApi = SearchApiImpl(namespaceCalls) { agentSearchEnabled }
+
+    /**
+     * The customer's profile: `sdk.profile.get()`, `set`, `getLastOrder`. For the Flutter and React Native
+     * bridges, on the new core only, as [cart]; see [ProfileApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val profile: ProfileApi = ProfileApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's subscriptions to channels and to products: `sdk.subscriptions.manage(…)`, `check`,
+     * `subscribeForPriceDrop` and the others. For the Flutter and React Native bridges, on the new core only,
+     * as [cart]; see [SubscriptionsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val subscriptions: SubscriptionsApi =
+        SubscriptionsApiImpl(namespaceCalls) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * The customer's segments and the device's A/B group: `sdk.segments.add(12)`, `remove`, `get`,
+     * `getAbGroup`. For the Flutter and React Native bridges, on the new core only, as [cart]; see
+     * [SegmentsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val segments: SegmentsApi = SegmentsApiImpl(
+        namespaceCalls,
+        abGroup = { if (::userSettingsRepository.isInitialized) userSettingsRepository.getSegmentForABTesting() else null },
+    ) { type, signature -> popupsV3?.onContextChange(type, signature) }
+
+    /**
+     * This shop's push token, the push events the app reports itself and its push callbacks:
+     * `sdk.notifications.trackClicked(code, type)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [NotificationsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val notifications: NotificationsApi = NotificationsApiImpl(this, namespaceCalls)
+
+    /**
+     * The stories blocks: `sdk.stories.get(code)`. For the Flutter and React Native bridges: it runs on the
+     * new core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [StoriesApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val stories: StoriesApi = StoriesApiImpl(namespaceCalls)
+
+    /**
+     * Forecasts of the customer's behaviour: `sdk.predict.getProbabilityToPurchase()`. For the bridges, on
+     * the new core only, as [stories]; see [PredictApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val predict: PredictApi = PredictApiImpl(namespaceCalls)
+
+    /**
+     * The loyalty program on the customer's side: `sdk.loyalty.join(phone)`, `getStatus(phone)`,
+     * `getPromotions()`. For the bridges, on the new core only, as [stories]; see [LoyaltyApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val loyalty: LoyaltyApi = LoyaltyApiImpl(namespaceCalls)
+
+    /**
+     * Banner sliders: `sdk.sliders.get(code)`; their banners' events are `tracking.bannerView` and
+     * `bannerClick`. For the bridges, on the new core only, as [stories]; see [SlidersApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val sliders: SlidersApi = SlidersApiImpl(namespaceCalls)
+
+    /**
+     * NPS, CSAT and CES ratings, their dictionaries, and the reviews of products: `sdk.reviews.createNps(…)`.
+     * The polls go to [Rees46Config.appDomain]. For the Flutter and React Native bridges: it runs on the new
+     * core only ([Rees46.initializeBridge]), and on the legacy core every call fails with
+     * [SdkError.NotInitialized]; see [ReviewsApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val reviews: ReviewsApi = ReviewsApiImpl(namespaceCalls)
 
     @Inject
     lateinit var searchManager: SearchManager
@@ -686,6 +847,7 @@ open class SDK {
         )
 
         initNetworkUseCase(url = baseUrl)
+        networkRepository.appDomain = config.appDomain
         released = false
         val coreV2 = CoreSelection.resolve(coreV2Requested, shopId)
         if (coreV2) {
@@ -693,7 +855,7 @@ open class SDK {
             val lifecycle = ProcessAppLifecycle()
             lateinit var init: CoreInit
             // The core gets its /init and its queue before it takes a request: none goes without them.
-            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers) { core ->
+            val core = networkRepository.useCoreV2(shopId, connectivity, dispatchers, config.appDomain) { core ->
                 init = createCoreInit(core, connectivity, lifecycle, context, config, storage, autoSendPushToken, needReInitialization, pushOnly)
                 core.init = init
                 // The token's rules are the new core's from the start: one FCM gives before /init waits for it.
@@ -861,6 +1023,7 @@ open class SDK {
             },
             hooks = object : InitHooks {
                 override fun onAnswer(answer: JSONObject, fresh: Boolean) {
+                    agentSearchEnabled = answer.optJSONObject(INIT_SEARCH)?.optString(INIT_BLANK_MODE) == BLANK_MODE_AGENT
                     val response = answer.mapToSdkInitResponse()
                     // A popup is shown from a fresh answer only, never again from the saved one.
                     if (fresh) response?.popupDto?.let { inAppNotificationManager.shopPopUp(popupDto = it) }
@@ -1370,7 +1533,7 @@ open class SDK {
         params: SearchParams,
         listener: OnApiCallbackListener
     ) {
-        if (search != null) {
+        if (blankSearch != null) {
             params.put(InternalParameter.SEARCH_TYPE, type.value)
                 .put(InternalParameter.SEARCH_QUERY, query)
             getAsync(SEARCH_FIELD, params.build(), listener)
@@ -1387,11 +1550,11 @@ open class SDK {
         )
     )
     fun searchBlank(listener: OnApiCallbackListener) {
-        if (search != null) {
-            if (search?.blank == null) {
+        if (blankSearch != null) {
+            if (blankSearch?.blank == null) {
                 getAsync(BLANK_SEARCH_FIELD, Params().build(), object : OnApiCallbackListener() {
                     override fun onSuccess(response: JSONObject?) {
-                        search?.blank = response
+                        blankSearch?.blank = response
                         listener.onSuccess(response)
                     }
 
@@ -1400,7 +1563,7 @@ open class SDK {
                     }
                 })
             } else {
-                listener.onSuccess(search?.blank)
+                listener.onSuccess(blankSearch?.blank)
             }
         } else {
             log(LogLevel.WARNING, LogCodes.SDK_LOG, "Search not initialized")
@@ -1965,18 +2128,40 @@ open class SDK {
      * it as `source`) before it is handed over: a `/push` that goes while the tap is on its way — to the
      * instance that took this one's place — carries it too. When no queue takes the tap, the source is put
      * back as it was.
+     *
+     * [ended] hears, once, how the call ended: null once a queue accepted the event, or for a repeat — one
+     * accepted already, or one parked meanwhile once the first is accepted — otherwise why no queue took it.
      */
-    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit) {
-        if (core !is CoreV2) return
-        val reservation = PushHub.reserve(shopId, event, code) { queuePushEvent(event, code, type, accepted) }
+    private fun queuePushEvent(event: PushEvent, code: String, type: String, accepted: (SDK) -> Unit, ended: (SdkError?) -> Unit = {}) {
+        if (core !is CoreV2) {
+            ended(SdkError.NotInitialized)
+            return
+        }
+        val reservation = PushHub.reserve(shopId, event, code, repeat = { ended(null) }) { queuePushEvent(event, code, type, accepted, ended) }
         if (reservation != PushHub.Reservation.TAKEN) {
             val message = if (reservation == PushHub.Reservation.REPEAT) "The push event was handled already"
             else "The push event is being handled already: this one goes only if that one is not accepted"
             log(LogLevel.DEBUG, LogCodes.PUSH, message, mapOf("event" to event.name.lowercase(Locale.ROOT), "reason" to REASON_REPEAT))
+            if (reservation == PushHub.Reservation.REPEAT) ended(null)
             return
         }
         val undoSource = if (event == PushEvent.CLICKED && TrackingSourceType.entries.any { it.value == type }) setTapSource(type, code) else null
-        offerPushEvent(event, code, type, undoSource, accepted)
+        offerPushEvent(event, code, type, undoSource, accepted, ended)
+    }
+
+    /**
+     * For `sdk.notifications`: the push [event] of the message [code] of mailing [type] that the app reports
+     * itself, through the queue like one [Rees46.handlePush] sees ([queuePushEvent]) — once per message in a
+     * process, a tap with its tracking source — but without the push callbacks: the app knows of it already.
+     * [ended] hears null once the event is accepted or was accepted already, otherwise why it was not:
+     * `notInitialized` after [release], `shopBlocked` for a refused shop. The new core only.
+     */
+    internal fun trackPushEvent(event: PushEvent, code: String, type: String, ended: (SdkError?) -> Unit) {
+        if (released) {
+            ended(SdkError.NotInitialized)
+            return
+        }
+        queuePushEvent(event, code, type, accepted = {}, ended = ended)
     }
 
     /**
@@ -2021,25 +2206,28 @@ open class SDK {
      *   brought up for a push gave way to the app's): it goes to that one.
      * - Refused otherwise (the instance released, the shop refused): it is not sent and may come again
      *   ([PushHub.release]); a tap's source goes back as it was ([undoSource]).
+     * [ended] hears null when it is accepted, otherwise the refusal.
      */
-    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit) {
+    private fun offerPushEvent(event: PushEvent, code: String, type: String, undoSource: (() -> Unit)?, accepted: (SDK) -> Unit, ended: (SdkError?) -> Unit = {}) {
         val shop = shopId
         val core = core as? CoreV2
         if (core == null) {
             undoSource?.invoke()
             PushHub.release(shop, event, code)
+            ended(SdkError.NotInitialized)
             return
         }
         core.accept(pathOf(event), JSONObject().put(CODE_FIELD, code).put(TYPE_FIELD, type)) { refused ->
             if (refused == null) {
                 PushHub.confirm(shop, event, code)
                 accepted(this)
+                ended(null)
                 return@accept
             }
             val live = SdkRegistry.byShopId(shop)
             if (refused == SdkError.NotInitialized && live != null && live !== this) {
                 log(LogLevel.DEBUG, LogCodes.PUSH, "The push event goes to the shop's instance that took this one's place", mapOf("event" to event.name.lowercase(Locale.ROOT)))
-                live.offerPushEvent(event, code, type, undoSource, accepted)
+                live.offerPushEvent(event, code, type, undoSource, accepted, ended)
                 return@accept
             }
             // Before the repeats parked meanwhile try again: one of them may set the source anew.
@@ -2050,6 +2238,7 @@ open class SDK {
             }
             PushHub.release(shop, event, code)
             log(LogLevel.WARNING, LogCodes.PUSH, "The push event was not accepted", mapOf("event" to event.name.lowercase(Locale.ROOT), "error" to refused.javaClass.simpleName))
+            ended(refused)
         }
     }
 
@@ -2141,6 +2330,9 @@ open class SDK {
         private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
         private const val SEGMENTS_FIELD = "segments"
+        private const val INIT_SEARCH = "search"
+        private const val INIT_BLANK_MODE = "blank_mode"
+        private const val BLANK_MODE_AGENT = "agent"
         private const val SEARCH_FIELD = "search"
         private const val REMOVE_FIELD = "remove"
         private const val CODE_FIELD = "code"

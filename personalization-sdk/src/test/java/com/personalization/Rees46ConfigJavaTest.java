@@ -49,5 +49,16 @@ public class Rees46ConfigJavaTest {
 
         assertEquals("did-from-rn", config.getDeviceId());
         assertTrue(config.getSendAdvertisingId());
+        assertEquals("app.rees46.ru", config.getAppDomain());
+    }
+
+    @Test
+    public void theAppDomainComesLast() {
+        Rees46Config config = new Rees46Config(
+                "shop", "api.rees46.ru", "android", true, false, true, "SDK", true, LogLevel.WARNING, null,
+                null, false, "app.cluster.example");
+
+        assertEquals("app.cluster.example", config.getAppDomain());
+        assertEquals("api.rees46.ru", config.getApiDomain());
     }
 }

@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import com.personalization.LogLevel
 import com.personalization.PushProvider
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.core.PushToken
 import com.personalization.core.SdkError
 import com.personalization.logs.LogCodes
 import com.personalization.logs.LogReasons
@@ -33,7 +34,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *   when. A token the shop has not sent goes at once; the same token at most once a week.
  * - The week is taken before the request: two sends of one token at once make one request, the second
  *   hearing the first's answer. The claim is kept in the partition with its time, and the token and the
- *   date of the send only once the server took it. A failed send gives the claim back, and a claim older
+ *   date of the send only once the server took it. A failed send gives the claim back, a `2xx` answer
+ *   `{"status": "error"}` among them (its listeners hear `decoding`), and a claim older
  *   than [CLAIM_TTL_MS] (five minutes) without a send — its process died — is free. The week, the claim and
  *   the send are kept for each provider (FCM, HMS) on its own.
  * - A token goes only once the instance is ready ([ready]) and never without a `did`. A token the app
@@ -95,6 +97,22 @@ internal class CorePushTokens(
 
     /** The device's token of [provider], or the one this shop sent last. */
     fun token(provider: PushProvider): String? = device.pushToken(provider.id) ?: sentToken(provider)
+
+    /**
+     * `notifications.getPushToken`: the token of [provider] ([token]); without one, that of the provider
+     * whose token this shop sent last, or — when it sent none — the device's, FCM before HMS. Null when there
+     * is none, and after [release]. Reads the storage, never the network.
+     */
+    fun known(provider: PushProvider?): PushToken? {
+        if (synchronized(lock) { released }) return null
+        val providers = if (provider != null) {
+            listOf(provider)
+        } else {
+            val sent = PushProvider.entries.filter { sentToken(it) != null }.sortedByDescending(::sentDate)
+            sent + (PushProvider.entries - sent.toSet())
+        }
+        return providers.firstNotNullOfOrNull { candidate -> token(candidate)?.let { PushToken(it, candidate) } }
+    }
 
     /**
      * A token FCM or HMS gave: kept and sent, when the shop takes them, once the instance is ready. A shop
@@ -213,9 +231,21 @@ internal class CorePushTokens(
             /** Guarded by [lock]: the answer was taken. */
             private var ended = false
 
-            override fun onSuccess(response: JSONObject?) = landed { waiting ->
-                log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", mapOf("provider" to provider.id))
-                waiting.forEach { delivery.success(it, response ?: JSONObject()) }
+            override fun onSuccess(response: JSONObject?) {
+                if (response?.optString(FIELD_STATUS) == STATUS_ERROR) {
+                    // A `2xx` whose body says it failed took no token: `decoding`, as the namespaces read
+                    // such an answer, and the week stays free.
+                    landed(failed = true) { waiting ->
+                        log(LogLevel.WARNING, LogCodes.PUSH_TOKEN_FAILED, "Push token was not sent: the answer is an error with a 2xx status",
+                            mapOf("provider" to provider.id, "error" to ERROR_DECODING))
+                        waiting.forEach { delivery.failure(it, LegacyErrors.of(SdkError.Decoding)) }
+                    }
+                    return
+                }
+                landed { waiting ->
+                    log(LogLevel.INFO, LogCodes.PUSH_TOKEN_SENT, "Push token sent", mapOf("provider" to provider.id))
+                    waiting.forEach { delivery.success(it, response ?: JSONObject()) }
+                }
             }
 
             override fun onSuccess(response: JSONArray) = landed { waiting ->
@@ -341,6 +371,9 @@ internal class CorePushTokens(
         const val REASON_PUSH_ONLY = LogReasons.PUSH_ONLY
 
         private const val FIELD_PLATFORM = "platform"
+        private const val FIELD_STATUS = "status"
+        private const val STATUS_ERROR = "error"
+        private const val ERROR_DECODING = "decoding"
         private const val FIELD_TOKEN = "token"
         private const val FIELD_PUSH_PROVIDER = "push_provider"
         private const val PLATFORM_ANDROID = "android"

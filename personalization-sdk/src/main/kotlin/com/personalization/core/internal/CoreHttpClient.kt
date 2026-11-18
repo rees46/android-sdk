@@ -9,6 +9,7 @@ import com.personalization.logs.SdkLogs
 import com.personalization.sdk.data.models.params.UserBasicParams
 import com.personalization.sdk.domain.models.NetworkMethod
 import com.personalization.sdk.domain.repositories.UserSettingsRepository
+import com.personalization.utils.DomainFormattingUtils
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -80,6 +81,9 @@ internal object CoreHttp {
  * `/init` carries `did`, `sid` and `seance` only when they have a value (an empty `did` is not a
  * device), and no `segment`. A push event (`track/delivered` and the others) carries no `sid` or `seance`
  * and no empty field.
+ *
+ * A path under `api/v3/` goes to the host of API v3, [appUrl] (`Rees46Config.appDomain`); every other path
+ * to the API's, [baseUrl]. Both get the common fields.
  */
 internal class CoreHttpClient(
     private val baseUrl: () -> String,
@@ -89,6 +93,7 @@ internal class CoreHttpClient(
     shared: OkHttpClient = CoreHttp.shared,
     internal val timeouts: CoreTimeouts = CoreTimeouts(),
     private val clock: Clock = Clock.SYSTEM,
+    private val appUrl: () -> String = { appUrlOf(null) },
 ) {
 
     /** This instance's client; [OkHttpClient.newBuilder] keeps the shared pool and dispatcher. */
@@ -109,15 +114,32 @@ internal class CoreHttpClient(
         .readTimeout(timeouts.initReadMs, TimeUnit.MILLISECONDS)
         .build()
 
-    /** The client for [method]: `/init` reads with its own timeout. */
-    internal fun clientFor(method: NetworkMethod): OkHttpClient =
-        if (method.method == INIT_PATH) initClient else client
+    /**
+     * The client for [method]: `/init` reads with its own timeout, and a request with [readTimeoutMs] with
+     * that one; the client of every other request stays as it is.
+     */
+    internal fun clientFor(method: NetworkMethod, readTimeoutMs: Long? = null): OkHttpClient = when {
+        readTimeoutMs != null -> client.newBuilder().readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS).build()
+        method.method == INIT_PATH -> initClient
+        else -> client
+    }
 
     /**
      * Sends [params] (the method's own fields) to [method]; cancelling the caller cancels the request. With
-     * [commonFields] false the fields are all there already (the queue stamps its events itself).
+     * [commonFields] false the fields are all there already (the queue stamps its events itself). A method
+     * with a read timeout of its own passes it as [readTimeoutMs]: it holds for this request only.
+     *
+     * A request with the shop's secret ([secret]: its [params] carry `shop_secret`) gets `shop_id` and none of
+     * the device's fields — no `did`, `sid`, `seance`, `segment` or `stream` — and the app's network logger
+     * gets it with the secret's value hidden. The log never has the query or the body anyway.
      */
-    suspend fun send(method: NetworkMethod, params: JSONObject, commonFields: Boolean = true): HttpResult {
+    suspend fun send(
+        method: NetworkMethod,
+        params: JSONObject,
+        commonFields: Boolean = true,
+        readTimeoutMs: Long? = null,
+        secret: Boolean = false,
+    ): HttpResult {
         if (!connectivity.isConnected) {
             log(LogLevel.WARNING, LogCodes.REQUEST_FAILED, "${line(method)}: no network") {
                 context(method) + ("reason" to LogReasons.OFFLINE)
@@ -126,18 +148,33 @@ internal class CoreHttpClient(
         }
         val phase = Phase()
         val built = try {
-            build(method, params, phase, commonFields)
+            if (secret) buildSecret(method, params, phase) else build(method, params, phase, commonFields)
         } catch (e: Exception) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "${line(method)}: the request could not be built", e) { context(method) }
             return HttpResult.Failure(SdkError.InvalidArgument("The request could not be built"))
         }
         val started = clock.nowMillis()
-        val exchange = clientFor(method).newCall(built.request).exchange(phase)
+        val exchange = clientFor(method, readTimeoutMs).newCall(built.request).exchange(phase)
         report(method, built, exchange, clock.nowMillis() - started)
         return exchange.result
     }
 
-    private class Built(val request: Request, val body: String?)
+    /**
+     * [request] as it goes; [loggedUrl] and [body] as the app's network logger gets them — the request's own
+     * unless it carries the shop's secret ([buildSecret]).
+     */
+    private class Built(val request: Request, val body: String?, val loggedUrl: String = request.url.toString())
+
+    /** A request with the shop's secret: `shop_id` and the method's fields only, the secret hidden from the network logger. */
+    private fun buildSecret(method: NetworkMethod, params: JSONObject, phase: Phase): Built {
+        params.put(UserBasicParams.SHOP_ID, settings.getShopId())
+        val built = build(method, params, phase, commonFields = false)
+        val hidden = JSONObject(params.toString()).apply { if (has(SHOP_SECRET)) put(SHOP_SECRET, HIDDEN) }
+        val loggedUrl = built.request.url.newBuilder().apply {
+            if (built.request.url.queryParameter(SHOP_SECRET) != null) setQueryParameter(SHOP_SECRET, HIDDEN)
+        }.build().toString()
+        return Built(built.request, built.body?.let { hidden.toString() }, loggedUrl)
+    }
 
     private fun build(method: NetworkMethod, params: JSONObject, phase: Phase, commonFields: Boolean): Built {
         val fields = if (commonFields) CommonFields.addTo(params, settings) else params
@@ -152,14 +189,21 @@ internal class CoreHttpClient(
             fields.remove(UserBasicParams.SEANCE)
             fields.keys().asSequence().toList().forEach { key -> if (fields.opt(key) == "") fields.remove(key) }
         }
-        val url = (baseUrl() + method.method).toHttpUrl()
+        val base = if (method.method.startsWith(API_V3_PATH)) appUrl() else baseUrl()
+        val url = (base + method.method).toHttpUrl()
         val builder = Request.Builder()
             .header(USER_AGENT, SDK.userAgent())
             .tag(Phase::class.java, phase)
         return when (method) {
             is NetworkMethod.GET -> {
                 val query = url.newBuilder()
-                fields.keys().forEach { key -> query.addQueryParameter(key, fields.getString(key)) }
+                fields.keys().forEach { key ->
+                    // A list goes as the key repeated, once per item: `promo_codes[]=A&promo_codes[]=B`.
+                    when (val value = fields.get(key)) {
+                        is JSONArray -> for (index in 0 until value.length()) query.addQueryParameter(key, value.get(index).toString())
+                        else -> query.addQueryParameter(key, fields.getString(key))
+                    }
+                }
                 Built(builder.url(query.build()).get().build(), null)
             }
             is NetworkMethod.POST -> {
@@ -212,7 +256,7 @@ internal class CoreHttpClient(
         }
         // OkHttp gives every answer it hands over a body; without one the answer is empty.
         val text = response.body?.string().orEmpty()
-        if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject()), status, text)
+        if (text.isBlank()) return Exchange(HttpResult.Success(JSONObject(), empty = true), status, text)
         val json = try {
             JSONTokener(text).nextValue()
         } catch (e: JSONException) {
@@ -285,7 +329,7 @@ internal class CoreHttpClient(
         try {
             networkLogger.onHttpCall(
                 method = method.type,
-                url = built.request.url.toString(),
+                url = built.loggedUrl,
                 requestBody = built.body,
                 responseCode = exchange.status,
                 responseBody = exchange.responseText,
@@ -322,6 +366,9 @@ internal class CoreHttpClient(
 
     internal companion object {
         const val INIT_PATH = "init"
+        /** The field of the shop's secret, in the requests of the server methods that take it. */
+        const val SHOP_SECRET = "shop_secret"
+        private const val HIDDEN = "<hidden>"
         private const val USER_AGENT = "User-Agent"
         private const val RETRY_AFTER = "Retry-After"
 
@@ -332,6 +379,20 @@ internal class CoreHttpClient(
         private const val ERROR_TIMEOUT = "timeout"
         private val HTTP_SUCCESS = 200..299
         private val JSON = "application/json; charset=utf-8".toMediaType()
+
+        /** The paths of API v3, which live on the host of `Rees46Config.appDomain`. */
+        const val API_V3_PATH = "api/v3/"
+        private const val DEFAULT_APP_DOMAIN = "app.rees46.ru"
+
+        /**
+         * The base URL of API v3 for [appDomain] (`Rees46Config.appDomain`): `https://` unless it names its
+         * scheme, a trailing slash; a missing or blank one is `app.rees46.ru`. Throws for a scheme other than
+         * `http` or `https`: read when a request is built, it fails that request only.
+         */
+        fun appUrlOf(appDomain: String?): String = DomainFormattingUtils.formatApiDomain(
+            apiDomain = appDomain?.trim()?.takeIf { it.isNotEmpty() } ?: DEFAULT_APP_DOMAIN,
+            addTrailingSlash = true,
+        )
     }
 }
 

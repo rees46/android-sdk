@@ -20,6 +20,18 @@
       "error": { "type": "invalidArgument" }
     },
     {
+      "name": "productView с источником transactional — сервер отклонил бы всё событие",
+      "call": { "namespace": "tracking", "method": "productView",
+                "args": { "itemId": "37", "source": { "type": "transactional", "code": "mail-1" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "productView с источником webPushDigest — сервер отклонил бы всё событие",
+      "call": { "namespace": "tracking", "method": "productView",
+                "args": { "itemId": "37", "source": { "type": "webPushDigest", "code": "digest-1" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
       "name": "categoryView",
       "call": { "namespace": "tracking", "method": "categoryView", "args": { "categoryId": "146" } },
       "request": { "method": "POST", "path": "push", "body": { "event": "category", "category_id": "146" } }
@@ -31,6 +43,18 @@
       "request": { "method": "POST", "path": "push",
                    "body": { "event": "cart",
                              "items": [ { "id": "37", "amount": 2, "price": 999.5, "fashion_size": "M" } ] } }
+    },
+    {
+      "name": "addToCart с источником transactional",
+      "call": { "namespace": "tracking", "method": "addToCart",
+                "args": { "item": { "id": "37" }, "source": { "type": "transactional", "code": "mail-1" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "addToFavorites с источником webPushDigest",
+      "call": { "namespace": "tracking", "method": "addToFavorites",
+                "args": { "itemId": "37", "source": { "type": "webPushDigest", "code": "digest-1" } } },
+      "error": { "type": "invalidArgument" }
     },
     {
       "name": "syncCart с пустой корзиной",
@@ -61,11 +85,47 @@
       "error": { "type": "invalidArgument" }
     },
     {
+      "name": "purchase с источником transactional",
+      "call": { "namespace": "tracking", "method": "purchase",
+                "args": { "request": { "orderId": "A-1001", "orderPrice": 999.0,
+                                       "items": [ { "id": "37", "amount": 1, "price": 999.0 } ] },
+                          "source": { "type": "transactional", "code": "mail-1" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
       "name": "storyView",
       "call": { "namespace": "tracking", "method": "storyView",
                 "args": { "storyId": "12", "slideId": "34", "code": "main_stories" } },
       "request": { "method": "POST", "path": "track/stories",
                    "body": { "event": "view", "story_id": 12, "slide_id": "34", "code": "main_stories" } }
+    },
+    {
+      "name": "storyView: номер сторис больше Int уходит числом",
+      "call": { "namespace": "tracking", "method": "storyView",
+                "args": { "storyId": "3000000000", "slideId": "34", "code": "main_stories" } },
+      "request": { "method": "POST", "path": "track/stories",
+                   "body": { "event": "view", "story_id": 3000000000, "slide_id": "34", "code": "main_stories" } }
+    },
+    {
+      "name": "storyView виртуального слайда товарной кампании — не отправляется, это не ошибка",
+      "call": { "namespace": "tracking", "method": "storyView",
+                "args": { "storyId": "39", "slideId": "39_0", "code": "main_stories" } },
+      "request": null,
+      "expect": { "result": null }
+    },
+    {
+      "name": "storyView виртуальной сторис — не отправляется, это не ошибка",
+      "call": { "namespace": "tracking", "method": "storyView",
+                "args": { "storyId": "40_0", "slideId": "36", "code": "main_stories" } },
+      "request": null,
+      "expect": { "result": null }
+    },
+    {
+      "name": "storyView: track/stories отвечает 204 без тела — успех",
+      "call": { "namespace": "tracking", "method": "storyView",
+                "args": { "storyId": "40", "slideId": "36", "code": "main_stories" } },
+      "response": { "status": 204, "body": null },
+      "expect": { "result": null }
     },
     {
       "name": "custom с полями",
@@ -80,6 +140,11 @@
       "call": { "namespace": "tracking", "method": "custom",
                 "args": { "event": "e", "customFields": { "did": "x" } } },
       "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "popupShown",
+      "call": { "namespace": "tracking", "method": "popupShown", "args": { "popupId": 181 } },
+      "request": { "method": "POST", "path": "popup/showed", "body": { "popup": 181 } }
     }
   ]
 }

@@ -1,0 +1,154 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "request": { "method": "GET", "path": "stories/115bd0b67cf5989a1b60c841790b2af6", "query": {} }
+    },
+    {
+      "name": "get с пустым code",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "блок: товарный слайд, видео, картинка с кнопкой, товарами и текстом; header пропускается",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 200,
+                    "body": { "id": 35,
+                              "settings": { "color": "#212529" },
+                              "stories": [
+                                { "id": 39, "name": "Test story", "avatar": "https://cdn.example/avatar.jpg",
+                                  "viewed": false, "start_position": 0, "pinned": false,
+                                  "slides": [
+                                    { "id": "39_0", "duration": 10, "background": "https://cdn.example/bg.jpg", "preview": "", "type": "",
+                                      "elements": [
+                                        { "type": "button", "title": "Buy", "link": "https://shop.example/p/1?recommended_by=dynamic",
+                                          "link_ios": "https://shop.example/p/1", "link_android": "https://shop.example/p/1",
+                                          "background": "#3b82f6", "color": "#ffffff" },
+                                        { "type": "product", "title": "Pool",
+                                          "item": { "id": "216908", "name": "Pool INTEX", "brand": "INTEX",
+                                                    "picture": "https://pictures.example/180/135478.jpg",
+                                                    "image_url": "https://api.example/216908_1.jpg",
+                                                    "price": 19990, "price_formatted": "19 990 ₽",
+                                                    "oldprice": 27990, "oldprice_formatted": "27 990 ₽",
+                                                    "discount_percent": 28, "currency": "₽",
+                                                    "url": "https://shop.example/p/1?recommended_by=stories",
+                                                    "deeplink_android": "app://p/1", "deeplink_ios": "app://p/1" } } ] } ] },
+                                { "id": "40", "name": "Gaming", "avatar": "https://cdn.example/avatar2.jpg",
+                                  "viewed": true, "start_position": "1", "pinned": true,
+                                  "slides": [
+                                    { "id": 36, "duration": "15", "background": "https://cdn.example/clip.mp4",
+                                      "preview": "https://cdn.example/poster.jpg", "type": "video" },
+                                    { "id": 37, "duration": 0, "background": "https://cdn.example/slide.jpg",
+                                      "background_color": "#000000", "preview": "", "type": "image",
+                                      "elements": [
+                                        { "type": "button", "title": "Go gaming!", "link": "https://demo.example/", "link_ios": "",
+                                          "link_android": "https://demo.example/", "text_bold": true,
+                                          "background": "#3b82f6", "color": "#ffffff" },
+                                        { "type": "products",
+                                          "labels": { "show_carousel": "Show products", "hide_carousel": "Hide products" },
+                                          "products": [ { "id": 1, "name": "Mouse", "price": "1990.0", "price_formatted": "1 990 ₽",
+                                                          "oldprice": 1990, "promocode": "GAME5", "price_with_promocode": 1890,
+                                                          "price_with_promocode_formatted": "1 890 ₽" } ] },
+                                        { "type": "text_block", "text_input": "Up to 10% off", "font_size": "24", "font_type": "serif",
+                                          "bold": true, "italic": false, "text_align": "center", "text_color": "#FFFFFF",
+                                          "text_background_color": "#16AE13", "text_background_color_opacity": "40%",
+                                          "text_line_spacing": "1.2", "y_offset": 12, "promocode": "SALE10" },
+                                        { "type": "header", "title": "left out" },
+                                        { "type": "poll", "question": "left out" } ] },
+                                    { "id": 38, "background": "https://cdn.example/plain.jpg", "type": "image" } ] } ] } },
+      "expect": { "result": {
+        "id": "35",
+        "stories": [
+          { "id": "39", "name": "Test story", "avatar": "https://cdn.example/avatar.jpg",
+            "viewed": false, "pinned": false, "startPosition": 0,
+            "slides": [
+              { "id": "39_0", "type": "product", "background": "https://cdn.example/bg.jpg", "backgroundColor": "", "preview": "",
+                "duration": 10,
+                "elements": [
+                  { "type": "button", "title": "Buy", "link": "https://shop.example/p/1?recommended_by=dynamic",
+                    "linkAndroid": "https://shop.example/p/1", "linkIos": "https://shop.example/p/1",
+                    "background": "#3b82f6", "color": "#ffffff", "textBold": false },
+                  { "type": "product", "title": "Pool",
+                    "item": { "id": "216908", "name": "Pool INTEX", "brand": "INTEX",
+                              "picture": "https://pictures.example/180/135478.jpg", "imageUrl": "https://api.example/216908_1.jpg",
+                              "price": 19990, "priceFormatted": "19 990 ₽", "oldPrice": 27990, "oldPriceFormatted": "27 990 ₽",
+                              "discountPercent": 28, "promocode": "", "priceWithPromocode": 0, "priceWithPromocodeFormatted": "",
+                              "currency": "₽", "url": "https://shop.example/p/1?recommended_by=stories",
+                              "deeplinkAndroid": "app://p/1", "deeplinkIos": "app://p/1" } } ] } ] },
+          { "id": "40", "name": "Gaming", "avatar": "https://cdn.example/avatar2.jpg",
+            "viewed": true, "pinned": true, "startPosition": 1,
+            "slides": [
+              { "id": "36", "type": "video", "background": "https://cdn.example/clip.mp4",
+                "preview": "https://cdn.example/poster.jpg", "duration": 15, "elements": [] },
+              { "id": "37", "type": "image", "background": "https://cdn.example/slide.jpg", "backgroundColor": "#000000",
+                "duration": 10,
+                "elements": [
+                  { "type": "button", "title": "Go gaming!", "linkIos": "", "textBold": true },
+                  { "type": "products", "showLabel": "Show products", "hideLabel": "Hide products",
+                    "products": [ { "id": "1", "name": "Mouse", "brand": "", "price": 1990, "oldPrice": null,
+                                    "discountPercent": 0, "promocode": "GAME5", "priceWithPromocode": 1890,
+                                    "priceWithPromocodeFormatted": "1 890 ₽" } ] },
+                  { "type": "textBlock", "text": "Up to 10% off", "fontSize": 24, "fontType": "serif", "bold": true,
+                    "italic": false, "textAlign": "center", "textColor": "#FFFFFF", "backgroundColor": "#16AE13",
+                    "backgroundOpacity": 0.4, "lineSpacing": 1.2, "yOffset": 12, "promocode": "SALE10" } ] },
+              { "id": "38", "type": "image", "duration": 10, "backgroundColor": "", "preview": "", "elements": [] } ] } ] } }
+    },
+    {
+      "name": "текстовый блок без полей — значения по умолчанию, товар без item",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 200,
+                    "body": { "id": "35", "stories": [ { "id": 1, "slides": [ { "id": 2, "type": "image",
+                      "elements": [ { "type": "text_block" }, { "type": "product", "item": {} }, { "type": "something_new" } ] } ] } ] } },
+      "expect": { "result": { "id": "35", "stories": [ { "id": "1", "name": "", "avatar": "", "viewed": false, "pinned": false,
+        "startPosition": 0,
+        "slides": [ { "id": "2", "type": "image", "elements": [
+          { "type": "textBlock", "text": "", "fontSize": 14, "fontType": "", "bold": false, "backgroundOpacity": 0,
+            "lineSpacing": 0, "yOffset": 0, "promocode": null },
+          { "type": "product", "title": "", "item": null } ] } ] } ] } }
+    },
+    {
+      "name": "блок на паузе — успех с пустым stories",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 200, "body": { "id": 35, "stories": [], "state": "paused" } },
+      "expect": { "result": { "id": "35", "stories": [] } }
+    },
+    {
+      "name": "404 — неизвестный блок",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 404, "body": { "status": "error", "message": "Stories not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "402 — услуга сторис не оплачена",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 402, "body": { "status": "error", "message": "Payment required" } },
+      "expect": { "error": { "type": "http", "code": 402 } }
+    },
+    {
+      "name": "400 — неизвестный покупатель",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "ответ не JSON-объект",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 200, "body": [ { "id": 35 } ] },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "2xx со status error",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "нет ответа",
+      "call": { "namespace": "stories", "method": "get", "args": { "code": "115bd0b67cf5989a1b60c841790b2af6" } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    }
+  ]
+}

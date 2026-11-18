@@ -16,6 +16,8 @@ import com.personalization.api.managers.PredictManager
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
+import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.NamespaceCalls
 import com.personalization.features.cart.CartManagerImpl
 import com.personalization.features.category.impl.CategoryManagerImpl
 import com.personalization.features.collection.impl.CollectionManagerImpl
@@ -114,11 +116,17 @@ class SdkModule {
         storiesManager: StoriesManager,
         setTrackingSourceUseCase: SetTrackingSourceUseCase,
         sendNetworkMethodUseCase: SendNetworkMethodUseCase,
+        getUserSettingsValueUseCase: GetUserSettingsValueUseCase,
     ): TrackingApi = TrackingApiImpl(
         trackEventManager = trackEventManager,
         storiesManager = storiesManager,
         setTrackingSourceUseCase = setTrackingSourceUseCase,
         checksArguments = { sendNetworkMethodUseCase.queuesEvents },
+        events = NamespaceCalls(
+            core = { sendNetworkMethodUseCase.core },
+            dispatchers = { CoreDispatchers.DEFAULT },
+            shopId = { getUserSettingsValueUseCase.getShopId().ifEmpty { null } },
+        ),
     )
 
     @Singleton

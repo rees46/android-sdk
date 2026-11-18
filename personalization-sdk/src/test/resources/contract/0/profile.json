@@ -1,0 +1,282 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "get",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "request": { "method": "GET", "path": "profile", "query": {} }
+    },
+    {
+      "name": "set со всеми полями: externalId уходит полями id и external_id, cars — полем auto, свои свойства — на верхнем уровне",
+      "call": { "namespace": "profile", "method": "set",
+                "args": { "request": { "email": "jane@example.com", "phone": "+79990000000", "externalId": "u-1", "loyaltyId": "l-1",
+                                       "telegramId": "t-1", "fbId": "fb-1", "vkId": "vk-1", "firstName": "Jane", "lastName": "Doe",
+                                       "gender": "female", "birthday": "1990-02-28", "age": 36, "location": "msk",
+                                       "kids": [ { "gender": "male", "birthday": "2016-02-29" }, { "gender": "female" } ],
+                                       "cars": [ { "brand": "Lada", "model": "Vesta", "vds": "XTA000000000" } ],
+                                       "customProperties": { "favorite_color": "green", "points": 120, "vip": true, "visited_at": null,
+                                                             "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } } },
+      "request": { "method": "POST", "path": "profile/set",
+                   "body": { "email": "jane@example.com", "phone": "+79990000000", "id": "u-1", "external_id": "u-1", "loyalty_id": "l-1",
+                             "telegram_id": "t-1", "fb_id": "fb-1", "vk_id": "vk-1", "first_name": "Jane", "last_name": "Doe",
+                             "gender": "f", "birthday": "1990-02-28", "age": 36, "location": "msk",
+                             "kids": [ { "gender": "m", "birthday": "2016-02-29" }, { "gender": "f" } ],
+                             "auto": [ { "brand": "Lada", "model": "Vesta", "vds": "XTA000000000" } ],
+                             "favorite_color": "green", "points": 120, "vip": true, "visited_at": null,
+                             "tags": [ "a", "b" ], "address": { "city": "Moscow" } } }
+    },
+    {
+      "name": "set: пустая строка стирает location",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "location": "" } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "location": "" } }
+    },
+    {
+      "name": "set: пустые списки не уходят — менять нечего",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [], "cars": [] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set без полей",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": {} } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым email",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым phone",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "phone": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set с пустым loyaltyId — сервер его не стирает",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "loyaltyId": "" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: пустая строка стирает externalId, telegramId и birthday — они уходят пустыми строками",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "externalId": "", "telegramId": "", "birthday": "" } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "id": "", "external_id": "", "telegram_id": "", "birthday": "" } }
+    },
+    {
+      "name": "set: age 0 стирает возраст",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "age": 0 } } },
+      "request": { "method": "POST", "path": "profile/set", "body": { "age": 0 } }
+    },
+    {
+      "name": "set: birthday не в формате YYYY-MM-DD",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "28.02.1990" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday — несуществующая дата",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "2026-02-29" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday с годом до 1000",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "0999-12-31" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday с годом после 2999",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "birthday": "3000-01-01" } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday ребёнка — несуществующая дата",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [ { "birthday": "2015-02-29" } ] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: birthday ребёнка не в формате",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "kids": [ { "birthday": "2016-2-1" } ] } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: отрицательный age",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "age": -1 } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties не из [a-z0-9_]",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "Favorite-Color": "green" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties совпадает с полем запроса",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "first_name": "Jane" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "set: ключ customProperties совпадает со служебным полем",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "customProperties": { "did": "x" } } } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getLastOrder",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "request": { "method": "GET", "path": "orders/last_for_user", "query": {} }
+    },
+    {
+      "name": "get: профиль; незнакомый пол — пустое поле, поля вне Profile не попадают в результат",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200,
+                    "body": { "id": 123, "has_email": true, "email_registered_at": "2026-11-01 10:00:00", "gender": "f",
+                              "computed_gender": "x", "bought_something": false, "email": "hidden@example.com",
+                              "custom_properties": { "favorite_color": "green", "points": 120, "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } },
+      "expect": { "result": { "id": "123", "hasEmail": true, "emailRegisteredAt": "2026-11-01 10:00:00", "gender": "female",
+                              "boughtSomething": false,
+                              "customProperties": { "favorite_color": "green", "points": 120, "tags": [ "a", "b" ], "address": { "city": "Moscow" } } } }
+    },
+    {
+      "name": "get: пустой профиль",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200, "body": {} },
+      "expect": { "result": {} }
+    },
+    {
+      "name": "get: 404 — неизвестный did",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 404, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
+    },
+    {
+      "name": "get: ответ не объект",
+      "call": { "namespace": "profile", "method": "get", "args": {} },
+      "response": { "status": 200, "body": [] },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "set: успех",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 200, "body": { "status": "success" } },
+      "expect": { "result": null }
+    },
+    {
+      "name": "set: успех без тела",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 204, "body": null },
+      "expect": { "result": null }
+    },
+    {
+      "name": "set: 400 — сервер не принял email",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "not-an-email" } } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Invalid email" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "set: 2xx со status error",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": 200, "body": { "status": "error", "message": "Something went wrong" } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "set: нет ответа",
+      "call": { "namespace": "profile", "method": "set", "args": { "request": { "email": "jane@example.com" } } },
+      "response": { "status": null },
+      "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "getLastOrder: товары последнего заказа",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200,
+                    "body": [ { "id": "37", "name": "Кроссовки", "url": "https://shop.example/p/37", "price": 4990, "currency": "₽",
+                                "oldprice": 5990, "is_new": true, "stock_quantity": 1000, "rating": 4, "leftovers": "lots",
+                                "categories": [ { "id": "5", "parent": null, "name": "Обувь", "url": "https://shop.example/c/5" } ] } ] },
+      "expect": { "result": [ { "id": "37", "name": "Кроссовки", "url": "https://shop.example/p/37", "price": 4990, "currency": "₽",
+                                "oldPrice": 5990, "isNew": true, "stockQuantity": 1000, "rating": 4,
+                                "categories": [ { "id": "5", "name": "Обувь", "url": "https://shop.example/c/5" } ] } ] }
+    },
+    {
+      "name": "getLastOrder: заказов нет",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200, "body": [] },
+      "expect": { "result": [] }
+    },
+    {
+      "name": "getLastOrder: 400 — неизвестный did",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 400, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "getLastOrder: ответ не массив",
+      "call": { "namespace": "profile", "method": "getLastOrder", "args": {} },
+      "response": { "status": 200, "body": { "products": [] } },
+      "expect": { "error": { "type": "decoding" } }
+    },
+    {
+      "name": "getOrders: секрет, идентификаторы и dateFrom, из служебных полей — только shop_id",
+      "call": { "namespace": "profile", "method": "getOrders",
+                "args": { "shopSecret": "secret-1", "email": "jane@example.com", "phone": "+79990000000", "loyaltyId": "l-1",
+                          "externalId": "u-1", "dateFrom": "2026-11-01" } },
+      "request": { "method": "GET", "path": "orders/by_user",
+                   "query": { "shop_secret": "secret-1", "email": "jane@example.com", "phone": "+79990000000",
+                              "loyalty_id": "l-1", "external_id": "u-1", "date_from": "2026-11-01" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getOrders: did уходит, только если его передали",
+      "call": { "namespace": "profile", "method": "getOrders", "args": { "shopSecret": "secret-1", "did": "did-of-customer" } },
+      "request": { "method": "GET", "path": "orders/by_user",
+                   "query": { "shop_secret": "secret-1", "did": "did-of-customer" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getOrders без идентификатора клиента",
+      "call": { "namespace": "profile", "method": "getOrders", "args": { "shopSecret": "secret-1", "dateFrom": "2026-11-01" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getOrders: dateFrom не в формате YYYY-MM-DD",
+      "call": { "namespace": "profile", "method": "getOrders",
+                "args": { "shopSecret": "secret-1", "email": "jane@example.com", "dateFrom": "01.11.2026" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getOrders: заказы из ответа сервера — суммы строками, лишние поля заказа и позиции не мешают",
+      "call": { "namespace": "profile", "method": "getOrders", "args": { "shopSecret": "secret-1", "did": "did-of-customer" } },
+      "response": { "status": 200,
+                    "body": { "status": "success",
+                              "data": { "orders": [ {
+                                "_id": 1000001, "id": "A-1001", "date": "2026-11-17T19:48:47.000Z", "value": "69990.0",
+                                "cash_value": null, "bonuses_value": null, "delivery_value": null, "location_id": null,
+                                "promocode": null, "offline": null, "marketplace": null, "delivery_date": null,
+                                "internal_status": "new", "stream": "android", "channel": null, "tax_free": false,
+                                "delivery_type": "pickup", "delivery_address": null, "order_status": null, "payment_type": "card",
+                                "gift_package": null, "payment_structure": null, "value_raw": null, "custom_properties": {},
+                                "items": [ { "amount": 1, "price": "69990.0", "status": "created", "original_price": null,
+                                             "discount_product": null, "barcode": "4600000000037", "line_id": null,
+                                             "cancel_reason": null,
+                                             "item": { "id": "37", "name": "Наушники", "brand": "Example",
+                                                       "url": "https://shop.example/p/37",
+                                                       "image_url": "https://shop.example/i/37.jpg", "price": 69990,
+                                                       "oldprice": 99990, "discount": 30, "currency": "₽",
+                                                       "categories": [ { "id": "5", "name": "Наушники",
+                                                                         "url": "https://shop.example/c/5" } ] } } ],
+                                "history": [] } ] } } },
+      "expect": { "result": [ { "internalId": 1000001, "id": "A-1001", "date": "2026-11-17T19:48:47.000Z", "value": "69990.0",
+                                "internalStatus": "new", "stream": "android", "taxFree": false, "deliveryType": "pickup",
+                                "paymentType": "card",
+                                "items": [ { "amount": 1, "price": "69990.0", "status": "created", "barcode": "4600000000037",
+                                             "item": { "id": "37", "name": "Наушники", "brand": "Example",
+                                                       "url": "https://shop.example/p/37", "price": 69990,
+                                                       "currency": "₽" } } ] } ] }
+    },
+    {
+      "name": "getOrders: 403 — неверный секрет",
+      "call": { "namespace": "profile", "method": "getOrders", "args": { "shopSecret": "secret-1", "did": "did-of-customer" } },
+      "response": { "status": 403, "body": { "status": "error", "message": "Shop secret is missing" } },
+      "expect": { "error": { "type": "http", "code": 403 } }
+    },
+    {
+      "name": "getOrders: 400 — клиент не найден",
+      "call": { "namespace": "profile", "method": "getOrders", "args": { "shopSecret": "secret-1", "did": "did-of-customer" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Client not found" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    }
+  ]
+}

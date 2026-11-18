@@ -56,8 +56,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Tracking through the SDK on the new core, as an app calls it: the shared contract fixtures
- * (`contract/0/tracking.json`) on the wire, the old listeners hearing the server's answer once the
- * event went, the stored source on `/push` only, and `flush()` on both cores.
+ * (`contract/0/tracking.json`) on the wire — a call's request, its refusal, a call that sends nothing and
+ * succeeds (`"request": null`), the server's answer to an event the queue sent —, the old listeners hearing
+ * the server's answer once the event went, the stored source on `/push` only, and `flush()` on both cores.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -72,6 +73,11 @@ class TrackingQueueTest {
     /** Held answers to events while it is not null. */
     @Volatile
     private var holdEvents: CountDownLatch? = null
+
+    /** The answer to every request but `/init` while it is not null: a fixture's `response`. */
+    @Volatile
+    private var eventAnswer: MockResponse? = null
+
     private val threads = TrackingThreads()
 
     @Before
@@ -104,7 +110,7 @@ class TrackingQueueTest {
                 requests += path to body
                 if (path == "init") return MockResponse().setBody("""{"did":"D1","seance":"S1"}""")
                 holdEvents?.await(5, TimeUnit.SECONDS)
-                return MockResponse().setBody("""{"answer":"$path"}""")
+                return eventAnswer ?: MockResponse().setBody("""{"answer":"$path"}""")
             }
         }
         server.start()
@@ -156,6 +162,10 @@ class TrackingQueueTest {
         }
     }
 
+    /** The events the server got from now until it is quiet for a moment, without `/init`. */
+    private fun quietEvents(): List<String> =
+        generateSequence { requests.poll(300, TimeUnit.MILLISECONDS) }.map { it.first }.filter { it != "init" }.toList()
+
     @Test
     fun `every case of the tracking fixtures on the new core`() {
         val sdk = sdk()
@@ -163,11 +173,28 @@ class TrackingQueueTest {
             val name = case.getString("name")
             val call = case.getJSONObject("call")
             val heard = Heard()
+            eventAnswer = if (case.has("response")) ContractFixtures.mockResponse(case) else null
             call(sdk, call.getString("method"), call.getJSONObject("args"), heard)
             if (case.has("error")) {
                 // Refused before the queue, at once: the old callbacks' client-side codes are negative.
                 val answer = heard.calls.poll(1, TimeUnit.SECONDS)
                 assertTrue("$name: $answer", answer?.startsWith("error:-") == true)
+                return@forEach
+            }
+            if (case.has("response")) {
+                // The queue sent the event and the server answered as the case says: the old listener hears it.
+                assertTrue("$name: an answer the runner reads is a success", case.getJSONObject("expect").isNull("result"))
+                assertEquals(name, 1, quietEvents().size)
+                assertTrue(name, heard.calls.poll(5, TimeUnit.SECONDS)?.startsWith("success") == true)
+                eventAnswer = null
+                return@forEach
+            }
+            if (case.isNull("request")) {
+                // Not sent and no error: the listener hears a success, and nothing goes once the queue was tried.
+                assertTrue("$name: ${case.getJSONObject("expect")}", case.getJSONObject("expect").isNull("result"))
+                assertTrue(name, heard.calls.poll(5, TimeUnit.SECONDS)?.startsWith("success") == true)
+                runBlocking { withTimeout(5_000) { sdk.flush() } }
+                assertEquals(name, emptyList<String>(), quietEvents())
                 return@forEach
             }
             val request = case.getJSONObject("request")
@@ -237,6 +264,19 @@ class TrackingQueueTest {
     }
 
     @Test
+    fun `a story id past Int's range goes as a number on both cores`() {
+        listOf(true, false).forEach { coreV2 ->
+            if (!coreV2) tearDown().also { setUp() }
+            val sdk = sdk(coreV2)
+
+            sdk.tracking.storyView("3000000000", "34", "main_stories")
+
+            val storyId = next("track/stories").get("story_id")
+            assertEquals("core v2: $coreV2", 3_000_000_000L, (storyId as? Number)?.toLong())
+        }
+    }
+
+    @Test
     fun `the Java form of flush ends once on the main thread`() {
         val main = HeldMain()
         val sdk = SDK().apply { dispatchers = CoreDispatchers(main = { main }) }
@@ -297,10 +337,11 @@ class TrackingQueueTest {
         when (method) {
             "productView" -> tracking.productView(args.getString("itemId"), args.optJSONObject("source")?.let(::source), listener)
             "categoryView" -> tracking.categoryView(args.getString("categoryId"), listener)
-            "addToCart" -> tracking.addToCart(item(args.getJSONObject("item")), listener = listener)
+            "addToCart" -> tracking.addToCart(item(args.getJSONObject("item")), args.optJSONObject("source")?.let(::source), listener)
+            "addToFavorites" -> tracking.addToFavorites(args.getString("itemId"), args.optJSONObject("source")?.let(::source), listener)
             "syncCart" -> tracking.syncCart(args.getJSONArray("items").objects().map(::item), listener)
             "syncFavorites" -> tracking.syncFavorites(args.getJSONArray("itemIds").strings(), listener)
-            "purchase" -> tracking.purchase(purchase(args.getJSONObject("request")), listener = listener)
+            "purchase" -> tracking.purchase(purchase(args.getJSONObject("request")), args.optJSONObject("source")?.let(::source), listener)
             "storyView" -> tracking.storyView(args.getString("storyId"), args.getString("slideId"), args.optString("code").ifEmpty { null }, listener)
             "custom" -> tracking.custom(
                 event = args.getString("event"),
@@ -308,6 +349,7 @@ class TrackingQueueTest {
                 customFields = args.optJSONObject("customFields")?.let { fields -> fields.keys().asSequence().associateWith { fields.get(it) } },
                 listener = listener,
             )
+            "popupShown" -> tracking.popupShown(args.getInt("popupId"), listener)
             else -> fail("no call for $method")
         }
     }

@@ -1,0 +1,82 @@
+{
+  "contract": "0",
+  "cases": [
+    {
+      "name": "add",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 12}},
+      "request": {"method": "POST", "path": "segments/add", "body": {"segment_id": 12}}
+    },
+    {
+      "name": "add с контактами",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 12, "email": "jane@example.com", "phone": "+79990000000"}},
+      "request": {"method": "POST", "path": "segments/add", "body": {"segment_id": 12, "email": "jane@example.com", "phone": "+79990000000"}}
+    },
+    {
+      "name": "remove",
+      "call": {"namespace": "segments", "method": "remove", "args": {"segmentId": 12}},
+      "request": {"method": "POST", "path": "segments/remove", "body": {"segment_id": 12}}
+    },
+    {
+      "name": "add с segmentId 0",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 0}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "remove с отрицательным segmentId",
+      "call": {"namespace": "segments", "method": "remove", "args": {"segmentId": -3}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "add с пустым email",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 12, "email": ""}},
+      "error": {"type": "invalidArgument"}
+    },
+    {
+      "name": "get — GET, не POST из документации",
+      "call": {"namespace": "segments", "method": "get", "args": {}},
+      "request": {"method": "GET", "path": "segments/get", "query": {}}
+    },
+    {
+      "name": "get: сегменты клиента; незнакомый тип читается как есть, сегмент без id пропускается",
+      "call": {"namespace": "segments", "method": "get", "args": {}},
+      "response": {"status": 200, "body": [{"id": 1, "type": "dynamic"}, {"id": "2", "type": "static"}, {"id": 3, "type": "brand_new_kind"}, {"type": "rfm"}]},
+      "expect": {"result": [{"id": 1, "type": "dynamic"}, {"id": 2, "type": "static"}, {"id": 3, "type": "brand_new_kind"}]}
+    },
+    {
+      "name": "get: сегментов нет",
+      "call": {"namespace": "segments", "method": "get", "args": {}},
+      "response": {"status": 200, "body": []},
+      "expect": {"result": []}
+    },
+    {
+      "name": "get: 404 — неизвестный did",
+      "call": {"namespace": "segments", "method": "get", "args": {}},
+      "response": {"status": 404, "body": {"status": "error", "message": "User not found"}},
+      "expect": {"error": {"type": "http", "code": 404}}
+    },
+    {
+      "name": "get: ответ не массив",
+      "call": {"namespace": "segments", "method": "get", "args": {}},
+      "response": {"status": 200, "body": {"segments": []}},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "add: успех",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 12}},
+      "response": {"status": 200, "body": {"status": "success"}},
+      "expect": {"result": null}
+    },
+    {
+      "name": "remove: 2xx со status error",
+      "call": {"namespace": "segments", "method": "remove", "args": {"segmentId": 12}},
+      "response": {"status": 200, "body": {"status": "error", "message": "Something went wrong"}},
+      "expect": {"error": {"type": "decoding"}}
+    },
+    {
+      "name": "add: нет ответа",
+      "call": {"namespace": "segments", "method": "add", "args": {"segmentId": 12}},
+      "response": {"status": null},
+      "expect": {"error": {"type": "network"}}
+    }
+  ]
+}
