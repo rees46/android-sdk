@@ -89,25 +89,33 @@ internal class NamespaceFixtures(private val shop: String, private val timeouts:
         return outcome { invoke.invoke(call.getString("method"), call.optJSONObject("args") ?: JSONObject()) }
     }
 
-    /** The cases of [file] with [kind] (`request`, `error`, `response`); of [namespace] only, when it is given. */
-    private fun cases(file: String, kind: String, namespace: String?): List<JSONObject> =
+    /**
+     * The cases of [file] with [kind] (`request`, `error`, `response`): of [namespace] only, when it is given;
+     * of [methods] only, when they are given; and none of the other platform's (`"platform": "ios"`).
+     */
+    private fun cases(file: String, kind: String, namespace: String?, methods: Set<String>? = null): List<JSONObject> =
         ContractFixtures.cases(file).filter { case ->
-            case.has(kind) && (namespace == null || case.getJSONObject("call").getString("namespace") == namespace)
+            val call = case.getJSONObject("call")
+            case.has(kind) && !case.isNull(kind) &&
+                (namespace == null || call.getString("namespace") == namespace) &&
+                (methods == null || call.getString("method") in methods) &&
+                case.optString("platform").let { it.isEmpty() || it == "android" }
         }
 
     /**
      * Every case of [file] that pairs a call with a request: the call sends that method, path and its own
      * fields — the query of a `GET`, the body of a `POST` — and nothing of its own beside them; the common
-     * fields the core adds are there too. [answer] is what the server says to each request. Returns how many
-     * cases it checked.
+     * fields the core adds are there too, or only those of `request.commonFields`. [answer] is what the server
+     * says to each request. Returns how many cases it checked.
      */
     fun checkRequests(
         file: String,
         invoke: Invoke,
         namespace: String? = null,
+        methods: Set<String>? = null,
         answer: () -> MockResponse = { MockResponse().setBody("{}") },
     ): Int {
-        val cases = cases(file, "request", namespace)
+        val cases = cases(file, "request", namespace, methods)
         assertTrue("$file has no request cases", cases.isNotEmpty())
         cases.forEach { case ->
             val name = case.getString("name")
@@ -120,8 +128,8 @@ internal class NamespaceFixtures(private val shop: String, private val timeouts:
     }
 
     /** Every case of [file] that pairs a call with an error fails with it and sends nothing. Returns how many it checked. */
-    fun checkErrors(file: String, invoke: Invoke, namespace: String? = null): Int {
-        val cases = cases(file, "error", namespace).filter { !it.has("response") }
+    fun checkErrors(file: String, invoke: Invoke, namespace: String? = null, methods: Set<String>? = null): Int {
+        val cases = cases(file, "error", namespace, methods).filter { !it.has("response") }
         cases.forEach { case ->
             val name = case.getString("name")
             assertSameError(name, ContractFixtures.errorOf(case.getJSONObject("error")), outcome(case, invoke))
@@ -134,11 +142,20 @@ internal class NamespaceFixtures(private val shop: String, private val timeouts:
      * Every case of [file] that pairs an answer with what the method returns: the call fails with
      * `expect.error`, or its value equals `expect.result` — as [ContractJson] writes it, or, when the test
      * gives [json], as that writes it, with an object of `expect.result` listing only the fields the case
-     * checks ([assertMatches]). No answer (`"status": null`) is a request without a network. Returns how
-     * many cases it checked.
+     * checks ([assertMatches]). The result of a method of [listed] is matched so too, written as
+     * [ContractJson] writes it: a file compared whole names the methods whose released model the platforms
+     * name differently (`profile.getOrders`). No answer (`"status": null`) is a request without a network.
+     * Returns how many cases it checked.
      */
-    fun checkAnswers(file: String, invoke: Invoke, namespace: String? = null, json: Json? = null): Int {
-        val cases = cases(file, "response", namespace)
+    fun checkAnswers(
+        file: String,
+        invoke: Invoke,
+        namespace: String? = null,
+        json: Json? = null,
+        methods: Set<String>? = null,
+        listed: Set<String> = emptySet(),
+    ): Int {
+        val cases = cases(file, "response", namespace, methods)
         assertTrue("$file has no answer cases", cases.isNotEmpty())
         cases.forEach { case ->
             val name = case.getString("name")
@@ -152,10 +169,11 @@ internal class NamespaceFixtures(private val shop: String, private val timeouts:
             if (expect.has("result")) {
                 if (outcome !is SdkResult.Success) fail("$name: $outcome")
                 val value = (outcome as SdkResult.Success).value
-                if (json == null) {
-                    ContractJson.assertEquals(name, expect.opt("result"), ContractJson.of(value))
-                } else {
-                    assertMatches(name, normalize(expect.get("result")), normalize(json.of(value)))
+                when {
+                    json != null -> assertMatches(name, normalize(expect.get("result")), normalize(json.of(value)))
+                    case.getJSONObject("call").getString("method") in listed ->
+                        assertMatches(name, normalize(expect.get("result")), normalize(ContractJson.of(value)))
+                    else -> ContractJson.assertEquals(name, expect.opt("result"), ContractJson.of(value))
                 }
             } else {
                 assertSameError(name, ContractFixtures.errorOf(expect.getJSONObject("error")), outcome)
@@ -166,24 +184,31 @@ internal class NamespaceFixtures(private val shop: String, private val timeouts:
         return cases.size
     }
 
+    /**
+     * [recorded] is the request [expected] names. Of the common fields it carries all, or those of
+     * `commonFields` alone — a server method's: `shop_id` and none of the device's. A common field the case
+     * lists among its own fields is the method's, given by the caller: `did` of a server method.
+     */
     private fun checkRequest(name: String, expected: JSONObject, recorded: RecordedRequest) {
         assertEquals(name, expected.getString("method"), recorded.method)
         val url = recorded.requestUrl!!
         assertEquals(name, "/" + expected.getString("path"), url.encodedPath)
+        val fields = expected.optJSONObject(if (recorded.method == "GET") "query" else "body") ?: JSONObject()
+        val listed = fields.keys().asSequence().toSet()
+        val common = expected.optJSONArray("commonFields")?.let { array -> List(array.length()) { array.getString(it) }.toSet() } ?: COMMON_FIELDS
+        val added = COMMON_FIELDS - listed
         val own: Map<String, Any?> = if (recorded.method == "GET") {
-            assertEquals("$name: common fields", COMMON_FIELDS, url.queryParameterNames intersect COMMON_FIELDS)
+            assertEquals("$name: common fields", common - listed, url.queryParameterNames intersect added)
             // A list goes as its key repeated (`promo_codes[]=A&promo_codes[]=B`): the fixtures write its values as a list.
-            (url.queryParameterNames - COMMON_FIELDS).associateWith { key ->
+            (url.queryParameterNames - added).associateWith { key ->
                 url.queryParameterValues(key).let { values -> if (key.endsWith("[]")) values else values.single() }
             }
         } else {
             val body = JSONObject(recorded.body.readUtf8())
-            val common = expected.optJSONArray("commonFields")?.let { array -> List(array.length()) { array.getString(it) }.toSet() } ?: COMMON_FIELDS
-            assertEquals("$name: common fields", common, body.keys().asSequence().toSet() intersect COMMON_FIELDS)
-            (body.keys().asSequence().toSet() - COMMON_FIELDS).associateWith { body.get(it) }
+            assertEquals("$name: common fields", common - listed, body.keys().asSequence().toSet() intersect added)
+            (body.keys().asSequence().toSet() - added).associateWith { body.get(it) }
         }
-        val fields = expected.optJSONObject(if (recorded.method == "GET") "query" else "body") ?: JSONObject()
-        assertEquals("$name: fields", fields.keys().asSequence().toSet(), own.keys)
+        assertEquals("$name: fields", listed, own.keys)
         fields.keys().forEach { key ->
             ContractJson.assertEquals("$name: $key", fields.get(key), ContractJson.of(own[key]))
         }

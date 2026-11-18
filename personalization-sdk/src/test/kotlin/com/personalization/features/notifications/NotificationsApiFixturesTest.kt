@@ -20,10 +20,13 @@ import com.personalization.core.internal.ContractFixtures
 import com.personalization.core.internal.CoreDispatchers
 import com.personalization.core.internal.CoreSelection
 import com.personalization.core.internal.DeviceStorage
+import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.PushHub
 import com.personalization.core.internal.QueueStore
 import com.personalization.core.internal.ShopStorage
 import com.personalization.core.internal.StorageLayout
+import com.personalization.core.internal.argInt
+import com.personalization.core.internal.argString
 import com.personalization.logs.SdkLogs
 import com.personalization.push.PushTokenManager
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +57,8 @@ import java.util.concurrent.TimeUnit
 /**
  * `sdk.notifications` against the contract's fixtures (`contract/0/notifications.json`) on a bridge's
  * instance and a local server: the request each call makes, the calls refused before one, and how
- * `setPushToken` reads each answer.
+ * `setPushToken` reads each answer. `getHistory`, a server method that asks rather than queues, runs over
+ * [NamespaceFixtures]: its request with the shop's secret, `shop_id` and none of the device's fields.
  *
  * A case of one platform says so with `platform` (`android`, `ios`): the cases of iOS are skipped, and so is
  * one whose provider Android's [PushProvider] cannot name (`apns`, which only a major release may add).
@@ -142,6 +146,9 @@ class NotificationsApiFixturesTest {
 
     private fun forAndroid(case: JSONObject): Boolean = case.optString("platform").let { it.isEmpty() || it == "android" }
 
+    /** A case of the push events or the token, which this test's instance runs; not one of [HISTORY]. */
+    private fun ofEventsOrToken(case: JSONObject): Boolean = forAndroid(case) && case.getJSONObject("call").getString("method") != HISTORY
+
     /** Android's provider of a case; null for one it cannot name. */
     private fun provider(name: String): PushProvider? = PushProvider.fromId(name)
 
@@ -197,7 +204,7 @@ class NotificationsApiFixturesTest {
     @Test
     fun `each call makes the contract's request`() {
         val sdk = bridgeSdk()
-        val cases = ContractFixtures.requests("notifications").filter(::forAndroid)
+        val cases = ContractFixtures.requests("notifications").filter(::ofEventsOrToken)
         assertTrue(cases.size >= 6)
         cases.forEach { case ->
             val name = case.getString("name")
@@ -220,7 +227,7 @@ class NotificationsApiFixturesTest {
     @Test
     fun `a call refused by the contract sends nothing and ends in its error`() {
         val sdk = bridgeSdk()
-        val cases = ContractFixtures.cases("notifications").filter { it.has("error") && forAndroid(it) }
+        val cases = ContractFixtures.cases("notifications").filter { it.has("error") && ofEventsOrToken(it) }
         assertTrue(cases.size >= 3)
         var made = 0
         cases.forEach { case ->
@@ -245,7 +252,7 @@ class NotificationsApiFixturesTest {
     @Test
     fun `setPushToken reads every answer of the contract into success or its error`() {
         val sdk = bridgeSdk()
-        val cases = ContractFixtures.answers("notifications").filter(::forAndroid)
+        val cases = ContractFixtures.answers("notifications").filter(::ofEventsOrToken)
         assertTrue(cases.size >= 6)
         cases.forEach { case ->
             val name = case.getString("name")
@@ -267,7 +274,51 @@ class NotificationsApiFixturesTest {
         network(connected = true)
     }
 
+    /** Runs [block] over a new core of its own on a mock server, with `notifications` over it. */
+    private fun history(block: (NamespaceFixtures, NamespaceFixtures.Invoke) -> Unit) {
+        val fixtures = NamespaceFixtures("history-shop")
+        fixtures.start(context)
+        try {
+            val notifications = NotificationsApiImpl(SDK(), fixtures.calls)
+            block(fixtures, NamespaceFixtures.Invoke { method, args ->
+                assertEquals(HISTORY, method)
+                notifications.getHistory(
+                    shopSecret = args.getString("shopSecret"),
+                    type = args.getString("type"),
+                    phone = args.argString("phone"),
+                    email = args.argString("email"),
+                    externalId = args.argString("externalId"),
+                    loyaltyId = args.argString("loyaltyId"),
+                    channel = args.argString("channel"),
+                    limit = args.argInt("limit"),
+                    page = args.argInt("page"),
+                    dateFrom = args.argString("dateFrom"),
+                    did = args.argString("did"),
+                )
+            })
+        } finally {
+            fixtures.stop()
+        }
+    }
+
+    @Test
+    fun `getHistory makes the contract's request with the secret and shop_id alone, or fails with invalidArgument and sends nothing`() =
+        history { fixtures, invoke ->
+            val history = setOf(HISTORY)
+            assertEquals(2, fixtures.checkRequests("notifications", invoke, methods = history) {
+                MockResponse().setBody("""{"status":"success","payload":{"messages":[]}}""")
+            })
+            assertEquals(4, fixtures.checkErrors("notifications", invoke, methods = history))
+        }
+
+    /** The answer's model is the released [com.personalization.api.responses.notifications.GetAllNotificationsResponse]: the case of iOS names its own. */
+    @Test
+    fun `getHistory reads each answer of the contract into its result or its error`() = history { fixtures, invoke ->
+        assertEquals(3, fixtures.checkAnswers("notifications", invoke, methods = setOf(HISTORY), listed = setOf(HISTORY)))
+    }
+
     private companion object {
         const val SHOP = "notifications-fixtures-shop"
+        const val HISTORY = "getHistory"
     }
 }

@@ -115,6 +115,79 @@
       "call": { "namespace": "notifications", "method": "setPushToken", "args": { "token": "token-no-answer", "provider": "fcm" } },
       "response": { "status": null },
       "expect": { "error": { "type": "network" } }
+    },
+    {
+      "name": "getHistory: секрет, типы, каналы, страница и dateFrom, из служебных полей — только shop_id",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk,chain,transactional", "email": "jane@example.com",
+                          "channel": "email,mobile_push", "limit": 20, "page": 2, "dateFrom": "2026-11-01" } },
+      "request": { "method": "GET", "path": "notifications",
+                   "query": { "shop_secret": "secret-1", "type": "bulk,chain,transactional", "email": "jane@example.com",
+                              "channel": "email,mobile_push", "limit": "20", "page": "2", "date_from": "2026-11-01" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getHistory: did уходит, только если его передали",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "did": "did-of-customer", "dateFrom": "2026-11-01" } },
+      "request": { "method": "GET", "path": "notifications",
+                   "query": { "shop_secret": "secret-1", "type": "bulk", "did": "did-of-customer", "date_from": "2026-11-01" },
+                   "commonFields": [ "shop_id" ] }
+    },
+    {
+      "name": "getHistory без dateFrom — сервер ответил бы 400",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory с пустым type",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory с limit 0",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01",
+                          "limit": 0 } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory без идентификатора клиента",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "dateFrom": "2026-11-01" } },
+      "error": { "type": "invalidArgument" }
+    },
+    {
+      "name": "getHistory: пустая история на Android — GetAllNotificationsResponse",
+      "platform": "android",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "messages": [] } } },
+      "expect": { "result": { "payload": { "messages": [] } } }
+    },
+    {
+      "name": "getHistory: пустая история на iOS — UserPayloadResponse",
+      "platform": "ios",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 200, "body": { "status": "success", "payload": { "messages": [] } } },
+      "expect": { "result": { "notifications": [] } }
+    },
+    {
+      "name": "getHistory: 400 — неверный секрет",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 400, "body": { "status": "error", "message": "Incorrect shop credentials" } },
+      "expect": { "error": { "type": "http", "code": 400 } }
+    },
+    {
+      "name": "getHistory: 404 — клиент не найден",
+      "call": { "namespace": "notifications", "method": "getHistory",
+                "args": { "shopSecret": "secret-1", "type": "bulk", "email": "jane@example.com", "dateFrom": "2026-11-01" } },
+      "response": { "status": 404, "body": { "status": "error", "message": "User is not found" } },
+      "expect": { "error": { "type": "http", "code": 404 } }
     }
   ]
 }

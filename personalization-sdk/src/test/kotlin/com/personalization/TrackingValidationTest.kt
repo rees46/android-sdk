@@ -270,8 +270,11 @@ class TrackingValidationTest {
     /** Calls the `tracking` method of a fixture with its contract arguments. */
     private fun call(sdk: SDK, method: String, args: JSONObject, listener: OnApiCallbackListener) {
         val tracking = sdk.tracking
+        val source = args.optJSONObject("source")?.let(::source)
         when (method) {
-            "productView" -> tracking.productView(args.getString("itemId"), listener = listener)
+            "productView" -> tracking.productView(args.getString("itemId"), source, listener)
+            "addToCart" -> tracking.addToCart(TrackingItem(args.getJSONObject("item").getString("id")), source, listener)
+            "addToFavorites" -> tracking.addToFavorites(args.getString("itemId"), source, listener)
             "purchase" -> {
                 val request = args.getJSONObject("request")
                 val items = request.getJSONArray("items")
@@ -281,7 +284,8 @@ class TrackingValidationTest {
                         orderPrice = request.getDouble("orderPrice"),
                         items = List(items.length()) { items.getJSONObject(it) }.map { PurchaseItemRequest(it.getString("id"), it.getInt("amount"), it.getDouble("price")) },
                     ),
-                    listener = listener,
+                    source,
+                    listener,
                 )
             }
             "custom" -> tracking.custom(
@@ -292,6 +296,12 @@ class TrackingValidationTest {
             else -> fail("no call for the error case of $method")
         }
     }
+
+    /** A fixture's source: its type by the contract's name (`webPushDigest`), its code. */
+    private fun source(json: JSONObject) = TrackingSource(
+        TrackingSourceType.entries.first { it.name.replace("_", "").equals(json.getString("type"), ignoreCase = true) },
+        json.getString("code"),
+    )
 
     private companion object {
         const val SHOP = "validation-shop"

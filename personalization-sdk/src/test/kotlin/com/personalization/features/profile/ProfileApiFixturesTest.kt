@@ -48,6 +48,15 @@ class ProfileApiFixturesTest {
             "get" -> profile.get()
             "set" -> profile.set(request(args.getJSONObject("request")))
             "getLastOrder" -> profile.getLastOrder()
+            "getOrders" -> profile.getOrders(
+                shopSecret = args.getString("shopSecret"),
+                did = args.argString("did"),
+                email = args.argString("email"),
+                phone = args.argString("phone"),
+                loyaltyId = args.argString("loyaltyId"),
+                externalId = args.argString("externalId"),
+                dateFrom = args.argString("dateFrom"),
+            )
             else -> error("no profile.$method")
         }
     }
@@ -58,9 +67,10 @@ class ProfileApiFixturesTest {
         fixtures.checkErrors("profile", invoke)
     }
 
+    /** `getOrders` returns the released `Order`, whose product the platforms name apart: its case lists the fields both name alike. */
     @Test
     fun `every method reads each answer of the contract into its result or its error`() {
-        fixtures.checkAnswers("profile", invoke)
+        fixtures.checkAnswers("profile", invoke, listed = setOf("getOrders"))
     }
 
     @Test
