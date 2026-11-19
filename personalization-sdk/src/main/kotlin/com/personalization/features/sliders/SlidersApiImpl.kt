@@ -14,7 +14,9 @@ import com.personalization.core.internal.nonBlankStringOrNull
 import com.personalization.core.internal.objectOrNull
 import com.personalization.core.internal.putIfNotNull
 import com.personalization.core.internal.putList
+import com.personalization.core.internal.stringOrNull
 import com.personalization.sdk.domain.models.NetworkMethod
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** [SlidersApi] over the namespaces' path ([NamespaceCalls]). */
@@ -41,15 +43,20 @@ internal class SlidersApiImpl(private val calls: NamespaceCalls) : SlidersApi {
         private const val CODE = "code"
         private const val TAGS = "tags"
         private const val LOCATION = "location"
+        private const val STATUS = "status"
+        private const val STATUS_ERROR = "error"
 
         /**
-         * `payload.properties` and `payload.slides`; null (`decoding`) without the list of banners. Without
-         * its own code the slider and its banners take [asked], the code it was asked for. A banner without
-         * an id, which its events need, is left out.
+         * `payload.properties` and `payload.slides`; null (`decoding`) without the `payload` object, or for an
+         * answer of `status` `error`. A payload without the list of banners is a slider without banners.
+         * Without its own code the slider and its banners take [asked], the code it was asked for. A banner
+         * without an id, which its events need, is left out.
          */
         fun readSlider(body: Any?, asked: String): Slider? {
-            val payload = (body as? JSONObject)?.objectOrNull("payload") ?: return null
-            val slides = payload.arrayOrNull("slides") ?: return null
+            val answer = body as? JSONObject ?: return null
+            if (answer.stringOrNull(STATUS) == STATUS_ERROR) return null
+            val payload = answer.objectOrNull("payload") ?: return null
+            val slides = payload.arrayOrNull("slides") ?: JSONArray()
             val properties = payload.objectOrNull("properties")
             val code = properties?.nonBlankStringOrNull(CODE) ?: asked
             return Slider(
