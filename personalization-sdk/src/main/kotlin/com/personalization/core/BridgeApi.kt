@@ -22,6 +22,9 @@ package com.personalization.core
  * - `BridgeErrors` — the whole [SdkError] behind an old `onError(code, message)`, and listeners that
  *   report [SdkResult];
  * - `SDK.queueEvent` — a tracking event through the queue, completed once it is accepted;
+ * - `TrackingApi.queued` — the events of `sdk.tracking` as its methods send them, each completed once the
+ *   queue accepted it, as the contract completes them; the methods of `sdk.tracking` hear the server's answer
+ *   until the major release;
  * - the namespaces of the new core, where each method is a suspending function with a twin that ends in a
  *   [CompletionListener], and fails with [SdkError] — [SdkError.NotInitialized] on the legacy core, where
  *   they do not run, and [SdkError.InvalidArgument], before any request, for an argument the contract

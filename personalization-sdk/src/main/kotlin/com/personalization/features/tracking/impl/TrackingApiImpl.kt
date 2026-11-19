@@ -4,6 +4,7 @@ import com.personalization.LogLevel
 import com.personalization.Params
 import com.personalization.Params.TrackEvent
 import com.personalization.api.OnApiCallbackListener
+import com.personalization.api.managers.QueuedTrackingApi
 import com.personalization.api.managers.TrackEventManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.models.purchase.PurchaseTrackingRequest
@@ -15,8 +16,12 @@ import com.personalization.api.params.ProductItemParams
 import com.personalization.core.BridgeApi
 import com.personalization.core.CompletionListener
 import com.personalization.core.SdkError
+import com.personalization.core.SdkException
+import com.personalization.core.SdkResult
 import com.personalization.core.internal.ArgumentRefusals
 import com.personalization.core.internal.CoreDispatchers
+import com.personalization.core.internal.CurrentError
+import com.personalization.core.internal.EventAnswerListener
 import com.personalization.core.internal.LegacyDelivery
 import com.personalization.core.internal.LegacyErrors
 import com.personalization.core.internal.NamespaceCalls
@@ -31,6 +36,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 /**
@@ -50,8 +56,8 @@ internal class TrackingApiImpl @Inject constructor(
      */
     private val checksArguments: () -> Boolean = { false },
     /**
-     * The path of the bridge-only events, [bannerView] and [bannerClick]: the new core's queue. Without the
-     * instance's core they fail with `notInitialized`.
+     * The path of the bridge-only events, [bannerView], [bannerClick] and [queued]: the new core's queue.
+     * Without the instance's new core they fail with `notInitialized`.
      */
     private val events: NamespaceCalls = NamespaceCalls(core = { null }, dispatchers = { CoreDispatchers.DEFAULT }, shopId = { null }),
 ) : TrackingApi {
@@ -298,6 +304,122 @@ internal class TrackingApiImpl @Inject constructor(
             if (code.isBlank()) invalidArgument("code is empty")
             JSONObject().put(EVENT_PARAM, event).put(BANNER_ID_PARAM, id).put(RECOMMENDED_CODE_PARAM, code)
         }
+
+    /**
+     * `tracking.queued`: each method runs its twin above ([queue]), so the event, its checks and what goes
+     * with it are the twin's; only its listener hears the queue's acceptance instead of the answer.
+     */
+    @BridgeApi
+    override val queued: QueuedTrackingApi = object : QueuedTrackingApi {
+        override fun productView(itemId: String, source: TrackingSource?, listener: CompletionListener<Unit>?) =
+            queue("tracking.productView", listener) { this@TrackingApiImpl.productView(itemId, source, it) }
+
+        override fun categoryView(categoryId: String, listener: CompletionListener<Unit>?) =
+            queue("tracking.categoryView", listener) { this@TrackingApiImpl.categoryView(categoryId, it) }
+
+        override fun search(query: String, results: List<String>?, listener: CompletionListener<Unit>?) =
+            queue("tracking.search", listener) { this@TrackingApiImpl.search(query, results, it) }
+
+        override fun addToCart(item: TrackingItem, source: TrackingSource?, listener: CompletionListener<Unit>?) =
+            queue("tracking.addToCart", listener) { this@TrackingApiImpl.addToCart(item, source, it) }
+
+        override fun syncCart(items: List<TrackingItem>, listener: CompletionListener<Unit>?) =
+            queue("tracking.syncCart", listener) { this@TrackingApiImpl.syncCart(items, it) }
+
+        override fun removeFromCart(itemId: String, listener: CompletionListener<Unit>?) =
+            queue("tracking.removeFromCart", listener) { this@TrackingApiImpl.removeFromCart(itemId, it) }
+
+        override fun addToFavorites(itemId: String, source: TrackingSource?, listener: CompletionListener<Unit>?) =
+            queue("tracking.addToFavorites", listener) { this@TrackingApiImpl.addToFavorites(itemId, source, it) }
+
+        override fun syncFavorites(itemIds: List<String>, listener: CompletionListener<Unit>?) =
+            queue("tracking.syncFavorites", listener) { this@TrackingApiImpl.syncFavorites(itemIds, it) }
+
+        override fun removeFromFavorites(itemId: String, listener: CompletionListener<Unit>?) =
+            queue("tracking.removeFromFavorites", listener) { this@TrackingApiImpl.removeFromFavorites(itemId, it) }
+
+        override fun storyView(storyId: String, slideId: String, code: String?, listener: CompletionListener<Unit>?) =
+            queue("tracking.storyView", listener) { this@TrackingApiImpl.storyView(storyId, slideId, code, it) }
+
+        override fun storyClick(storyId: String, slideId: String, code: String?, listener: CompletionListener<Unit>?) =
+            queue("tracking.storyClick", listener) { this@TrackingApiImpl.storyClick(storyId, slideId, code, it) }
+
+        override fun purchase(request: PurchaseTrackingRequest, source: TrackingSource?, listener: CompletionListener<Unit>?) =
+            queue("tracking.purchase", listener) { this@TrackingApiImpl.purchase(request, source, it) }
+
+        override fun custom(
+            event: String,
+            time: Int?,
+            category: String?,
+            label: String?,
+            value: Int?,
+            customFields: Map<String, Any?>?,
+            listener: CompletionListener<Unit>?,
+        ) = queue("tracking.custom", listener) {
+            this@TrackingApiImpl.custom(event, time, category, label, value, customFields, it)
+        }
+
+        override fun popupShown(popupId: Int, listener: CompletionListener<Unit>?) =
+            queue("tracking.popupShown", listener) { this@TrackingApiImpl.popupShown(popupId, it) }
+
+        override fun bannerView(bannerId: String, code: String, listener: CompletionListener<Unit>?) =
+            this@TrackingApiImpl.bannerView(bannerId, code, listener)
+
+        override fun bannerClick(bannerId: String, code: String, listener: CompletionListener<Unit>?) =
+            this@TrackingApiImpl.bannerClick(bannerId, code, listener)
+    }
+
+    /**
+     * Runs [twin], a method of `tracking`, for the queued method [call], with an [Acceptance] of [listener] for
+     * its listener; on the new core only: otherwise [listener] hears `notInitialized`, logged on the legacy core
+     * as `core_flag_mismatch`, and nothing is sent. The core decides before the arguments, as in the namespaces.
+     */
+    private fun queue(call: String, listener: CompletionListener<Unit>?, twin: (OnApiCallbackListener) -> Unit) {
+        try {
+            events.checked(call) {}
+        } catch (e: SdkException) {
+            events.tell(listener, SdkResult.Failure(e.error))
+            return
+        }
+        twin(Acceptance(listener))
+    }
+
+    /**
+     * The listener a queued call hands its twin. [listener] hears once, on the main thread: the queue's
+     * acceptance, once the core handed the event to the queue ([queued]); before that, whatever the twin
+     * tells — its refusal (`invalidArgument`), the success of a slide that is not sent, `notInitialized` after
+     * `release()`. The answer, which comes after the acceptance, is not the call's; a popup in it is shown as
+     * for the twin.
+     */
+    private inner class Acceptance(listener: CompletionListener<Unit>?) : EventAnswerListener() {
+        /** Let go once told: the queue keeps this listener until its event is sent, up to 7 days. */
+        private val waiting = AtomicReference(listener)
+
+        @Volatile
+        private var handed = false
+
+        override fun queued(): (SdkError?) -> Unit {
+            handed = true
+            return { refused -> complete(if (refused == null) SdkResult.Success(Unit) else SdkResult.Failure(refused)) }
+        }
+
+        override fun onSuccess(response: JSONObject?) {
+            if (!handed) complete(SdkResult.Success(Unit))
+        }
+
+        override fun onSuccess(response: JSONArray) {
+            if (!handed) complete(SdkResult.Success(Unit))
+        }
+
+        override fun onError(code: Int, msg: String?) {
+            // The new core tells every failure with its error; a code alone is a failure without an answer.
+            if (!handed) complete(SdkResult.Failure(CurrentError.get() ?: SdkError.Network))
+        }
+
+        private fun complete(result: SdkResult<Unit>) {
+            waiting.getAndSet(null)?.let { events.tell(it, result) }
+        }
+    }
 
     private fun Params.withSource(source: TrackingSource?): Params =
         source?.let { putSource(it) } ?: this

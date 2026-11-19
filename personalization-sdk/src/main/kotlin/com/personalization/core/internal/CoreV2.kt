@@ -96,7 +96,9 @@ internal class CoreV2(
         }
         val queue = queue
         if (queue != null && method is NetworkMethod.POST && method.method in EVENT_PATHS) {
-            queue.accept(method.method, params, listener)
+            // A call that completes on the queue's acceptance (tracking.queued) hears it; the answer still
+            // reaches the listener, for the popup in it.
+            queue.accept(method.method, params, listener, (listener as? EventAnswerListener)?.queued())
             return
         }
         sendNow(method, params, answer = answer)

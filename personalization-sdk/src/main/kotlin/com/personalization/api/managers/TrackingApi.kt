@@ -20,7 +20,8 @@ import com.personalization.core.SdkError
  * as long as the queue keeps an event, 7 days — then hears the server's answer, or the error that
  * dropped the event. An event the queue refuses at once (an empty id, a released instance, a refused
  * shop) tells the listener at once. Whatever the listener holds stays alive that long: keep it free of
- * screens and other short-lived objects.
+ * screens and other short-lived objects. The Flutter and React Native bridges complete their calls when the
+ * queue accepted the event, as the contract does: they send the same events through [queued].
  *
  * An event's own `source` takes every [TrackingSourceType] but [TrackingSourceType.TRANSACTIONAL] and
  * [TrackingSourceType.WEB_PUSH_DIGEST]: the server does not take them in `recommended_by` and would reject
@@ -192,4 +193,14 @@ interface TrackingApi {
     @BridgeApi
     @JvmSynthetic
     fun bannerClick(bannerId: String, code: String, listener: CompletionListener<Unit>? = null)
+
+    /**
+     * The same events for the Flutter and React Native bridges, completed as the contract completes them:
+     * each method's [CompletionListener] hears once, on the main thread, that the new core's queue accepted
+     * the event, not the server's answer; on the legacy core, where nothing is sent, [SdkError.NotInitialized].
+     * See [QueuedTrackingApi]. Hidden from Java.
+     */
+    @BridgeApi
+    @get:JvmSynthetic
+    val queued: QueuedTrackingApi
 }
