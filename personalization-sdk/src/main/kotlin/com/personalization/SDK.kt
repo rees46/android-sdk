@@ -10,6 +10,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.personalization.logs.LogCodes
 import com.personalization.core.internal.LegacyErrors
 import com.personalization.core.internal.ArgumentRefusals
+import com.personalization.core.internal.NotInitializedStubs
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.logs.LogReasons
@@ -645,6 +646,26 @@ open class SDK {
 
     @Inject
     lateinit var NPSRepository: NPSRepository
+
+    init {
+        // Before initialize puts the real ones in, the public managers of an interface type are stubs that
+        // refuse every call with notInitialized: reading one no longer throws into the app.
+        recommendationManager = NotInitializedStubs.of(RecommendationManager::class.java)
+        productsManager = NotInitializedStubs.of(ProductsManager::class.java)
+        cartManager = NotInitializedStubs.of(CartManager::class.java)
+        tracking = NotInitializedStubs.of(TrackingApi::class.java)
+        @Suppress("DEPRECATION")
+        trackEventManager = NotInitializedStubs.of(TrackEventManager::class.java)
+        searchManager = NotInitializedStubs.of(SearchManager::class.java)
+        predictManager = NotInitializedStubs.of(PredictManager::class.java)
+        ordersManager = NotInitializedStubs.of(OrdersManager::class.java)
+        loyaltyManager = NotInitializedStubs.of(LoyaltyManager::class.java)
+        profileManager = NotInitializedStubs.of(ProfileManager::class.java)
+        categoryManager = NotInitializedStubs.of(CategoryManager::class.java)
+        collectionManager = NotInitializedStubs.of(CollectionManager::class.java)
+        inAppNotificationManager = NotInitializedStubs.of(InAppNotificationManager::class.java)
+        NPSRepository = NotInitializedStubs.of(com.personalization.sdk.domain.repositories.NPSRepository::class.java)
+    }
 
     /**
      * @param shopId Shop key
@@ -1333,7 +1354,8 @@ open class SDK {
      * Returns the last known push token for [provider] from the local cache, or null if no
      * token has been received yet. For live updates use [setOnPushTokenListener].
      */
-    fun getPushToken(provider: PushProvider): String? = pushTokenManager.getToken(provider)
+    fun getPushToken(provider: PushProvider): String? =
+        if (::pushTokenManager.isInitialized) pushTokenManager.getToken(provider) else null
 
     /**
      * Registers a push [token] for the given [provider] with the rees46 backend.
