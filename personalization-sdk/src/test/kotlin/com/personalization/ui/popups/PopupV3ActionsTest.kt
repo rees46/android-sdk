@@ -169,6 +169,20 @@ class PopupV3ActionsTest {
         verify { sdk.addToSegment("456", null, null) }
     }
 
+    @OptIn(com.personalization.core.BridgeApi::class)
+    @Test
+    fun `on the new core the segment goes through segments add, by its number`() {
+        every { sdk.core } returns mockk<com.personalization.core.internal.Core> { every { isV2 } returns true }
+        val listener = slot<OnApiCallbackListener>()
+        every { sdk.profile(any(), capture(listener)) } answers { listener.captured.onSuccess(JSONObject()) }
+
+        handler.saveProfile(PopupV3Specs.form(element("element-form.json", "el-form"), texts), mapOf("email" to "a@b.c"), consent = false) { }
+        idle()
+
+        verify { sdk.segments.add(456, null, null, any()) }
+        verify(exactly = 0) { sdk.addToSegment(any(), any(), any(), any()) }
+    }
+
     @Test
     fun `a survey review goes to its scale through polls v3, then submit`() {
         val nps = PopupV3Specs.survey(element("element-survey.json", "el-survey-nps"), texts)

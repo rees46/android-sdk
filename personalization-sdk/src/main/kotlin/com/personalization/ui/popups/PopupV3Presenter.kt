@@ -1,6 +1,8 @@
 package com.personalization.ui.popups
 
 import android.annotation.SuppressLint
+import com.personalization.core.CompletionListener
+import com.personalization.core.BridgeApi
 import android.app.Activity
 import android.app.Dialog
 import android.content.ActivityNotFoundException
@@ -758,7 +760,7 @@ internal class PopupV3ActionHandler(
     override fun subscribe(spec: PopupV3Specs.Email, email: String, callback: (String?) -> Unit) {
         sdk.manageSubscription(email, null, flags(spec.consentFields), object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                spec.segmentId?.let { sdk.addToSegment(it, null, null) }
+                spec.segmentId?.let(::addToSegment)
                 transport.event(popupId, EVENT_SUBSCRIBE, CHANNEL_EMAIL)
                 transport.event(popupId, EVENT_SUBMIT)
                 MainThread.run { callback(null) }
@@ -776,7 +778,7 @@ internal class PopupV3ActionHandler(
      */
     override fun saveProfile(spec: PopupV3Specs.Form, values: Map<String, String>, consent: Boolean, callback: (String?) -> Unit) {
         val finish = {
-            spec.segmentId?.let { sdk.addToSegment(it, null, null) }
+            spec.segmentId?.let(::addToSegment)
             transport.event(popupId, EVENT_SUBMIT)
             MainThread.run { callback(null) }
         }
@@ -800,6 +802,20 @@ internal class PopupV3ActionHandler(
             override fun onSuccess(response: JSONObject?) = consentStep()
             override fun onError(code: Int, msg: String?) = fail(msg)
         })
+    }
+
+    /**
+     * Сегмент попапа по did: на новом ядре — `segments.add` (тот же `segments/add`, `segment_id` числом, как в
+     * контракте); на старом ядре или для id, который не целое положительное число, — старый `addToSegment`.
+     */
+    @OptIn(BridgeApi::class)
+    private fun addToSegment(segmentId: String) {
+        val id = segmentId.trim().toIntOrNull()?.takeIf { it > 0 }
+        if (id != null && sdk.core?.isV2 == true) {
+            sdk.segments.add(id, null, null, CompletionListener { })
+        } else {
+            sdk.addToSegment(segmentId, null, null)
+        }
     }
 
     /** Отзыв: `POST /api/v3/polls/{type}/reviews` на хосте ЛК; событие `submit`. */
