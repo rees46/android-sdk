@@ -43,8 +43,13 @@ class V3GateTest {
     fun `the kit show is still there for java, without v3 parameters`() {
         val shows = PersonalizationStories::class.java.declaredMethods
             .filter { it.name == "show" && Modifier.isStatic(it.modifiers) && !it.isSynthetic }
-        // @JvmOverloads: context and code, then one more parameter at a time up to soundOffLabel.
-        assertEquals((2..18).toList(), shows.map { it.parameterCount }.sorted())
+        // @JvmOverloads: context and code, then one more parameter at a time up to soundOffLabel; and the one
+        // whose startStoryId is a string, with all of them.
+        assertEquals((2..18).toList() + 18, shows.map { it.parameterCount }.sorted())
+        assertEquals(
+            listOf(Int::class.javaObjectType, String::class.java),
+            shows.filter { it.parameterCount == 18 }.map { it.parameterTypes[4] }.sortedBy { it.name },
+        )
     }
 
     private companion object {
