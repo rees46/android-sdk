@@ -44,7 +44,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executor
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
 /**
  * The old methods the contract replaces are deprecated and keep working as delegates: `tracking.search` without
@@ -166,7 +165,7 @@ class DeprecatedDelegatesTest {
         assertEquals("D1", sdk.deviceId)
         assertEquals(sdk.deviceId, sdk.getDid())
         val consumed = mutableListOf<String?>()
-        sdk.getSid(Consumer { consumed += it })
+        sdk.getSid(androidx.core.util.Consumer<String?> { value -> consumed.add(value) })
         assertEquals(listOf(sdk.sessionId.orEmpty()), consumed)
     }
 
