@@ -15,8 +15,10 @@ import dagger.Lazy
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,6 +26,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.time.Duration
 
 /**
  * Where a server popup ends up. The host no longer has to hand a FragmentManager over: the popup
@@ -167,13 +170,107 @@ class InAppNotificationManagerImplTest {
         verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
     }
 
+    @Test
+    fun `a popup with a delay is offered and shown only once its seconds passed`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val offered = mutableListOf<Int>()
+        manager.presentation.listener = { popup -> offered += popup.id; onScreen }
+
+        manager.shopPopUp(popup(delay = 3))
+        idle()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(2_900))
+
+        assertEquals(emptyList<Int>(), offered)
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
+
+        assertEquals(listOf(POPUP_ID), offered)
+        assertNotNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        verify(exactly = 1) { tracking.trackPopupShown(POPUP_ID, null) }
+    }
+
+    @Test
+    fun `a negative delay shows the popup at once`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+
+        manager.shopPopUp(popup(delay = -5))
+        idle()
+
+        assertNotNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+    }
+
+    @Test
+    fun `a popup handed back is shown past the listener, automatic presentation, its delay and the minute rule`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val offered = mutableListOf<Int>()
+        manager.presentation.autoPresentation = false
+        manager.presentation.listener = { popup -> offered += popup.id; null }
+
+        manager.shopPopUp(popup())
+        idle()
+        assertEquals(listOf(POPUP_ID), offered)
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+
+        manager.presentHandedBack(popup(delay = 30), null)
+        idle()
+
+        assertNotNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        assertEquals("the listener is not asked again", listOf(POPUP_ID), offered)
+        verify(exactly = 1) { tracking.trackPopupShown(POPUP_ID, null) }
+
+        // Shown a moment ago, and handed back again: shown again.
+        assertTrue(manager.dismissCurrent())
+        idle()
+        manager.presentHandedBack(popup(), null)
+        idle()
+        assertNotNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        verify(exactly = 2) { tracking.trackPopupShown(POPUP_ID, null) }
+    }
+
+    @Test
+    fun `a popup handed back goes to the activity the app names`() {
+        val named = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+
+        manager.presentHandedBack(popup(), named)
+        idle()
+
+        assertNotNull(named.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+    }
+
+    @Test
+    fun `a popup handed back with no activity to take it is not shown and not counted`() {
+        manager.presentHandedBack(popup(), null)
+        idle()
+
+        verify(exactly = 0) { tracking.trackPopupShown(any(), any()) }
+    }
+
+    @Test
+    fun `the popup on screen is dismissed from code, and with none nothing happens`() {
+        val onScreen = Robolectric.buildActivity(FragmentActivity::class.java).setup().get()
+        assertFalse(manager.dismissCurrent())
+
+        manager.shopPopUp(popup())
+        idle()
+        assertNotNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+
+        assertTrue(manager.dismissCurrent())
+        idle()
+
+        assertNull(onScreen.supportFragmentManager.findFragmentByTag(ALERT_DIALOG_TAG))
+        assertFalse(manager.dismissCurrent())
+    }
+
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
-    private fun popup() = PopupDto(
+    private fun popup(delay: Int = 0) = PopupDto(
         id = POPUP_ID,
         channels = emptyList(),
         position = Position.CENTERED,
-        delay = 0,
+        delay = delay,
         html = "",
         components = Components(
             text = "Body",

@@ -16,6 +16,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.personalization.R
@@ -64,12 +65,55 @@ class InAppNotificationManagerImpl @Inject constructor(
         this.fragmentManager = WeakReference(fragmentManager)
     }
 
+    /** The dialog the manager showed last, while it may still be on screen: what [dismissCurrent] closes. */
+    private var current: WeakReference<DialogFragment>? = null
+
+    /**
+     * Shows a server popup [PopupDto.delay] seconds after it came, as the contract has it: the presentation
+     * listener is asked then, not before.
+     */
     override fun shopPopUp(popupDto: PopupDto) {
         // Popups ride on network responses and arrive on a worker thread. Showing one right there
         // breaks the UI-thread rule and lets a failure escape into the network callback, which turns
         // it into an error for the request that carried the popup — an init that never persists its
         // did, a track that reports failure after it was sent.
-        handler.post { present(popupDto) }
+        val delayMs = popupDto.delay.coerceAtLeast(0) * 1_000L
+        if (delayMs > 0) handler.postDelayed({ present(popupDto) }, delayMs) else handler.post { present(popupDto) }
+    }
+
+    /**
+     * A popup the app hands back to the SDK (`SDK.presentPopup`): shown now, in [activity] while it can take
+     * a dialog or else in the activity on screen — past the presentation listener, automatic presentation and
+     * the rule of one showing a minute, and without its delay. Still one popup on screen at a time.
+     */
+    internal fun presentHandedBack(popupDto: PopupDto, activity: FragmentActivity?) {
+        val held = activity?.let(::WeakReference)
+        handler.post { presentNow(popupDto, held) }
+    }
+
+    private fun presentNow(popupDto: PopupDto, activity: WeakReference<FragmentActivity>?) {
+        if (PopupV3Slots.isModalOpen) {
+            PopupV3Slots.whenModalClosed { handler.post { presentNow(popupDto, activity) } }
+            return
+        }
+        val target = activity?.get()?.supportFragmentManager?.takeIf { it.canShowDialog() } ?: defaultTarget()
+        if (target == null) {
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id, "reason" to "no_activity"))
+            return
+        }
+        show(popupDto, target)
+    }
+
+    /**
+     * Closes the dialog of the popup the manager shows now (`SDK.dismissCurrentPopup`), as its close button
+     * does. True when there was one on screen. On the main thread.
+     */
+    internal fun dismissCurrent(): Boolean {
+        val dialog = current?.get()
+        current = null
+        if (dialog == null || !dialog.isAdded) return false
+        dialog.dismissAllowingStateLoss()
+        return true
     }
 
     private fun present(popupDto: PopupDto) {
@@ -118,6 +162,11 @@ class InAppNotificationManagerImpl @Inject constructor(
             log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: no activity that can take a dialog", context = mapOf("popup" to popupDto.id, "reason" to "no_activity"))
             return
         }
+        show(popupDto, target)
+    }
+
+    /** Shows [popupDto] in [target]; once on screen, remembers it for a minute and reports it shown. */
+    private fun show(popupDto: PopupDto, target: FragmentManager) {
         try {
             showDialog(target, extractDialogData(popupDto))
         } catch (exception: Exception) {
@@ -305,6 +354,7 @@ class InAppNotificationManagerImpl @Inject constructor(
             /* manager = */ target,
             /* tag = */ tag
         )
+        current = WeakReference(dialog)
     }
 
     override fun showSnackBar(

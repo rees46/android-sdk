@@ -2,10 +2,14 @@ package com.personalization
 
 import android.content.Context
 import android.os.Bundle
+import android.os.Looper
 import androidx.core.util.Consumer
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.logs.LogCodes
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.Params.InternalParameter
@@ -415,6 +419,38 @@ open class SDK {
             field = value
             applyPopupPresentation()
         }
+
+    /**
+     * Hands [popup] back to the SDK to show — one the app kept back from its [popupPresentationListener],
+     * for example to show it later — as the SDK shows its popups: in [activity] while it can take a dialog,
+     * or else in the activity on screen. It is shown at once, past [popupPresentationListener],
+     * [enableAutoPopupPresentation], its `delay` and the rule of one showing a minute; still one popup on
+     * screen at a time, and once shown it is reported with `tracking.popupShown`. With no activity that can
+     * take it, it is not shown and not reported (`popup_not_shown`). May be called from any thread.
+     */
+    @JvmOverloads
+    fun presentPopup(popup: PopupDto, activity: FragmentActivity? = null) {
+        val manager = inAppNotificationManager as? InAppNotificationManagerImpl
+        if (manager == null) {
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: the instance is not initialized", context = mapOf("popup" to popup.id, "reason" to LogReasons.NOT_READY))
+            return
+        }
+        manager.presentHandedBack(popup, activity)
+    }
+
+    /**
+     * Closes the popup the SDK shows now — a server popup, or one handed back with [presentPopup] — as its
+     * close button does; nothing when none is on screen. A popup whose `delay` has not passed yet still comes.
+     * May be called from any thread.
+     */
+    fun dismissCurrentPopup() {
+        val manager = inAppNotificationManager as? InAppNotificationManagerImpl ?: return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            manager.dismissCurrent()
+        } else {
+            android.os.Handler(Looper.getMainLooper()).post { manager.dismissCurrent() }
+        }
+    }
 
     /**
      * Where the instance's initialization stands; [SdkState.NOT_INITIALIZED] before it is initialized
