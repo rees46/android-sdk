@@ -8,6 +8,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.logs.LogCodes
+import com.personalization.core.internal.LegacyErrors
+import com.personalization.core.internal.ArgumentRefusals
 import com.personalization.sdk.data.models.dto.popUp.PopupDto
 import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.logs.LogReasons
@@ -1521,6 +1523,13 @@ open class SDK {
         }
     }
 
+    /**
+     * An old method whose request could not be built (a [JSONException]) tells its [listener] so — `onError(-1)`
+     * behind `invalidArgument` — instead of leaving it waiting; off the caller's thread on the new core.
+     */
+    private fun refuseUnbuilt(listener: OnApiCallbackListener?) =
+        ArgumentRefusals.refuse(listener, LegacyErrors.NO_ANSWER, "Request parameters could not be built", offThread = isCoreV2)
+
     /** Writes to the SDK's log under this instance's shop, so the shop's [Rees46Config.logLevel] applies. */
     internal fun log(
         level: LogLevel,
@@ -1810,7 +1819,8 @@ open class SDK {
         listener: OnApiCallbackListener? = null
     ) {
         val params = Params()
-        params.put(Params.Parameter.ITEM, id)
+        // The contract's field: the server prefers it to the `item` earlier releases sent.
+        params.put(ITEM_ID_FIELD, id)
         params.put(Params.Parameter.PRICE, currentPrice.toString())
         if (email != null) {
             params.put(InternalParameter.EMAIL, email)
@@ -1846,6 +1856,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE_PRICE, params, listener)
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -1864,7 +1875,8 @@ open class SDK {
         listener: OnApiCallbackListener? = null
     ) {
         val params = Params()
-        params.put(Params.Parameter.ITEM, id)
+        // The contract's field: the server prefers it to the `item` earlier releases sent.
+        params.put(ITEM_ID_FIELD, id)
         if (properties != null) {
             params.put(InternalParameter.PROPERTIES, properties)
         }
@@ -1903,6 +1915,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE, params, listener)
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -1980,6 +1993,7 @@ open class SDK {
             popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -2045,6 +2059,7 @@ open class SDK {
             popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -2365,6 +2380,7 @@ open class SDK {
         private const val SEGMENT_EMAIL_FIELD = "email"
         private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
+        private const val ITEM_ID_FIELD = "item_id"
         private const val SEGMENTS_FIELD = "segments"
         private const val INIT_SEARCH = "search"
         private const val INIT_BLANK_MODE = "blank_mode"

@@ -5,6 +5,7 @@ import com.personalization.Params
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.CategoryManager
 import com.personalization.api.responses.category.CategoryResponse
+import com.personalization.core.internal.pathSegment
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -59,7 +60,8 @@ internal class CategoryManagerImpl @Inject constructor(
         sortDir?.let { params.put(SORT_DIR_KEY, it) }
 
         sendNetworkMethodUseCase.getAsync(
-            "$CATEGORY_REQUEST/$category",
+            // One segment of the path: an id with `/`, `?` or a space would otherwise ask for another address.
+            "$CATEGORY_REQUEST/${pathSegment(category)}",
             params.build(),
             object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
