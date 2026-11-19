@@ -1,6 +1,8 @@
 package com.personalization.features.segments
 
+import com.personalization.api.models.segments.Segment
 import com.personalization.core.BridgeApi
+import com.personalization.core.SdkResult
 import com.personalization.core.internal.NamespaceFixtures
 import com.personalization.core.internal.argString
 import okhttp3.mockwebserver.MockResponse
@@ -80,5 +82,16 @@ class SegmentsApiFixturesTest {
             ),
             changes,
         )
+    }
+
+    @Test
+    fun `a segment without a type, or with a null one, has an empty type, never null`() {
+        fixtures.server.enqueue(MockResponse().setBody("""[{"id":1},{"id":2,"type":null},{"id":3,"type":"rfm"}]"""))
+
+        assertEquals(
+            SdkResult.Success(listOf(Segment(1, ""), Segment(2, ""), Segment(3, "rfm"))),
+            fixtures.outcome { segments.get() },
+        )
+        assertEquals("", Segment(4).type)
     }
 }
