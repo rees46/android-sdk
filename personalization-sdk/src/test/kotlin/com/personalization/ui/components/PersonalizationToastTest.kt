@@ -55,6 +55,33 @@ class PersonalizationToastTest {
     }
 
     @Test
+    fun `shown for whole seconds it leaves after them, and the millisecond show keeps its milliseconds`() {
+        PersonalizationToast.showForSeconds(content, "Copied", 3, PersonalizationToast.Position.TOP)
+
+        shadowOf(Looper.getMainLooper()).idleFor(2900, TimeUnit.MILLISECONDS)
+        assertEquals(1, toasts().size)
+        assertEquals(Gravity.CENTER_HORIZONTAL or Gravity.TOP, (toasts().single().layoutParams as FrameLayout.LayoutParams).gravity)
+
+        shadowOf(Looper.getMainLooper()).idleFor(500, TimeUnit.MILLISECONDS)
+        assertEquals(0, toasts().size)
+
+        // An Int literal still means milliseconds for show.
+        PersonalizationToast.show(content, "Copied", PersonalizationToast.Position.BOTTOM, 2000)
+        shadowOf(Looper.getMainLooper()).idleFor(2500, TimeUnit.MILLISECONDS)
+        assertEquals(0, toasts().size)
+    }
+
+    @Test
+    fun `less than a second is a second`() {
+        PersonalizationToast.showForSeconds(content, "Copied", 0)
+
+        shadowOf(Looper.getMainLooper()).idleFor(900, TimeUnit.MILLISECONDS)
+        assertEquals(1, toasts().size)
+        shadowOf(Looper.getMainLooper()).idleFor(500, TimeUnit.MILLISECONDS)
+        assertEquals(0, toasts().size)
+    }
+
+    @Test
     fun `a toast the host put in its layout is not taken for a shown one`() {
         val own = PersonalizationToast(activity).apply { text = "Static" }
         content.addView(own)
