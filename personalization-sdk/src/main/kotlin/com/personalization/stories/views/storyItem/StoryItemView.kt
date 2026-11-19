@@ -363,10 +363,17 @@ class StoryItemView(
 
     private fun updateProduct(element: ProductElement, listener: RequestListener<Drawable>) {
         val item = element.item
+        if (item == null) {
+            // A product element without its product: nothing to show, and the image's listener still hears
+            // the end of its load, as for a picture that did not come.
+            product.visibility = GONE
+            Glide.with(context).load(null as String?).listener(listener).into(productImage)
+            return
+        }
 
         product.visibility = VISIBLE
 
-        Glide.with(context).load(item?.image).listener(listener).override(Target.SIZE_ORIGINAL)
+        Glide.with(context).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL)
             .into(
                 productImage
             )
