@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.core.PushCallbacks
+import com.personalization.core.BridgeApi
 import com.personalization.core.PushEvent
 import com.personalization.core.PushPayload
 import com.personalization.core.SdkState
@@ -362,6 +363,32 @@ class PushEventsTest {
         assertEquals(SdkState.NOT_INITIALIZED, light.state)
         assertEquals("STORED", next("init")?.second?.getString("did"))
         assertTrue(Rees46.instance(SHOP) === full)
+    }
+
+    @OptIn(BridgeApi::class)
+    @Test
+    fun `a shop a bridge registers sends its push with its stored did and no init, and the bridge's start makes the full instance`() {
+        partition().edit().putString("did", "STORED").commit()
+        Rees46.registerBridge(context, listOf(config(SHOP)))
+        assertFalse(Rees46.isInitialized(SHOP))
+        assertEquals("nothing goes at the registration", null, next("init", timeoutMs = 500))
+
+        assertEquals(SHOP, Rees46.handlePush(push(code = "cold"), PushEvent.DELIVERED))
+        val light = SdkRegistry.byShopId(SHOP) ?: throw AssertionError("no instance")
+        assertTrue(light.pushOnly)
+        assertTrue("the push's instance runs on the new core", light.core is com.personalization.core.internal.CoreV2)
+        flush(light)
+        assertEquals("STORED", next("track/delivered")?.second?.getString("did"))
+        assertFalse("no /init for the push", seen.any { it.first == "init" })
+
+        // The bridge's code runs at last: its start makes the full instance, with its /init.
+        val full = Rees46.initializeBridge(context, config(SHOP))
+        assertTrue(full !== light)
+        assertFalse(full.pushOnly)
+        assertTrue(full.core is com.personalization.core.internal.CoreV2)
+        assertEquals("STORED", next("init")?.second?.getString("did"))
+        assertEquals(listOf("cold"), seen.filter { it.first == "track/delivered" }.map { it.second.getString("code") })
+        assertFalse(logged.any { it.code == LogCodes.CORE_FLAG_MISMATCH })
     }
 
     @Test

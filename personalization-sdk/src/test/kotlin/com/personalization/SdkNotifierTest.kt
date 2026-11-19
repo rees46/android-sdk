@@ -120,6 +120,21 @@ class SdkNotifierTest {
     }
 
     @Test
+    fun `awaitInstance without a shop does not hand out a released default, it waits for the next registration`() {
+        val released = SDK()
+        SdkRegistry.register("shop-a", released)
+        SdkRegistry.unregister(released)
+
+        var received: SDK? = null
+        Rees46.awaitInstance { received = it }
+        assertNull(received)
+
+        val next = SDK()
+        SdkRegistry.register("shop-b", next)
+        assertSame(next, received)
+    }
+
+    @Test
     fun `awaitInstance waits and then fires when the shop registers later`() {
         var received: SDK? = null
         Rees46.awaitInstance("shop-a") { received = it }

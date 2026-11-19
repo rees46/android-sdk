@@ -248,7 +248,8 @@ internal class TrackEventManagerImpl @Inject constructor(
     /**
      * Wraps the app's [listener]: a popup in the answer is shown, then the app hears the answer. On the
      * new core the queue may hold the popup back (decision 2: the event went late, or the app is in the
-     * background); the app still gets the whole answer.
+     * background); the app still gets the whole answer. A call of `tracking.queued` hears the queue's
+     * acceptance through it ([EventAnswerListener.queued]).
      */
     private fun answerListener(listener: OnApiCallbackListener?) = object : EventAnswerListener() {
         override fun onSuccess(response: JSONObject?) {
@@ -259,6 +260,8 @@ internal class TrackEventManagerImpl @Inject constructor(
         override fun onError(code: Int, msg: String?) {
             listener?.onError(code, msg)
         }
+
+        override fun queued() = (listener as? EventAnswerListener)?.queued()
     }
 
     private fun handlePopup(response: JSONObject, heldBack: String? = null) {

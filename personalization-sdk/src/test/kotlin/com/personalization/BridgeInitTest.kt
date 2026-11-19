@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The new core is the bridges': [Rees46.initializeBridge] starts a shop on it, with the A/B group the bridge
- * kept for the device, while [Rees46.initialize], [Rees46.register] and [Rees46Config] give apps no way to it.
+ * kept for the device, and [Rees46.registerBridge] registers shops on it, while [Rees46.initialize], [Rees46.register] and [Rees46Config] give apps no way to it.
  */
 @OptIn(BridgeApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -145,6 +145,30 @@ class BridgeInitTest {
         assertTrue(Rees46.instance(SHOP) === sdk)
         awaitReady(sdk)
         assertFalse(logged.any { it.code == LogCodes.CORE_FLAG_MISMATCH })
+    }
+
+    @Test
+    fun `a bridge's registration decides the process's core with no request, and its shop starts on first use`() {
+        Rees46.registerBridge(context, listOf(config(), config(OTHER)))
+
+        assertEquals(true, CoreSelection.decided())
+        assertFalse(Rees46.isInitialized(SHOP))
+        assertEquals("nothing goes at the registration", null, requests.poll(500, TimeUnit.MILLISECONDS))
+
+        val sdk = Rees46.initializeBridge(context, config())
+        assertTrue(sdk.core is CoreV2)
+        assertEquals("/init", requests.poll(5, TimeUnit.SECONDS)?.encodedPath)
+        assertTrue("an app's lookup starts the other shop, on the new core", Rees46.instance(OTHER).core is CoreV2)
+        assertFalse(logged.any { it.code == LogCodes.CORE_FLAG_MISMATCH })
+    }
+
+    @Test
+    fun `a bridge's registration in a process an app's initialize decided runs on the legacy core and warns`() {
+        Rees46.initialize(context, config())
+        Rees46.registerBridge(context, listOf(config(OTHER)))
+
+        assertTrue(Rees46.instance(OTHER).core is LegacyCore)
+        assertEquals(1, logged.count { it.code == LogCodes.CORE_FLAG_MISMATCH && it.shopId == OTHER })
     }
 
     @Test
@@ -318,8 +342,10 @@ class BridgeInitTest {
         assertEquals((1..13).toList(), visible.map { it.parameterCount }.sorted())
         val copies = Rees46Config::class.java.methods.filter { it.name == "copy" && !it.isSynthetic }
         assertEquals(listOf(newParameters), copies.map { it.parameterTypes.toList() })
-        val bridgeEntries = Rees46::class.java.methods.filter { it.name.startsWith("initializeBridge") }
-        assertTrue(bridgeEntries.isNotEmpty() && bridgeEntries.all { it.isSynthetic })
+        listOf("initializeBridge", "registerBridge").forEach { name ->
+            val bridgeEntries = Rees46::class.java.methods.filter { it.name.startsWith(name) }
+            assertTrue(name, bridgeEntries.isNotEmpty() && bridgeEntries.all { it.isSynthetic })
+        }
     }
 
     @Test

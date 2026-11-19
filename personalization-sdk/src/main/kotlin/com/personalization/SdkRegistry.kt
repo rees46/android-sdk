@@ -96,7 +96,9 @@ internal object SdkRegistry {
         val alreadyLive: SDK?
         val awaiter: Awaiter?
         synchronized(lock) {
-            alreadyLive = (if (shopId != null) byShop[shopId] else current)?.takeUnless { it.pushOnly }
+            // The default stays after a release (see [unregister]) but is not live: a released instance
+            // fails every call, so whoever waits for a shop gets the next one registered instead.
+            alreadyLive = (if (shopId != null) byShop[shopId] else current?.takeIf { it in instances })?.takeUnless { it.pushOnly }
             if (alreadyLive == null) {
                 awaiter = Awaiter(shopId, onReady)
                 awaiting.add(awaiter)
@@ -117,7 +119,8 @@ internal object SdkRegistry {
     /**
      * Drops [sdk] from the fan-out set and the shop mapping. `current` is intentionally left as-is,
      * matching the legacy `release()` semantics (it only removed the instance from the fan-out set);
-     * multi-instance will revisit how the default is chosen after a release.
+     * multi-instance will revisit how the default is chosen after a release. [onNextRegister] does not take
+     * a released default as live.
      */
     fun unregister(sdk: SDK) = synchronized(lock) {
         instances.remove(sdk)

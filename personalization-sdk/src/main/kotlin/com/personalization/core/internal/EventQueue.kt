@@ -38,6 +38,14 @@ internal abstract class EventAnswerListener : OnApiCallbackListener() {
     /** Null while a popup of the answer may be shown; otherwise why not, for `popup_not_shown`. */
     @Volatile
     var popupHeldBack: String? = null
+
+    /**
+     * For a call that completes once the queue accepted its event, not on its answer (`tracking.queued`):
+     * the core calls it as it hands the event to the queue ([CoreV2.send]) and gives the queue what it
+     * returns as `accepted`. Null, the default, for a call that waits for the answer. A listener the SDK
+     * wraps around another returns the other's.
+     */
+    open fun queued(): ((SdkError?) -> Unit)? = null
 }
 
 /**

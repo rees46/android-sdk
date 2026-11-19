@@ -58,8 +58,8 @@ object Rees46 {
      * once make one instance.
      *
      * The instance asks for the legacy core. The process has one core, decided by the first
-     * [initialize], [register] or [initializeBridge]: an instance that asks for the other one runs on the
-     * process's and logs `core_flag_mismatch`.
+     * [initialize], [register], [initializeBridge] or [registerBridge]: an instance that asks for the other
+     * one runs on the process's and logs `core_flag_mismatch`.
      */
     fun initialize(context: Context, config: Rees46Config): SDK = initialize(context, config, coreV2 = false)
 
@@ -68,7 +68,8 @@ object Rees46 {
      * shops here; apps use [initialize]. The rule of one core per process stands: a process whose core is
      * the legacy one already (an [initialize] or [register] came first) runs this instance on it too and
      * logs `core_flag_mismatch`. So a bridge does not [register] its shops, which asks for the legacy core:
-     * it starts each shop here, a lazy one on its first use.
+     * it starts each shop here, a lazy one on its first use, and registers with [registerBridge] the shops of
+     * a process its own code may never reach.
      *
      * [segment] is the A/B group the bridge kept for this device before it ran on the native SDK (React
      * Native kept `A` or `B` for each shop). The start takes it while the device has no A/B group of its
@@ -113,6 +114,26 @@ object Rees46 {
     }
 
     /**
+     * For the bridges: [register] on the new core, without `eagerInit`. The shops are registered, not
+     * made, and nothing goes to the network. A bridge calls it at a process start its own code (Dart, JS)
+     * may never reach — a process FCM or HMS started only to deliver a push — so that the push can be
+     * routed to its shop at no `/init`:
+     * - a push for a registered shop brings up an instance only for the push: its event goes with the
+     *   shop's stored `did` (or [Rees46Config.deviceId], or the saved `/init` answer's), with no `/init`,
+     *   token, profile or popup; a shop without a `did` drops the push (`push_dropped`, `no_did`);
+     * - the bridge's [initializeBridge] of the shop, or an [instance] of it, makes the full instance with its
+     *   `/init`, in place of the push's, whose events in flight still go.
+     *
+     * It decides the process's core as [initializeBridge] does: in a process whose core is the legacy one
+     * already, the shops run on it and `core_flag_mismatch` is logged. A shop that has a live instance keeps
+     * it. Hidden from Java, as [initializeBridge].
+     */
+    @BridgeApi
+    @JvmSynthetic
+    fun registerBridge(context: Context, configs: List<Rees46Config>) =
+        register(context, configs, eagerInit = false, coreV2 = true)
+
+    /**
      * [initialize] asking for the core of [coreV2]: the new one for [initializeBridge], which tests use
      * through here too. The process's core decides ([CoreSelection]).
      */
@@ -149,7 +170,7 @@ object Rees46 {
         eagerInit: Boolean = false
     ) = register(context, configs, eagerInit, coreV2 = false)
 
-    /** [register] asking for the core of [coreV2]: for tests, the bridges have [initializeBridge]. */
+    /** [register] asking for the core of [coreV2]: the new one for [registerBridge], which tests use through here too. */
     internal fun register(
         context: Context,
         configs: List<Rees46Config>,

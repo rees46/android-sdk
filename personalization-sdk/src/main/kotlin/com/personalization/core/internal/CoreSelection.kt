@@ -5,8 +5,8 @@ import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 
 /**
- * Which core the process runs: decided by the first `initialize`, `register` or `initializeBridge`
- * (the new core), the same for every instance after it. An instance that asks for the other one gets
+ * Which core the process runs: decided by the first `initialize`, `register`, `initializeBridge` or
+ * `registerBridge` (the last two the new core), the same for every instance after it. An instance that asks for the other one gets
  * the process's and a `core_flag_mismatch` warning, once per shop (a registration and the instance it
  * makes later ask twice): switching takes a new launch.
  */
