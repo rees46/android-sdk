@@ -90,6 +90,29 @@ class TrackEventManagerImplTrackEventTest {
     }
 
     @Test
+    fun trackEvent_refusesEachKeyOfTheContractAndTheSdksOwn_andNoOther() {
+        // The contract's fields of the event and service fields, and the fields the SDK itself sends with an event.
+        val contract = setOf("event", "time", "category", "label", "value", "shop_id", "did", "sid", "stream", "segment", "payload")
+        val own = setOf("seance", "sid", "source", "from", "code", "stream")
+        assertEquals(contract + own, TrackCustomEventPayloadHelper.RESERVED_CUSTOM_EVENT_KEYS)
+
+        (contract + own).forEach { key ->
+            val errors = mutableListOf<Int>()
+            val listener = object : OnApiCallbackListener() {
+                override fun onError(code: Int, msg: String?) {
+                    errors += code
+                }
+            }
+            impl.trackEvent(event = "demo_event", time = null, category = null, label = null, value = null, customFields = mapOf(key to "x"), listener = listener)
+            assertEquals(key, listOf(TrackCustomEventPayloadHelper.CLIENT_VALIDATION_ERROR_CODE), errors)
+        }
+        verify(exactly = 0) { sendNetworkMethodUseCase.postAsync(any(), any(), any()) }
+
+        impl.trackEvent(event = "demo_event", time = null, category = null, label = null, value = null, customFields = mapOf("color" to "red", "items" to 2), listener = null)
+        verify(exactly = 1) { sendNetworkMethodUseCase.postAsync(any(), any(), any()) }
+    }
+
+    @Test
     fun trackEvent_multipleReservedKeys_errorListsSortedKeys() {
         var capturedMessage: String? = null
         val listener = mockk<OnApiCallbackListener>()
