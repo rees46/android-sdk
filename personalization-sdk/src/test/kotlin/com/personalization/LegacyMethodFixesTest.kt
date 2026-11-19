@@ -123,6 +123,14 @@ class LegacyMethodFixesTest {
 
     private fun <T> LinkedBlockingQueue<T>.next(name: String): T = poll(5, TimeUnit.SECONDS) ?: throw AssertionError("$name: nothing heard")
 
+    /** The next request to [path], past the others the instance sends by itself (`profile/set` of the advertising id). */
+    private fun request(path: String, name: String): Pair<HttpUrl, JSONObject> {
+        while (true) {
+            val request = requests.next(name)
+            if (request.first.encodedPath.startsWith("/$path")) return request
+        }
+    }
+
     /** Both cores, one after the other. */
     private fun bothCores(block: (sdk: SDK, name: String) -> Unit) = listOf(true, false).forEach { coreV2 ->
         if (!coreV2) tearDown().also { setUp() }
@@ -192,7 +200,7 @@ class LegacyMethodFixesTest {
         sdk.categoryManager.getCategory("shoes/men 1?x", null, null, null, null, null, { done += it }, { code, _ -> done += code })
         done.next(name)
 
-        val url = requests.next(name).first
+        val url = request("category/", name).first
         assertEquals(name, "/category/shoes%2Fmen%201%3Fx", url.encodedPath)
         assertEquals(name, null, url.queryParameter("x"))
     }
@@ -200,9 +208,9 @@ class LegacyMethodFixesTest {
     @Test
     fun `the old subscribeFor methods send the product as item_id`() = bothCores { sdk, name ->
         sdk.subscribeForPriceDrop("37", 10.0, email = "a@b.c")
-        val price = requests.next("$name price").second
+        val price = request("subscriptions/subscribe_for_product_price", "$name price").second
         sdk.subscribeForBackInStock("38", email = "a@b.c")
-        val stock = requests.next("$name stock").second
+        val stock = request("subscriptions/subscribe_for_product_available", "$name stock").second
 
         assertEquals(name, "37", price.getString("item_id"))
         assertFalse(name, price.has("item"))
