@@ -24,6 +24,10 @@ import com.personalization.stories.models.Story
 import com.personalization.stories.viewAdapters.StoriesAdapter
 import com.personalization.stories.viewAdapters.StoriesAdapter.ClickListener
 
+
+/** The constructors take a nullable context, as released; a view cannot exist without one, and says so. */
+private fun requireContext(context: Context?): Context = requireNotNull(context) { "StoriesView needs a context" }
+
 class StoriesView : ConstraintLayout, ClickListener {
     private lateinit var storiesRecyclerView: RecyclerView
     private lateinit var adapter: StoriesAdapter
