@@ -98,6 +98,7 @@ import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
+import com.personalization.ui.widgets.PersonalizationStories
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.domain.model.NotificationConstants
@@ -1131,10 +1132,32 @@ open class SDK {
     /**
      * Show stories block by code
      *
+     * With a `StoriesView` attached to the instance it shows the block there, as before; without one — where
+     * earlier releases showed nothing — it is [PersonalizationStories.show] in the activity on screen.
+     *
      * @param code Stories block code
      */
+    @Deprecated(
+        message = "Use PersonalizationStories.show(context, code, sdk): it needs no attached StoriesView.",
+        replaceWith = ReplaceWith("PersonalizationStories.show(context, code, this)", "com.personalization.ui.widgets.PersonalizationStories"),
+    )
     fun showStories(code: String) {
-        storiesManager.showStories(context.mainLooper, code)
+        if (!isSdkInitialized) {
+            log(LogLevel.WARNING, LogCodes.STORIES, "showStories: the instance is not initialized", context = mapOf("code" to code))
+            return
+        }
+        if (storiesManager.hasAttachedView()) {
+            storiesManager.showStories(context.mainLooper, code)
+            return
+        }
+        android.os.Handler(Looper.getMainLooper()).post {
+            val activity = ForegroundActivity.get()
+            if (activity == null) {
+                log(LogLevel.WARNING, LogCodes.STORIES, "showStories: no activity on screen to show the stories in", context = mapOf("code" to code))
+                return@post
+            }
+            PersonalizationStories.show(activity, code, sdk = this)
+        }
     }
 
 
@@ -1178,8 +1201,12 @@ open class SDK {
     }
 
     /**
-     * Return the session ID
+     * Return the session ID; empty without one.
      */
+    @Deprecated(
+        message = "Use sessionId: it is null without a session.",
+        replaceWith = ReplaceWith("sessionId.orEmpty()"),
+    )
     fun getSid(): String = sessionId.orEmpty()
 
     /**
@@ -1193,10 +1220,10 @@ open class SDK {
     @Deprecated(
         "This method will be removed in future versions.",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("getSid(): String")
+        replaceWith = ReplaceWith("listener.accept(sessionId.orEmpty())")
     )
     fun getSid(listener: Consumer<String?>) {
-        listener.accept(getSid())
+        listener.accept(sessionId.orEmpty())
     }
 
     /**
@@ -1260,8 +1287,12 @@ open class SDK {
      * with its `shopId`. This one still works and fires alongside the global listener.
      */
     @Deprecated(
-        "Use Rees46.setOnMessageListener { shopId, data -> ... } — one process-global listener covers " +
-            "every shop instead of wiring one per instance."
+        "Use setPushCallbacks(PushCallbacks(onDelivered = { payload -> ... })), or Rees46.setPushCallbacks for " +
+            "every shop: one set of callbacks for every push event, the token among them.",
+        replaceWith = ReplaceWith(
+            "setPushCallbacks(PushCallbacks(onDelivered = { payload -> }))",
+            "com.personalization.core.PushCallbacks",
+        ),
     )
     fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
@@ -1276,6 +1307,13 @@ open class SDK {
      * tokens that a provider delivers only asynchronously (e.g. HMS via `onNewToken`, which
      * cannot be retrieved synchronously). May be called before or after [initialize].
      */
+    @Deprecated(
+        message = "Use setPushCallbacks(PushCallbacks(onToken = { token -> ... })), or Rees46.setPushCallbacks for every shop.",
+        replaceWith = ReplaceWith(
+            "setPushCallbacks(PushCallbacks(onToken = { token -> }))",
+            "com.personalization.core.PushCallbacks",
+        ),
+    )
     fun setOnPushTokenListener(listener: OnPushTokenListener) {
         onPushTokenListener = listener
         if (::pushTokenManager.isInitialized) {
@@ -1797,10 +1835,14 @@ open class SDK {
     }
 
     /**
-     * Returns the device ID
+     * Returns the device ID; empty without one.
      *
      * @return String
      */
+    @Deprecated(
+        message = "Use deviceId: it is null until the server hands one out.",
+        replaceWith = ReplaceWith("deviceId.orEmpty()"),
+    )
     fun getDid(): String? = deviceId.orEmpty()
 
     /**
@@ -2461,7 +2503,16 @@ open class SDK {
          *
          * @param remoteMessage an FCM message
          */
+        @Deprecated(
+            message = "Use Rees46.handlePush(remoteMessage.data, PushEvent.DELIVERED): it also reaches a shop registered and not yet made, and returns the shop that took the push.",
+            replaceWith = ReplaceWith(
+                "Rees46.handlePush(remoteMessage.data, PushEvent.DELIVERED)",
+                "com.personalization.Rees46",
+                "com.personalization.core.PushEvent",
+            ),
+        )
         fun onMessage(remoteMessage: RemoteMessage) {
+            @Suppress("DEPRECATION")
             onMessage(remoteMessage.data)
         }
 
@@ -2480,6 +2531,14 @@ open class SDK {
          *
          * @param data the push data payload (title/body/icon/…)
          */
+        @Deprecated(
+            message = "Use Rees46.handlePush(data, PushEvent.DELIVERED): it also reaches a shop registered and not yet made, and returns the shop that took the push.",
+            replaceWith = ReplaceWith(
+                "Rees46.handlePush(data, PushEvent.DELIVERED)",
+                "com.personalization.Rees46",
+                "com.personalization.core.PushEvent",
+            ),
+        )
         fun onMessage(data: Map<String, String>) {
             val payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD]
             val liveShopIds = SdkRegistry.shopIds()

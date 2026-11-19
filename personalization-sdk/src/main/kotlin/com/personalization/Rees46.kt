@@ -542,6 +542,15 @@ object Rees46 {
      * `NotificationData` (the SDK tracks `received` on its own). Fires for both push entry points — the
      * SDK's own messaging service ([SDK.onMessage]) and a host that owns its service ([handlePush]).
      */
+    @Deprecated(
+        message = "Use setPushCallbacks(PushCallbacks(onDelivered = { payload -> ... })): the payload has its shop, " +
+            "title, body, image and actions, and the same callbacks hear the other push events and the token.",
+        replaceWith = ReplaceWith(
+            "Rees46.setPushCallbacks(PushCallbacks(onDelivered = { payload -> }))",
+            "com.personalization.Rees46",
+            "com.personalization.core.PushCallbacks",
+        ),
+    )
     fun setOnMessageListener(listener: OnShopMessageListener?) {
         SdkRegistry.setMessageListener(listener)
     }

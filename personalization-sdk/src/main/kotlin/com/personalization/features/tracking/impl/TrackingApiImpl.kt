@@ -131,6 +131,10 @@ internal class TrackingApiImpl @Inject constructor(
         )
     }
 
+    @Deprecated(
+        message = "The server does not read results: call search(query, listener). The parameter goes in the major release.",
+        replaceWith = ReplaceWith("search(query, listener)"),
+    )
     override fun search(
         query: String,
         results: List<String>?,
@@ -317,6 +321,7 @@ internal class TrackingApiImpl @Inject constructor(
         override fun categoryView(categoryId: String, listener: CompletionListener<Unit>?) =
             queue("tracking.categoryView", listener) { this@TrackingApiImpl.categoryView(categoryId, it) }
 
+        @Suppress("DEPRECATION")
         override fun search(query: String, results: List<String>?, listener: CompletionListener<Unit>?) =
             queue("tracking.search", listener) { this@TrackingApiImpl.search(query, results, it) }
 

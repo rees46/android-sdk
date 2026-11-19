@@ -700,10 +700,6 @@ class MainActivity : AppCompatActivity() {
             runTrackingDemo("search") { tracking, listener ->
                 tracking.search(
                     query = DemoTrackingNamespaceConstants.SEARCH_QUERY,
-                    results = listOf(
-                        DemoTrackingNamespaceConstants.ITEM_ID,
-                        DemoTrackingNamespaceConstants.SECOND_ITEM_ID
-                    ),
                     listener = listener
                 )
             }
