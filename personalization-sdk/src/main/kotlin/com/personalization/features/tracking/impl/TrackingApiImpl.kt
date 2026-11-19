@@ -249,7 +249,7 @@ internal class TrackingApiImpl @Inject constructor(
         // order — so [source] only fills the gap when the caller left it empty. This one is per-call:
         // it colours this order and nothing else, which is why it does not go through setSource.
         val attributed = if (source != null && request.recommendedBy == null) {
-            request.copy(recommendedBy = Params.RecommendedBy(source.type.value, source.code))
+            request.copy(recommendedBy = Params.RecommendedBy(source.wire, source.code))
         } else {
             request
         }
@@ -282,7 +282,7 @@ internal class TrackingApiImpl @Inject constructor(
     }
 
     override fun setSource(source: TrackingSource) {
-        setTrackingSourceUseCase(type = source.type.value, code = source.code)
+        setTrackingSourceUseCase(type = source.wire, code = source.code)
     }
 
     @BridgeApi

@@ -27,6 +27,8 @@ import com.personalization.core.SdkError
  * [TrackingSourceType.WEB_PUSH_DIGEST]: the server does not take them in `recommended_by` and would reject
  * the whole event, so on both cores such a call sends nothing and the listener hears `onError` behind
  * [SdkError.InvalidArgument] — off the caller's thread on the new core. [setSource] still takes them.
+ * A source the bridges make with `TrackingSource.fromWire` — the contract's `slider` and `agent_search`
+ * among them — goes as its wire value, here and in [queued].
  * Earlier releases sent such an event, and the server refused it.
  */
 interface TrackingApi {
