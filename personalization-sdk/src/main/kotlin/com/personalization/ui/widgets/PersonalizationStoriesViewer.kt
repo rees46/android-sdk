@@ -608,14 +608,17 @@ class PersonalizationStoriesViewer(
     }
 
     /**
-     * Опросы: свой транспорт, иначе HTTP на хост API v3 сторис с SDK. Ключ хранилища ответов —
-     * магазин SDK, без него — [shopId]. Пустой текст хоста — умолчание SDK.
+     * Опросы: свой транспорт, иначе HTTP на хост API v3 сторис с SDK. Ответы хранятся на устройстве
+     * магазина SDK (как увиденные слайды) под did; без SDK — только в ленте. Пустой текст хоста —
+     * умолчание SDK.
      */
     private fun pollsContext(): StoryPollsContext? {
         val sdk = sdk
         val transport = pollsTransport ?: apiV3Domain?.let { domain -> sdk?.let { StoriesPollsApi(it, domain) } } ?: return null
-        val shop = sdk?.let { runCatching { StoriesApiV3.shopId(it) }.getOrNull() } ?: shopId
-        return StoryPollsContext(transport, shop.orEmpty(), texts.pollTexts.or(StoriesTexts.defaults(hostContext).pollTexts))
+        val answers = sdk?.let { runCatching { StoryPollAnswers.forSdk(hostContext, it, shopId) }.getOrNull() }
+        @Suppress("DEPRECATION")
+        val did = sdk?.let { runCatching { it.getDid() }.getOrNull() }
+        return StoryPollsContext(transport, texts.pollTexts.or(StoriesTexts.defaults(hostContext).pollTexts), answers, did)
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS

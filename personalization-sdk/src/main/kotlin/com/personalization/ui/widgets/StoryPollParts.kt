@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -35,16 +34,12 @@ import androidx.annotation.ColorRes
 import androidx.annotation.DimenRes
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.graphics.ColorUtils
-import androidx.core.os.ConfigurationCompat
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
 import com.personalization.ui.PersonalizationTheme
-import java.text.NumberFormat
-import java.util.Locale
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** Общее для частей карточки опроса. */
@@ -96,12 +91,14 @@ internal object PollUi {
         return letters.reverse().toString()
     }
 
-    /** Число голосов со склонением и разрядами по языку ресурсов: «1 248 голосов»; нет голосов — `null`. */
-    fun votes(resources: Resources, total: Int): String? {
-        if (total <= 0) return null
-        val locale = ConfigurationCompat.getLocales(resources.configuration).get(0) ?: Locale.getDefault()
-        val number = NumberFormat.getIntegerInstance(locale).format(total.toLong())
-        return resources.getQuantityString(R.plurals.personalization_stories_poll_votes, total, number)
+    /**
+     * Цвет тона шкалы — семантические цвета кита: плохо — `semantic_danger`, средне — `semantic_warning`;
+     * зелёного в ките нет, хорошо — акцент опроса.
+     */
+    fun toneColor(context: Context, tone: StoryPoll.Tone): Int = when (tone) {
+        StoryPoll.Tone.NEGATIVE -> color(context, R.color.personalization_semantic_danger)
+        StoryPoll.Tone.NEUTRAL -> color(context, R.color.personalization_semantic_warning)
+        StoryPoll.Tone.POSITIVE -> PollStyle.ACCENT
     }
 
     /**
@@ -314,9 +311,9 @@ internal class PollOptionRow(context: Context, letter: String, private val resul
 }
 
 /**
- * Шкала — дорожка-капсула, цифры поровну (в RTL справа налево). Выбранная — капсула на всю
- * высоту дорожки цветом своей полосы ([fillOf]), цифра на ней белая или тёмная, что контрастнее;
- * в ответе ([muted]) остальные цифры приглушены.
+ * Шкала — ряд ячеек поровну (в RTL справа налево), как сетка веб-SDK: каждая цифра на подложке своего
+ * тона ([fillOf]) — бледной, выбранная — на полной, цифра на ней белая или тёмная, что контрастнее; в
+ * ответе ([muted]) остальные цифры приглушены.
  */
 @SuppressLint("ViewConstructor")
 internal class PollScaleRow(
@@ -329,6 +326,8 @@ internal class PollScaleRow(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val textColor = PollUi.color(context, R.color.personalization_text_primary)
+    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_md)
+    private val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xs).toFloat()
 
     /** Выбранная оценка; дробная не выделяет ни одной цифры, как в веб-SDK. */
     var selectedValue: Double? = null
@@ -345,14 +344,17 @@ internal class PollScaleRow(
     init {
         orientation = HORIZONTAL
         setWillNotDraw(false)
-        val inset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm)
-        setPadding(inset, 0, inset, 0)
-        background = PollUi.rounded(PollStyle.SURFACE, PersonalizationTheme.radius(context, R.dimen.personalization_radius_rounded))
     }
 
     val values: List<Int> get() = cells.keys.toList()
 
     fun cell(value: Int): TextView? = cells[value]
+
+    /** Подложка ячейки [value]: полный цвет тона у выбранной, бледный — у остальных. */
+    fun fill(value: Int): Int {
+        val color = fillOf(value)
+        return if (cells[value]?.isSelected == true) color else PollUi.alpha(color, PollStyle.TONE_ALPHA)
+    }
 
     fun addCell(value: Int, cell: TextView) {
         cells[value] = cell
@@ -362,11 +364,11 @@ internal class PollScaleRow(
     fun setCellsEnabled(enabled: Boolean) = cells.values.forEach { it.isEnabled = enabled }
 
     override fun dispatchDraw(canvas: Canvas) {
-        // Капсула выбранной — под цифрой.
-        cells.entries.firstOrNull { it.key.toDouble() == selectedValue }?.let { (rate, cell) ->
-            rect.set(cell.left.toFloat(), 0f, cell.right.toFloat(), height.toFloat())
-            val radius = min(rect.width(), rect.height()) / 2
-            paint.color = fillOf(rate)
+        // Подложки — под цифрами; приглушённая цифра приглушает и свою подложку.
+        cells.forEach { (rate, cell) ->
+            rect.set(cell.left + gap / 2, 0f, cell.right - gap / 2, height.toFloat())
+            paint.color = fill(rate)
+            paint.alpha = (Color.alpha(paint.color) * cell.alpha).toInt()
             canvas.drawRoundRect(rect, radius, radius, paint)
         }
         super.dispatchDraw(canvas)

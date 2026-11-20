@@ -42,7 +42,7 @@ class StoryPollFlowTest {
 
     @Before
     fun setUp() {
-        StoryPollStore.clear()
+        StoryPollAnswers.reset()
         every { sdk.storiesManager } returns manager
         every { sdk.getDid() } returns "did1"
         every { sdk.sessionId } returns null
@@ -60,7 +60,7 @@ class StoryPollFlowTest {
         StoriesApiV3.runner = { Thread(it).start() }
         ShadowDialog.getShownDialogs().forEach { it.dismiss() }
         idle()
-        StoryPollStore.clear()
+        StoryPollAnswers.reset()
     }
 
     @Test
@@ -75,10 +75,18 @@ class StoryPollFlowTest {
         val post = requests.single { it.second.contains("/polls/") }
         assertEquals("https://app.test/api/v3/polls/mini_polls/demo_single/answers", post.second)
         assertEquals(
-            """{"shop_id":"shop1","did":"did1","sid":"","option_ids":[1],"story_id":9001,"slide_id":"900"}""",
+            """{"shop_id":"shop1","did":"did1","sid":"","option_ids":[1],"source_type":"stories","source_id":"9001","source_item_id":"900"}""",
             post.third
         )
-        assertEquals(listOf(1), StoryPollStore.get("shop1", "mini_poll", "demo_single")!!.answer!!.optionIds)
+        // Kept on the device of the shop under the did, for the next show of the slide.
+        val saved = StoryPollAnswers.forShop(activity, "polls-v3").read("stories_poll_did1_mini_poll_demo_single_9001_900")
+        assertEquals(listOf(1), saved!!.answer.optionIds)
+        val fresh = StoriesApiV3.parse(feed)[0].getSlide(0).polls.single()
+        val again = StoryPollController(
+            fresh, 9001, "900", transport, PollTexts("a", "b", "c"), onHold = {},
+            answers = StoryPollAnswers.forShop(activity, "polls-v3"), did = "did1"
+        )
+        assertTrue("answered from a new feed without the answer", again.answered)
     }
 
     @Test
@@ -176,7 +184,8 @@ class StoryPollFlowTest {
         transport.succeed(StoriesPollAnswer(optionIds = listOf(2)), null)
         idle()
         assertFalse(state.isPaused(StoriesViewerState.Pause.POLL))
-        assertEquals(listOf(2), StoryPollStore.get("", "mini_poll", "demo_single")!!.answer!!.optionIds)
+        // The viewer without an SDK keeps the answer in the feed only.
+        assertEquals(listOf(2), stories[0].getSlide(0).polls.single().answer!!.optionIds)
     }
 
     @Test

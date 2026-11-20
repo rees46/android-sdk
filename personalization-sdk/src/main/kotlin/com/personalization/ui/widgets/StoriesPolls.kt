@@ -11,9 +11,11 @@ import java.io.Serializable
  * (`pollsTransport`). Виджет без хоста v3 опросы не рисует и со своим транспортом; просмотр, открытый
  * напрямую ([PersonalizationStoriesViewer.pollsTransport]), рисует их по одному транспорту.
  *
- * [body] — поля запроса без `shop_id`, `did` и `sid` (их добавляет HTTP-транспорт):
- * у мини-опроса `option_ids` или `text`, `story_id` (число) и `slide_id` (строка); у шкалы
- * `channel`, `category` (NPS) или `campaign` (CSAT, CES) и `rate`.
+ * [body] — поля запроса без `shop_id`, `did`, `sid`, `stream` и `testmode` (их добавляет HTTP-транспорт):
+ * у мини-опроса `option_ids` или `text`; у шкалы `channel`, `category` (NPS) или `campaign` (CSAT, CES),
+ * `rate` и `comment` (ответ на вопрос полосы — второй запрос с той же оценкой). У обоих — источник
+ * ответа, как в веб-SDK: `source_type` `stories`, `source_id` (id сторис) и `source_item_id` (id
+ * слайда), строками.
  *
  * [callback] зовётся один раз, с любого потока: просмотр сам вернётся на главный.
  *
@@ -49,14 +51,16 @@ sealed class StoriesPollsResult {
 
 /**
  * Ответ на опрос: варианты, текст или оценка шкалы. [rate] — число, как пришло: дробная оценка
- * из ленты тоже ответ, но ячейку шкалы не выделяет.
+ * из ленты тоже ответ, но ячейку шкалы не выделяет. [comment] — ответ шкалы на вопрос своей полосы;
+ * без него вопрос задаётся снова.
  */
 @InternalPersonalizationV3Api
 data class StoriesPollAnswer(
     val optionIds: List<Int>? = null,
     val text: String? = null,
     val rate: Double? = null,
-    val id: Long? = null
+    val id: Long? = null,
+    val comment: String? = null
 ) : Serializable {
     /** Ответ есть: непустые варианты, непустой текст или любая оценка — как `hasAnswer` веб-SDK. */
     val isAnswered: Boolean

@@ -46,12 +46,6 @@ class StoryPollViewTest {
         List(story.slidesCount) { story.getSlide(it) }
     }
 
-    @Before
-    fun setUp() = StoryPollStore.clear()
-
-    @After
-    fun tearDown() = StoryPollStore.clear()
-
     @Test
     fun `no transport — no card, the unknown kind — no card`() {
         assertTrue(laidOut(feed[0], PollHost(null)).pollCards.isEmpty())
@@ -70,7 +64,7 @@ class StoryPollViewTest {
 
         rows[1].performClick()
         idle()
-        assertEquals(listOf("answer demo_single {option_ids=[2], story_id=9001, slide_id=900}"), transport.calls)
+        assertEquals(listOf("answer demo_single {option_ids=[2], source_type=stories, source_id=9001, source_item_id=900}"), transport.calls)
         assertEquals(PollStyle.SENDING_ALPHA, card.alpha)
         assertTrue(rows[1].selectedState)
         assertTrue("the letter of the chosen gives way to a check", rows[1].badge.checked)
@@ -83,8 +77,8 @@ class StoryPollViewTest {
         assertEquals(listOf("0%", "70%", "0%"), answered.map { it.percentText.toString() })
         assertTrue(answered[1].selectedState)
         assertEquals(listOf(false, true, false), answered.map { it.badge.checked })
-        // Results header, the question, the own thanks of the poll instead of the default pair and the votes.
-        assertEquals(listOf("Results", "Что вам больше нравится?", "Спасибо за ответ!", "10 votes"), texts(card).take(4))
+        // As the web SDK: the question, the rows and thanks_text — no results header, no votes.
+        assertEquals(listOf("Что вам больше нравится?", "Спасибо за ответ!"), texts(card).take(2))
         // allow_reanswer: the link with the label of the element.
         assertTrue(texts(card).contains("Ответить заново"))
     }
@@ -117,14 +111,15 @@ class StoryPollViewTest {
         assertEquals(listOf(true, false, false, true, false), rows.map { it.badge.checked })
         assertTrue(submit.isEnabled)
         submit.performClick()
-        assertEquals(listOf("answer demo_multi {option_ids=[1, 4], story_id=9001, slide_id=901}"), transport.calls)
+        assertEquals(listOf("answer demo_multi {option_ids=[1, 4], source_type=stories, source_id=9001, source_item_id=901}"), transport.calls)
 
         transport.succeed(null, StoriesPollResults(1248, listOf(StoriesPollResults.Option(1, 52.4), StoriesPollResults.Option(4, 31.0))))
         idle()
         val answered = rows(card)
         assertEquals(listOf(true, false, false, true, false), answered.map { it.selectedState })
         assertEquals(listOf("52%", "0%", "0%", "31%", "0%"), answered.map { it.percentText.toString() })
-        assertTrue(texts(card).containsAll(listOf("Results", "Спасибо!", "1,248 votes")))
+        assertTrue(texts(card).contains("Спасибо!"))
+        assertTrue(texts(card).none { it == "Results" || it.contains("votes") })
     }
 
     @Test
@@ -137,7 +132,7 @@ class StoryPollViewTest {
         assertTrue(texts(card).contains("120/120"))
         input.setText("  Быстрее  ")
         (card.first { it is TextView && it.text == "Send" } as TextView).performClick()
-        assertEquals(listOf("answer demo_text {text=Быстрее, story_id=9001, slide_id=902}"), transport.calls)
+        assertEquals(listOf("answer demo_text {text=Быстрее, source_type=stories, source_id=9001, source_item_id=902}"), transport.calls)
 
         transport.succeed(null, null)
         idle()
@@ -170,12 +165,12 @@ class StoryPollViewTest {
         ime.commitText("😀", 1)
         assertEquals("abcd", input.text.toString())
         (card.first { it is TextView && it.text == "Send" } as TextView).performClick()
-        assertEquals(listOf("answer t {text=abcd, story_id=9001, slide_id=1}"), transport.calls)
+        assertEquals(listOf("answer t {text=abcd, source_type=stories, source_id=9001, source_item_id=1}"), transport.calls)
     }
 
     @Test
     fun `text re-answer empties the field and opens the keyboard`() {
-        StoryPollStore.put("", "mini_poll", "demo_text", StoryPollStore.Entry(StoriesPollAnswer(text = "Старый ответ"), null))
+        feed[2].polls.single().answer = StoriesPollAnswer(text = "Старый ответ")
         val card = laidOut(feed[2]).pollCards.single()
         assertNull(card.input)
         assertTrue(texts(card).contains("Старый ответ"))
@@ -210,8 +205,8 @@ class StoryPollViewTest {
              "answer":{"option_ids":[2]},"results":{"total":3}}]}""")))
         val card = view.pollCards.single()
         assertEquals(0, card.top)
-        // No thanks_text — the default pair; no results.options — no total, no votes on the right.
-        assertEquals(listOf("Results", "Q", "Thanks! Vote counted"), texts(card))
+        // No thanks_text — no thanks, as the web SDK; no results.options — no percents.
+        assertEquals(listOf("Q"), texts(card))
         assertEquals(listOf(false, true), rows(card).map { it.selectedState })
         assertTrue("no percents without results.options", rows(card).all { it.percentText == null })
 
@@ -237,7 +232,7 @@ class StoryPollViewTest {
         val row = card.first { it is PollScaleRow } as PollScaleRow
         assertEquals((0..10).toList(), row.values)
         row.cell(9)!!.performClick()
-        assertEquals(listOf("review nps {channel=test, category=test, rate=9}"), transport.calls)
+        assertEquals(listOf("review nps {channel=test, category=test, rate=9, source_type=stories, source_id=9001, source_item_id=903}"), transport.calls)
         transport.succeed(null, null)
         idle()
         val answered = card.first { it is PollScaleRow } as PollScaleRow
@@ -248,13 +243,47 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `the answered poll of the feed shows its results, the store wins after a rebuild`() {
+    fun `the answered poll of the feed shows its results, a sent answer shows after a rebuild`() {
         val card = laidOut(feed[6]).pollCards.single()
         assertEquals(listOf("40%", "60%"), rows(card).map { it.percentText.toString() })
-        StoryPollStore.put("", "mini_poll", "demo_single", StoryPollStore.Entry(StoriesPollAnswer(optionIds = listOf(3)), null))
+        rows(laidOut(feed[0]).pollCards.single())[2].performClick()
+        transport.succeed(null, null)
         val again = laidOut(feed[0]).pollCards.single()
         assertTrue(rows(again)[2].selectedState)
         assertNull(rows(again)[2].percentText)
+    }
+
+    @Test
+    fun `a band question asks for a comment under the answered scale, then shows the success`() {
+        val view = laidOut(Slide(JSONObject("""{"id":"5","type":"","elements":[
+            {"type":"poll","poll_type":"nps","poll":{"code":"n","question":"Q","bands":[
+             {"from":0,"to":6,"question":"Что улучшить?","success":"Спасибо, станем лучше"}]}}]}""")))
+        val card = view.pollCards.single()
+        (card.first { it is PollScaleRow } as PollScaleRow).cell(4)!!.performClick()
+        transport.succeed(null, null)
+        idle()
+
+        val scale = card.first { it is PollScaleRow } as PollScaleRow
+        assertEquals(4.0, scale.selectedValue)
+        assertFalse(scale.cell(5)!!.isEnabled && scale.cell(5)!!.hasOnClickListeners())
+        assertEquals(listOf("Q", "Что улучшить?", "0/5000", "Send"), texts(card).filter { it.toIntOrNull() == null })
+        val input = card.input!!
+        assertEquals("", input.text.toString())
+        assertNull(input.hint)
+        val submit = card.first { it is TextView && it.text == "Send" } as TextView
+        assertFalse(submit.isEnabled)
+        input.setText(" Курьер опоздал ")
+        assertTrue(texts(card).contains("16/5000"))
+        assertTrue(submit.isEnabled)
+        submit.performClick()
+        assertEquals(
+            "review nps {channel=stories, category=n, rate=4, comment=Курьер опоздал, source_type=stories, source_id=9001, source_item_id=5}",
+            transport.calls.last()
+        )
+        transport.succeed(null, null)
+        idle()
+        assertNull(card.input)
+        assertEquals(listOf("Q", "Спасибо, станем лучше"), texts(card).filter { it.toIntOrNull() == null })
     }
 
     @Test
@@ -307,7 +336,7 @@ class StoryPollViewTest {
             {"type":"poll","poll_type":"csat","poll":{"code":"c"}}]}"""))
         val view = laidOut(slide)
         (view.pollCards.single().first { it is PollScaleRow } as PollScaleRow).cell(5)!!.performClick()
-        assertEquals(listOf("review csat {channel=stories, campaign=c, rate=5}"), transport.calls)
+        assertEquals(listOf("review csat {channel=stories, campaign=c, rate=5, source_type=stories, source_id=9001, source_item_id=39_0}"), transport.calls)
     }
 
     @Test
@@ -384,34 +413,16 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `the number of votes is declined in English`() {
-        val resources = activity.resources
-        assertNull(PollUi.votes(resources, 0))
-        assertEquals(listOf("1 vote", "2 votes", "5 votes", "21 votes", "1,248 votes"), listOf(1, 2, 5, 21, 1248).map { PollUi.votes(resources, it) })
-    }
-
-    @Test
     @Config(qualifiers = "ru")
-    fun `the number of votes is declined in Russian`() {
-        val resources = Robolectric.buildActivity(Activity::class.java).setup().get().resources
-        assertNull(PollUi.votes(resources, -1))
-        val votes = listOf(1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 111, 1248).map { PollUi.votes(resources, it)!!.replace('\u00A0', ' ').replace('\u202F', ' ') }
-        assertEquals(
-            listOf("1 голос", "2 голоса", "4 голоса", "5 голосов", "11 голосов", "12 голосов", "14 голосов", "21 голос", "22 голоса", "25 голосов", "101 голос", "111 голосов", "1 248 голосов"),
-            votes
-        )
-    }
-
-    @Test
-    @Config(qualifiers = "ru")
-    fun `the texts of the results are in Russian`() {
+    fun `the button of the band question is in Russian`() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val russian = PollHost(transport, StoriesTexts.defaults(activity))
         val view = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
-            {"type":"poll","poll_type":"mini_poll","poll":{"code":"s","kind":"single_choice","question":"Q",
-             "options":[{"id":1,"label":"A"}]},"answer":{"option_ids":[1]},"results":{"total":3,"options":[{"id":1,"percent":100}]}}]}""")), 1, host, null, 9001)
+            {"type":"poll","poll_type":"csat","poll":{"code":"c","bands":[{"from":1,"to":5,"question":"Почему?"}]},
+             "answer":{"rate":2}}]}""")), 1, russian, null, 9001)
         activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         idle()
-        assertEquals(listOf("Результаты", "Q", "Спасибо! Голос учтён", "3 голоса"), texts(view.pollCards.single()))
+        assertTrue(texts(view.pollCards.single()).containsAll(listOf("Почему?", "Отправить")))
     }
 
     @Test
@@ -420,10 +431,9 @@ class StoryPollViewTest {
         val dark = 0xFF000000.toInt()
         assertEquals("dark on the green accent", dark, PollUi.onFill(activity, PollStyle.ACCENT))
         assertEquals("white on a deep fill", Color.WHITE, PollUi.onFill(activity, 0xFF15803D.toInt()))
-        // The pale colors of the scale bands — a dark digit.
-        listOf(0, 3, 6, 7, 9).forEach { value ->
-            assertEquals("NPS $value", dark, PollUi.onFill(activity, StoryPoll.scaleColor(StoryPoll.Type.NPS, value, 0, 10)))
-        }
+        // The danger and warning colours of the kit — a white digit, the green of the poll — a dark one.
+        assertEquals(Color.WHITE, PollUi.onFill(activity, PollUi.toneColor(activity, StoryPoll.Tone.NEGATIVE)))
+        assertEquals(dark, PollUi.onFill(activity, PollUi.toneColor(activity, StoryPoll.Tone.POSITIVE)))
     }
 
     @Test
@@ -443,13 +453,17 @@ class StoryPollViewTest {
     private fun selectedFill(): Int = (PollStyle.ACCENT and 0x00FFFFFF) or (Math.round(PollStyle.ACCENT_FILL_ALPHA * 255) shl 24)
 
     @Test
-    fun `the chosen digit of a scale stands on the color of its band`() {
+    fun `every digit of a scale stands on its tone, the chosen one on the full colour`() {
         val card = laidOut(feed[4]).pollCards.single()
         val row = card.first { it is PollScaleRow } as PollScaleRow
+        val danger = PollUi.toneColor(activity, StoryPoll.Tone.NEGATIVE)
+        assertEquals(PollUi.alpha(danger, PollStyle.TONE_ALPHA), row.fill(1))
+        assertEquals(PollUi.alpha(PollStyle.ACCENT, PollStyle.TONE_ALPHA), row.fill(5))
         row.cell(2)!!.performClick()
         assertTrue(row.cell(2)!!.isSelected)
-        assertEquals("a dark digit on the pale band", row.cell(1)!!.currentTextColor, row.cell(2)!!.currentTextColor)
-        assertEquals(listOf("review csat {channel=stories, campaign=demo_csat, rate=2}"), transport.calls)
+        assertEquals(danger, row.fill(2))
+        assertEquals("the digit on the full colour contrasts with it", PollUi.onFill(activity, danger), row.cell(2)!!.currentTextColor)
+        assertEquals(listOf("review csat {channel=stories, campaign=demo_csat, rate=2, source_type=stories, source_id=9001, source_item_id=904}"), transport.calls)
     }
 
     private fun View.bottomOnScreen(): Int = IntArray(2).also(::getLocationInWindow)[1] + height
@@ -482,12 +496,14 @@ class StoryPollViewTest {
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
     /** A slide host with polls through [transport]; `null` — polls are off. */
-    internal class PollHost(transport: StoriesPollsTransport?) : StorySlideHost {
-        override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off", "Share")
+    internal class PollHost(
+        transport: StoriesPollsTransport?,
+        override val texts: StoriesTexts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off", "Share")
+    ) : StorySlideHost {
         override val muted = true
         override val sheetOpen = false
         override val insets: Insets = Insets.NONE
-        override val polls: StoryPollsContext? = transport?.let { StoryPollsContext(it, "", texts.pollTexts) }
+        override val polls: StoryPollsContext? = transport?.let { StoryPollsContext(it, texts.pollTexts) }
         val taps = mutableListOf<Float>()
         val holds = mutableListOf<Boolean>()
         val pollHolds = mutableListOf<Boolean>()

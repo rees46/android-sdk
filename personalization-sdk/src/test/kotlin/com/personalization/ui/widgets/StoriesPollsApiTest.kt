@@ -71,14 +71,18 @@ class StoriesPollsApiTest {
         assertEquals("POST", method)
         assertEquals("https://app.test/api/v3/polls/mini_polls/gift%20recipient/answers", url)
         val json = JSONObject(body!!)
-        assertEquals(listOf("shop_id", "did", "sid", "stream", "option_ids", "story_id", "slide_id"), json.keys().asSequence().toList())
+        assertEquals(
+            listOf("shop_id", "did", "sid", "stream", "option_ids", "source_type", "source_id", "source_item_id"),
+            json.keys().asSequence().toList()
+        )
         assertEquals("shop1", json.getString("shop_id"))
         assertEquals("did1", json.getString("did"))
         assertEquals("sid1", json.getString("sid"))
         assertEquals("android", json.getString("stream"))
         assertEquals(2, json.getJSONArray("option_ids").getInt(0))
-        assertEquals(5, json.get("story_id"))
-        assertEquals("101", json.get("slide_id"))
+        assertEquals("stories", json.get("source_type"))
+        assertEquals("5", json.get("source_id"))
+        assertEquals("101", json.get("source_item_id"))
     }
 
     @Test

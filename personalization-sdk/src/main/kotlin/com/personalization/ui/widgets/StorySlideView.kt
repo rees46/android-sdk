@@ -285,11 +285,11 @@ internal class StorySlideView(
         val layer = StoryPollLayer(context)
         slide.polls.forEach { poll ->
             lateinit var controller: StoryPollController
-            controller = StoryPollController(poll, storyId, slide.id, polls.shopId, polls.transport, polls.texts, onHold = { hold ->
+            controller = StoryPollController(poll, storyId, slide.id, polls.transport, polls.texts, onHold = { hold ->
                 val before = pollHolds.isNotEmpty()
                 if (hold) pollHolds.add(controller) else pollHolds.remove(controller)
                 if (before != pollHolds.isNotEmpty()) host.onPollHold(this, pollHolds.isNotEmpty())
-            })
+            }, answers = polls.answers, did = polls.did)
             layer.add(StoryPollView(context, controller))
         }
         pollLayer = layer
