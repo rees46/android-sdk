@@ -204,7 +204,7 @@ class StoryPollViewTest {
              "options":[{"id":1,"label":"A"},{"id":2,"label":"B"}]},
              "answer":{"option_ids":[2]},"results":{"total":3}}]}""")))
         val card = view.pollCards.single()
-        assertEquals("right under the header", header(view), card.top)
+        assertEquals("at the top of the slide, as the web SDK without top", 0, card.top)
         // No thanks_text — no thanks, as the web SDK; no results.options — no percents.
         assertEquals(listOf("Q"), texts(card))
         assertEquals(listOf(false, true), rows(card).map { it.selectedState })
@@ -287,7 +287,7 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `the card top is y_offset of the slide, lifted 16 above its bottom, never above the header`() {
+    fun `the card top is y_offset of the slide, lifted 16 above its bottom, and may go under the header`() {
         val view = laidOut(feed[3])
         val card = view.pollCards.single()
         val layer = card.parent as View
@@ -300,8 +300,10 @@ class StoryPollViewTest {
         // 16 from the edges of the slide, in the middle.
         assertEquals(margin, windowLeft(card) - windowLeft(view))
         assertEquals((layer.width - card.width) / 2, card.left)
-        // y_offset 5 is under the header — the card stands right under it.
-        assertEquals(header(view), laidOut(feed[5]).pollCards.single().top)
+        // y_offset 5 is a share of the slide too: the card goes under the header, as on the web.
+        val high = laidOut(feed[5])
+        assertEquals(Math.round(high.height * 0.05f), high.pollCards.single().top)
+        assertTrue(high.pollCards.single().top < header(high))
         // y_offset 90 — lifted so its bottom is 16 above the bottom of the slide.
         val low = laidOut(feed[4])
         assertEquals(low.height - margin, low.pollCards.single().bottom)
@@ -309,14 +311,65 @@ class StoryPollViewTest {
 
     @Test
     fun `the top of a card is fitted as fittedTop of the web SDK`() {
-        fun top(offset: Float?, height: Int, minTop: Int = 100) = StoryPollLayer.cardTop(offset, 0, 1000, minTop, height, 16)
+        fun top(offset: Float?, height: Int) = StoryPollLayer.cardTop(offset, 0, 1000, height, 16)
         assertEquals(500, top(50f, 200))
-        assertEquals("no y_offset — under the header", 100, top(null, 200))
-        assertEquals("not above the header", 100, top(5f, 200))
+        assertEquals("no y_offset — the top of the slide", 0, top(null, 200))
+        assertEquals("a small y_offset is kept, the header does not push it down", 50, top(5f, 200))
         assertEquals("lifted 16 above the bottom", 784, top(90f, 200))
-        assertEquals("taller than the room — under the header", 100, top(90f, 950))
+        assertEquals("taller than the room — the top of the slide", 0, top(90f, 1100))
+        assertEquals("clamped to 0 %", 0, top(-20f, 200))
         assertEquals("clamped to 100 %", 784, top(150f, 200))
-        assertEquals("between the system bars", 500, StoryPollLayer.cardTop(50f, 50, 950, 60, 100, 16))
+        assertEquals("between the system bars", 500, StoryPollLayer.cardTop(50f, 50, 950, 100, 16))
+        assertEquals("never above the top bar", 50, StoryPollLayer.cardTop(null, 50, 950, 100, 16))
+    }
+
+    @Test
+    fun `a card under the header leaves the progress, close and share drawn on top and tappable`() {
+        val closes = mutableListOf<Unit>()
+        val shares = mutableListOf<String>()
+        val tapping = object : StorySlideHost by host {
+            override fun onClose() {
+                closes += Unit
+            }
+            override fun onShare(url: String) {
+                shares += url
+            }
+        }
+        val view = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"poll","poll_type":"mini_poll","y_offset":0,
+             "poll":{"code":"s","kind":"single_choice","question":"Q","options":[{"id":1,"label":"A"}]}}]}""")),
+            1, tapping, "https://shop.test/s", 9001)
+        activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        idle()
+        val card = view.pollCards.single()
+        val close = view.navigation.closeButton
+        val share = view.navigation.shareButton
+        assertTrue("the card is under the cross", windowTop(card) < windowTop(close) + close.height)
+
+        // The navigation is drawn after the poll layer, so over the card.
+        fun branch(child: View): Int {
+            var node = child
+            while (node.parent !== view) node = node.parent as View
+            return view.indexOfChild(node)
+        }
+        assertTrue(branch(view.navigation) > branch(card))
+
+        tapAt(view, close)
+        tapAt(view, share)
+        assertEquals(1, closes.size)
+        assertEquals(listOf("https://shop.test/s"), shares)
+    }
+
+    /** A tap at the middle of [target], dispatched to [root] as the window would. */
+    private fun tapAt(root: View, target: View) {
+        val origin = IntArray(2).also(root::getLocationInWindow)
+        val at = IntArray(2).also(target::getLocationInWindow)
+        val x = at[0] - origin[0] + target.width / 2f
+        val y = at[1] - origin[1] + target.height / 2f
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, y, 0))
+        idle()
     }
 
     private fun header(view: StorySlideView): Int = windowTop(view.navigation) + view.navigation.height - windowTop(view)
@@ -402,18 +455,17 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `with little room above the keyboard the card shrinks and stays below the header`() {
+    fun `with little room above the keyboard the card shrinks and stays inside the slide`() {
         val view = laidOut(feed[2])
         val card = view.pollCards.single()
         val full = card.height
         card.input!!.requestFocus()
-        val header = header(view)
-        val keyboardTop = windowTop(view) + header + full / 2
+        val keyboardTop = windowTop(view) + full / 2
         view.applyIme(view.rootView.height - keyboardTop)
         idle()
 
         assertTrue(card.height < full)
-        assertTrue("not above the header", card.top + card.translationY >= header)
+        assertTrue("not above the top of the slide", card.top + card.translationY >= 0)
         assertTrue("above the keyboard", card.bottomOnScreen() <= keyboardTop)
         view.applyIme(0)
         idle()

@@ -85,8 +85,8 @@ internal interface StorySlideHost {
  * Вёрстка одного слайда (Card/Story). Медиа-слайд строится в тёмном контексте (C1),
  * слайд без медиа — в теме хоста на Background/Card (C2). Слои снизу вверх: поля вокруг
  * медиа, фото/видео целиком (fit), скрим (C3), слой касаний, органы управления с отступами
- * от системных панелей и выреза, кнопка «Повторить» (C5). Медиа идёт под панели, органы
- * управления — нет.
+ * от системных панелей и выреза, опросы, навигация (прогресс, крестик, «Поделиться» — поверх
+ * опросов, как в веб-SDK), кнопка «Повторить» (C5). Медиа идёт под панели, органы управления — нет.
  */
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @SuppressLint("ViewConstructor")
@@ -138,6 +138,9 @@ internal class StorySlideView(
 
     private val poster = StoryImageView(context)
     private val column = LinearLayout(context)
+
+    /** Ряд навигации поверх опросов: карточка может зайти под него, а он виден и нажимается (P8). */
+    private val navigationBar = FrameLayout(context)
     private val retry = PersonalizationButton(context)
     private var usedProducts: PersonalizationStoryUsedProducts? = null
     private var usedHost: View? = null
@@ -160,15 +163,24 @@ internal class StorySlideView(
         navigation.onShare = shareUrl?.let { url -> { host.onShare(url) } }
         navigation.progress.count = slideCount
         navigation.progress.current = slideIndex
-        // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
-        column.addView(navigation, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16). Сама она —
+        // в ряду поверх опросов, а в колонке — её место той же высоты: шапка и контент стоят как прежде.
+        navigationBar.addView(navigation, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+            marginStart = padding
+            marginEnd = padding
+            topMargin = padding
+        })
+        val slot = NavigationSlot(context, navigation)
+        navigation.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ -> if (bottom - top != slot.height) slot.requestLayout() }
+        column.addView(slot, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         if (host.v3) StoriesMapping.header(slide)?.let { header ->
             column.addView(StoryHeader.build(context, header, host), columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
         buildContent()
         addView(column, matchParent())
-        // Опросы — над содержимым слайда и его кнопками, как в веб-SDK, но под шапкой.
+        // Опросы — над содержимым слайда и его кнопками, как в веб-SDK; навигация — над ними.
         buildPolls()?.let { layer -> addView(layer, matchParent()) }
+        addView(navigationBar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP))
 
         retry.text = host.texts.retryText
         retry.buttonView = PersonalizationButton.ButtonView.PRIMARY
@@ -284,13 +296,13 @@ internal class StorySlideView(
     }
 
     /**
-     * Опросы — слой во весь слайд, карточки по `y_offset` слайда, как в веб-SDK ([StoryPollLayer]); не
-     * выше шапки. Без транспорта (не API v3) их нет.
+     * Опросы — слой во весь слайд, карточки по `y_offset` слайда, как в веб-SDK ([StoryPollLayer]); под
+     * навигацией. Без транспорта (не API v3) их нет.
      */
     private fun buildPolls(): StoryPollLayer? {
         val polls = host.polls ?: return null
         if (slide.polls.isEmpty()) return null
-        val layer = StoryPollLayer(context) { headerBottom() }
+        val layer = StoryPollLayer(context)
         slide.polls.forEach { poll ->
             lateinit var controller: StoryPollController
             controller = StoryPollController(poll, storyId, slide.id, polls.transport, polls.texts, onHold = { hold ->
@@ -302,12 +314,6 @@ internal class StorySlideView(
         }
         pollLayer = layer
         return layer
-    }
-
-    /** Низ шапки (прогресс, крестик, «Поделиться») от верха слайда — по измеренной высоте. */
-    private fun headerBottom(): Int {
-        val params = navigation.layoutParams as? MarginLayoutParams
-        return column.paddingTop + (params?.topMargin ?: 0) + navigation.measuredHeight
     }
 
     /** Карточки опросов слайда. */
@@ -372,6 +378,7 @@ internal class StorySlideView(
     fun applyInsets(insets: Insets) {
         val used = usedHost
         column.setPadding(insets.left, insets.top, insets.right, if (used == null) insets.bottom + padding else 0)
+        navigationBar.setPadding(insets.left, insets.top, insets.right, 0)
         used?.setPadding(0, 0, 0, insets.bottom)
         pollLayer?.setInsets(insets.top, insets.bottom)
     }
@@ -478,5 +485,17 @@ internal class StoryImageView(context: Context) : AppCompatImageView(context) {
     override fun setImageDrawable(drawable: Drawable?) {
         super.setImageDrawable(drawable)
         if (drawable != null) onDrawable?.invoke()
+    }
+}
+
+/**
+ * Место навигации в колонке слайда: высотой с саму навигацию, которая лежит в ряду поверх опросов
+ * ([StorySlideView]). Ширина та же — отступы колонки и ряда совпадают.
+ */
+@SuppressLint("ViewConstructor")
+private class NavigationSlot(context: Context, private val navigation: View) : View(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        navigation.measure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), navigation.measuredHeight)
     }
 }

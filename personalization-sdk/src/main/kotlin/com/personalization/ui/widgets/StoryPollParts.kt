@@ -420,14 +420,14 @@ internal class PollTextField(context: Context, private val limit: Int?) : EditTe
 
 /**
  * Слой опросов во весь слайд. Карточка — как в веб-SDK (#277): по центру, в 16 от краёв и не шире
- * 420; верх — `y_offset` процентов слайда (между системными панелями), без него — под шапкой; если
- * карточка не влезает, она поднимается, чтобы низ был в 16 над низом слайда, но не выше шапки
- * ([headerBottom]: прогресс, крестик и «Поделиться» остаются видны). Не влезает и так — прокручивается
- * внутри себя. Пока в поле фокус и открыта клавиатура, карточка поднимается над ней (+16), но не выше
- * шапки: места мало — она ниже и прокручивается внутри, поле в фокусе остаётся видно. Слайд под ней
- * не сжимается.
+ * 420; верх — `y_offset` процентов слайда (между системными панелями), без него — верх слайда; если
+ * карточка не влезает, она поднимается, чтобы низ был в 16 над низом слайда, но не выше верха слайда.
+ * Карточка может зайти под шапку: прогресс, крестик и «Поделиться» слайд рисует поверх слоя, и они
+ * нажимаются ([StorySlideView]). Не влезает и так — прокручивается внутри себя. Пока в поле фокус и
+ * открыта клавиатура, карточка поднимается над ней (+16), но не выше верха слайда: места мало — она
+ * ниже и прокручивается внутри, поле в фокусе остаётся видно. Слайд под ней не сжимается.
  */
-internal class StoryPollLayer(context: Context, private val headerBottom: () -> Int = { 0 }) : android.widget.FrameLayout(context) {
+internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(context) {
 
     val cards = ArrayList<StoryPollView>()
     private val maxCardWidth = PollUi.dp(this, PollStyle.MAX_WIDTH_DP.toFloat()).roundToInt()
@@ -465,8 +465,8 @@ internal class StoryPollLayer(context: Context, private val headerBottom: () -> 
         updateLift()
     }
 
-    /** Верх, выше которого карточка не встаёт: низ шапки, не выше верха слайда. */
-    private fun minTop(): Int = maxOf(insetTop, headerBottom())
+    /** Верх слайда, выше которого карточка не встаёт: под верхней системной панелью. */
+    private fun slideTop(): Int = insetTop
 
     private fun slideBottom(height: Int): Int = height - insetBottom
 
@@ -474,7 +474,7 @@ internal class StoryPollLayer(context: Context, private val headerBottom: () -> 
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)
         val cardWidth = MeasureSpec.makeMeasureSpec(minOf(width - 2 * margin, maxCardWidth).coerceAtLeast(0), MeasureSpec.EXACTLY)
-        val room = (slideBottom(height) - margin - minTop()).coerceAtLeast(0)
+        val room = (slideBottom(height) - margin - slideTop()).coerceAtLeast(0)
         cards.forEach { card ->
             val available = keyboardRoom(card)?.let { minOf(it, room) } ?: room
             card.measure(cardWidth, MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST))
@@ -482,30 +482,30 @@ internal class StoryPollLayer(context: Context, private val headerBottom: () -> 
         setMeasuredDimension(width, height)
     }
 
-    /** Место карточки с полем в фокусе между шапкой и клавиатурой; клавиатуры нет — `null`. */
+    /** Место карточки с полем в фокусе между верхом слайда и клавиатурой; клавиатуры нет — `null`. */
     private fun keyboardRoom(card: StoryPollView): Int? {
         val windowHeight = rootView?.height ?: 0
         if (imeBottom <= 0 || windowHeight <= 0 || !card.inputFocused) return null
         val location = IntArray(2)
         getLocationInWindow(location)
-        return (windowHeight - imeBottom - keyboardGap - location[1] - minTop()).coerceAtLeast(keyboardGap * 3)
+        return (windowHeight - imeBottom - keyboardGap - location[1] - slideTop()).coerceAtLeast(keyboardGap * 3)
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         val width = right - left
         val height = bottom - top
         cards.forEach { card ->
-            val y = cardTop(card.controller.poll.yOffset, insetTop, slideBottom(height), minTop(), card.measuredHeight, margin)
+            val y = cardTop(card.controller.poll.yOffset, slideTop(), slideBottom(height), card.measuredHeight, margin)
             val x = (width - card.measuredWidth) / 2
             card.layout(x, y, x + card.measuredWidth, y + card.measuredHeight)
         }
         updateLift()
     }
 
-    /** Подъём карточки с полем в фокусе: низ — над клавиатурой, верх — не выше шапки. */
+    /** Подъём карточки с полем в фокусе: низ — над клавиатурой, верх — не выше верха слайда. */
     fun updateLift() {
         val windowHeight = rootView?.height ?: 0
-        val limit = minTop()
+        val limit = slideTop()
         cards.forEach { card ->
             var lift = 0f
             if (imeBottom > 0 && windowHeight > 0 && card.inputFocused) {
@@ -521,15 +521,14 @@ internal class StoryPollLayer(context: Context, private val headerBottom: () -> 
 
     companion object {
         /**
-         * Верх карточки высотой [height], как `fittedTop` веб-SDK: [offset] процентов слайда
-         * [slideTop]…[slideBottom] (без него — [minTop]), не выше [minTop]; низ ниже, чем [margin] над
-         * низом слайда, — карточка поднимается, но не выше [minTop].
+         * Верх карточки высотой [height], как `top: y_offset%` и `fittedTop` веб-SDK: [offset] процентов
+         * слайда [slideTop]…[slideBottom] (без него — верх слайда); низ ниже, чем [margin] над низом
+         * слайда, — карточка поднимается, но не выше верха слайда.
          */
-        fun cardTop(offset: Float?, slideTop: Int, slideBottom: Int, minTop: Int, height: Int, margin: Int): Int {
-            val wanted = if (offset == null) minTop else (slideTop + (slideBottom - slideTop) * offset.coerceIn(0f, 100f) / 100f).roundToInt()
-            val top = maxOf(wanted, minTop)
+        fun cardTop(offset: Float?, slideTop: Int, slideBottom: Int, height: Int, margin: Int): Int {
+            val wanted = (slideTop + (slideBottom - slideTop) * (offset ?: 0f).coerceIn(0f, 100f) / 100f).roundToInt()
             val max = slideBottom - height - margin
-            return if (top > max) maxOf(minTop, max) else top
+            return if (wanted > max) maxOf(slideTop, max) else wanted
         }
     }
 }
