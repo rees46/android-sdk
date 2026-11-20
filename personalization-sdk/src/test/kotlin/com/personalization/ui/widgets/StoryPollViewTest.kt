@@ -204,7 +204,7 @@ class StoryPollViewTest {
              "options":[{"id":1,"label":"A"},{"id":2,"label":"B"}]},
              "answer":{"option_ids":[2]},"results":{"total":3}}]}""")))
         val card = view.pollCards.single()
-        assertEquals(0, card.top)
+        assertEquals("right under the header", header(view), card.top)
         // No thanks_text — no thanks, as the web SDK; no results.options — no percents.
         assertEquals(listOf("Q"), texts(card))
         assertEquals(listOf(false, true), rows(card).map { it.selectedState })
@@ -287,26 +287,39 @@ class StoryPollViewTest {
     }
 
     @Test
-    fun `the card top is y_offset of the whole slide, moved inside the middle`() {
+    fun `the card top is y_offset of the slide, lifted 16 above its bottom, never above the header`() {
         val view = laidOut(feed[3])
         val card = view.pollCards.single()
         val layer = card.parent as View
-        // y_offset 60 is a share of the whole slide, like `top` on the web, not of the middle.
-        val layerTop = windowTop(layer) - windowTop(view)
-        assertTrue("the middle starts under the header", layerTop > 0)
-        val expected = (view.height * 0.6f - layerTop).coerceIn(0f, (layer.height - card.height).toFloat())
-        assertTrue("${card.top} vs $expected", Math.abs(card.top - expected) <= 1)
+        assertEquals("the layer is the whole slide", view.height, layer.height)
+        assertEquals(0, windowTop(layer) - windowTop(view))
+        val margin = (16 * view.resources.displayMetrics.density).toInt()
+        // y_offset 60 is a share of the slide, like `top` on the web.
+        assertEquals(Math.round(view.height * 0.6f), card.top)
+        assertTrue(card.bottom <= view.height - margin)
+        // 16 from the edges of the slide, in the middle.
+        assertEquals(margin, windowLeft(card) - windowLeft(view))
         assertEquals((layer.width - card.width) / 2, card.left)
-        // 12 from the edges of the slide, the text blocks under it keep 16.
-        val inset = (12 * view.resources.displayMetrics.density).toInt()
-        assertEquals(inset, windowLeft(card) - windowLeft(view))
-        assertEquals(inset, (windowLeft(view) + view.width) - (windowLeft(card) + card.width))
-        // y_offset 5 is under the header — the card moves down to the middle.
-        assertEquals(0, laidOut(feed[5]).pollCards.single().top)
-        // y_offset 90 — the card stays inside the layer.
-        val low = laidOut(feed[4]).pollCards.single()
-        assertEquals((low.parent as View).height, low.bottom)
+        // y_offset 5 is under the header — the card stands right under it.
+        assertEquals(header(view), laidOut(feed[5]).pollCards.single().top)
+        // y_offset 90 — lifted so its bottom is 16 above the bottom of the slide.
+        val low = laidOut(feed[4])
+        assertEquals(low.height - margin, low.pollCards.single().bottom)
     }
+
+    @Test
+    fun `the top of a card is fitted as fittedTop of the web SDK`() {
+        fun top(offset: Float?, height: Int, minTop: Int = 100) = StoryPollLayer.cardTop(offset, 0, 1000, minTop, height, 16)
+        assertEquals(500, top(50f, 200))
+        assertEquals("no y_offset — under the header", 100, top(null, 200))
+        assertEquals("not above the header", 100, top(5f, 200))
+        assertEquals("lifted 16 above the bottom", 784, top(90f, 200))
+        assertEquals("taller than the room — under the header", 100, top(90f, 950))
+        assertEquals("clamped to 100 %", 784, top(150f, 200))
+        assertEquals("between the system bars", 500, StoryPollLayer.cardTop(50f, 50, 950, 60, 100, 16))
+    }
+
+    private fun header(view: StorySlideView): Int = windowTop(view.navigation) + view.navigation.height - windowTop(view)
 
     private fun windowTop(view: View): Int = IntArray(2).also(view::getLocationInWindow)[1]
 
@@ -318,15 +331,11 @@ class StoryPollViewTest {
             {"type":"text_block","text_input":"Text","y_offset":$offset},
             {"type":"poll","poll_type":"mini_poll","y_offset":$offset,
              "poll":{"code":"s","kind":"single_choice","options":[{"id":1,"label":"A"}]}}]}""")))
-        listOf("null", "5", "50").forEach { offset ->
+        listOf("30", "50").forEach { offset ->
             val view = slide(offset)
             val block = all(view).filterIsInstance<PersonalizationStoryTextBlock>().single()
             assertEquals("y_offset $offset", windowTop(view.pollCards.single()), windowTop(block))
         }
-        // 95: both stand on the bottom of the area.
-        val view = slide("95")
-        val block = all(view).filterIsInstance<PersonalizationStoryTextBlock>().single()
-        assertEquals(view.pollCards.single().bottomOnScreen(), block.bottomOnScreen())
     }
 
     @Test
@@ -398,14 +407,13 @@ class StoryPollViewTest {
         val card = view.pollCards.single()
         val full = card.height
         card.input!!.requestFocus()
-        val layer = card.parent as View
-        val layerTop = IntArray(2).also(layer::getLocationInWindow)[1]
-        val keyboardTop = layerTop + full / 2
+        val header = header(view)
+        val keyboardTop = windowTop(view) + header + full / 2
         view.applyIme(view.rootView.height - keyboardTop)
         idle()
 
         assertTrue(card.height < full)
-        assertTrue("not above the middle of the slide", card.top + card.translationY >= 0f)
+        assertTrue("not above the header", card.top + card.translationY >= header)
         assertTrue("above the keyboard", card.bottomOnScreen() <= keyboardTop)
         view.applyIme(0)
         idle()

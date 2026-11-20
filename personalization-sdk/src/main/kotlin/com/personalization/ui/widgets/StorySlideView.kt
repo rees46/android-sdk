@@ -132,7 +132,6 @@ internal class StorySlideView(
     private val pollHolds = HashSet<StoryPollController>()
     private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
-    private val pollInset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
 
     init {
         setBackgroundColor(
@@ -154,6 +153,8 @@ internal class StorySlideView(
         column.addView(navigation, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         buildContent()
         addView(column, matchParent())
+        // Опросы — над содержимым слайда и его кнопками, как в веб-SDK, но под шапкой.
+        buildPolls()?.let { layer -> addView(layer, matchParent()) }
 
         retry.text = host.texts.retryText
         retry.buttonView = PersonalizationButton.ButtonView.PRIMARY
@@ -257,14 +258,7 @@ internal class StorySlideView(
         } else {
             StoryTextBlocks.build(context, slide, host)
         }
-        val area = withPolls(middle)
-        column.addView(area, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply {
-            // Карточки опросов — в 12 от краёв слайда, середина под ними — как была, в 16.
-            if (area !== middle) {
-                marginStart = pollInset
-                marginEnd = pollInset
-            }
-        })
+        column.addView(middle, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
@@ -276,13 +270,13 @@ internal class StorySlideView(
     }
 
     /**
-     * Опросы — поверх середины слайда, и на товарном тоже: между шапкой и кнопками. Без
-     * транспорта (не API v3) их нет.
+     * Опросы — слой во весь слайд, карточки по `y_offset` слайда, как в веб-SDK ([StoryPollLayer]); не
+     * выше шапки. Без транспорта (не API v3) их нет.
      */
-    private fun withPolls(middle: View): View {
-        val polls = host.polls ?: return middle
-        if (slide.polls.isEmpty()) return middle
-        val layer = StoryPollLayer(context)
+    private fun buildPolls(): StoryPollLayer? {
+        val polls = host.polls ?: return null
+        if (slide.polls.isEmpty()) return null
+        val layer = StoryPollLayer(context) { headerBottom() }
         slide.polls.forEach { poll ->
             lateinit var controller: StoryPollController
             controller = StoryPollController(poll, storyId, slide.id, polls.transport, polls.texts, onHold = { hold ->
@@ -293,13 +287,13 @@ internal class StorySlideView(
             layer.add(StoryPollView(context, controller))
         }
         pollLayer = layer
-        return FrameLayout(context).apply {
-            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
-                marginStart = padding - pollInset
-                marginEnd = padding - pollInset
-            })
-            addView(layer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        }
+        return layer
+    }
+
+    /** Низ шапки (прогресс, крестик, «Поделиться») от верха слайда — по измеренной высоте. */
+    private fun headerBottom(): Int {
+        val params = navigation.layoutParams as? MarginLayoutParams
+        return column.paddingTop + (params?.topMargin ?: 0) + navigation.measuredHeight
     }
 
     /** Карточки опросов слайда. */
@@ -364,6 +358,7 @@ internal class StorySlideView(
         val used = usedHost
         column.setPadding(insets.left, insets.top, insets.right, if (used == null) insets.bottom + padding else 0)
         used?.setPadding(0, 0, 0, insets.bottom)
+        pollLayer?.setInsets(insets.top, insets.bottom)
     }
 
     fun setProgress(progress: Float) {
