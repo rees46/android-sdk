@@ -11,3 +11,8 @@
 # Jetpack Compose is likewise OPTIONAL and compileOnly — it only backs StoriesWidget. A View-based
 # consumer never loads that class, so the absent androidx.compose.** references are safe to ignore.
 -dontwarn androidx.compose.**
+
+# Before initialize, an SDK instance's public managers are java.lang.reflect.Proxy stubs of their interfaces
+# (NotInitializedStubs): R8 must keep the interfaces and their methods as they are.
+-keep interface com.personalization.api.managers.** { *; }
+-keep interface com.personalization.sdk.domain.repositories.NPSRepository { *; }

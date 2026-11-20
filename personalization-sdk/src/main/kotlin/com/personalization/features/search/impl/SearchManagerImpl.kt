@@ -7,7 +7,9 @@ import com.personalization.api.managers.SearchManager
 import com.personalization.api.params.SearchParams
 import com.personalization.api.responses.search.SearchBlankResponse
 import com.personalization.api.responses.search.SearchFullResponse
+import com.personalization.api.responses.search.PriceRange
 import com.personalization.api.responses.search.SearchInstantResponse
+import com.personalization.core.internal.isEmptyAnswer
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
@@ -29,11 +31,10 @@ internal class SearchManagerImpl @Inject constructor(
     ) {
         search(query, TYPE.FULL, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    val searchFullResponse =
-                        Gson().fromJson(it.toString(), SearchFullResponse::class.java)
-                    onSearchFull(searchFullResponse)
-                }
+                // A 2xx without a body is an empty result: the callback hears it too.
+                val searchFullResponse = if (response.isEmptyAnswer()) emptyFull(query)
+                else Gson().fromJson(response.toString(), SearchFullResponse::class.java)
+                onSearchFull(searchFullResponse)
             }
 
             override fun onError(code: Int, msg: String?) {
@@ -65,11 +66,9 @@ internal class SearchManagerImpl @Inject constructor(
 
         search(query, TYPE.INSTANT, searchParams, object : OnApiCallbackListener() {
             override fun onSuccess(response: JSONObject?) {
-                response?.let {
-                    val searchInstantResponse =
-                        Gson().fromJson(it.toString(), SearchInstantResponse::class.java)
-                    onSearchInstant(searchInstantResponse)
-                }
+                val searchInstantResponse = if (response.isEmptyAnswer()) emptyInstant(query)
+                else Gson().fromJson(response.toString(), SearchInstantResponse::class.java)
+                onSearchInstant(searchInstantResponse)
             }
 
             override fun onError(code: Int, msg: String?) {
@@ -87,11 +86,9 @@ internal class SearchManagerImpl @Inject constructor(
             Params().build(),
             object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val searchBlankResponse =
-                            Gson().fromJson(it.toString(), SearchBlankResponse::class.java)
-                        onSearchBlank(searchBlankResponse)
-                    }
+                    val searchBlankResponse = if (response.isEmptyAnswer()) EMPTY_BLANK
+                    else Gson().fromJson(response.toString(), SearchBlankResponse::class.java)
+                    onSearchBlank(searchBlankResponse)
                 }
 
                 override fun onError(code: Int, msg: String?) {
@@ -111,6 +108,24 @@ internal class SearchManagerImpl @Inject constructor(
             .put(QUERY_PARAMETER, query)
 
         sendNetworkMethodUseCase.get(SEARCH_REQUEST, params.build(), listener)
+    }
+
+    private companion object {
+        /** What a search without results answers, for a 2xx without a body. */
+        fun emptyFull(query: String) = SearchFullResponse(
+            brands = emptyList(), categories = emptyList(), clarification = false, collections = emptyList(), html = "",
+            priceMedian = 0.0, priceRange = PriceRange(max = 0.0, min = 0.0), priceRanges = emptyList(), products = emptyList(),
+            productsTotal = 0, requestsCount = 0, searchQuery = query,
+        )
+
+        fun emptyInstant(query: String) = SearchInstantResponse(
+            bookAuthor = emptyList(), categories = emptyList(), clarification = false, collections = emptyList(), html = "",
+            products = emptyList(), productsTotal = 0, queries = emptyList(), requestsCount = 0, searchQuery = query,
+        )
+
+        val EMPTY_BLANK = SearchBlankResponse(
+            html = "", products = emptyList(), suggests = emptyList(), popularCategories = null, popularBrands = null, popularLinks = null,
+        )
     }
 
     private enum class TYPE(var value: String) {

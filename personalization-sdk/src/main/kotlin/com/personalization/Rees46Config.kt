@@ -54,9 +54,10 @@ import com.personalization.logs.SdkLogs
  * the new core is for the SDK's Flutter and React Native bridges, which start it with
  * [Rees46.initializeBridge]. The process runs one core: the first of them decides it.
  *
- * Cookies: the legacy core's requests, and those of the stories v3 and popups v3 clients, follow the
- * app's global `java.net.CookieHandler`: an app that installs one (`CookieHandler.setDefault`) has them
- * keep the cookies the server sets, the API's year-long `did` cookie among them, and send them back.
+ * Cookies: the legacy core's requests follow the app's global `java.net.CookieHandler`: an app that
+ * installs one (`CookieHandler.setDefault`) has them keep the cookies the server sets, the API's year-long
+ * `did` cookie among them, and send them back. The new core's requests, and those of the stories v3,
+ * polls and popups v3 clients, never send or keep one.
  *
  * Constructors are overloaded for Java: every trailing parameter with a default may be left out, so
  * Java code written against the seven-argument constructor keeps compiling as parameters are added.

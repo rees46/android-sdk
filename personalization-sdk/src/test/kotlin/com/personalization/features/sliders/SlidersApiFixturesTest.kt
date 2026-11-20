@@ -98,6 +98,32 @@ class SlidersApiFixturesTest {
         )
     }
 
+    @Test
+    fun `a payload without slides is a slider without banners, and without properties code the asked code`() {
+        listOf(
+            """{"status":"success","payload":{"properties":{"width":1000,"height":160}}}""",
+            """{"payload":{"properties":{"code":"","width":1000,"height":160},"slides":null}}""",
+        ).forEach { body ->
+            assertEquals(body, Slider("asked_code", 1000, 160, emptyList()), SlidersApiImpl.readSlider(JSONObject(body), asked = "asked_code"))
+        }
+        assertEquals(Slider("asked_code", 0, 0, emptyList()), SlidersApiImpl.readSlider(JSONObject("""{"payload":{}}"""), "asked_code"))
+    }
+
+    @Test
+    fun `through get a payload without slides is a success with no banners`() {
+        fixtures.server.enqueue(MockResponse().setBody("""{"status":"success","payload":{"properties":{"code":"own"}}}"""))
+
+        val slider = runBlocking { withTimeout(10_000) { sliders.get("homepage_mobile") } }
+
+        assertEquals(Slider("own", 0, 0, emptyList()), slider)
+    }
+
+    @Test
+    fun `an answer of status error or without payload stays decoding`() {
+        assertEquals(null, SlidersApiImpl.readSlider(JSONObject("""{"status":"error","payload":{"message":"x"}}"""), "c"))
+        assertEquals(null, SlidersApiImpl.readSlider(JSONObject("""{"status":"success"}"""), "c"))
+    }
+
     private companion object {
         const val SHOP = "sliders-shop"
         const val FILE = "sliders"

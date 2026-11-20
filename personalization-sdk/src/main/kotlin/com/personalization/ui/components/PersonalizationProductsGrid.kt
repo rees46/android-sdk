@@ -98,14 +98,15 @@ class PersonalizationProductsGrid @JvmOverloads constructor(
 
         val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
         gapDecoration?.let(::removeItemDecoration)
-        if (view == View.GRID) {
+        val decoration = if (view == View.GRID) {
             layoutManager = GridLayoutManager(context, COLUMNS)
-            gapDecoration = PersonalizationGridGapDecoration(gap, COLUMNS)
+            PersonalizationGridGapDecoration(gap, COLUMNS)
         } else {
             layoutManager = LinearLayoutManager(context, VERTICAL, false)
-            gapDecoration = PersonalizationGapDecoration(gap, horizontal = false)
+            PersonalizationGapDecoration(gap, horizontal = false)
         }
-        addItemDecoration(gapDecoration!!)
+        gapDecoration = decoration
+        addItemDecoration(decoration)
     }
 
     private companion object {

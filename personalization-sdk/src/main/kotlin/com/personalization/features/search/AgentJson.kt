@@ -17,8 +17,8 @@ import org.json.JSONObject
 
 /**
  * Reading the search agent's answers (`api/v3/storefront/search/agent`) into the `Agent*` models,
- * tolerantly: a session, a message or a product without its id is left out, and a role the SDK does not
- * know reads as it is.
+ * tolerantly: a session or a product without its id is left out, a message without one is kept with a null
+ * id, a product without a reason has an empty one, and a role the SDK does not know reads as it is.
  */
 internal object AgentJson {
 
@@ -31,7 +31,7 @@ internal object AgentJson {
         )
     }
 
-    /** The session and the agent's answer; null (`decoding`) without either. */
+    /** The session and the agent's answer; null (`decoding`) without either object, or a session without its id. */
     fun answer(body: Any?): AgentResponse? {
         if (body !is JSONObject) return null
         val session = body.objectOrNull("session")?.let(::session) ?: return null
@@ -49,16 +49,15 @@ internal object AgentJson {
         )
     }
 
-    private fun message(json: JSONObject): AgentMessage? {
-        val id = json.longOrNull("id") ?: return null
-        return AgentMessage(
-            id = id,
+    /** Never null: a message without its id is still the agent's answer, kept with a null id. */
+    private fun message(json: JSONObject): AgentMessage =
+        AgentMessage(
+            id = json.longOrNull("id"),
             role = json.nonBlankStringOrNull("role")?.let(::AgentMessageRole),
             content = json.stringOrNull("content"),
             createdAt = json.stringOrNull("created_at"),
             products = json.arrayOrNull("products")?.mapObjects(::product).orEmpty(),
         )
-    }
 
     private fun product(json: JSONObject): AgentProduct? {
         val id = json.nonBlankStringOrNull("id") ?: return null
@@ -72,7 +71,7 @@ internal object AgentJson {
             oldPriceFormatted = json.stringOrNull("oldprice_formatted"),
             picture = json.stringOrNull("picture"),
             url = json.stringOrNull("url"),
-            reason = json.stringOrNull("reason"),
+            reason = json.stringOrNull("reason").orEmpty(),
         )
     }
 }

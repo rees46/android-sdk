@@ -4,9 +4,9 @@ package com.personalization.api.models.segments
  * A segment the customer is in (`sdk.segments.get`).
  *
  * @property type `dynamic`, `static`, `less_often`, `rfm`, `rfm3` or `unknown`; a string, not an enum, so a
- * kind of segment the server adds later reads as it is.
+ * kind of segment the server adds later reads as it is. Empty when the server leaves it out.
  */
 data class Segment(
     val id: Int,
-    val type: String? = null,
+    val type: String = "",
 )

@@ -267,6 +267,30 @@ class TrackingValidationTest {
         }
     }
 
+    @Test
+    fun `on both cores a story event without a code and with no block loaded is invalidArgument and sends nothing`() {
+        listOf(true, false).forEach { coreV2 ->
+            if (!coreV2) tearDown().also { setUp() }
+            val sdk = sdk(coreV2)
+            val calls = listOf<Pair<String, (OnApiCallbackListener) -> Unit>>(
+                "storyView" to { listener -> sdk.tracking.storyView("12", "34", null, listener) },
+                "storyClick" to { listener -> sdk.tracking.storyClick("12", "34", null, listener) },
+            )
+
+            calls.forEach { (method, call) ->
+                val name = "core v2 $coreV2, $method"
+                val heard = Heard(Thread.currentThread())
+                call(heard)
+
+                val refusal = heard.refusal(name)
+                assertTrue("$name: ${refusal.error}", refusal.error is SdkError.InvalidArgument)
+                assertEquals(name, -1, refusal.code)
+                assertEquals(name, coreV2, refusal.offCaller)
+            }
+            assertEquals("core v2 $coreV2", emptyList<Pair<String, JSONObject>>(), events(sdk).filter { it.first == "track/stories" })
+        }
+    }
+
     /** Calls the `tracking` method of a fixture with its contract arguments. */
     private fun call(sdk: SDK, method: String, args: JSONObject, listener: OnApiCallbackListener) {
         val tracking = sdk.tracking

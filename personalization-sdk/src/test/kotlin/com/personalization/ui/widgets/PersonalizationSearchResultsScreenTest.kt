@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import com.personalization.SDK
+import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.SearchManager
 import com.personalization.api.managers.TrackingApi
 import com.personalization.api.params.SearchParams
@@ -65,7 +66,7 @@ class PersonalizationSearchResultsScreenTest {
         val sdk = mockk<SDK>(relaxed = true)
         every { sdk.searchManager } returns search
         every { sdk.tracking } returns tracking
-        every { tracking.search(any(), any(), any()) } just Runs
+        every { tracking.search(any(), any<OnApiCallbackListener>()) } just Runs
         screen = PersonalizationSearchResultsScreen(context)
         screen.attach(sdk)
     }
@@ -139,7 +140,7 @@ class PersonalizationSearchResultsScreenTest {
         idle()
 
         verify(exactly = 2) { search.searchFull(any(), any(), any(), any()) }
-        verify(exactly = 2) { tracking.search("jacket", any(), any()) }
+        verify(exactly = 2) { tracking.search("jacket", any<OnApiCallbackListener>()) }
     }
 
     @Test
@@ -203,7 +204,7 @@ class PersonalizationSearchResultsScreenTest {
         assertEquals(listOf(1, 1), pages)
         assertNull(screen.catalog.errorText)
         assertTrue(screen.catalog.isLoading)
-        verify(exactly = 1) { tracking.search("jacket", any(), any()) }
+        verify(exactly = 1) { tracking.search("jacket", any<OnApiCallbackListener>()) }
         answers.last()(response(total = 40, page = 0))
         assertEquals(20, screen.products.size)
     }
@@ -228,7 +229,7 @@ class PersonalizationSearchResultsScreenTest {
         retryButton().performClick()
 
         assertEquals(listOf(1, 2, 2), pages)
-        verify(exactly = 1) { tracking.search("jacket", any(), any()) }
+        verify(exactly = 1) { tracking.search("jacket", any<OnApiCallbackListener>()) }
         answers.last()(response(total = 60, page = 1))
         assertEquals(40, screen.products.size)
         assertEquals(screen.loadMoreText, screen.catalog.loadMoreText)

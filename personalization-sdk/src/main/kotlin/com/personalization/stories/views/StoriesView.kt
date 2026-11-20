@@ -24,6 +24,10 @@ import com.personalization.stories.models.Story
 import com.personalization.stories.viewAdapters.StoriesAdapter
 import com.personalization.stories.viewAdapters.StoriesAdapter.ClickListener
 
+
+/** The constructors take a nullable context, as released; a view cannot exist without one, and says so. */
+private fun requireContext(context: Context?): Context = requireNotNull(context) { "StoriesView needs a context" }
+
 class StoriesView : ConstraintLayout, ClickListener {
     private lateinit var storiesRecyclerView: RecyclerView
     private lateinit var adapter: StoriesAdapter
@@ -55,18 +59,18 @@ class StoriesView : ConstraintLayout, ClickListener {
         code: String,
         needOpeningWebView: Boolean,
         productBannerTapDefaultMessage: String
-    ) : super(context!!) {
+    ) : super(requireContext(context)) {
         this.code = code
         this.needOpeningWebView = needOpeningWebView
         this.productBannerTapDefaultMessage = productBannerTapDefaultMessage
     }
 
-    constructor(context: Context?, attrs: AttributeSet?) : super(context!!, attrs) {
+    constructor(context: Context?, attrs: AttributeSet?) : super(requireContext(context), attrs) {
         parseAttrs(attrs)
     }
 
     constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(
-        context!!,
+        requireContext(context),
         attrs,
         defStyleAttr
     ) {
@@ -79,7 +83,7 @@ class StoriesView : ConstraintLayout, ClickListener {
         attrs: AttributeSet?,
         defStyleAttr: Int,
         defStyleRes: Int
-    ) : super(context!!, attrs, defStyleAttr, defStyleRes) {
+    ) : super(requireContext(context), attrs, defStyleAttr, defStyleRes) {
         parseAttrs(attrs)
     }
 
@@ -251,8 +255,6 @@ class StoriesView : ConstraintLayout, ClickListener {
     }
 
     private fun unregisterObserver() {
-        if (observer != null) {
-            context.contentResolver.unregisterContentObserver(observer!!)
-        }
+        observer?.let { context.contentResolver.unregisterContentObserver(it) }
     }
 }

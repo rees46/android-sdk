@@ -118,6 +118,28 @@ class PersonalizationStoriesTest {
     }
 
     @Test
+    fun `show takes the start story as a string, and one that is not a story of the block opens the first`() {
+        showById("13")
+        assertEquals(2, pager(ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).currentItem)
+        (ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).dismiss()
+        idle()
+
+        showById("x")
+        assertEquals(0, pager(ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer).currentItem)
+    }
+
+    private fun showById(startStoryId: String) {
+        PersonalizationStories.show(
+            context = activity,
+            code = "BLOCK",
+            sdk = sdk,
+            startStoryId = startStoryId,
+            imageLoader = { _, _ -> }
+        )
+        idle()
+    }
+
+    @Test
     fun `show of an empty block reports the error and opens nothing`() {
         served = emptyList()
         var closed = 0

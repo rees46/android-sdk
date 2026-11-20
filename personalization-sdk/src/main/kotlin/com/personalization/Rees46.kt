@@ -101,10 +101,10 @@ object Rees46 {
      *   empty id is refused at once; [SDK.flush] sends the queue now; the stored tracking source goes on
      *   `/push` only, and a popup in an event's answer is shown only within 10 s of the event and in the
      *   foreground;
-     * - cookies: the new core's requests never send or keep a cookie. The legacy core's requests, and those
-     *   of the stories v3 and popups v3 clients on either core, follow the app's global
-     *   `java.net.CookieHandler`: an app that installs one (`CookieHandler.setDefault`) has them keep the
-     *   cookies the server sets, the API's year-long `did` cookie among them, and send them back.
+     * - cookies: the new core's requests, and those of the stories v3, polls and popups v3 clients, never
+     *   send or keep a cookie. The legacy core's requests follow the app's global `java.net.CookieHandler`:
+     *   an app that installs one (`CookieHandler.setDefault`) has them keep the cookies the server sets, the
+     *   API's year-long `did` cookie among them, and send them back.
      */
     @BridgeApi
     @JvmSynthetic
@@ -542,6 +542,15 @@ object Rees46 {
      * `NotificationData` (the SDK tracks `received` on its own). Fires for both push entry points — the
      * SDK's own messaging service ([SDK.onMessage]) and a host that owns its service ([handlePush]).
      */
+    @Deprecated(
+        message = "Use setPushCallbacks(PushCallbacks(onDelivered = { payload -> ... })): the payload has its shop, " +
+            "title, body, image and actions, and the same callbacks hear the other push events and the token.",
+        replaceWith = ReplaceWith(
+            "Rees46.setPushCallbacks(PushCallbacks(onDelivered = { payload -> }))",
+            "com.personalization.Rees46",
+            "com.personalization.core.PushCallbacks",
+        ),
+    )
     fun setOnMessageListener(listener: OnShopMessageListener?) {
         SdkRegistry.setMessageListener(listener)
     }

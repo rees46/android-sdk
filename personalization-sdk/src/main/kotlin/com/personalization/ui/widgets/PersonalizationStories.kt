@@ -375,6 +375,36 @@ class PersonalizationStories @JvmOverloads constructor(
         }
 
         /**
+         * [show] со сторис [startStoryId], заданной строкой, как в контракте и на других платформах:
+         * id, который не сторис блока (или не число), — показ с первой сторис.
+         */
+        @JvmStatic
+        fun show(
+            context: Context,
+            code: String,
+            sdk: SDK? = null,
+            shopId: String? = null,
+            startStoryId: String,
+            onClickListener: com.personalization.OnClickListener? = null,
+            onError: ((code: Int, message: String?) -> Unit)? = null,
+            onClose: (() -> Unit)? = null,
+            imageLoader: ((ImageView, String) -> Unit)? = null,
+            promoCaption: CharSequence? = null,
+            promoCopiedText: CharSequence? = null,
+            productButtonText: CharSequence? = null,
+            showProductsText: CharSequence? = null,
+            hideProductsText: CharSequence? = null,
+            retryText: CharSequence? = null,
+            closeLabel: CharSequence? = null,
+            soundOnLabel: CharSequence? = null,
+            soundOffLabel: CharSequence? = null
+        ): Cancellable = show(
+            context, code, sdk, shopId, startStoryId.trim().toIntOrNull(), onClickListener, onError, onClose, imageLoader,
+            promoCaption, promoCopiedText, productButtonText, showProductsText, hideProductsText, retryText, closeLabel,
+            soundOnLabel, soundOffLabel
+        )
+
+        /**
          * [show] на API v3 (за шлюзом v3): [apiV3Domain] — как у виджета, `null` — глобальный;
          * [shareLabel], [shareUrlTransform], тексты опросов и [pollsTransport] — как у виджета.
          */

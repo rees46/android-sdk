@@ -62,6 +62,9 @@ class StoriesManager @Inject constructor(
         )
     }
 
+    /** Whether a `StoriesView` is attached and still there: the old [showStories] shows the block in it. */
+    internal fun hasAttachedView(): Boolean = lastAttachedView?.get() != null
+
     internal fun showStories(looper: Looper, code: String) {
         val view = lastAttachedView?.get()
         if (view == null) {

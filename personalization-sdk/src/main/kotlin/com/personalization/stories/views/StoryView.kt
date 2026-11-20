@@ -235,8 +235,8 @@ internal class StoryView(
                         holder.storyItem.reloadLayout.visibility = GONE
                         playVideo()
                     } else {
-                        storiesView.code.let { code ->
-                            holder.storyItem.update(slide, mViewPager.currentItem, code, story!!.id)
+                        story?.let { story ->
+                            holder.storyItem.update(slide, mViewPager.currentItem, storiesView.code, story.id)
                         }
                     }
                 }
@@ -254,13 +254,13 @@ internal class StoryView(
         val storyItem: StoryItemView = view as StoryItemView
 
         init {
-            if (viewPagerSize == null) {
+            val size = viewPagerSize ?: run {
                 val viewPagerHeight = mViewPager.height
                 val params = storiesProgressView.layoutParams as LayoutParams
                 val viewPagerTopOffset = params.height + params.bottomMargin + params.topMargin
-                viewPagerSize = Pair(viewPagerHeight, viewPagerTopOffset)
+                Pair(viewPagerHeight, viewPagerTopOffset).also { viewPagerSize = it }
             }
-            storyItem.setViewSize(viewPagerSize!!.first, viewPagerSize!!.second)
+            storyItem.setViewSize(size.first, size.second)
             storyItem.setOnPageListener(
                 object : OnPageListener {
                     override fun onPrev() {
@@ -301,7 +301,8 @@ internal class StoryView(
         fun bind(slide: Slide?, position: Int) {
             holders[position] = this
             mute.visibility = GONE
-            slide?.let { storyItem.update(slide, position, storiesView.code, story!!.id) }
+            val story = story
+            if (slide != null && story != null) storyItem.update(slide, position, storiesView.code, story.id)
             onTouchListener?.let { listener -> storyItem.setOnTouchListener(listener) }
 
             if (position == mViewPager.currentItem) {
@@ -419,7 +420,7 @@ internal class StoryView(
         story?.let { story ->
             var startPosition = story.startPosition
             if (startPosition <= 0) {
-                prevStoryListener!!.run()
+                prevStoryListener?.run()
                 return
             }
             startPosition--

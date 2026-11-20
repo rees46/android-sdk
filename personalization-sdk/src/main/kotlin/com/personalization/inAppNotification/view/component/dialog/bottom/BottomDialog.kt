@@ -26,7 +26,8 @@ const val BOTTOM_DIALOG_TAG = "BottomDialog"
 class BottomDialog : BaseInAppDialog() {
 
     private var _binding: BottomDialogBinding? = null
-    private val binding get() = _binding!!
+    // Read between onCreateView and onDestroyView only; outside them it is a bug of the dialog, said so.
+    private val binding get() = checkNotNull(_binding) { "The dialog's view is not created" }
 
     override val container: InAppViewContainer by lazy {
         BottomDialogViewContainer(binding)

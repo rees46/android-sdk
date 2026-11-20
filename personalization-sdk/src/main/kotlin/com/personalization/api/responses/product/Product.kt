@@ -3,6 +3,11 @@ package com.personalization.api.responses.product
 import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
 
+/**
+ * A product of the old methods' answers. [discountPercent] is `discount_percent`, or `discount` when that is a
+ * number and `discount_percent` is not there.
+ */
+@JsonAdapter(ProductDiscountAdapterFactory::class)
 data class Product(
     @SerializedName("brand")
     val brand: String,

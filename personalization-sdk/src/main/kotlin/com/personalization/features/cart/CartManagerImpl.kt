@@ -8,6 +8,7 @@ import com.personalization.api.params.CartParams
 import com.personalization.api.responses.cart.CartContent
 import com.personalization.api.responses.cart.CartContentResponse
 import com.personalization.api.responses.cart.ClearCartResponse
+import com.personalization.core.internal.isEmptyAnswer
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import org.json.JSONObject
 import javax.inject.Inject
@@ -29,12 +30,13 @@ internal class CartManagerImpl @Inject constructor(
             params = Params().build(),
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val cartContentResponse = Gson().fromJson(
-                            it.toString(), CartContentResponse::class.java
-                        )
-                        onGetCartContent(cartContentResponse.cartContent)
+                    // A 2xx without a body is an empty cart: the callback hears it too.
+                    val cartContent = if (response.isEmptyAnswer()) {
+                        CartContent(content = emptyList())
+                    } else {
+                        Gson().fromJson(response.toString(), CartContentResponse::class.java).cartContent
                     }
+                    onGetCartContent(cartContent)
                 }
 
                 override fun onError(code: Int, msg: String?) {
@@ -55,12 +57,10 @@ internal class CartManagerImpl @Inject constructor(
             params = params.put(SHOP_SECRET, shopSecret).build(),
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val cartContentResponse = Gson().fromJson(
-                            it.toString(), ClearCartResponse::class.java
-                        )
-                        onCartCleared(cartContentResponse.isSuccess())
-                    }
+                    // A 2xx without a body: the server cleared the cart and said nothing more.
+                    val cleared = response.isEmptyAnswer() ||
+                        Gson().fromJson(response.toString(), ClearCartResponse::class.java).isSuccess()
+                    onCartCleared(cleared)
                 }
 
                 override fun onError(code: Int, msg: String?) {

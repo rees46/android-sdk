@@ -29,11 +29,11 @@ class Player(context: Context) {
     }
 
     fun prepare(url: String) {
-        if (cache == null) return
+        val cache = cache ?: return
         player?.let { player ->
             val mediaSource = ProgressiveMediaSource.Factory(
                 CacheDataSource.Factory()
-                    .setCache(cache!!)
+                    .setCache(cache)
                     .setUpstreamDataSourceFactory(
                         DefaultHttpDataSource.Factory().setUserAgent(SDK.userAgent())
                     )

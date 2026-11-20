@@ -11,6 +11,12 @@ import org.json.JSONObject
  * fit the model as a whole.
  */
 
+/**
+ * Whether an old method's `2xx` answer has no body: the cores hand an empty answer on as an empty object, and
+ * an app's own network layer may hand on none. The old methods' callbacks then get an empty model.
+ */
+internal fun JSONObject?.isEmptyAnswer(): Boolean = this == null || length() == 0
+
 /** The value of [key]; null when it is missing or JSON `null`. */
 internal fun JSONObject.valueOrNull(key: String): Any? = opt(key)?.takeUnless { it == JSONObject.NULL }
 

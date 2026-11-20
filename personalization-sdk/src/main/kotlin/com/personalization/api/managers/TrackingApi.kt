@@ -27,6 +27,8 @@ import com.personalization.core.SdkError
  * [TrackingSourceType.WEB_PUSH_DIGEST]: the server does not take them in `recommended_by` and would reject
  * the whole event, so on both cores such a call sends nothing and the listener hears `onError` behind
  * [SdkError.InvalidArgument] — off the caller's thread on the new core. [setSource] still takes them.
+ * A source the bridges make with `TrackingSource.fromWire` — the contract's `slider` and `agent_search`
+ * among them — goes as its wire value, here and in [queued].
  * Earlier releases sent such an event, and the server refused it.
  */
 interface TrackingApi {
@@ -52,14 +54,27 @@ interface TrackingApi {
     /**
      * Search query issued by the user (`search`).
      *
-     * Pass [results] when the host runs its own search and knows the ids it showed. They go on the
-     * wire as one comma-separated field, so ids must not themselves contain a comma.
+     * [results] go on the wire as one comma-separated field, but the server reads them in no release
+     * (contract `tracking`): the parameter goes in the major release. Call `search(query, listener)`.
      */
+    @Deprecated(
+        message = "The server does not read results: call search(query, listener). The parameter goes in the major release.",
+        replaceWith = ReplaceWith("search(query, listener)"),
+    )
     fun search(
         query: String,
         results: List<String>? = null,
         listener: OnApiCallbackListener? = null,
     )
+
+    /** Search query issued by the user (`search`). */
+    fun search(
+        query: String,
+        listener: OnApiCallbackListener? = null,
+    ) {
+        @Suppress("DEPRECATION")
+        search(query, null, listener)
+    }
 
     /** One product added to the cart (`cart`). A [source] is checked as in [productView]. */
     fun addToCart(

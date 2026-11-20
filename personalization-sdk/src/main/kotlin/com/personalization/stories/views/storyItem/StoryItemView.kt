@@ -363,10 +363,17 @@ class StoryItemView(
 
     private fun updateProduct(element: ProductElement, listener: RequestListener<Drawable>) {
         val item = element.item
+        if (item == null) {
+            // A product element without its product: nothing to show, and the image's listener still hears
+            // the end of its load, as for a picture that did not come.
+            product.visibility = GONE
+            Glide.with(context).load(null as String?).listener(listener).into(productImage)
+            return
+        }
 
         product.visibility = VISIBLE
 
-        Glide.with(context).load(item!!.image).listener(listener).override(Target.SIZE_ORIGINAL)
+        Glide.with(context).load(item.image).listener(listener).override(Target.SIZE_ORIGINAL)
             .into(
                 productImage
             )
@@ -491,9 +498,7 @@ class StoryItemView(
                                 isFirstResource: Boolean
                             ): Boolean {
                                 slide.isPrepared = true
-                                if (pageListener != null) {
-                                    pageListener!!.onPrepared(position)
-                                }
+                                pageListener?.onPrepared(position)
                                 return false
                             }
                         }
@@ -603,9 +608,7 @@ class StoryItemView(
     private fun setupReloadView(slide: Slide, position: Int, code: String, storyId: Int) {
         reloadLayout.visibility = GONE
 
-        if (settings.failed_load_text != null) {
-            setupTextView(reloadText, settings.failed_load_text!!, settings.failed_load_font_family)
-        }
+        settings.failed_load_text?.let { setupTextView(reloadText, it, settings.failed_load_font_family) }
         reloadText.textSize = settings.failed_load_size.toFloat()
         reloadText.setTextColor(Color.parseColor(settings.failed_load_color))
 

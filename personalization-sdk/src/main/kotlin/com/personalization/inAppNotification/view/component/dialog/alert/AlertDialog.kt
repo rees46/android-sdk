@@ -24,7 +24,8 @@ const val ALERT_DIALOG_TAG = "AlertDialog"
 class AlertDialog : BaseInAppDialog() {
 
     private var _binding: AlertDialogBinding? = null
-    private val binding get() = _binding!!
+    // Read between onCreateView and onDestroyView only; outside them it is a bug of the dialog, said so.
+    private val binding get() = checkNotNull(_binding) { "The dialog's view is not created" }
 
     override val container: InAppViewContainer by lazy {
         AlertDialogViewContainer(binding)

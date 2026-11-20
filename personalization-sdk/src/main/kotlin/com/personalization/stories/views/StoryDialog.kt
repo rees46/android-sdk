@@ -46,8 +46,9 @@ class StoryDialog(
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.dialog_stories)
-        val window = window
-        val wlp = window!!.attributes
+        // A Dialog has its window from its constructor on; without one there is nothing to lay out.
+        val window = checkNotNull(window) { "The stories dialog has no window" }
+        val wlp = window.attributes
 
         wlp.gravity = Gravity.CENTER
         wlp.flags = wlp.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()

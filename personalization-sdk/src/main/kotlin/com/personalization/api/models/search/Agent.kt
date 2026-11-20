@@ -40,11 +40,12 @@ data class AgentSession(
 /**
  * A message of the dialog; [id] is 64-bit, as the server's ids of messages.
  *
+ * @property id null for a message the server sent without its id: the message is kept, not left out.
  * @property createdAt ISO 8601.
  * @property products the products the agent offered; empty in the customer's messages.
  */
 data class AgentMessage(
-    val id: Long,
+    val id: Long?,
     val role: AgentMessageRole? = null,
     val content: String? = null,
     val createdAt: String? = null,
@@ -83,5 +84,5 @@ data class AgentProduct(
     val oldPriceFormatted: String? = null,
     val picture: String? = null,
     val url: String? = null,
-    val reason: String? = null,
+    val reason: String = "",
 )

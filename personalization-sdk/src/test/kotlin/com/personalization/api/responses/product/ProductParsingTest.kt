@@ -119,4 +119,32 @@ class ProductParsingTest {
         assertNull(again.discount)
         assertNull(again.discountPercent)
     }
+
+    @Test
+    fun `without discount_percent the percent is discount when that is a number`() {
+        listOf(
+            """{"id":"1","discount":15}""",
+            """{"id":"1","discount":"15"}""",
+            """{"id":"1","discount":15.0,"discount_percent":null}""",
+        ).forEach { json ->
+            val product = gson.fromJson(json, Product::class.java)
+            assertEquals(json, 15, product.discountPercent)
+            assertEquals(json, 15, product.discount)
+        }
+        assertEquals(7, gson.fromJson("""{"id":"1","discount":15,"discount_percent":7}""", Product::class.java).discountPercent)
+        assertNull(gson.fromJson("""{"id":"1","discount":true}""", Product::class.java).discountPercent)
+        assertNull(gson.fromJson("""{"id":"1"}""", Product::class.java).discountPercent)
+    }
+
+    @Test
+    fun `an order's line and a list of products fall back to discount too`() {
+        val line = gson.fromJson("""{"amount":1,"price":"90","item":{"id":"37","discount":10}}""", com.personalization.api.responses.orders.OrderItem::class.java)
+        val type = object : com.google.gson.reflect.TypeToken<List<Product>>() {}.type
+        val list: List<Product> = gson.fromJson("""[{"id":"1","discount":20},{"id":"2","discount":false},null]""", type)
+
+        assertEquals(10, line.item!!.discountPercent)
+        assertEquals(20, list[0].discountPercent)
+        assertNull(list[1].discountPercent)
+        assertNull(list[2])
+    }
 }

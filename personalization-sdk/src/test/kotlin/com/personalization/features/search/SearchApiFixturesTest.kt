@@ -2,6 +2,12 @@ package com.personalization.features.search
 
 import com.personalization.api.models.products.SortBy
 import com.personalization.api.models.products.SortDirection
+import com.personalization.api.models.search.AgentDialogResponse
+import com.personalization.api.models.search.AgentMessage
+import com.personalization.api.models.search.AgentMessageRole
+import com.personalization.api.models.search.AgentProduct
+import com.personalization.api.models.search.AgentResponse
+import com.personalization.api.models.search.AgentSession
 import com.personalization.api.models.search.SearchBlankResponse
 import com.personalization.api.models.search.SearchFullRequest
 import androidx.test.core.app.ApplicationProvider
@@ -144,6 +150,63 @@ class SearchApiFixturesTest {
         } finally {
             slow.stop()
         }
+    }
+
+    @Test
+    fun `a message without its id is kept with a null id, in the answer and in the dialog, and is never decoding`() {
+        fixtures.server.enqueue(MockResponse().setBody("""{"session":{"id":13},"message":{"role":"assistant","content":"Hi"}}"""))
+        fixtures.server.enqueue(
+            MockResponse().setBody(
+                """{"sessions":[],"session":{"id":13,"messages":[{"role":"user","content":"hi"},{"id":2,"role":"assistant","content":"Hello"}]}}""",
+            ),
+        )
+
+        assertEquals(
+            SdkResult.Success(
+                AgentResponse(
+                    session = AgentSession(id = 13),
+                    message = AgentMessage(id = null, role = AgentMessageRole.ASSISTANT, content = "Hi"),
+                ),
+            ),
+            fixtures.outcome { search.agent("hi") },
+        )
+        assertEquals(
+            SdkResult.Success(
+                AgentDialogResponse(
+                    session = AgentSession(
+                        id = 13,
+                        messages = listOf(
+                            AgentMessage(id = null, role = AgentMessageRole.USER, content = "hi"),
+                            AgentMessage(id = 2, role = AgentMessageRole.ASSISTANT, content = "Hello"),
+                        ),
+                    ),
+                ),
+            ),
+            fixtures.outcome { search.agentDialog() },
+        )
+    }
+
+    @Test
+    fun `a product without a reason has an empty one, and a null reason is empty too`() {
+        fixtures.server.enqueue(
+            MockResponse().setBody(
+                """{"session":{"id":1},"message":{"id":2,"products":[{"id":"37","name":"A"},{"id":"38","reason":null},{"id":"39","reason":"Fits"}]}}""",
+            ),
+        )
+
+        val products = ((fixtures.outcome { search.agent("hi") } as SdkResult.Success).value as AgentResponse).message.products
+
+        assertEquals(listOf("", "", "Fits"), products.map { it.reason })
+        assertEquals(AgentProduct(id = "37", name = "A"), products[0])
+    }
+
+    @Test
+    fun `an answer without its message object, or with a session without its id, is still decoding`() {
+        fixtures.server.enqueue(MockResponse().setBody("""{"session":{"id":1}}"""))
+        fixtures.server.enqueue(MockResponse().setBody("""{"session":{"title":"x"},"message":{"id":2}}"""))
+
+        assertEquals(SdkResult.Failure(SdkError.Decoding), fixtures.outcome { search.agent("hi") })
+        assertEquals(SdkResult.Failure(SdkError.Decoding), fixtures.outcome { search.agent("hi") })
     }
 
     @Test

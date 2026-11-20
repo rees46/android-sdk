@@ -24,7 +24,8 @@ const val FULL_SCREEN_DIALOG_TAG = "FullScreenDialog"
 class FullScreenDialog : BaseInAppDialog() {
 
     private var _binding: FullScreenDialogBinding? = null
-    private val binding get() = _binding!!
+    // Read between onCreateView and onDestroyView only; outside them it is a bug of the dialog, said so.
+    private val binding get() = checkNotNull(_binding) { "The dialog's view is not created" }
 
     override val container: InAppViewContainer by lazy {
         FullScreenDialogViewContainer(binding)

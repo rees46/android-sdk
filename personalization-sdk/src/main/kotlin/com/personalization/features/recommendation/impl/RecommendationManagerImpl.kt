@@ -6,6 +6,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.api.managers.RecommendationManager
 import com.personalization.api.responses.recommendation.GetExtendedRecommendationResponse
 import com.personalization.api.responses.recommendation.GetRecommendationResponse
+import com.personalization.core.internal.isEmptyAnswer
 import com.personalization.sdk.domain.usecases.network.SendNetworkMethodUseCase
 import javax.inject.Inject
 import org.json.JSONObject
@@ -27,11 +28,13 @@ internal class RecommendationManagerImpl @Inject constructor(
             params = params,
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val getRecommendationResponse =
-                            Gson().fromJson(it.toString(), GetRecommendationResponse::class.java)
-                        onGetRecommendation(getRecommendationResponse)
+                    // A 2xx without a body is a block without products: the callback hears it too.
+                    val getRecommendationResponse = if (response.isEmptyAnswer()) {
+                        GetRecommendationResponse(html = "", id = 0, productIds = emptyList(), title = "")
+                    } else {
+                        Gson().fromJson(response.toString(), GetRecommendationResponse::class.java)
                     }
+                    onGetRecommendation(getRecommendationResponse)
                 }
 
                 override fun onError(code: Int, msg: String?) {
@@ -54,13 +57,12 @@ internal class RecommendationManagerImpl @Inject constructor(
             params = params,
             listener = object : OnApiCallbackListener() {
                 override fun onSuccess(response: JSONObject?) {
-                    response?.let {
-                        val getExtendedRecommendationResponse = Gson().fromJson(
-                            it.toString(),
-                            GetExtendedRecommendationResponse::class.java
-                        )
-                        onGetExtendedRecommendation(getExtendedRecommendationResponse)
+                    val getExtendedRecommendationResponse = if (response.isEmptyAnswer()) {
+                        GetExtendedRecommendationResponse(html = "", id = 0, products = emptyList(), title = "")
+                    } else {
+                        Gson().fromJson(response.toString(), GetExtendedRecommendationResponse::class.java)
                     }
+                    onGetExtendedRecommendation(getExtendedRecommendationResponse)
                 }
 
                 override fun onError(code: Int, msg: String?) {

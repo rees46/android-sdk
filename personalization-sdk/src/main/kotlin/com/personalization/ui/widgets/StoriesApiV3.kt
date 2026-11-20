@@ -6,8 +6,14 @@ import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.models.Story
-import java.net.HttpURLConnection
+import com.personalization.core.internal.CoreHttp
 import java.net.URL
+import java.util.concurrent.TimeUnit
+import okhttp3.CookieJar
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 import org.json.JSONArray
@@ -38,6 +44,7 @@ internal object StoriesApiV3 {
     private const val PATH = "/api/v3/storefront/stories/"
     private const val CONNECT_TIMEOUT_MS = 5_000
     private const val READ_TIMEOUT_MS = 10_000
+    private val JSON = "application/json".toMediaType()
 
     /** Хост без схемы, как `apiDomain`: схема и `/` в конце отбрасываются. */
     fun base(domain: String): String =
@@ -205,25 +212,28 @@ internal object StoriesApiV3 {
     /** The path of [url] without the host and the query, for a log line: the query carries did and sid. */
     fun pathOf(url: String): String = runCatching { URL(url).path }.getOrDefault("")
 
+    /**
+     * The API v3 client of stories, polls and popups v3: the new core's pool, without cookies — it neither
+     * sends one nor keeps what the server sets, whatever `java.net.CookieHandler` the app installed, as the
+     * new core. Redirects are followed, as before.
+     */
+    private val client: OkHttpClient by lazy {
+        CoreHttp.shared.newBuilder()
+            .cookieJar(CookieJar.NO_COOKIES)
+            .connectTimeout(CONNECT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(READ_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .build()
+    }
+
     private fun sendHttp(method: String, url: String, body: String?): Response {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = method
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.setRequestProperty("User-Agent", SDK.userAgent())
-            connection.setRequestProperty("Accept", "application/json")
-            if (body != null) {
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            }
-            val code = connection.responseCode
-            val stream = if (code >= 400) connection.errorStream else connection.inputStream
-            val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            return Response(code, text)
-        } finally {
-            connection.disconnect()
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", SDK.userAgent())
+            .header("Accept", "application/json")
+            .method(method, if (method == "GET" || method == "HEAD") null else body.orEmpty().toRequestBody(JSON))
+            .build()
+        client.newCall(request).execute().use { response ->
+            return Response(response.code, response.body?.string().orEmpty())
         }
     }
 

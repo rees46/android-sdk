@@ -80,10 +80,10 @@ class StoriesAdapter(
             layoutParams.height = layoutParamsSize
             avatarSize.layoutParams = layoutParams
             itemView.setPadding(
-                if (settings.icon_padding_x != null) (settings.icon_padding_x!! * scale).toInt() else itemView.paddingLeft,
-                if (settings.icon_padding_top != null) (settings.icon_padding_top!! * scale).toInt() else itemView.paddingTop,
-                if (settings.icon_padding_x != null) (settings.icon_padding_x!! * scale).toInt() else itemView.paddingRight,
-                if (settings.icon_padding_bottom != null) (settings.icon_padding_bottom!! * scale).toInt() else itemView.paddingBottom
+                settings.icon_padding_x?.let { (it * scale).toInt() } ?: itemView.paddingLeft,
+                settings.icon_padding_top?.let { (it * scale).toInt() } ?: itemView.paddingTop,
+                settings.icon_padding_x?.let { (it * scale).toInt() } ?: itemView.paddingRight,
+                settings.icon_padding_bottom?.let { (it * scale).toInt() } ?: itemView.paddingBottom
             )
 
             storyIndex = position
@@ -93,7 +93,7 @@ class StoriesAdapter(
             name.textSize = settings.label_font_size.toFloat()
             name.typeface = settings.label_font_family
             name.width =
-                ((if (settings.label_width != null) settings.label_width!! else settings.icon_size) * scale).toInt()
+                ((settings.label_width ?: settings.icon_size) * scale).toInt()
 
             pin.visibility = if (story.isPinned) View.VISIBLE else View.GONE
             pin.text = settings.pin_symbol

@@ -2,10 +2,17 @@ package com.personalization
 
 import android.content.Context
 import android.os.Bundle
+import android.os.Looper
 import androidx.core.util.Consumer
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
 import com.google.firebase.messaging.RemoteMessage
 import com.personalization.logs.LogCodes
+import com.personalization.core.internal.LegacyErrors
+import com.personalization.core.internal.ArgumentRefusals
+import com.personalization.core.internal.NotInitializedStubs
+import com.personalization.sdk.data.models.dto.popUp.PopupDto
+import com.personalization.features.inAppNotification.impl.InAppNotificationManagerImpl
 import com.personalization.logs.LogReasons
 import com.personalization.logs.SdkLogs
 import com.personalization.Params.InternalParameter
@@ -92,6 +99,7 @@ import com.personalization.features.sliders.SlidersApiImpl
 import com.personalization.features.stories.StoriesApiImpl
 import com.personalization.features.subscriptions.SubscriptionsApiImpl
 import com.personalization.features.inAppNotification.impl.ForegroundActivity
+import com.personalization.ui.widgets.PersonalizationStories
 import com.personalization.features.inAppNotification.impl.PopupPresentation
 import com.personalization.features.notification.data.mapper.toNotificationData
 import com.personalization.features.notification.domain.model.NotificationConstants
@@ -417,6 +425,38 @@ open class SDK {
         }
 
     /**
+     * Hands [popup] back to the SDK to show — one the app kept back from its [popupPresentationListener],
+     * for example to show it later — as the SDK shows its popups: in [activity] while it can take a dialog,
+     * or else in the activity on screen. It is shown at once, past [popupPresentationListener],
+     * [enableAutoPopupPresentation], its `delay` and the rule of one showing a minute; still one popup on
+     * screen at a time, and once shown it is reported with `tracking.popupShown`. With no activity that can
+     * take it, it is not shown and not reported (`popup_not_shown`). May be called from any thread.
+     */
+    @JvmOverloads
+    fun presentPopup(popup: PopupDto, activity: FragmentActivity? = null) {
+        val manager = inAppNotificationManager as? InAppNotificationManagerImpl
+        if (manager == null) {
+            log(LogLevel.WARNING, LogCodes.POPUP_NOT_SHOWN, "Popup was not shown: the instance is not initialized", context = mapOf("popup" to popup.id, "reason" to LogReasons.NOT_READY))
+            return
+        }
+        manager.presentHandedBack(popup, activity)
+    }
+
+    /**
+     * Closes the popup the SDK shows now — a server popup, or one handed back with [presentPopup] — as its
+     * close button does; nothing when none is on screen. A popup whose `delay` has not passed yet still comes.
+     * May be called from any thread.
+     */
+    fun dismissCurrentPopup() {
+        val manager = inAppNotificationManager as? InAppNotificationManagerImpl ?: return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            manager.dismissCurrent()
+        } else {
+            android.os.Handler(Looper.getMainLooper()).post { manager.dismissCurrent() }
+        }
+    }
+
+    /**
      * Where the instance's initialization stands; [SdkState.NOT_INITIALIZED] before it is initialized
      * and after [release]. On the legacy core it only goes from [SdkState.INITIALIZING] to
      * [SdkState.READY].
@@ -606,6 +646,26 @@ open class SDK {
 
     @Inject
     lateinit var NPSRepository: NPSRepository
+
+    init {
+        // Before initialize puts the real ones in, the public managers of an interface type are stubs that
+        // refuse every call with notInitialized: reading one no longer throws into the app.
+        recommendationManager = NotInitializedStubs.of(RecommendationManager::class.java)
+        productsManager = NotInitializedStubs.of(ProductsManager::class.java)
+        cartManager = NotInitializedStubs.of(CartManager::class.java)
+        tracking = NotInitializedStubs.of(TrackingApi::class.java)
+        @Suppress("DEPRECATION")
+        trackEventManager = NotInitializedStubs.of(TrackEventManager::class.java)
+        searchManager = NotInitializedStubs.of(SearchManager::class.java)
+        predictManager = NotInitializedStubs.of(PredictManager::class.java)
+        ordersManager = NotInitializedStubs.of(OrdersManager::class.java)
+        loyaltyManager = NotInitializedStubs.of(LoyaltyManager::class.java)
+        profileManager = NotInitializedStubs.of(ProfileManager::class.java)
+        categoryManager = NotInitializedStubs.of(CategoryManager::class.java)
+        collectionManager = NotInitializedStubs.of(CollectionManager::class.java)
+        inAppNotificationManager = NotInitializedStubs.of(InAppNotificationManager::class.java)
+        NPSRepository = NotInitializedStubs.of(com.personalization.sdk.domain.repositories.NPSRepository::class.java)
+    }
 
     /**
      * @param shopId Shop key
@@ -1093,10 +1153,32 @@ open class SDK {
     /**
      * Show stories block by code
      *
+     * With a `StoriesView` attached to the instance it shows the block there, as before; without one — where
+     * earlier releases showed nothing — it is [PersonalizationStories.show] in the activity on screen.
+     *
      * @param code Stories block code
      */
+    @Deprecated(
+        message = "Use PersonalizationStories.show(context, code, sdk): it needs no attached StoriesView.",
+        replaceWith = ReplaceWith("PersonalizationStories.show(context, code, this)", "com.personalization.ui.widgets.PersonalizationStories"),
+    )
     fun showStories(code: String) {
-        storiesManager.showStories(context.mainLooper, code)
+        if (!isSdkInitialized) {
+            log(LogLevel.WARNING, LogCodes.STORIES, "showStories: the instance is not initialized", context = mapOf("code" to code))
+            return
+        }
+        if (storiesManager.hasAttachedView()) {
+            storiesManager.showStories(context.mainLooper, code)
+            return
+        }
+        android.os.Handler(Looper.getMainLooper()).post {
+            val activity = ForegroundActivity.get()
+            if (activity == null) {
+                log(LogLevel.WARNING, LogCodes.STORIES, "showStories: no activity on screen to show the stories in", context = mapOf("code" to code))
+                return@post
+            }
+            PersonalizationStories.show(activity, code, sdk = this)
+        }
     }
 
 
@@ -1140,8 +1222,12 @@ open class SDK {
     }
 
     /**
-     * Return the session ID
+     * Return the session ID; empty without one.
      */
+    @Deprecated(
+        message = "Use sessionId: it is null without a session.",
+        replaceWith = ReplaceWith("sessionId.orEmpty()"),
+    )
     fun getSid(): String = sessionId.orEmpty()
 
     /**
@@ -1155,10 +1241,10 @@ open class SDK {
     @Deprecated(
         "This method will be removed in future versions.",
         level = DeprecationLevel.WARNING,
-        replaceWith = ReplaceWith("getSid(): String")
+        replaceWith = ReplaceWith("listener.accept(sessionId.orEmpty())")
     )
     fun getSid(listener: Consumer<String?>) {
-        listener.accept(getSid())
+        listener.accept(sessionId.orEmpty())
     }
 
     /**
@@ -1222,8 +1308,12 @@ open class SDK {
      * with its `shopId`. This one still works and fires alongside the global listener.
      */
     @Deprecated(
-        "Use Rees46.setOnMessageListener { shopId, data -> ... } — one process-global listener covers " +
-            "every shop instead of wiring one per instance."
+        "Use setPushCallbacks(PushCallbacks(onDelivered = { payload -> ... })), or Rees46.setPushCallbacks for " +
+            "every shop: one set of callbacks for every push event, the token among them.",
+        replaceWith = ReplaceWith(
+            "setPushCallbacks(PushCallbacks(onDelivered = { payload -> }))",
+            "com.personalization.core.PushCallbacks",
+        ),
     )
     fun setOnMessageListener(listener: OnMessageListener) {
         onMessageListener = listener
@@ -1238,6 +1328,13 @@ open class SDK {
      * tokens that a provider delivers only asynchronously (e.g. HMS via `onNewToken`, which
      * cannot be retrieved synchronously). May be called before or after [initialize].
      */
+    @Deprecated(
+        message = "Use setPushCallbacks(PushCallbacks(onToken = { token -> ... })), or Rees46.setPushCallbacks for every shop.",
+        replaceWith = ReplaceWith(
+            "setPushCallbacks(PushCallbacks(onToken = { token -> }))",
+            "com.personalization.core.PushCallbacks",
+        ),
+    )
     fun setOnPushTokenListener(listener: OnPushTokenListener) {
         onPushTokenListener = listener
         if (::pushTokenManager.isInitialized) {
@@ -1257,7 +1354,8 @@ open class SDK {
      * Returns the last known push token for [provider] from the local cache, or null if no
      * token has been received yet. For live updates use [setOnPushTokenListener].
      */
-    fun getPushToken(provider: PushProvider): String? = pushTokenManager.getToken(provider)
+    fun getPushToken(provider: PushProvider): String? =
+        if (::pushTokenManager.isInitialized) pushTokenManager.getToken(provider) else null
 
     /**
      * Registers a push [token] for the given [provider] with the rees46 backend.
@@ -1403,8 +1501,8 @@ open class SDK {
      *
      * The saved `/init` answer and the queue are kept in `noBackupFilesDir` and never leave the device.
      *
-     * Cookies are not the SDK's to delete. The new core's requests never send or keep one. The legacy core's
-     * requests, and those of the stories v3 and popups v3 clients on either core, follow the app's global
+     * Cookies are not the SDK's to delete. The new core's requests, and those of the stories v3, polls and
+     * popups v3 clients, never send or keep one. The legacy core's requests follow the app's global
      * `java.net.CookieHandler`: an app that installs one keeps the API's `did` cookie there — the forgotten
      * customer's too — until it clears that store itself.
      *
@@ -1484,6 +1582,13 @@ open class SDK {
             }
         }
     }
+
+    /**
+     * An old method whose request could not be built (a [JSONException]) tells its [listener] so — `onError(-1)`
+     * behind `invalidArgument` — instead of leaving it waiting; off the caller's thread on the new core.
+     */
+    private fun refuseUnbuilt(listener: OnApiCallbackListener?) =
+        ArgumentRefusals.refuse(listener, LegacyErrors.NO_ANSWER, "Request parameters could not be built", offThread = isCoreV2)
 
     /** Writes to the SDK's log under this instance's shop, so the shop's [Rees46Config.logLevel] applies. */
     internal fun log(
@@ -1752,10 +1857,14 @@ open class SDK {
     }
 
     /**
-     * Returns the device ID
+     * Returns the device ID; empty without one.
      *
      * @return String
      */
+    @Deprecated(
+        message = "Use deviceId: it is null until the server hands one out.",
+        replaceWith = ReplaceWith("deviceId.orEmpty()"),
+    )
     fun getDid(): String? = deviceId.orEmpty()
 
     /**
@@ -1774,7 +1883,8 @@ open class SDK {
         listener: OnApiCallbackListener? = null
     ) {
         val params = Params()
-        params.put(Params.Parameter.ITEM, id)
+        // The contract's field: the server prefers it to the `item` earlier releases sent.
+        params.put(ITEM_ID_FIELD, id)
         params.put(Params.Parameter.PRICE, currentPrice.toString())
         if (email != null) {
             params.put(InternalParameter.EMAIL, email)
@@ -1810,6 +1920,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE_PRICE, params, listener)
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -1828,7 +1939,8 @@ open class SDK {
         listener: OnApiCallbackListener? = null
     ) {
         val params = Params()
-        params.put(Params.Parameter.ITEM, id)
+        // The contract's field: the server prefers it to the `item` earlier releases sent.
+        params.put(ITEM_ID_FIELD, id)
         if (properties != null) {
             params.put(InternalParameter.PROPERTIES, properties)
         }
@@ -1867,6 +1979,7 @@ open class SDK {
             sendAsync(SUBSCRIPTION_UNSUBSCRIBE, params, listener)
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -1944,6 +2057,7 @@ open class SDK {
             popupsV3?.onContextChange(SUBSCRIPTION_MANAGE, params.toString())
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -2009,6 +2123,7 @@ open class SDK {
             popupsV3?.onContextChange(SEGMENTS_FIELD, "$method $params")
         } catch (e: JSONException) {
             log(LogLevel.ERROR, LogCodes.REQUEST_BUILD_FAILED, "Request parameters could not be built", throwable = e)
+            refuseUnbuilt(listener)
         }
     }
 
@@ -2329,6 +2444,7 @@ open class SDK {
         private const val SEGMENT_EMAIL_FIELD = "email"
         private const val SEGMENT_PHONE_FIELD = "phone"
         private const val ITEM_IDS_FIELD = "item_ids"
+        private const val ITEM_ID_FIELD = "item_id"
         private const val SEGMENTS_FIELD = "segments"
         private const val INIT_SEARCH = "search"
         private const val INIT_BLANK_MODE = "blank_mode"
@@ -2409,7 +2525,16 @@ open class SDK {
          *
          * @param remoteMessage an FCM message
          */
+        @Deprecated(
+            message = "Use Rees46.handlePush(remoteMessage.data, PushEvent.DELIVERED): it also reaches a shop registered and not yet made, and returns the shop that took the push.",
+            replaceWith = ReplaceWith(
+                "Rees46.handlePush(remoteMessage.data, PushEvent.DELIVERED)",
+                "com.personalization.Rees46",
+                "com.personalization.core.PushEvent",
+            ),
+        )
         fun onMessage(remoteMessage: RemoteMessage) {
+            @Suppress("DEPRECATION")
             onMessage(remoteMessage.data)
         }
 
@@ -2428,6 +2553,14 @@ open class SDK {
          *
          * @param data the push data payload (title/body/icon/…)
          */
+        @Deprecated(
+            message = "Use Rees46.handlePush(data, PushEvent.DELIVERED): it also reaches a shop registered and not yet made, and returns the shop that took the push.",
+            replaceWith = ReplaceWith(
+                "Rees46.handlePush(data, PushEvent.DELIVERED)",
+                "com.personalization.Rees46",
+                "com.personalization.core.PushEvent",
+            ),
+        )
         fun onMessage(data: Map<String, String>) {
             val payloadShopId = data[PreferencesPartition.SHOP_ID_FIELD]
             val liveShopIds = SdkRegistry.shopIds()

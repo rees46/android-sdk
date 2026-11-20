@@ -161,6 +161,20 @@ class PersonalizationToast @JvmOverloads constructor(
         }
 
         /**
+         * [show] на [seconds] целых секунд, как длительность тоста на iOS. Отдельное имя, а не
+         * перегрузка `show` с `Int`: вызов `show(anchor, text, position, 2000)` остался бы за ней
+         * и показал бы тост на 2000 секунд. Меньше секунды — секунда.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun showForSeconds(
+            anchor: View,
+            text: CharSequence,
+            seconds: Int,
+            position: Position = Position.BOTTOM
+        ): PersonalizationToast? = show(anchor, text, position, seconds.coerceAtLeast(1) * 1000L)
+
+        /**
          * Насколько системные панели, вырез и клавиатура заходят на контейнер сверху и снизу.
          * Считается от положения контейнера в окне, поэтому годится и для edge-to-edge,
          * и для окна, где контент уже начинается под статус-баром.

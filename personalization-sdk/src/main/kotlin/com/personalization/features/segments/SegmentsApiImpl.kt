@@ -66,13 +66,14 @@ internal class SegmentsApiImpl(
         const val GET_PATH = "segments/get"
 
         /**
-         * The customer's segments: an array of `{id, type}`; a segment without an id is left out, and an
-         * answer without a body is no segment. An answer that is not an array is null (`decoding`).
+         * The customer's segments: an array of `{id, type}`; a segment without an id is left out, one without a
+         * type has an empty one, and an answer without a body is no segment. An answer that is not an array is
+         * null (`decoding`).
          */
         fun readSegments(body: Any?): List<Segment>? = when (body) {
             null -> emptyList()
             is JSONArray -> body.mapObjects { segment ->
-                segment.intOrNull("id")?.let { Segment(id = it, type = segment.stringOrNull("type")) }
+                segment.intOrNull("id")?.let { Segment(id = it, type = segment.stringOrNull("type").orEmpty()) }
             }
             else -> null
         }
