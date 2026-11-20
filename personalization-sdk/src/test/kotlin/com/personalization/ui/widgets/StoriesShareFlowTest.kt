@@ -231,7 +231,7 @@ class StoriesShareFlowTest {
     fun `on api v3 the header sends click and opens its link`() {
         val opened = mutableListOf<String>()
         val stories = StoriesApiV3.parse(
-            """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"M","slides":[{"id":36,"type":"",
+            """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"M","slides":[{"id":36,"type":"image","background":"https://cdn.test/a.jpg",
             "elements":[{"type":"header","title":"Shop","link":"https://shop.test/new"}]}]}]}}"""
         )
         val viewer = v3Viewer(stories, object : com.personalization.OnClickListener {

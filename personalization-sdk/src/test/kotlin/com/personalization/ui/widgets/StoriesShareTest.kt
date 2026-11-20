@@ -83,7 +83,7 @@ class StoriesShareTest {
         val stories = StoriesApiV3.parse(
             """{"status":"success","payload":{"id":35,"settings":{"color":"#212529"},"stories":[
               {"id":39,"name":"Products","shareable":true,"share_url":"https://shop.test/?r46_story=39","start_position":0,
-               "slides":[{"id":"39_0","background":null,"preview":null,"type":"","share_url":null,"elements":[null,{"type":"button","title":"Buy","link":null}]}]},
+               "slides":[{"id":"39_0","background":null,"preview":null,"type":"","share_url":null,"elements":[null,{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽","oldprice_formatted":null}}]}]},
               {"id":40,"name":"Media","share_url":"https://shop.test/?r46_story=40","start_position":1,
                "slides":[{"id":36,"type":"video","background":"https://cdn.test/v.mp4","preview":"https://cdn.test/p.jpg","share_url":"https://shop.test/?r46_slide=36"},
                          {"id":37,"type":"image","background":"https://cdn.test/a.jpg","share_url":"https://shop.test/?r46_slide=37"}]},
