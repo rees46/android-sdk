@@ -231,14 +231,15 @@ internal class StoryPoll(
             if (limit > 0 && limit < text.length && Character.isHighSurrogate(text[limit - 1])) limit - 1 else limit
 
         /**
-         * Тон ячейки шкалы — красный → оранжевый/жёлтый → зелёный веб-SDK тремя семантическими цветами
-         * кита: у NPS 0..10 0–2 — [Tone.NEGATIVE], 3–8 — [Tone.NEUTRAL], 9–10 — [Tone.POSITIVE]; у
-         * остальных шкал — по трети диапазона.
+         * Тон ячейки шкалы, как `scaleColor` веб-SDK, тремя семантическими цветами кита: у NPS 0..10
+         * критики 0–6 — [Tone.NEGATIVE], нейтралы 7–8 — [Tone.NEUTRAL], промоутеры 9–10 —
+         * [Tone.POSITIVE]; у остальных шкал и NPS со своим диапазоном — по позиции
+         * `(value - min) / (max - min)`: меньше 0.34, меньше 0.68, остальное.
          */
         fun scaleTone(type: Type, value: Int, min: Int, max: Int): Tone {
             if (type == Type.NPS && min == 0 && max == 10) {
                 return when {
-                    value <= 2 -> Tone.NEGATIVE
+                    value <= 6 -> Tone.NEGATIVE
                     value <= 8 -> Tone.NEUTRAL
                     else -> Tone.POSITIVE
                 }

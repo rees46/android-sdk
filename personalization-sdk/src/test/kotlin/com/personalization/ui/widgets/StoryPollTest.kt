@@ -291,11 +291,17 @@ class StoryPollTest {
     }
 
     @Test
-    fun `nps cells go bad, middle and good as the red, orange-yellow and green of the web SDK, other scales split in thirds`() {
+    fun `nps cells are detractors 0-6, passives 7-8 and promoters 9-10 as scaleColor of the web SDK, other scales split by position`() {
         fun nps(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.NPS, value, 0, 10)
-        assertEquals(List(3) { StoryPoll.Tone.NEGATIVE }, (0..2).map(::nps))
-        assertEquals(List(6) { StoryPoll.Tone.NEUTRAL }, (3..8).map(::nps))
+        assertEquals(List(7) { StoryPoll.Tone.NEGATIVE }, (0..6).map(::nps))
+        assertEquals(List(2) { StoryPoll.Tone.NEUTRAL }, (7..8).map(::nps))
         assertEquals(List(2) { StoryPoll.Tone.POSITIVE }, (9..10).map(::nps))
+        // CES 1..7: positions 0, 1/6, 2/6 < 0.34; 3/6, 4/6 < 0.68; 5/6, 1 — good.
+        fun ces(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.CES, value, 1, 7)
+        assertEquals(
+            listOf(StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.POSITIVE, StoryPoll.Tone.POSITIVE),
+            (1..7).map(::ces)
+        )
         fun csat(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.CSAT, value, 1, 5)
         assertEquals(listOf(StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.POSITIVE, StoryPoll.Tone.POSITIVE), (1..5).map(::csat))
         // NPS with its own range is split in thirds too.
