@@ -250,7 +250,7 @@ class PersonalizationStoriesViewer(
             pollReanswerText, pollErrorText, pollSubmitText
         )
         pollsContext = pollsContext()
-        if (v3) StoriesSound.restore(hostContext)
+        if (v3) StoriesSound.restore(hostContext, soundShopKey())
         // API v3, как веб-SDK: сторис открывается с `start_position` ленты, своих отметок увиденного нет (R8).
         val seen = if (v3) NoSeenSlides else StoriesSeenStore.forSdk(hostContext, sdk, shopId)
         state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide, feedPositions = v3)
@@ -965,12 +965,15 @@ class PersonalizationStoriesViewer(
         }
     }
 
-    /** Звук включил или выключил пользователь: выбор запоминается на весь процесс (C7), на API v3 — на устройстве. */
+    /** Звук включил или выключил пользователь: выбор запоминается на весь процесс (C7), на API v3 — на устройстве для магазина. */
     private fun setMuted(value: Boolean) {
         sound.choose(value)
-        if (v3) StoriesSound.save(hostContext, value)
+        if (v3) StoriesSound.save(hostContext, soundShopKey(), value)
         applySound()
     }
+
+    /** Магазин, чей выбор звука помнится на API v3: тот же ключ, что у хранилищ ответов и увиденного. */
+    private fun soundShopKey(): String? = sdk?.let { storageKey(it, shopId) } ?: shopId
 
     /** Звонок, другой плеер, выдернутые наушники: глушится только это воспроизведение (F6). */
     private fun silence() {

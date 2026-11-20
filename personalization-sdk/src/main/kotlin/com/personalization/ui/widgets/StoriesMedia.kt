@@ -18,6 +18,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
+import com.personalization.PreferencesPartition
 import com.personalization.SDK
 import java.io.File
 import java.util.concurrent.Executors
@@ -89,8 +90,8 @@ internal object StoriesMediaCache {
  * первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
  * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся,
  * и следующий просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или
- * громкостью вверх ([choose]). Сторис с API v3, как веб-SDK, ещё и помнят выбор на устройстве
- * ([restore], [save]).
+ * громкостью вверх ([choose]). Сторис с API v3, как веб-SDK, ещё и помнят выбор на устройстве —
+ * свой у каждого магазина, как `localStorage` сайта ([restore], [save]).
  */
 internal class StoriesSound {
 
@@ -120,18 +121,25 @@ internal class StoriesSound {
         var chosenMuted = true
             internal set
 
-        private const val FILE = "personalization_stories_sound"
+        private const val FILE_SUFFIX = "_stories_sound"
         private const val KEY_MUTED = "muted"
 
-        /** Выбор, сохранённый на устройстве ([save]); не сохраняли — тот, что есть (без звука). */
-        fun restore(context: Context) {
-            val preferences = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            if (preferences.contains(KEY_MUTED)) chosenMuted = preferences.getBoolean(KEY_MUTED, true)
+        private fun preferences(context: Context, shopKey: String) =
+            context.applicationContext.getSharedPreferences(PreferencesPartition.keyFor(shopKey) + FILE_SUFFIX, Context.MODE_PRIVATE)
+
+        /**
+         * Выбор магазина [shopKey], сохранённый на устройстве ([save]); магазин его не сохранял — без
+         * звука, как веб-SDK без `<label>-stories-mute`. Магазин неизвестен — остаётся выбор процесса.
+         */
+        fun restore(context: Context, shopKey: String?) {
+            if (shopKey == null) return
+            chosenMuted = preferences(context, shopKey).getBoolean(KEY_MUTED, true)
         }
 
-        /** Запомнить выбор пользователя на устройстве, как `localStorage` веб-SDK. */
-        fun save(context: Context, muted: Boolean) {
-            context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_MUTED, muted).apply()
+        /** Запомнить выбор пользователя для магазина [shopKey], как `localStorage` сайта в веб-SDK. */
+        fun save(context: Context, shopKey: String?, muted: Boolean) {
+            if (shopKey == null) return
+            preferences(context, shopKey).edit().putBoolean(KEY_MUTED, muted).apply()
         }
     }
 }

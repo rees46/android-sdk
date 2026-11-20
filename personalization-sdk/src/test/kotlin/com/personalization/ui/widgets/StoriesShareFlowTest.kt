@@ -63,6 +63,7 @@ class StoriesShareFlowTest {
     fun tearDown() {
         PersonalizationStories.apiV3Domain = null
         StoriesApiV3.runner = { Thread(it).start() }
+        StoriesSound.chosenMuted = true
         ShadowDialog.getShownDialogs().forEach { it.dismiss() }
         idle()
     }
@@ -246,15 +247,25 @@ class StoriesShareFlowTest {
     }
 
     @Test
-    fun `on api v3 the mute choice is kept on the device`() {
+    fun `on api v3 the mute choice is kept on the device per shop, as localStorage of a site`() {
         StoriesSound.chosenMuted = true
-        StoriesSound.save(activity, false)
-        StoriesSound.restore(activity)
+        StoriesSound.save(activity, "shop-a", false)
+        StoriesSound.restore(activity, "shop-a")
         assertFalse(StoriesSound.chosenMuted)
-        StoriesSound.save(activity, true)
-        StoriesSound.chosenMuted = false
-        StoriesSound.restore(activity)
+        // Another shop has not chosen: it opens without sound, whatever shop A chose.
+        StoriesSound.restore(activity, "shop-b")
         assertTrue(StoriesSound.chosenMuted)
+        StoriesSound.restore(activity, "shop-a")
+        assertFalse(StoriesSound.chosenMuted)
+        StoriesSound.save(activity, "shop-a", true)
+        StoriesSound.chosenMuted = false
+        StoriesSound.restore(activity, "shop-a")
+        assertTrue(StoriesSound.chosenMuted)
+        // No shop — the choice of the process stays and nothing is kept.
+        StoriesSound.chosenMuted = false
+        StoriesSound.save(activity, null, true)
+        StoriesSound.restore(activity, null)
+        assertFalse(StoriesSound.chosenMuted)
     }
 
     private fun v3Viewer(stories: List<com.personalization.stories.models.Story>, clicks: com.personalization.OnClickListener? = null) =
