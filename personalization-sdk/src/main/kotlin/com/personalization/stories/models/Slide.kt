@@ -25,6 +25,13 @@ class Slide(json: JSONObject) : Serializable {
      */
     internal val adminDurationSeconds: Long = json.optLong("duration", 0L)
 
+    /**
+     * Stories V2, API v3 only: `background_color` as the feed sent it, `null` when it sent none — the slide is
+     * painted with it, as the web SDK does. Not part of equals: V1 reads [backgroundColor].
+     */
+    internal val ownBackgroundColor: String? =
+        if (json.has("background_color") && !json.isNull("background_color")) json.optString("background_color") else null
+
     /** Stories V2, API v3 only: the slide's own "Share" link. Not part of equals: V1 ignores it. */
     internal val shareUrl: String = if (json.isNull("share_url")) "" else json.optString("share_url", "")
 

@@ -58,33 +58,12 @@ class StoriesShareTest {
     // --- slideShareUrl --------------------------------------------------------------------------
 
     @Test
-    fun `prefers the slide link and falls back to the campaign link`() {
+    fun `prefers the slide link and falls back to the campaign link as is, as the web SDK`() {
         val story = story("""{"id":5,"shareable":true,"share_url":"https://shop.test/?r46_story=5","slides":[]}""")
         assertEquals("https://shop.test/?r46_slide=1", StoriesShare.slideShareUrl(story, slide("""{"id":1,"share_url":"https://shop.test/?r46_slide=1"}""")))
-        assertEquals("https://shop.test/?r46_story=5&r46_slide=5_0", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0"}""")))
-        assertEquals("https://shop.test/?r46_story=5&r46_slide=5_0", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0","share_url":null}""")))
-    }
-
-    @Test
-    fun `the campaign link carries the slide id in r46_slide, the rest of the address stays as is`() {
-        fun link(campaign: String, slideId: String = "37") = StoriesShare.campaignSlideUrl(campaign, slideId)
-        assertEquals("https://shop.test/promo?r46_slide=37", link("https://shop.test/promo"))
-        assertEquals("https://shop.test/?r46_story=5&r46_slide=39_2", link("https://shop.test/?r46_story=5", "39_2"))
-        assertEquals("https://shop.test/?r46_slide=37", link("https://shop.test/?"))
-        assertEquals(
-            "https://shop.test/p/?utm_source=a%20b&q=x+y&r46_slide=37#top",
-            link("https://shop.test/p/?utm_source=a%20b&q=x+y#top")
-        )
-        assertEquals("https://shop.test/p?r46_slide=37#/catalog?page=2", link("https://shop.test/p#/catalog?page=2"))
-        // Already there, even empty — as is.
-        assertEquals("https://shop.test/?r46_slide=36&x=1", link("https://shop.test/?r46_slide=36&x=1"))
-        assertEquals("https://shop.test/?r46_slide=", link("https://shop.test/?r46_slide="))
-        // Not a slide id of a link — as is.
-        listOf("", "abc", "1_23456", "12345678901", "-1", "1_", "1_2_3").forEach { id ->
-            assertEquals(id, "https://shop.test/?r46_story=5", link("https://shop.test/?r46_story=5", id))
-        }
-        // The link opens that very slide.
-        assertEquals("39_2", StoriesShare.parseLink(link("https://shop.test/?r46_stories=main&r46_story=39", "39_2"))?.slideId)
+        // No r46_slide is added to the campaign link: the server's link goes as it came.
+        assertEquals("https://shop.test/?r46_story=5", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0"}""")))
+        assertEquals("https://shop.test/?r46_story=5", StoriesShare.slideShareUrl(story, slide("""{"id":"5_0","share_url":null}""")))
     }
 
     @Test
@@ -94,7 +73,7 @@ class StoriesShareTest {
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5}"""), slide("""{"id":1}""")))
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"javascript:alert(1)"}"""), slide("""{"id":1}""")))
         assertNull(StoriesShare.slideShareUrl(story("""{"id":5,"share_url":null}"""), slide("""{"id":1}""")))
-        assertEquals("HTTP://shop.test/?r46_slide=1", StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"HTTP://shop.test/"}"""), slide("""{"id":1}""")))
+        assertEquals("HTTP://shop.test/", StoriesShare.slideShareUrl(story("""{"id":5,"share_url":"HTTP://shop.test/"}"""), slide("""{"id":1}""")))
     }
 
     // --- API v3 ---------------------------------------------------------------------------------
@@ -104,7 +83,7 @@ class StoriesShareTest {
         val stories = StoriesApiV3.parse(
             """{"status":"success","payload":{"id":35,"settings":{"color":"#212529"},"stories":[
               {"id":39,"name":"Products","shareable":true,"share_url":"https://shop.test/?r46_story=39","start_position":0,
-               "slides":[{"id":"39_0","background":null,"preview":null,"type":"","share_url":null,"elements":[null,{"type":"button","title":"Buy","link":null}]}]},
+               "slides":[{"id":"39_0","background":null,"preview":null,"type":"","share_url":null,"elements":[null,{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽","oldprice_formatted":null}}]}]},
               {"id":40,"name":"Media","share_url":"https://shop.test/?r46_story=40","start_position":1,
                "slides":[{"id":36,"type":"video","background":"https://cdn.test/v.mp4","preview":"https://cdn.test/p.jpg","share_url":"https://shop.test/?r46_slide=36"},
                          {"id":37,"type":"image","background":"https://cdn.test/a.jpg","share_url":"https://shop.test/?r46_slide=37"}]},
@@ -117,7 +96,7 @@ class StoriesShareTest {
         assertEquals("", product.preview)
         assertEquals("", product.shareUrl)
         assertEquals(1, product.getElements().size)
-        assertEquals("https://shop.test/?r46_story=39&r46_slide=39_0", StoriesShare.slideShareUrl(stories[0], product))
+        assertEquals("https://shop.test/?r46_story=39", StoriesShare.slideShareUrl(stories[0], product))
         assertTrue(stories[0].isShareable)
         assertEquals("36", stories[1].getSlide(0).id)
         assertEquals("https://shop.test/?r46_slide=37", stories[1].getSlide(1).shareUrl)
@@ -135,26 +114,36 @@ class StoriesShareTest {
     }
 
     @Test
-    fun `the event body sends the campaign id as a number and the slide id as a string`() {
-        val body = StoriesApiV3.eventBody("shop1", "did1", "share", 39, "39_0")
-        assertEquals("""{"shop_id":"shop1","did":"did1","event":"share","story_id":39,"slide_id":"39_0"}""", body.toString())
-        assertEquals("36", StoriesApiV3.eventBody("shop1", "did1", "view", 40, "36").get("slide_id"))
+    fun `the event body sends the identity, the campaign id as a number and the slide id as a string`() {
+        val identity = StoriesApiV3.Identity("shop1", "did1", sid = "sid1", segment = "B", stream = "android")
+        val body = StoriesApiV3.eventBody(identity, "share", 39, "39_0")
+        assertEquals(
+            """{"shop_id":"shop1","did":"did1","sid":"sid1","segment":"B","stream":"android","event":"share","story_id":39,"slide_id":"39_0"}""",
+            body.toString()
+        )
+        assertEquals("36", StoriesApiV3.eventBody(identity, "view", 40, "36").get("slide_id"))
+        val test = StoriesApiV3.eventBody(StoriesApiV3.Identity("shop1", "did1", testMode = true), "view", 40, "36")
+        assertEquals(
+            """{"shop_id":"shop1","did":"did1","sid":"","segment":"","testmode":true,"event":"view","story_id":40,"slide_id":"36"}""",
+            test.toString()
+        )
     }
 
     @Test
-    fun `the requests go to the api v3 host with shop_id and did only`() {
+    fun `the requests go to the api v3 host with shop_id, did, sid, segment, stream and testmode`() {
         val link = StoriesShare.Link("main", 40, "37")
+        val identity = StoriesApiV3.Identity("shop1", "did1", sid = "s 1", segment = "A", stream = "android")
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1",
-            StoriesApiV3.feedUrl("app.rees46.ru", "main", "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1&sid=s+1&segment=A&stream=android",
+            StoriesApiV3.feedUrl("app.rees46.ru", "main", identity)
         )
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&slide_id=37",
-            StoriesApiV3.storyUrl("https://app.rees46.ru/", link, "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&sid=s+1&segment=A&stream=android&slide_id=37",
+            StoriesApiV3.storyUrl("https://app.rees46.ru/", link, identity)
         )
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1",
-            StoriesApiV3.storyUrl(" app.rees46.ru ", link.copy(slideId = null), "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&sid=&segment=&testmode=true",
+            StoriesApiV3.storyUrl(" app.rees46.ru ", link.copy(slideId = null), StoriesApiV3.Identity("shop1", "did1", testMode = true))
         )
         assertEquals("https://app.rees46.ru/api/v3/storefront/stories/a%20b/events", StoriesApiV3.eventsUrl("app.rees46.ru", "a b"))
     }

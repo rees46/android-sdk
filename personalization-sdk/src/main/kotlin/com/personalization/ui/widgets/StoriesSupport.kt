@@ -10,6 +10,7 @@ import com.personalization.api.OnApiCallbackListener
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.Story
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
@@ -18,6 +19,7 @@ import com.personalization.ui.components.PersonalizationStoryCover
 import com.personalization.ui.components.PersonalizationStoryItem
 import com.personalization.ui.components.PersonalizationStoryPrice
 import com.personalization.ui.components.PersonalizationStoryTextBlock
+import androidx.core.graphics.ColorUtils
 import java.math.BigDecimal
 import org.json.JSONObject
 
@@ -29,6 +31,12 @@ internal object StoriesMapping {
 
     /** Длительность слайда, когда админка её не задала или задала 0 (A7). */
     const val DEFAULT_DURATION_MS = 10_000L
+
+    const val TYPE_IMAGE = "image"
+    const val TYPE_VIDEO = "video"
+
+    /** Цвет темнее этой яркости — слайд рисуется тёмными токенами. */
+    private const val DARK_LUMINANCE = 0.5
 
     /** Скрим медиа-слайда без текста и товара — 50%, всех остальных — 30% (C3). */
     const val SCRIM_STRONG = 128
@@ -146,6 +154,26 @@ internal object StoriesMapping {
         )
     }
 
+    /**
+     * Обложка сторис API v3 (R8), как в веб-SDK: просмотрена — по `viewed` ленты (и уходу с неё вперёд в
+     * этой сессии), без своих отметок слайдов; вид — кольцо кита.
+     */
+    fun itemV3(story: Story): PersonalizationStoryItem {
+        val state = when {
+            story.isPinned -> PersonalizationStoryCover.State.PINNED
+            story.isViewed -> PersonalizationStoryCover.State.VIEWED
+            else -> PersonalizationStoryCover.State.DEFAULT
+        }
+        return PersonalizationStoryItem(
+            id = story.id.toString(),
+            title = story.name,
+            imageUrl = story.avatar.takeIf { it.isNotEmpty() },
+            state = state,
+            segments = if (story.isViewed) 1 else story.slidesCount.coerceAtLeast(1),
+            seenSegments = emptySet()
+        )
+    }
+
     /** Время слайда из админки; нет или 0 — 10 с (A7). Видео идёт по своей длине (C4). */
     fun durationMs(slide: Slide): Long =
         if (slide.adminDurationSeconds > 0) slide.adminDurationSeconds * 1000L else DEFAULT_DURATION_MS
@@ -166,6 +194,11 @@ internal object StoriesMapping {
     fun products(slide: Slide): ProductsElement? =
         slide.getElements().filterIsInstance<ProductsElement>().firstOrNull { it.getProducts().isNotEmpty() }
 
+    /** Шапка слайда (`header`, R1): первая, у которой есть заголовок, подзаголовок или иконка. */
+    fun header(slide: Slide): HeaderElement? =
+        slide.getElements().filterIsInstance<HeaderElement>()
+            .firstOrNull { it.title.isNotBlank() || it.subtitle.isNotBlank() || it.icon.isNotBlank() }
+
     fun buttons(slide: Slide): List<ButtonElement> =
         slide.getElements().filterIsInstance<ButtonElement>().filter { it.title.isNotBlank() }
 
@@ -178,6 +211,28 @@ internal object StoriesMapping {
 
     fun isVideo(slide: Slide): Boolean = slide.type == "video" && slide.background.isNotEmpty()
 
+    /** Медиа на API v3 решает `type`, как в веб-SDK (R6): `image` или `video`; на старой ленте — фон. */
+    fun isMedia(slide: Slide, v3: Boolean): Boolean = if (v3) slide.type == TYPE_IMAGE || slide.type == TYPE_VIDEO else isMedia(slide)
+
+    fun isVideo(slide: Slide, v3: Boolean): Boolean = if (v3) slide.type == TYPE_VIDEO else isVideo(slide)
+
+    /** API v3 (R2): цвет слайда — его `background_color`; нет его или это не цвет — `null`. */
+    fun ownColor(slide: Slide): Int? = parseColor(slide.ownBackgroundColor)
+
+    /**
+     * Слайд рисуется тёмными токенами: медиа, а на API v3 ещё и слайд, закрашенный тёмным
+     * `background_color` (светлый текст и значки на нём читаются).
+     */
+    fun isDark(slide: Slide, v3: Boolean): Boolean =
+        isMedia(slide, v3) || (v3 && ownColor(slide)?.let { ColorUtils.calculateLuminance(it) < DARK_LUMINANCE } == true)
+
+    /** Цвет слайда (R2): на API v3 — `background_color`, без него у медиа чёрный, иначе [card]; на старой ленте — как было. */
+    fun slideColor(slide: Slide, v3: Boolean, card: Int): Int = when {
+        v3 -> ownColor(slide) ?: if (isMedia(slide, true)) Color.BLACK else card
+        isMedia(slide) -> letterboxColor(slide)
+        else -> card
+    }
+
     /**
      * Длина слайда с GIF (G2): большее из времени админки и одного прохода GIF. Проход
      * неизвестен (загрузчик хоста, файл не разобрали) — время админки.
@@ -186,8 +241,8 @@ internal object StoriesMapping {
         if (loopMs == null || loopMs <= 0) serverMs else maxOf(serverMs, loopMs)
 
     /** Скрим сверху и снизу есть у каждого слайда; 50% — только у голого медиа (C3). */
-    fun scrimAlpha(slide: Slide): Int {
-        val bare = isMedia(slide) && product(slide) == null && textBlocks(slide).isEmpty()
+    fun scrimAlpha(slide: Slide, v3: Boolean = false): Int {
+        val bare = isMedia(slide, v3) && product(slide) == null && textBlocks(slide).isEmpty()
         return if (bare) SCRIM_STRONG else SCRIM_LIGHT
     }
 
@@ -219,6 +274,28 @@ internal object StoriesMapping {
     /** Интерлиньяж из админки; без него — `null`, и блок берёт высоту строки пресета. */
     fun lineHeightSp(element: TextBlockElement): Float? =
         if (element.textLineSpacing > 0) (element.fontSize * element.textLineSpacing).toFloat() else null
+
+    /**
+     * Прозрачность подложки текстового блока на API v3 (R4), в процентах 0…100: `"NN%"`, число 0–100 или
+     * доля 0–1 (`0.4`, `1` — 100 %). Не число — `null`.
+     */
+    fun opacityPercent(value: String?): Float? {
+        val text = value?.trim().orEmpty()
+        val percent = if (text.endsWith("%")) {
+            text.removeSuffix("%").trim().toFloatOrNull()
+        } else {
+            text.toFloatOrNull()?.let { if (it <= 1f) it * 100f else it }
+        }
+        return percent?.takeIf { !it.isNaN() && !it.isInfinite() }?.coerceIn(0f, 100f)
+    }
+
+    /** Подложка текстового блока на API v3: цвет с прозрачностью [opacityPercent]; 0 или не число — без фона. */
+    fun textBlockColorV3(element: TextBlockElement): Int? {
+        val opacity = opacityPercent(element.textBackgroundColorOpacity) ?: return null
+        if (opacity <= 0f) return null
+        val color = parseColor(element.textBackgroundColor) ?: return null
+        return ColorUtils.setAlphaComponent(color, Math.round(opacity * 255f / 100f))
+    }
 
     /** Подложка текстового блока: цвет админки с её прозрачностью; 0% — блок без фона. */
     fun textBlockColor(element: TextBlockElement): Int? {
@@ -279,6 +356,12 @@ internal object Decimals {
 internal interface SeenSlides {
     fun seen(storyId: Int): Set<String>
     fun markSeen(storyId: Int, slideId: String)
+}
+
+/** Без отметок слайдов — сторис API v3: открытие и просмотренность решает лента (R8). */
+internal object NoSeenSlides : SeenSlides {
+    override fun seen(storyId: Int): Set<String> = emptySet()
+    override fun markSeen(storyId: Int, slideId: String) = Unit
 }
 
 /**

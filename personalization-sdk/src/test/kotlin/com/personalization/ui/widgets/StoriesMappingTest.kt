@@ -378,6 +378,66 @@ class StoriesMappingTest {
     }
 
     @Test
+    fun `on api v3 the opacity of a text block is NN percent, a number up to 100 or a fraction`() {
+        assertEquals(40f, StoriesMapping.opacityPercent("40%"))
+        assertEquals(40f, StoriesMapping.opacityPercent(" 40 "))
+        assertEquals(40f, StoriesMapping.opacityPercent("0.4"))
+        assertEquals(100f, StoriesMapping.opacityPercent("1"))
+        assertEquals(12.5f, StoriesMapping.opacityPercent("12.5%"))
+        assertEquals(100f, StoriesMapping.opacityPercent("150"))
+        assertEquals(0f, StoriesMapping.opacityPercent("0%"))
+        assertNull(StoriesMapping.opacityPercent("half"))
+        assertNull(StoriesMapping.opacityPercent(null))
+        assertEquals(0x66, Color.alpha(StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().put("text_background_color", "#000000").put("text_background_color_opacity", 0.4)))!!))
+        assertNull(StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().put("text_background_color", "#000000").put("text_background_color_opacity", 0))))
+    }
+
+    @Test
+    fun `on api v3 bold and italic accept the legacy keys, the font size is the feed's own`() {
+        fun element(json: String) = TextBlockElement(JSONObject(json))
+        assertTrue(element("""{"text_bold":true}""").boldV3)
+        assertFalse("bold wins", element("""{"bold":false,"text_bold":true}""").boldV3)
+        assertTrue(element("""{"italic":"true"}""").italicV3)
+        assertTrue(element("""{"text_italic":1}""").italicV3)
+        assertFalse(element("""{}""").italicV3)
+        assertEquals(24f, element("""{"font_size":"24"}""").ownFontSize)
+        assertNull(element("""{"font_size":0}""").ownFontSize)
+        assertNull(element("""{}""").ownFontSize)
+        // The old fields stay as they were.
+        assertFalse(element("""{"text_bold":true}""").isBold)
+        assertEquals(14, element("""{}""").fontSize)
+    }
+
+    @Test
+    fun `on api v3 a slide is media by its type and painted with its own background_color`() {
+        val card = 0xFFFFFFFF.toInt()
+        val image = slide("type" to "image", "background" to "https://cdn.test/a.jpg")
+        val typeless = slide("type" to "", "background" to "https://cdn.test/a.jpg")
+        assertTrue(StoriesMapping.isMedia(image, true))
+        assertFalse(StoriesMapping.isMedia(typeless, true))
+        assertTrue(StoriesMapping.isMedia(typeless, false))
+        assertTrue(StoriesMapping.isVideo(slide("type" to "video"), true))
+        assertFalse(StoriesMapping.isVideo(slide("type" to "video"), false))
+        assertEquals(Color.BLACK, StoriesMapping.slideColor(image, true, card))
+        assertEquals(card, StoriesMapping.slideColor(typeless, true, card))
+        assertEquals(Color.RED, StoriesMapping.slideColor(slide("type" to "", "background_color" to "#FF0000"), true, card))
+        assertNull(StoriesMapping.ownColor(slide("type" to "")))
+        assertTrue(StoriesMapping.isDark(slide("type" to "", "background_color" to "#202020"), true))
+        assertFalse(StoriesMapping.isDark(slide("type" to "", "background_color" to "#202020"), false))
+    }
+
+    @Test
+    fun `on api v3 the cover follows viewed of the feed, without slide marks`() {
+        val story = story(slides = 3)
+        assertEquals(PersonalizationStoryCover.State.DEFAULT, StoriesMapping.itemV3(story).state)
+        assertEquals(3, StoriesMapping.itemV3(story).segments)
+        assertTrue(StoriesMapping.itemV3(story).seenSegments.isEmpty())
+        story.isViewed = true
+        assertEquals(PersonalizationStoryCover.State.VIEWED, StoriesMapping.itemV3(story).state)
+        assertEquals(1, StoriesMapping.itemV3(story).segments)
+    }
+
+    @Test
     fun `text alignment maps start, centre and end`() {
         fun align(value: String) = StoriesMapping.textAlign(TextBlockElement(JSONObject().put("text_align", value)))
         assertEquals(PersonalizationStoryTextBlock.Align.START, align("left"))
