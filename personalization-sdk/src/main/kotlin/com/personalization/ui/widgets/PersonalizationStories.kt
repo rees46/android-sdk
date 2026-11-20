@@ -291,6 +291,11 @@ class PersonalizationStories @JvmOverloads constructor(
 
     private fun render() {
         visibility = if (stories.isEmpty()) View.GONE else View.VISIBLE
+        // API v3, как веб-SDK: просмотренность — `viewed` ленты и уход вперёд в этой сессии (R8).
+        if (storiesDomain != null) {
+            bar.items = stories.map(StoriesMapping::itemV3)
+            return
+        }
         val seen = StoriesSeenStore.forSdk(context, sdk, shopId)
         bar.items = stories.map { StoriesMapping.item(it, seen.seen(it.id)) }
     }

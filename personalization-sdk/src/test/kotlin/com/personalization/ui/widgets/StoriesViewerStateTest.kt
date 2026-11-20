@@ -38,6 +38,55 @@ class StoriesViewerStateTest {
         assertEquals(0, state(story(2, slides = 4, startPosition = 3, viewed = true)).slideIndex)
     }
 
+    // --- API v3: start_position and viewed as the web SDK (R8) ----------------------------------------
+
+    @Test
+    fun `on api v3 a story opens at its start_position whatever was seen, and the position follows the slides`() {
+        seen.markSeen(1, "1_0")
+        val state = StoriesViewerState(listOf(story(1, slides = 4, startPosition = 2, viewed = true), story(2, slides = 2, startPosition = 1)), seen, 0, feedPositions = true)
+        assertEquals(2, state.slideIndex)
+        assertEquals(1, state.startSlideOf(1))
+        state.enter()
+        assertEquals(setOf("1_0"), seen.seen(1))
+        state.next()
+        assertEquals(3, state.positionOf(0))
+        state.previous()
+        state.previous()
+        assertEquals(1, state.positionOf(0))
+        assertTrue("going back views nothing", state.leftForward.isEmpty())
+    }
+
+    @Test
+    fun `on api v3 a story is viewed when it is left forward, played to its end it opens from the start`() {
+        val state = StoriesViewerState(listOf(story(1, slides = 2), story(2, slides = 2), story(3, slides = 1)), seen, 0, feedPositions = true)
+        state.enter()
+        state.next()
+        assertEquals(Move.Story(1), state.next())
+        assertEquals(setOf(0), state.leftForward)
+        assertEquals(0, state.positionOf(0))
+
+        // A swipe to the next story: viewed, its position stays where it was.
+        state.selectStory(1)
+        state.enter()
+        state.next()
+        state.selectStory(2)
+        assertEquals(setOf(0, 1), state.leftForward)
+        assertEquals(1, state.positionOf(1))
+
+        // Back to a story or to the one the host opens — not viewed.
+        state.enter()
+        state.selectStory(1)
+        assertEquals(setOf(0, 1), state.leftForward)
+        state.enter()
+        assertEquals(Move.Story(2), state.jumpTo(2))
+        state.selectStory(2)
+        assertEquals(setOf(0, 1), state.leftForward)
+        // The last story played to its end closes the viewer, viewed.
+        state.enter()
+        assertEquals(Move.Close, state.next())
+        assertEquals(setOf(0, 1, 2), state.leftForward)
+    }
+
     @Test
     fun `the start position is clamped to the slides`() {
         assertEquals(2, state(story(1, slides = 3, startPosition = 9)).slideIndex)

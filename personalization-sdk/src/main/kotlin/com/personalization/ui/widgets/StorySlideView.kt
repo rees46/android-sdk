@@ -21,6 +21,7 @@ import com.personalization.Product
 import com.personalization.R
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryNavigation
@@ -68,6 +69,16 @@ internal interface StorySlideHost {
 
     /** Опрос слайда [view] держит его: карточку трогают, пишут в поле или ждут ответа. */
     fun onPollHold(view: StorySlideView, hold: Boolean) = Unit
+
+    /**
+     * Сторис с API v3: слайд рисуется по правилам веб-SDK — медиа по `type`, цвет `background_color`,
+     * шапка `header`, текстовые блоки по общему правилу; кнопка без ссылки ничего не открывает. На
+     * старой ленте — как было.
+     */
+    val v3: Boolean get() = false
+
+    /** Нажата шапка слайда (`header`, API v3). */
+    fun onHeader(header: HeaderElement) = Unit
 }
 
 /**
@@ -90,12 +101,15 @@ internal class StorySlideView(
     val shareUrl: String? = null,
     /** Id сторис — для ответов на опросы. */
     private val storyId: Int = 0
-) : FrameLayout(if (StoriesMapping.isMedia(slide)) StorySupport.darkContext(baseContext) else baseContext) {
+) : FrameLayout(if (StoriesMapping.isDark(slide, host.v3)) StorySupport.darkContext(baseContext) else baseContext) {
 
     enum class ImageState { LOADING, READY, FAILED }
 
-    val isMedia = StoriesMapping.isMedia(slide)
-    val isVideo = StoriesMapping.isVideo(slide)
+    val isMedia = StoriesMapping.isMedia(slide, host.v3)
+    val isVideo = StoriesMapping.isVideo(slide, host.v3)
+
+    /** Слайд в тёмных токенах: медиа или тёмный `background_color` (API v3) — значки панелей светлые. */
+    val isDark = StoriesMapping.isDark(slide, host.v3)
     val navigation = PersonalizationStoryNavigation(context)
     var playerView: PlayerView? = null
         private set
@@ -134,12 +148,9 @@ internal class StorySlideView(
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
 
     init {
-        setBackgroundColor(
-            if (isMedia) StoriesMapping.letterboxColor(slide)
-            else PersonalizationTheme.color(context, R.color.personalization_background_card)
-        )
+        setBackgroundColor(StoriesMapping.slideColor(slide, host.v3, PersonalizationTheme.color(context, R.color.personalization_background_card)))
         if (isMedia) addMedia()
-        addView(View(context).apply { background = scrim(StoriesMapping.scrimAlpha(slide)) }, matchParent())
+        addView(View(context).apply { background = scrim(StoriesMapping.scrimAlpha(slide, host.v3)) }, matchParent())
         addView(StoryTouchLayer(context, host::onTap, host::onHold), matchParent())
 
         column.orientation = LinearLayout.VERTICAL
@@ -151,6 +162,9 @@ internal class StorySlideView(
         navigation.progress.current = slideIndex
         // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
         column.addView(navigation, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        if (host.v3) StoriesMapping.header(slide)?.let { header ->
+            column.addView(StoryHeader.build(context, header, host), columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
         buildContent()
         addView(column, matchParent())
         // Опросы — над содержимым слайда и его кнопками, как в веб-SDK, но под шапкой.
@@ -262,8 +276,8 @@ internal class StorySlideView(
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
-        // Без своих кнопок товар открывает кнопка хоста — «More info» (C11).
-        if (buttons.isEmpty() && product != null) addButton(host.texts.productButtonText) { host.onProduct(product) }
+        // Без своих кнопок товар открывает кнопка хоста — «More info» (C11); на API v3 её нет, как в веб-SDK.
+        if (buttons.isEmpty() && product != null && !host.v3) addButton(host.texts.productButtonText) { host.onProduct(product) }
 
         val products = StoriesMapping.products(slide)?.let { element -> element to element.getProducts() }
         if (products != null || isVideo) addUsedProducts(products?.first, products?.second.orEmpty())
@@ -330,7 +344,8 @@ internal class StorySlideView(
             imageLoader = { view, item -> item.imageUrl?.let { host.loadImage(view, it) } }
             onProductClick = { item -> products.firstOrNull { it.id == item.id }?.let(host::onCarouselProduct) }
             onExpandedChange = { open -> host.onSheet(open) }
-            showSoundButton = isVideo
+            // На API v3 звук — только у видео со звуком, как в веб-SDK: кнопку покажет [setSoundAvailable].
+            showSoundButton = isVideo && !host.v3
             soundOnDescription = host.texts.soundOnLabel
             soundOffDescription = host.texts.soundOffLabel
             muted = host.muted
@@ -367,6 +382,12 @@ internal class StorySlideView(
 
     fun setMuted(muted: Boolean) {
         usedProducts?.muted = muted
+    }
+
+    /** API v3: у видео есть звуковая дорожка — кнопка звука появляется. */
+    fun setSoundAvailable(available: Boolean) {
+        if (!host.v3 || !isVideo) return
+        usedProducts?.showSoundButton = available
     }
 
     fun closeSheet() {

@@ -177,6 +177,110 @@ class StoriesShareFlowTest {
     }
 
     @Test
+    fun `on api v3 a story opens at start_position and played to its end is viewed and opens from the start`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        val viewer = v3Viewer(stories)
+        // start_position 1 of the feed, nothing of the device's seen slides.
+        assertEquals(1, navigation(viewer).progress.current)
+        tap(viewer, right = true)
+
+        assertFalse(viewer.isShowing)
+        assertTrue(stories[0].isViewed)
+        assertEquals(0, stories[0].startPosition)
+        assertEquals(listOf("view:37"), events())
+    }
+
+    @Test
+    fun `on api v3 a closed story keeps its position for the session and is not viewed`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN).also { it[0].startPosition = 0 }
+        val viewer = v3Viewer(stories)
+        tap(viewer, right = true)
+        viewer.dismiss()
+        idle()
+        assertFalse(stories[0].isViewed)
+        assertEquals(1, stories[0].startPosition)
+        assertEquals(1, navigation(v3Viewer(stories)).progress.current)
+    }
+
+    @Test
+    fun `on api v3 a button without a link sends click and opens nothing, a promo code copy sends nothing`() {
+        val clicked = mutableListOf<String>()
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"P","slides":[{"id":"39_0","type":"",
+            "elements":[{"type":"button","title":"Go","link":""},{"type":"product","item":{"id":"p1","name":"Sneakers","url":"https://shop.test/p1","price_formatted":"100 ₽"}}]}]}]}}"""
+        )
+        val viewer = v3Viewer(stories, object : com.personalization.OnClickListener {
+            override fun onClick(url: String): Boolean = true.also { clicked += url }
+            override fun onClick(product: com.personalization.Product): Boolean = true.also { clicked += product.id }
+        })
+        val page = (find(viewer.window!!.decorView, ViewPager2::class.java)!!.getChildAt(0) as ViewGroup).getChildAt(0)
+        all(page).filterIsInstance<com.personalization.ui.components.PersonalizationButton>().single { it.text == "Go" }.performClick()
+        idle()
+        assertTrue(viewer.isShowing)
+        assertTrue(clicked.isEmpty())
+        assertEquals(listOf("view:39_0", "click:39_0"), events())
+
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        host.onPromoCopied()
+        idle()
+        assertEquals(listOf("view:39_0", "click:39_0"), events())
+    }
+
+    @Test
+    fun `on api v3 the header sends click and opens its link`() {
+        val opened = mutableListOf<String>()
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"M","slides":[{"id":36,"type":"",
+            "elements":[{"type":"header","title":"Shop","link":"https://shop.test/new"}]}]}]}}"""
+        )
+        val viewer = v3Viewer(stories, object : com.personalization.OnClickListener {
+            override fun onClick(url: String): Boolean = false.also { opened += url }
+            override fun onClick(product: com.personalization.Product): Boolean = false
+        })
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        host.onHeader(stories[0].getSlide(0).getElements().filterIsInstance<com.personalization.stories.models.elements.HeaderElement>().single())
+        idle()
+        assertEquals(listOf("https://shop.test/new"), opened)
+        assertFalse(viewer.isShowing)
+        assertEquals(listOf("view:36", "click:36"), events())
+    }
+
+    @Test
+    fun `on api v3 the mute choice is kept on the device`() {
+        StoriesSound.chosenMuted = true
+        StoriesSound.save(activity, false)
+        StoriesSound.restore(activity)
+        assertFalse(StoriesSound.chosenMuted)
+        StoriesSound.save(activity, true)
+        StoriesSound.chosenMuted = false
+        StoriesSound.restore(activity)
+        assertTrue(StoriesSound.chosenMuted)
+    }
+
+    private fun v3Viewer(stories: List<com.personalization.stories.models.Story>, clicks: com.personalization.OnClickListener? = null) =
+        PersonalizationStoriesViewer(activity, stories).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            onClickListener = clicks
+            // The slide must not run out while the test taps it.
+            pause()
+            show()
+            idle()
+        }
+
+    private fun tap(viewer: PersonalizationStoriesViewer, right: Boolean) {
+        val pager = find(viewer.window!!.decorView, ViewPager2::class.java)!!
+        val touch = find((pager.getChildAt(0) as ViewGroup).getChildAt(0), StoryTouchLayer::class.java)!!
+        val x = if (right) touch.width - 5f else 5f
+        val now = SystemClock.uptimeMillis()
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, 5f, 0))
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, 5f, 0))
+        idle()
+    }
+
+    @Test
     fun `in the test mode of popups v3 the feed and the events send testmode`() {
         every { sdk.popupsV3 } returns mockk(relaxed = true) { every { testMode } returns true }
         answer = { StoriesApiV3.Response(200, PRODUCTS) }
@@ -314,6 +418,9 @@ class StoriesShareFlowTest {
     }
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
+
+    private fun all(view: View): List<View> =
+        if (view !is ViewGroup) listOf(view) else listOf(view) + (0 until view.childCount).flatMap { all(view.getChildAt(it)) }
 
     private companion object {
         const val IDENTITY = "shop_id=shop1&did=did1&sid=sid1&segment=A&stream=android"

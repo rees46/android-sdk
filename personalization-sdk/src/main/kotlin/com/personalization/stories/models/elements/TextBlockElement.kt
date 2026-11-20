@@ -15,6 +15,18 @@ class TextBlockElement(json: JSONObject) : Element {
      * `null` and not a number — `null`. Not part of equals: V1 uses [yOffset].
      */
     internal val offset: Float? = StorySlidePlacement.offset(json.opt("y_offset"))
+    /**
+     * Stories V2 on API v3, one rule for every platform: `bold`, without it the legacy `text_bold`; the same
+     * for `italic` and `text_italic`; `font_size` only when the feed sent a positive one. Not part of equals:
+     * V1 reads [isBold], [isItalic] and [fontSize].
+     */
+    internal val boldV3: Boolean = flag(json, "bold") ?: flag(json, "text_bold") ?: false
+    internal val italicV3: Boolean = flag(json, "italic") ?: flag(json, "text_italic") ?: false
+    internal val ownFontSize: Float? = when (val size = json.opt("font_size")) {
+        is Number -> size.toFloat()
+        is String -> size.trim().toFloatOrNull()
+        else -> null
+    }?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() }
     val fontType: String = json.optString("font_type", "")
     val fontSize: Int = json.optInt("font_size", DEFAULT_FONT_SIZE)
     val textAlign: String = json.optString("text_align", "")
@@ -65,6 +77,18 @@ class TextBlockElement(json: JSONObject) : Element {
     }
 
     companion object {
+        /** `true`, `1`, `"true"`, `"1"` — on; `false`, `0` and their strings — off; anything else or nothing — `null`. */
+        private fun flag(json: JSONObject, key: String): Boolean? = when (val value = json.opt(key)) {
+            is Boolean -> value
+            is Number -> value.toDouble() != 0.0
+            is String -> when (value.trim().lowercase()) {
+                "true", "1" -> true
+                "false", "0" -> false
+                else -> null
+            }
+            else -> null
+        }
+
         private const val DEFAULT_FONT_SIZE = 14
         private const val DEFAULT_TEXT_BACKGROUND_COLOR = "#FFFFFF"
         private const val DEFAULT_TEXT_BACKGROUND_COLOR_OPACITY = "0%"

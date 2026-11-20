@@ -89,7 +89,8 @@ internal object StoriesMediaCache {
  * первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
  * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся,
  * и следующий просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или
- * громкостью вверх ([choose]).
+ * громкостью вверх ([choose]). Сторис с API v3, как веб-SDK, ещё и помнят выбор на устройстве
+ * ([restore], [save]).
  */
 internal class StoriesSound {
 
@@ -118,6 +119,20 @@ internal class StoriesSound {
         @Volatile
         var chosenMuted = true
             internal set
+
+        private const val FILE = "personalization_stories_sound"
+        private const val KEY_MUTED = "muted"
+
+        /** Выбор, сохранённый на устройстве ([save]); не сохраняли — тот, что есть (без звука). */
+        fun restore(context: Context) {
+            val preferences = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            if (preferences.contains(KEY_MUTED)) chosenMuted = preferences.getBoolean(KEY_MUTED, true)
+        }
+
+        /** Запомнить выбор пользователя на устройстве, как `localStorage` веб-SDK. */
+        fun save(context: Context, muted: Boolean) {
+            context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_MUTED, muted).apply()
+        }
     }
 }
 

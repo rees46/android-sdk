@@ -14,7 +14,13 @@ internal class StoriesViewerState(
     private val seen: SeenSlides,
     startStory: Int = 0,
     /** Слайд стартовой сторис в обход A4 — `start_position` кампании по ссылке «Поделиться». */
-    startSlide: Int? = null
+    startSlide: Int? = null,
+    /**
+     * API v3, как веб-SDK (R8): сторис открывается со своего `start_position`, который идёт за показом
+     * слайдов в этой сессии ([positionOf]); пройденная до конца — с начала. Просмотренной сторис
+     * становится, когда с неё уходят вперёд ([leftForward]). Своих отметок слайдов нет.
+     */
+    private val feedPositions: Boolean = false
 ) {
 
     /** Сторис глазами просмотра. */
@@ -109,6 +115,16 @@ internal class StoriesViewerState(
 
     private val pauses = HashSet<Pause>()
 
+    /** API v3: `start_position` каждой сторис в этой сессии. */
+    private val positions = IntArray(stories.size) { stories[it].startPosition }
+
+    /** API v3: сторис, с которых ушли вперёд, — просмотренные. */
+    val leftForward: Set<Int> get() = forward
+    private val forward = HashSet<Int>()
+
+    /** Сторис, к которой просмотр листает по просьбе хоста ([jumpTo]): уход к ней — не «вперёд». */
+    private var jumpTarget: Int? = null
+
     var clock: Clock = Clock.TIMER
         private set
 
@@ -148,9 +164,13 @@ internal class StoriesViewerState(
 
     fun isPaused(reason: Pause): Boolean = reason in pauses
 
-    /** Слайд, с которого откроется сторис [index] (A4). */
+    /** API v3: `start_position` сторис [index] в этой сессии. */
+    fun positionOf(index: Int): Int = positions.getOrElse(index) { 0 }
+
+    /** Слайд, с которого откроется сторис [index] (A4; на API v3 — её `start_position`, R8). */
     fun startSlideOf(index: Int): Int {
         val shape = stories.getOrNull(index) ?: return 0
+        if (feedPositions) return if (shape.slides.isEmpty()) 0 else positions[index].coerceIn(0, shape.slides.lastIndex)
         return StoriesMapping.startSlide(
             shape.slides.map { it.id },
             seen.seen(shape.id),
@@ -162,6 +182,9 @@ internal class StoriesViewerState(
     /** Пейджер выбрал сторис [index]: она становится текущей и откроется по правилу A4. */
     fun selectStory(index: Int) {
         if (index == storyIndex || index !in stories.indices) return
+        // Свайп к следующей — уход вперёд, как событие `next` веб-SDK; к той, что открыл хост, — нет.
+        if (feedPositions && index > storyIndex && jumpTarget != index) forward += storyIndex
+        jumpTarget = null
         entered = false
         storyIndex = index
         slideIndex = startSlideOf(index)
@@ -186,15 +209,17 @@ internal class StoriesViewerState(
 
     fun next(): Move {
         val shape = story ?: return away(Move.Close)
-        return when {
-            slideIndex + 1 < shape.slides.size -> {
-                slideIndex++
-                startSlide()
-                Move.Slide
-            }
-            storyIndex + 1 < stories.size -> away(Move.Story(storyIndex + 1))
-            else -> away(Move.Close)
+        if (slideIndex + 1 < shape.slides.size) {
+            slideIndex++
+            startSlide()
+            return Move.Slide
         }
+        // Сторис пройдена: на API v3 она просмотрена и в следующий раз откроется с начала.
+        if (feedPositions) {
+            positions[storyIndex] = 0
+            forward += storyIndex
+        }
+        return if (storyIndex + 1 < stories.size) away(Move.Story(storyIndex + 1)) else away(Move.Close)
     }
 
     fun previous(): Move = when {
@@ -218,6 +243,7 @@ internal class StoriesViewerState(
     fun jumpTo(index: Int): Move {
         if (index !in stories.indices || index == storyIndex) return Move.None
         if (sheetOpen) setSheet(false)
+        jumpTarget = index
         return away(Move.Story(index))
     }
 
@@ -324,7 +350,7 @@ internal class StoriesViewerState(
         resetSlide()
         val shape = story ?: return
         val current = slide ?: return
-        seen.markSeen(shape.id, current.id)
+        if (feedPositions) positions[storyIndex] = slideIndex else seen.markSeen(shape.id, current.id)
     }
 
     private fun resetSlide() {
