@@ -1,5 +1,6 @@
 package com.personalization.ui.widgets
 
+import com.personalization.InternalPersonalizationV3Api
 import com.personalization.SDK
 import org.json.JSONArray
 import org.json.JSONObject
@@ -16,6 +17,7 @@ import java.io.Serializable
  * Сериализуется вместе со [com.personalization.stories.models.Slide]: хост может передать слайд
  * с опросом через `Intent` / `Bundle`.
  */
+@OptIn(InternalPersonalizationV3Api::class)
 internal class StoryPoll(
     val type: Type,
     /** `poll_type` как пришёл — часть ключа хранилища ответов. */
