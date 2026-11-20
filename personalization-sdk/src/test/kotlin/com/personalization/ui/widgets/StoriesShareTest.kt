@@ -135,26 +135,36 @@ class StoriesShareTest {
     }
 
     @Test
-    fun `the event body sends the campaign id as a number and the slide id as a string`() {
-        val body = StoriesApiV3.eventBody("shop1", "did1", "share", 39, "39_0")
-        assertEquals("""{"shop_id":"shop1","did":"did1","event":"share","story_id":39,"slide_id":"39_0"}""", body.toString())
-        assertEquals("36", StoriesApiV3.eventBody("shop1", "did1", "view", 40, "36").get("slide_id"))
+    fun `the event body sends the identity, the campaign id as a number and the slide id as a string`() {
+        val identity = StoriesApiV3.Identity("shop1", "did1", sid = "sid1", segment = "B", stream = "android")
+        val body = StoriesApiV3.eventBody(identity, "share", 39, "39_0")
+        assertEquals(
+            """{"shop_id":"shop1","did":"did1","sid":"sid1","segment":"B","stream":"android","event":"share","story_id":39,"slide_id":"39_0"}""",
+            body.toString()
+        )
+        assertEquals("36", StoriesApiV3.eventBody(identity, "view", 40, "36").get("slide_id"))
+        val test = StoriesApiV3.eventBody(StoriesApiV3.Identity("shop1", "did1", testMode = true), "view", 40, "36")
+        assertEquals(
+            """{"shop_id":"shop1","did":"did1","sid":"","segment":"","testmode":true,"event":"view","story_id":40,"slide_id":"36"}""",
+            test.toString()
+        )
     }
 
     @Test
-    fun `the requests go to the api v3 host with shop_id and did only`() {
+    fun `the requests go to the api v3 host with shop_id, did, sid, segment, stream and testmode`() {
         val link = StoriesShare.Link("main", 40, "37")
+        val identity = StoriesApiV3.Identity("shop1", "did1", sid = "s 1", segment = "A", stream = "android")
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1",
-            StoriesApiV3.feedUrl("app.rees46.ru", "main", "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1&sid=s+1&segment=A&stream=android",
+            StoriesApiV3.feedUrl("app.rees46.ru", "main", identity)
         )
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&slide_id=37",
-            StoriesApiV3.storyUrl("https://app.rees46.ru/", link, "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&sid=s+1&segment=A&stream=android&slide_id=37",
+            StoriesApiV3.storyUrl("https://app.rees46.ru/", link, identity)
         )
         assertEquals(
-            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1",
-            StoriesApiV3.storyUrl(" app.rees46.ru ", link.copy(slideId = null), "shop1", "did1")
+            "https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&sid=&segment=&testmode=true",
+            StoriesApiV3.storyUrl(" app.rees46.ru ", link.copy(slideId = null), StoriesApiV3.Identity("shop1", "did1", testMode = true))
         )
         assertEquals("https://app.rees46.ru/api/v3/storefront/stories/a%20b/events", StoriesApiV3.eventsUrl("app.rees46.ru", "a b"))
     }

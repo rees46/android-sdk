@@ -45,7 +45,7 @@ class StoryPollFlowTest {
         StoryPollStore.clear()
         every { sdk.storiesManager } returns manager
         every { sdk.getDid() } returns "did1"
-        every { sdk.getSid() } returns ""
+        every { sdk.sessionId } returns null
         every { sdk.getUserSettingsValueUseCase.getShopId() } returns "shop1"
         StoriesApiV3.runner = { it.run() }
         StoriesApiV3.http = StoriesApiV3.Http { method, url, body ->

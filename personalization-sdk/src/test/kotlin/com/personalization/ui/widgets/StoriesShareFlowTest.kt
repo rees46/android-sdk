@@ -3,10 +3,13 @@ package com.personalization.ui.widgets
 import android.app.Activity
 import android.content.Intent
 import android.os.Looper
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.viewpager2.widget.ViewPager2
 import com.personalization.SDK
+import com.personalization.core.BridgeApi
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.stories.StoriesManager
 import com.personalization.ui.components.PersonalizationStoryNavigation
@@ -28,6 +31,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
 /** handleLink, the API v3 feed and events, the "Share" button of a slide. */
+@OptIn(BridgeApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class StoriesShareFlowTest {
@@ -43,6 +47,10 @@ class StoriesShareFlowTest {
         every { sdk.storiesManager } returns manager
         every { sdk.getDid() } returns "did1"
         every { sdk.getUserSettingsValueUseCase.getShopId() } returns "shop1"
+        every { sdk.sessionId } returns "sid1"
+        every { sdk.segments.getAbGroup() } returns "A"
+        every { sdk.requestStream } returns "android"
+        every { sdk.popupsV3 } returns null
         StoriesApiV3.runner = { it.run() }
         StoriesApiV3.http = StoriesApiV3.Http { method, url, body ->
             requests += Triple(method, url, body)
@@ -75,7 +83,7 @@ class StoriesShareFlowTest {
     fun `the link opens its campaign at the slide of the link and reports shared_open once`() {
         assertTrue(handle(LINK))
 
-        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&slide_id=37", requests[0].second)
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main/story/40?$IDENTITY&slide_id=37", requests[0].second)
         val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
         assertEquals(1, navigation(viewer).progress.current)
         assertEquals(listOf("shared_open:37", "view:37"), events().sorted())
@@ -140,9 +148,43 @@ class StoriesShareFlowTest {
         PersonalizationStories.show(context = activity, code = "main", sdk = sdk, imageLoader = { _, _ -> })
         idle()
 
-        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1", requests[0].second)
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?$IDENTITY", requests[0].second)
         verify(exactly = 0) { manager.requestStories(any(), any<OnApiCallbackListener>()) }
         assertEquals(listOf("view:39_0"), events())
+    }
+
+    @Test
+    fun `the first slide started again sends view again`() {
+        val viewer = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(PRODUCTS)).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            // The slide must not run out while the test taps it.
+            pause()
+        }
+        viewer.show()
+        idle()
+        // A tap on the left third of the slide: the first slide of the first story starts again.
+        val pager = find(viewer.window!!.decorView, ViewPager2::class.java)!!
+        val touch = find((pager.getChildAt(0) as ViewGroup).getChildAt(0), StoryTouchLayer::class.java)!!
+        val now = SystemClock.uptimeMillis()
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, 5f, 5f, 0))
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, 5f, 5f, 0))
+        idle()
+
+        assertEquals(listOf("view:39_0", "view:39_0"), events())
+    }
+
+    @Test
+    fun `in the test mode of popups v3 the feed and the events send testmode`() {
+        every { sdk.popupsV3 } returns mockk(relaxed = true) { every { testMode } returns true }
+        answer = { StoriesApiV3.Response(200, PRODUCTS) }
+        PersonalizationStories.show(context = activity, code = "main", sdk = sdk, imageLoader = { _, _ -> })
+        idle()
+
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?$IDENTITY&testmode=true", requests[0].second)
+        assertEquals(listOf("view:39_0"), events(testMode = true))
     }
 
     @Test
@@ -171,7 +213,7 @@ class StoriesShareFlowTest {
         PersonalizationStories.apiV3Domain = "global.test"
         widget(apiV3Domain = "own.test")
 
-        assertEquals("https://own.test/api/v3/storefront/stories/main?shop_id=shop1&did=did1", requests.single().second)
+        assertEquals("https://own.test/api/v3/storefront/stories/main?$IDENTITY", requests.single().second)
         verify(exactly = 0) { manager.requestStories(any(), any<OnApiCallbackListener>()) }
     }
 
@@ -246,10 +288,14 @@ class StoriesShareFlowTest {
         PersonalizationStories.handleLink(activity, url, sdk = sdk, onError = { code, _ -> onError(code) }, imageLoader = { _, _ -> })
             .also { idle() }
 
-    private fun events(): List<String> = requests.filter { it.first == "POST" }.map {
+    private fun events(testMode: Boolean = false): List<String> = requests.filter { it.first == "POST" }.map {
         val body = JSONObject(it.third!!)
         assertEquals("shop1", body.getString("shop_id"))
         assertEquals("did1", body.getString("did"))
+        assertEquals("sid1", body.getString("sid"))
+        assertEquals("A", body.getString("segment"))
+        assertEquals("android", body.getString("stream"))
+        assertEquals(testMode, body.optBoolean("testmode"))
         assertTrue(it.second.endsWith("/api/v3/storefront/stories/main/events"))
         body.getString("event") + ":" + body.getString("slide_id")
     }
@@ -270,6 +316,7 @@ class StoriesShareFlowTest {
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
     private companion object {
+        const val IDENTITY = "shop_id=shop1&did=did1&sid=sid1&segment=A&stream=android"
         const val LINK = "https://demo.test/?r46_stories=main&r46_story=40&r46_slide=37"
 
         const val CAMPAIGN = """{"status":"success","payload":{"id":1,"settings":{},"stories":[{"id":40,"name":"Media",

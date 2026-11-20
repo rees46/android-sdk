@@ -489,6 +489,8 @@ class PersonalizationStoriesViewer(
                 if (view != null && view === playerSlide) player?.seekTo(0)
                 view?.restartAnimation()
                 view?.setProgress(0f)
+                // The slide is shown again: `view` on every show, the server merges repeats.
+                track("view")
             }
             StoriesViewerState.Move.CloseSheet -> currentSlideView()?.closeSheet()
             StoriesViewerState.Move.Close -> {

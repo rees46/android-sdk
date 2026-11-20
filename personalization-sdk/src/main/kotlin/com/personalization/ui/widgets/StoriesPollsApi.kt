@@ -14,7 +14,7 @@ import org.json.JSONObject
 /**
  * Транспорт опросов по умолчанию — HTTP на хост API v3, с которого пришла лента:
  * `https://{domain}/api/v3/polls/...`. Тело — JSON: `shop_id`, `did`, `sid` (всегда, как в веб-SDK:
- * без сеанса — пустая строка) и поля запроса; без cookies. Запрос, лог и разбор `{status, payload}` — общие
+ * без сеанса — пустая строка), `stream`, `testmode` в тестовом режиме и поля запроса; без cookies. Запрос, лог и разбор `{status, payload}` — общие
  * с [StoriesApiV3]; did ждётся там же, как у ленты. Не дождались за [DID_TIMEOUT_MS] — ошибка.
  */
 @OptIn(InternalPersonalizationV3Api::class)
@@ -68,10 +68,8 @@ internal class StoriesPollsApi(private val sdk: SDK, private val domain: String)
         )
     }
 
-    private fun identity(): JSONObject = JSONObject()
-        .put("shop_id", StoriesApiV3.shopId(sdk))
-        .put("did", sdk.getDid().orEmpty())
-        .put("sid", runCatching { sdk.getSid() }.getOrNull().orEmpty())
+    /** `shop_id`, `did`, `sid`, `stream` и `testmode` — как у ленты, но без `segment`, как в веб-SDK. */
+    private fun identity(): JSONObject = StoriesApiV3.identity(sdk).putInto(JSONObject(), withSegment = false)
 
     // Path only, without the answer: the query carries did and sid, an error answer often repeats them.
     private fun failure(url: String, code: Int, message: String?): StoriesPollsResult {
