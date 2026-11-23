@@ -400,7 +400,11 @@ class StoriesMappingTest {
         assertEquals("an invalid opacity leaves the colour as it is", 0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "110"))
         assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "abc"))
         assertNull("0 % — no background", color("text_background_color" to "#000000", "text_background_color_opacity" to "0%"))
-        assertNull(color("text_background_color" to "#000000", "text_background_color_opacity" to 0))
+        assertNull(color("text_background_color" to "#000000", "text_background_color_opacity" to "0"))
+        // As `!opacity` of calculateOpacity: the number 0 and false are no opacity — the colour is opaque.
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to 0))
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to 0.0))
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to false))
         assertNull("no colour — none, the legacy #FFFFFF is not applied", color("text_background_color_opacity" to "50%"))
         assertNull(color())
         assertNull(color("text_background_color" to "white", "text_background_color_opacity" to "50%"))

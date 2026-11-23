@@ -29,10 +29,13 @@ class TextBlockElement(json: JSONObject) : Element {
     }?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() }
     /**
      * Stories V2 on API v3: `text_background_color` and `text_background_color_opacity` as the feed sent them,
-     * `null` when it sent none — without the legacy `#FFFFFF` and `0%` defaults. Not part of equals.
+     * `null` when it sent none — without the legacy `#FFFFFF` and `0%` defaults. The opacity is "none" as in
+     * `calculateOpacity` of the web SDK (`!opacity`): the number 0 and `false` too; only the strings `"0"` and
+     * `"0%"` are a transparent 0 %. Not part of equals.
      */
     internal val ownBackgroundColor: String? = raw(json, "text_background_color")
     internal val ownBackgroundOpacity: String? = raw(json, "text_background_color_opacity")
+        ?.takeUnless { (json.opt("text_background_color_opacity") as? Number)?.toDouble()?.let { number -> number == 0.0 } == true }
     val fontType: String = json.optString("font_type", "")
     val fontSize: Int = json.optInt("font_size", DEFAULT_FONT_SIZE)
     val textAlign: String = json.optString("text_align", "")
