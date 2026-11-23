@@ -293,14 +293,13 @@ internal class StoriesViewerState(
 
     /**
      * API v3: пейджер встал на сторис, у которой нет слайда для показа (свайпом или по просьбе хоста) —
-     * куда идти дальше. Вперёд, как в веб-SDK: она просмотрена, просмотр идёт к следующей, последняя
-     * закрывает его; пришли назад свайпом — перешагивается назад. `null` — показывать есть что.
+     * куда идти дальше. Она просмотрена, как в веб-SDK. Вперёд — к следующей, последняя закрывает
+     * просмотр; пришли назад свайпом — перешагивается назад. `null` — показывать есть что.
      */
     fun passThrough(): Move? {
         if (!feedPositions || entered || hasShown(storyIndex)) return null
-        if (arrivedBackward) return passBackward(storyIndex)
         finish(storyIndex)
-        return passForward(storyIndex)
+        return if (arrivedBackward) passBackward(storyIndex) else passForward(storyIndex)
     }
 
     /** API v3: у сторис [index] есть слайд для показа с её `start_position`. */
@@ -348,10 +347,17 @@ internal class StoriesViewerState(
         return away(if (index < stories.size) Move.Story(index) else Move.Close)
     }
 
-    /** API v3: назад от [from] — к ближайшей сторис со слайдом для показа; нет такой — просмотр закрывается. */
+    /**
+     * API v3: назад от [from] — к ближайшей сторис со слайдом для показа; перешагнутые, где показывать нечего,
+     * просмотрены, как пройденные вперёд. Нет такой — просмотр закрывается.
+     */
     private fun passBackward(from: Int): Move {
-        val index = (from - 1 downTo 0).firstOrNull(::hasShown)
-        return away(if (index != null) Move.Story(index) else Move.Close)
+        var index = from - 1
+        while (index >= 0 && !hasShown(index)) {
+            finish(index)
+            index--
+        }
+        return away(if (index >= 0) Move.Story(index) else Move.Close)
     }
 
     /**

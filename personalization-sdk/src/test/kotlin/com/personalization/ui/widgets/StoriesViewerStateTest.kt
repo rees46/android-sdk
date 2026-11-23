@@ -150,15 +150,17 @@ class StoriesViewerStateTest {
     }
 
     @Test
-    fun `on api v3 back from a story steps over the stories with nothing to show, none before closes`() {
+    fun `on api v3 back from a story steps over the stories with nothing to show, viewed, none before closes`() {
         val state = v3(skipping(1, "SS"), skipping(2, "K"), skipping(3, "S"), start = 2)
         state.enter()
         assertEquals(Move.Story(0), state.previous())
-        assertTrue(state.leftForward.isEmpty())
+        assertEquals("stepped over backward, viewed as when passed forward", setOf(1), state.leftForward)
+        assertEquals(0, state.positionOf(1))
 
         val first = v3(skipping(1, "K"), skipping(2, "S"), start = 1)
         first.enter()
         assertEquals(Move.Close, first.previous())
+        assertEquals(setOf(0), first.leftForward)
     }
 
     @Test
@@ -172,12 +174,18 @@ class StoriesViewerStateTest {
         assertEquals(setOf(0, 1), state.leftForward)
         state.selectStory(2)
         state.enter()
-        // A swipe back onto it: stepped over backward, not viewed again.
+        // A swipe back onto it: stepped over backward, viewed as when passed forward.
         val back = v3(skipping(1, "S"), skipping(2, "K"), skipping(3, "S"), start = 2)
         back.enter()
         back.selectStory(1)
         assertEquals(Move.Story(0), back.passThrough())
-        assertTrue(back.leftForward.isEmpty())
+        assertEquals(setOf(1), back.leftForward)
+        // Nothing to open before it: the viewer closes.
+        val none = v3(skipping(1, "K"), skipping(2, "K"), skipping(3, "S"), start = 2)
+        none.enter()
+        none.selectStory(1)
+        assertEquals(Move.Close, none.passThrough())
+        assertEquals(setOf(0, 1), none.leftForward)
         // The host opens it: as the web SDK, viewed and on to the next one, here none — close.
         state.selectStory(2)
         assertEquals(Move.Story(3), state.jumpTo(3))
