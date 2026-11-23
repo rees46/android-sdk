@@ -434,6 +434,29 @@ internal class StorySlideView(
     }
 
     /**
+     * TalkBack начинает слайд с навигации — крестика и «Поделиться», — как когда она стояла в колонке
+     * первой: её ряд лежит поверх опросов, и по месту на экране чтец поставил бы его после содержимого.
+     */
+    override fun addChildrenForAccessibility(outChildren: ArrayList<View>) {
+        val start = outChildren.size
+        super.addChildrenForAccessibility(outChildren)
+        val added = outChildren.subList(start, outChildren.size)
+        val first = added.filter { isInNavigation(it) }
+        if (first.isEmpty()) return
+        added.removeAll(first.toSet())
+        added.addAll(0, first)
+    }
+
+    private fun isInNavigation(view: View): Boolean {
+        var node: View? = view
+        while (node != null && node !== this) {
+            if (node === navigationBar) return true
+            node = node.parent as? View
+        }
+        return false
+    }
+
+    /**
      * При открытой шторке тап мимо неё только закрывает её (B5). Крестик и «Поделиться» не в
      * счёт: они работают всегда, и при открытой шторке тоже (F2).
      */

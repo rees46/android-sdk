@@ -141,6 +141,20 @@ class StorySlideViewTest {
     }
 
     @Test
+    fun `talkback reads the share and the close first, then the header, the text and the buttons`() {
+        host.v3 = true
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"header","title":"Магазин","link":"https://shop.test/new"},
+            {"type":"text_block","text_input":"Скидки","y_offset":10},
+            {"type":"button","title":"Go","link":"https://shop.test/go"}]}""")), shareUrl = "https://shop.test/s")
+        val nodes = ArrayList<View>()
+        view.addChildrenForAccessibility(nodes)
+        assertTrue(nodes.size > 3)
+        assertEquals(setOf(view.navigation.shareButton, view.navigation.closeButton), nodes.take(2).toSet())
+        assertTrue(nodes.drop(2).none { it === view.navigation.shareButton || it === view.navigation.closeButton })
+    }
+
+    @Test
     fun `the close cross still gets the touch while the sheet is open`() {
         host.sheetOpen = true
         val view = laidOut(slideWithProducts())
