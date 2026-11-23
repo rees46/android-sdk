@@ -378,18 +378,32 @@ class StoriesMappingTest {
     }
 
     @Test
-    fun `on api v3 the opacity of a text block is NN percent, a number up to 100 or a fraction`() {
+    fun `on api v3 the opacity of a text block is a percent, as calculateOpacity of the web SDK`() {
         assertEquals(40f, StoriesMapping.opacityPercent("40%"))
         assertEquals(40f, StoriesMapping.opacityPercent(" 40 "))
-        assertEquals(40f, StoriesMapping.opacityPercent("0.4"))
-        assertEquals(100f, StoriesMapping.opacityPercent("1"))
+        assertEquals("a number is a percent: 0.5 is half a percent", 0.5f, StoriesMapping.opacityPercent("0.5"))
+        assertEquals(1f, StoriesMapping.opacityPercent("1"))
         assertEquals(12.5f, StoriesMapping.opacityPercent("12.5%"))
-        assertEquals(100f, StoriesMapping.opacityPercent("150"))
         assertEquals(0f, StoriesMapping.opacityPercent("0%"))
+        assertNull("out of 0…100", StoriesMapping.opacityPercent("150"))
+        assertNull(StoriesMapping.opacityPercent("-10"))
         assertNull(StoriesMapping.opacityPercent("half"))
         assertNull(StoriesMapping.opacityPercent(null))
-        assertEquals(0x66, Color.alpha(StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().put("text_background_color", "#000000").put("text_background_color_opacity", 0.4)))!!))
-        assertNull(StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().put("text_background_color", "#000000").put("text_background_color_opacity", 0))))
+
+        fun color(vararg pairs: Pair<String, Any>) = StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().apply { pairs.forEach { put(it.first, it.second) } }))
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "50"))
+        assertEquals(0xBFFF5533.toInt(), color("text_background_color" to "#f53", "text_background_color_opacity" to "75%"))
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "rgb(255, 87, 51)", "text_background_color_opacity" to 50))
+        assertEquals(0x01000000, color("text_background_color" to "#000000", "text_background_color_opacity" to 0.4))
+        assertEquals("no opacity — the colour is opaque", 0xFFFF5733.toInt(), color("text_background_color" to "#ff5733"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to ""))
+        assertEquals("an invalid opacity leaves the colour as it is", 0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "110"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "abc"))
+        assertNull("0 % — no background", color("text_background_color" to "#000000", "text_background_color_opacity" to "0%"))
+        assertNull(color("text_background_color" to "#000000", "text_background_color_opacity" to 0))
+        assertNull("no colour — none, the legacy #FFFFFF is not applied", color("text_background_color_opacity" to "50%"))
+        assertNull(color())
+        assertNull(color("text_background_color" to "white", "text_background_color_opacity" to "50%"))
     }
 
     @Test

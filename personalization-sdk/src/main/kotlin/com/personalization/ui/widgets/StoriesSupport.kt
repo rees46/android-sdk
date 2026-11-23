@@ -307,26 +307,29 @@ internal object StoriesMapping {
     fun lineHeightSp(element: TextBlockElement): Float? =
         if (element.textLineSpacing > 0) (element.fontSize * element.textLineSpacing).toFloat() else null
 
+    /** Число в начале строки, как его читает `parseFloat` в JS. */
+    private val LEADING_NUMBER = Regex("^\\s*([+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?)")
+
     /**
-     * Прозрачность подложки текстового блока на API v3 (R4), в процентах 0…100: `"NN%"`, число 0–100 или
-     * доля 0–1 (`0.4`, `1` — 100 %). Не число — `null`.
+     * Прозрачность подложки текстового блока на API v3 (R4), как `calculateOpacity` веб-SDK: число в начале
+     * строки — проценты (`"50%"` и `"50"` — 50 %, `"0.5"` — 0,5 %). Не число или вне 0…100 — `null`.
      */
     fun opacityPercent(value: String?): Float? {
-        val text = value?.trim().orEmpty()
-        val percent = if (text.endsWith("%")) {
-            text.removeSuffix("%").trim().toFloatOrNull()
-        } else {
-            text.toFloatOrNull()?.let { if (it <= 1f) it * 100f else it }
-        }
-        return percent?.takeIf { !it.isNaN() && !it.isInfinite() }?.coerceIn(0f, 100f)
+        val number = LEADING_NUMBER.find(value ?: return null)?.groupValues?.get(1)?.toDoubleOrNull() ?: return null
+        return number.takeIf { it in 0.0..100.0 }?.toFloat()
     }
 
-    /** Подложка текстового блока на API v3: цвет с прозрачностью [opacityPercent]; 0 или не число — без фона. */
+    /**
+     * Подложка текстового блока на API v3, как `calculateOpacity` веб-SDK: цвет ([StoriesColor]) с прозрачностью
+     * [opacityPercent]; прозрачности нет или она не проценты 0…100 — цвет как есть, непрозрачный; 0 % или нет
+     * цвета — без фона. Умолчаний старой ленты (`#FFFFFF`, `0%`) нет.
+     */
     fun textBlockColorV3(element: TextBlockElement): Int? {
-        val opacity = opacityPercent(element.textBackgroundColorOpacity) ?: return null
-        if (opacity <= 0f) return null
-        val color = parseColor(element.textBackgroundColor) ?: return null
-        return ColorUtils.setAlphaComponent(color, Math.round(opacity * 255f / 100f))
+        val color = StoriesColor.parse(element.ownBackgroundColor) ?: return null
+        val raw = element.ownBackgroundOpacity?.takeIf { it.isNotEmpty() } ?: return color
+        val percent = opacityPercent(raw) ?: return color
+        val alpha = Math.round(Color.alpha(color) * percent / 100f)
+        return if (alpha <= 0) null else ColorUtils.setAlphaComponent(color, alpha)
     }
 
     /** Подложка текстового блока: цвет админки с её прозрачностью; 0% — блок без фона. */

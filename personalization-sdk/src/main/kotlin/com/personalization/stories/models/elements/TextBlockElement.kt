@@ -27,6 +27,12 @@ class TextBlockElement(json: JSONObject) : Element {
         is String -> size.trim().toFloatOrNull()
         else -> null
     }?.takeIf { it > 0f && !it.isNaN() && !it.isInfinite() }
+    /**
+     * Stories V2 on API v3: `text_background_color` and `text_background_color_opacity` as the feed sent them,
+     * `null` when it sent none — without the legacy `#FFFFFF` and `0%` defaults. Not part of equals.
+     */
+    internal val ownBackgroundColor: String? = raw(json, "text_background_color")
+    internal val ownBackgroundOpacity: String? = raw(json, "text_background_color_opacity")
     val fontType: String = json.optString("font_type", "")
     val fontSize: Int = json.optInt("font_size", DEFAULT_FONT_SIZE)
     val textAlign: String = json.optString("text_align", "")
@@ -77,6 +83,13 @@ class TextBlockElement(json: JSONObject) : Element {
     }
 
     companion object {
+        /** A string or a number as its text; nothing, `null` or anything else — `null`. */
+        private fun raw(json: JSONObject, key: String): String? = when (val value = json.opt(key)) {
+            is String -> value
+            is Number -> value.toString()
+            else -> null
+        }
+
         /** `true`, `1`, `"true"`, `"1"` — on; `false`, `0` and their strings — off; anything else or nothing — `null`. */
         private fun flag(json: JSONObject, key: String): Boolean? = when (val value = json.opt(key)) {
             is Boolean -> value

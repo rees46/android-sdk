@@ -104,7 +104,7 @@ class StorySlideViewTest {
         assertEquals(24f, legacy.textSizeSp)
         assertTrue(legacy.bold)
         assertTrue(legacy.italic)
-        assertEquals(0x80000000.toInt(), legacy.blockColor)
+        assertEquals("0.5 is half a percent, as on the web", 0x01000000, legacy.blockColor)
         val own = block(""""bold":false,"text_bold":true,"text_background_color":"#FFFFFF","text_background_color_opacity":40,"font_type":"Monospaced"""")
         assertFalse("bold wins over text_bold", own.bold)
         assertEquals(0x66FFFFFF, own.blockColor)
