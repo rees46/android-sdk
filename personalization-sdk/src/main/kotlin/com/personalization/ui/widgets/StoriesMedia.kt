@@ -86,25 +86,42 @@ internal object StoriesMediaCache {
 }
 
 /**
- * Звук просмотра сторис (C7, F6). Выбор пользователя ([chosenMuted]) живёт до конца процесса:
- * первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
- * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся,
- * и следующий просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или
- * громкостью вверх ([choose]). Сторис с API v3, как веб-SDK, ещё и помнят выбор на устройстве —
- * свой у каждого магазина, как `localStorage` сайта ([restore], [save]).
+ * Звук просмотра сторис (C7, F6). На старой ленте выбор пользователя ([chosenMuted]) живёт до конца
+ * процесса: первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
+ * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся, и следующий
+ * просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или громкостью вверх ([choose]).
+ *
+ * У сторис API v3 состояние своё ([v3]), как в веб-SDK: открывается с выбора кнопки звука, сохранённого
+ * на устройстве для магазина ([save]), как `localStorage` сайта; без него — без звука. Общий выбор старой
+ * ленты оно не трогает.
  */
-internal class StoriesSound {
+internal class StoriesSound private constructor(
+    /** Своё состояние (API v3), а не выбор процесса старой ленты. */
+    private val own: Boolean,
+    initialMuted: Boolean
+) {
+
+    /** Старая лента: выбор процесса. */
+    constructor() : this(false, true)
+
+    private var ownMuted = initialMuted
+
+    private var chosen: Boolean
+        get() = if (own) ownMuted else chosenMuted
+        set(value) {
+            if (own) ownMuted = value else chosenMuted = value
+        }
 
     /** Звук заглушён системой в этом просмотре. */
     var silenced = false
         private set
 
     /** Звука сейчас нет: так выбрал пользователь или заглушила система. */
-    val muted: Boolean get() = chosenMuted || silenced
+    val muted: Boolean get() = chosen || silenced
 
     /** Выбор пользователя: он запоминается, заглушение снимается. */
     fun choose(muted: Boolean) {
-        chosenMuted = muted
+        chosen = muted
         silenced = false
     }
 
@@ -116,7 +133,7 @@ internal class StoriesSound {
     }
 
     companion object {
-        /** Выбор пользователя на весь процесс; первый просмотр — без звука. */
+        /** Выбор пользователя старой ленты на весь процесс; первый просмотр — без звука. */
         @Volatile
         var chosenMuted = true
             internal set
@@ -128,15 +145,13 @@ internal class StoriesSound {
             context.applicationContext.getSharedPreferences(PreferencesPartition.keyFor(shopKey) + FILE_SUFFIX, Context.MODE_PRIVATE)
 
         /**
-         * Выбор магазина [shopKey], сохранённый на устройстве ([save]); магазин его не сохранял — без
-         * звука, как веб-SDK без `<label>-stories-mute`. Магазин неизвестен — остаётся выбор процесса.
+         * Звук просмотра API v3 для магазина [shopKey]: с выбором кнопки, сохранённым на устройстве ([save]);
+         * не сохраняли или магазин неизвестен — без звука, как веб-SDK без `<label>-stories-mute`.
          */
-        fun restore(context: Context, shopKey: String?) {
-            if (shopKey == null) return
-            chosenMuted = preferences(context, shopKey).getBoolean(KEY_MUTED, true)
-        }
+        fun v3(context: Context, shopKey: String?): StoriesSound =
+            StoriesSound(own = true, initialMuted = shopKey?.let { preferences(context, it).getBoolean(KEY_MUTED, true) } ?: true)
 
-        /** Запомнить выбор пользователя для магазина [shopKey], как `localStorage` сайта в веб-SDK. */
+        /** Запомнить выбор кнопки звука для магазина [shopKey], как `localStorage` сайта в веб-SDK. */
         fun save(context: Context, shopKey: String?, muted: Boolean) {
             if (shopKey == null) return
             preferences(context, shopKey).edit().putBoolean(KEY_MUTED, muted).apply()

@@ -309,24 +309,59 @@ class StoriesShareFlowTest {
 
     @Test
     fun `on api v3 the mute choice is kept on the device per shop, as localStorage of a site`() {
-        StoriesSound.chosenMuted = true
         StoriesSound.save(activity, "shop-a", false)
-        StoriesSound.restore(activity, "shop-a")
-        assertFalse(StoriesSound.chosenMuted)
+        assertFalse(StoriesSound.v3(activity, "shop-a").muted)
         // Another shop has not chosen: it opens without sound, whatever shop A chose.
-        StoriesSound.restore(activity, "shop-b")
-        assertTrue(StoriesSound.chosenMuted)
-        StoriesSound.restore(activity, "shop-a")
-        assertFalse(StoriesSound.chosenMuted)
+        assertTrue(StoriesSound.v3(activity, "shop-b").muted)
         StoriesSound.save(activity, "shop-a", true)
+        assertTrue(StoriesSound.v3(activity, "shop-a").muted)
+        // No shop — without sound, and nothing is kept.
+        StoriesSound.save(activity, null, false)
+        assertTrue(StoriesSound.v3(activity, null).muted)
+    }
+
+    @Test
+    fun `on api v3 the viewer keeps its own sound, saves only the sound button and leaves the legacy choice alone`() {
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":70,"name":"Video","slides":[
+            {"id":700,"type":"video","background":"https://cdn.test/v.mp4","elements":[]}]}]}}"""
+        )
+        // The legacy viewers chose sound on for the process.
         StoriesSound.chosenMuted = false
-        StoriesSound.restore(activity, "shop-a")
+        StoriesSound.save(activity, "default", true)
+        val viewer = v3Viewer(stories)
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        assertTrue("v3 opens with the shop's saved choice, not the legacy one", host.muted)
+
+        // Volume up turns the sound on in this viewer only: nothing is saved.
+        viewer.onKeyDown(android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_VOLUME_UP))
+        assertFalse(host.muted)
+        assertTrue(StoriesSound.v3(activity, "default").muted)
+
+        // The sound button is the user's choice: saved for the shop.
+        host.onSoundToggle()
+        assertTrue(host.muted)
+        host.onSoundToggle()
+        assertFalse(host.muted)
+        assertFalse(StoriesSound.v3(activity, "default").muted)
+        host.onSoundToggle()
+        assertTrue(StoriesSound.v3(activity, "default").muted)
+        assertFalse("the legacy choice of the process is untouched", StoriesSound.chosenMuted)
+        viewer.dismiss()
+        idle()
+
+        // A legacy viewer keeps the process-wide choice, as before.
+        val legacy = PersonalizationStoriesViewer(activity, stories).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        val legacyHost = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(legacy) as StorySlideHost
+        assertFalse(legacyHost.muted)
+        legacyHost.onSoundToggle()
         assertTrue(StoriesSound.chosenMuted)
-        // No shop — the choice of the process stays and nothing is kept.
-        StoriesSound.chosenMuted = false
-        StoriesSound.save(activity, null, true)
-        StoriesSound.restore(activity, null)
-        assertFalse(StoriesSound.chosenMuted)
     }
 
     private fun v3Viewer(stories: List<com.personalization.stories.models.Story>, clicks: com.personalization.OnClickListener? = null) =

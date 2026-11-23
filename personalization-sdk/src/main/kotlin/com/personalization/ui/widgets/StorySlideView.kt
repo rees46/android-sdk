@@ -150,6 +150,9 @@ internal class StorySlideView(
     private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
 
+    /** Последние отступы системных панелей — ряд низа может пропасть позже ([setSoundAvailable]). */
+    private var appliedInsets: Insets = Insets.NONE
+
     init {
         setBackgroundColor(StoriesMapping.slideColor(slide, host.v3, PersonalizationTheme.color(context, R.color.personalization_background_card)))
         if (isMedia) addMedia()
@@ -350,8 +353,8 @@ internal class StorySlideView(
             imageLoader = { view, item -> item.imageUrl?.let { host.loadImage(view, it) } }
             onProductClick = { item -> products.firstOrNull { it.id == item.id }?.let(host::onCarouselProduct) }
             onExpandedChange = { open -> host.onSheet(open) }
-            // На API v3 звук — только у видео со звуком, как в веб-SDK: кнопку покажет [setSoundAvailable].
-            showSoundButton = isVideo && !host.v3
+            // На API v3 кнопку звука спрячет [setSoundAvailable], если у ролика точно нет звуковой дорожки.
+            showSoundButton = isVideo
             soundOnDescription = host.texts.soundOnLabel
             soundOffDescription = host.texts.soundOffLabel
             muted = host.muted
@@ -376,7 +379,8 @@ internal class StorySlideView(
      * edge-to-edge). Шторка товаров уходит под панель навигации своим фоном.
      */
     fun applyInsets(insets: Insets) {
-        val used = usedHost
+        appliedInsets = insets
+        val used = usedHost?.takeIf { it.visibility == View.VISIBLE }
         column.setPadding(insets.left, insets.top, insets.right, if (used == null) insets.bottom + padding else 0)
         navigationBar.setPadding(insets.left, insets.top, insets.right, 0)
         used?.setPadding(0, 0, 0, insets.bottom)
@@ -391,10 +395,20 @@ internal class StorySlideView(
         usedProducts?.muted = muted
     }
 
-    /** API v3: у видео есть звуковая дорожка — кнопка звука появляется. */
+    /**
+     * API v3: есть ли у видео звуковая дорожка. Точно нет — кнопки звука нет; без товаров пустой ряд низа
+     * тогда убирается и места не занимает.
+     */
     fun setSoundAvailable(available: Boolean) {
         if (!host.v3 || !isVideo) return
-        usedProducts?.showSoundButton = available
+        val used = usedProducts ?: return
+        used.showSoundButton = available
+        val wrapper = usedHost ?: return
+        val visibility = if (available || used.products.isNotEmpty()) View.VISIBLE else View.GONE
+        if (wrapper.visibility == visibility) return
+        wrapper.visibility = visibility
+        applyInsets(appliedInsets)
+        pollLayer?.requestLayout()
     }
 
     fun closeSheet() {

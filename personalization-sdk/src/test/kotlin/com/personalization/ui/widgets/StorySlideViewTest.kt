@@ -115,17 +115,29 @@ class StorySlideViewTest {
     }
 
     @Test
-    fun `on api v3 a video shows the sound button only once its audio is known`() {
+    fun `on api v3 a video shows the sound button until it is known to have no audio, then the empty row is gone`() {
         host.v3 = true
         val view = laidOut(Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4"}""")))
         val used = view.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!
-        assertFalse(used.showSoundButton)
+        assertTrue("shown while the audio is not known", used.showSoundButton)
         view.setSoundAvailable(true)
         assertTrue(used.showSoundButton)
+        view.setSoundAvailable(false)
+        assertFalse(used.showSoundButton)
+        assertFalse("a row with nothing in it takes no space", used.isShown)
+
+        // With products the row stays for the products button.
+        val withProducts = laidOut(Slide(JSONObject("""{"id":"2","type":"video","background":"https://cdn.test/v.mp4","elements":[
+            {"type":"products","products":[{"id":"p1","name":"Sneakers","price":"100","url":"https://shop.test/p1"}]}]}""")))
+        withProducts.setSoundAvailable(false)
+        val row = withProducts.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!
+        assertFalse(row.showSoundButton)
+        assertTrue(row.isShown)
 
         host.v3 = false
-        assertTrue(laidOut(Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4"}""")))
-            .first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!.showSoundButton)
+        val legacy = laidOut(Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4"}""")))
+        legacy.setSoundAvailable(false)
+        assertTrue(legacy.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!.showSoundButton)
     }
 
     @Test

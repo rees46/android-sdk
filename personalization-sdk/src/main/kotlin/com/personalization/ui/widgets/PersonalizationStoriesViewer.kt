@@ -179,7 +179,8 @@ class PersonalizationStoriesViewer(
     private var player: ExoPlayer? = null
     private var playerSlide: StorySlideView? = null
     private var audioFocus: StoriesAudioFocus? = null
-    private val sound = StoriesSound()
+    /** Звук: на старой ленте — выбор процесса, на API v3 — своё состояние просмотра ([StoriesSound.v3]). */
+    private var sound = StoriesSound()
     private var insets: Insets = Insets.NONE
     private var imeBottom = 0
     private var pollsContext: StoryPollsContext? = null
@@ -250,7 +251,7 @@ class PersonalizationStoriesViewer(
             pollReanswerText, pollErrorText, pollSubmitText
         )
         pollsContext = pollsContext()
-        if (v3) StoriesSound.restore(hostContext, soundShopKey())
+        if (v3) sound = StoriesSound.v3(hostContext, soundShopKey())
         // API v3, как веб-SDK: сторис открывается с `start_position` ленты, своих отметок увиденного нет (R8).
         val seen = if (v3) NoSeenSlides else StoriesSeenStore.forSdk(hostContext, sdk, shopId)
         state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide, feedPositions = v3)
@@ -388,9 +389,12 @@ class PersonalizationStoriesViewer(
         apply(state.back())
     }
 
-    /** Кнопка громкости вверх включает звук (C7); громкость меняет система, как обычно. */
+    /**
+     * Кнопка громкости вверх включает звук (C7); громкость меняет система, как обычно. На API v3 это не
+     * выбор кнопки звука: на устройстве он не сохраняется.
+     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && sound.muted) setMuted(false)
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && sound.muted) setMuted(false, button = false)
         return super.onKeyDown(keyCode, event)
     }
 
@@ -619,7 +623,7 @@ class PersonalizationStoriesViewer(
             if (!v3) track("click")
         }
 
-        override fun onSoundToggle() = setMuted(!sound.muted)
+        override fun onSoundToggle() = setMuted(!sound.muted, button = true)
 
         override fun onRetry(view: StorySlideView) = retry(view)
 
@@ -952,8 +956,12 @@ class PersonalizationStoriesViewer(
             playerSlide?.hidePoster()
         }
 
-        /** API v3, как веб-SDK: кнопка звука — только у видео со звуковой дорожкой. */
+        /**
+         * API v3: кнопка звука прячется, только когда плеер знает дорожки ролика и звуковой среди них нет;
+         * пока дорожки неизвестны, она видна (веб-SDK прячет её, пока звук не найден).
+         */
         override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            if (tracks.isEmpty) return
             playerSlide?.setSoundAvailable(tracks.containsType(androidx.media3.common.C.TRACK_TYPE_AUDIO))
         }
 
@@ -971,10 +979,13 @@ class PersonalizationStoriesViewer(
         }
     }
 
-    /** Звук включил или выключил пользователь: выбор запоминается на весь процесс (C7), на API v3 — на устройстве для магазина. */
-    private fun setMuted(value: Boolean) {
+    /**
+     * Звук включил или выключил пользователь: на старой ленте выбор запоминается на весь процесс (C7), на
+     * API v3 — в этом просмотре, а выбор кнопки ([button]) — ещё и на устройстве для магазина, как в веб-SDK.
+     */
+    private fun setMuted(value: Boolean, button: Boolean) {
         sound.choose(value)
-        if (v3) StoriesSound.save(hostContext, soundShopKey(), value)
+        if (v3 && button) StoriesSound.save(hostContext, soundShopKey(), value)
         applySound()
     }
 
