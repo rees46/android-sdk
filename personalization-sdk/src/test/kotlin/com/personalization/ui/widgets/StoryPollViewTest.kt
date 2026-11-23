@@ -403,6 +403,26 @@ class StoryPollViewTest {
         assertEquals(listOf("https://shop.test/s"), shares)
     }
 
+    @Test
+    fun `the empty part of the navigation row over a card lets the touch through to the card`() {
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"poll","poll_type":"mini_poll","y_offset":0,
+             "poll":{"code":"s","kind":"single_choice","question":"Q","options":[{"id":1,"label":"A"}]}}]}""")))
+        val card = view.pollCards.single()
+        val navigation = view.navigation
+        val origin = IntArray(2).also(view::getLocationInWindow)
+        // Left of the buttons, inside the navigation row and the card.
+        val x = windowLeft(card) - origin[0] + 10f
+        val y = windowTop(navigation) - origin[1] + navigation.height - 4f
+        assertTrue(y < windowTop(card) - origin[1] + card.height)
+        val now = SystemClock.uptimeMillis()
+        view.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        view.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, y, 0))
+        idle()
+        assertEquals("the card got the touch and held the slide", listOf(true, false), host.pollHolds)
+        assertTrue("the slide did not page", host.taps.isEmpty())
+    }
+
     /** A tap at the middle of [target], dispatched to [root] as the window would. */
     private fun tapAt(root: View, target: View) {
         val origin = IntArray(2).also(root::getLocationInWindow)
