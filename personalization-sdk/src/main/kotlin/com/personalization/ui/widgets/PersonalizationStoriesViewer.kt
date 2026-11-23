@@ -277,6 +277,7 @@ class PersonalizationStoriesViewer(
             onSwipeForward = { apply(state.leaveLast()) }
             canSwipeUp = { swipeable() }
             onSwipeUp = { dismiss() }
+            verticalAsWeb = { v3 }
         }
         pager = ViewPager2(hostContext).apply {
             if (!nothingToShow) adapter = StoriesAdapter()

@@ -246,6 +246,12 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
     var canSwipeUp: () -> Boolean = { false }
     var onSwipeUp: (() -> Unit)? = null
 
+    /**
+     * Вертикальный свайп закрывает по правилу веб-SDK (API v3): длиннее 100 dp вверх или вниз и вертикальнее,
+     * чем вбок, — только по расстоянию, быстрый короткий свайп не закрывает. Иначе вниз — 120 dp или бросок.
+     */
+    var verticalAsWeb: () -> Boolean = { false }
+
     private enum class Swipe { BACK, FORWARD, UP }
     private var swipe: Swipe? = null
 
@@ -312,8 +318,8 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                     val (distance, speed) = when (taken) {
                         Swipe.BACK -> back to backSpeed
                         Swipe.FORWARD -> -back to -backSpeed
-                        // Как веб-SDK: вертикальнее, чем вбок.
-                        Swipe.UP -> (if (abs(dy) > abs(dx)) -dy else 0f) to -(tracker?.yVelocity ?: 0f)
+                        // Как веб-SDK: вертикальнее, чем вбок, и только по расстоянию.
+                        Swipe.UP -> (if (abs(dy) > abs(dx)) -dy else 0f) to 0f
                     }
                     velocity?.recycle()
                     velocity = null
@@ -341,9 +347,16 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                 val speedDp = (tracker?.yVelocity ?: 0f) / density
                 velocity?.recycle()
                 velocity = null
-                val far = translationY / density > DISMISS_DISTANCE_DP
-                val fast = event.actionMasked == MotionEvent.ACTION_UP && speedDp > DISMISS_VELOCITY_DP
-                if (far || fast) {
+                val close = if (verticalAsWeb()) {
+                    // Как веб-SDK: больше 100 dp вниз и вертикальнее, чем вбок; бросок не в счёт.
+                    val dy = event.rawY - downY
+                    event.actionMasked == MotionEvent.ACTION_UP && dy / density > SWIPE_DP && abs(dy) > abs(event.rawX - downX)
+                } else {
+                    val far = translationY / density > DISMISS_DISTANCE_DP
+                    val fast = event.actionMasked == MotionEvent.ACTION_UP && speedDp > DISMISS_VELOCITY_DP
+                    far || fast
+                }
+                if (close) {
                     animate().translationY(height.toFloat()).setDuration(ANIMATION_MS)
                         .withEndAction { onDismiss?.invoke() }.start()
                 } else {

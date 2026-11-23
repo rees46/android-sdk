@@ -350,6 +350,48 @@ class StoriesShareFlowTest {
         assertTrue(legacy.isShowing)
     }
 
+    /** A vertical swipe of [dyDp] (down positive) from the middle of the viewer, taking [durationMs]. */
+    private fun swipeVertically(viewer: PersonalizationStoriesViewer, dyDp: Float, durationMs: Long) {
+        val root = viewer.window!!.decorView
+        val density = root.resources.displayMetrics.density
+        val x = root.width / 2f
+        val y = root.height / 2f
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        for (step in 1..4) {
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs * step / 4, MotionEvent.ACTION_MOVE, x, y + dyDp * density * step / 4, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs, MotionEvent.ACTION_UP, x, y + dyDp * density, 0))
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500))
+    }
+
+    private fun legacyViewer() = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+        apiV3Domain = null
+        imageLoader = { _, _ -> }
+        pause()
+        show()
+        idle()
+    }
+
+    @Test
+    fun `on api v3 a vertical swipe closes by distance only, longer than 100 dp up or down, as the web SDK`() {
+        fun viewer() = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        // A short fast fling no longer closes, down or up.
+        viewer().also { swipeVertically(it, 60f, 40); assertTrue(it.isShowing) }
+        viewer().also { swipeVertically(it, -60f, 40); assertTrue(it.isShowing) }
+        // Slow but longer than 100 dp: closes, down and up.
+        viewer().also { swipeVertically(it, 110f, 1000); assertFalse(it.isShowing) }
+        viewer().also { swipeVertically(it, -110f, 1000); assertFalse(it.isShowing) }
+    }
+
+    @Test
+    fun `the legacy viewer keeps its vertical rule, down 120 dp or a fling`() {
+        legacyViewer().also { swipeVertically(it, 60f, 40); assertFalse("a fling down closes", it.isShowing) }
+        legacyViewer().also { swipeVertically(it, 110f, 1000); assertTrue("110 dp slowly is not enough", it.isShowing) }
+        legacyViewer().also { swipeVertically(it, 130f, 1000); assertFalse(it.isShowing) }
+        legacyViewer().also { swipeVertically(it, -130f, 1000); assertTrue("up does nothing", it.isShowing) }
+    }
+
     @Test
     fun `on api v3 a viewer with nothing to show closes at once, viewed, and never paints the screen black`() {
         val stories = StoriesApiV3.parse(
