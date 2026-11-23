@@ -660,7 +660,7 @@ class PersonalizationStoriesViewer(
         val answers = sdk?.let { runCatching { StoryPollAnswers.forSdk(hostContext, it, shopId) }.getOrNull() }
         @Suppress("DEPRECATION")
         val did = sdk?.let { runCatching { it.getDid() }.getOrNull() }
-        return StoryPollsContext(transport, texts.pollTexts.or(StoriesTexts.defaults(hostContext).pollTexts), answers, did)
+        return StoryPollsContext(transport, texts.pollTexts.or(PollTexts.DEFAULTS), answers, did)
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS

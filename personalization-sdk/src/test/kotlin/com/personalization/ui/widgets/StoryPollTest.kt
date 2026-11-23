@@ -365,10 +365,10 @@ class StoryPollTest {
 
     @Test
     @Config(qualifiers = "ru")
-    fun `russian defaults come from resources`() {
+    fun `the defaults are the english texts of the web SDK in a russian ui too`() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         assertEquals(
-            PollTexts("Ответить заново", "Не удалось отправить ответ. Попробуйте еще раз", "Отправить"),
+            PollTexts("Answer again", "Failed to send the answer. Please try again", "Send"),
             StoriesTexts.defaults(activity).pollTexts
         )
     }

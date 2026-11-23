@@ -550,7 +550,7 @@ class StoryPollViewTest {
 
     @Test
     @Config(qualifiers = "ru")
-    fun `the button of the band question is in Russian`() {
+    fun `the button of the band question is the english Send of the web SDK in a russian ui, the poll's label replaces it`() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val russian = PollHost(transport, StoriesTexts.defaults(activity))
         val view = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
@@ -558,7 +558,14 @@ class StoryPollViewTest {
              "answer":{"rate":2}}]}""")), 1, russian, null, 9001)
         activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         idle()
-        assertTrue(texts(view.pollCards.single()).containsAll(listOf("Почему?", "Отправить")))
+        assertTrue(texts(view.pollCards.single()).containsAll(listOf("Почему?", "Send")))
+
+        val labelled = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"poll","poll_type":"csat","labels":{"submit":"Отправить"},"poll":{"code":"c","bands":[{"from":1,"to":5,"question":"Почему?"}]},
+             "answer":{"rate":2}}]}""")), 1, russian, null, 9001)
+        activity.setContentView(labelled, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        idle()
+        assertTrue(texts(labelled.pollCards.single()).contains("Отправить"))
     }
 
     @Test

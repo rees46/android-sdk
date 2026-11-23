@@ -90,6 +90,17 @@ class StoryPollFlowTest {
     }
 
     @Test
+    @org.robolectric.annotation.Config(qualifiers = "ru")
+    fun `in a russian ui the built-in poll texts stay the english ones of the web SDK, the poll's labels replace them`() {
+        PersonalizationStories.show(context = activity, code = "main", sdk = sdk, shopId = "polls-ru", imageLoader = { _, _ -> }, apiV3Domain = "app.test")
+        idle()
+        val texts = card(viewer())!!.controller.texts
+        assertEquals("Send", texts.submit)
+        assertEquals("labels of the element", "Ответить заново", texts.reanswer)
+        assertEquals("Не удалось отправить ответ. Попробуйте еще раз", texts.error)
+    }
+
+    @Test
     fun `the old api draws no polls, with a transport neither`() {
         every { manager.requestStories(any(), any()) } answers {
             secondArg<OnApiCallbackListener>().onSuccess(StoriesApiV3.withoutNulls(JSONObject(feed).getJSONObject("payload")) as JSONObject)

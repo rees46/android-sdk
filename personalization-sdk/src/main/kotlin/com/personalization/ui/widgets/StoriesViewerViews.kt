@@ -37,7 +37,10 @@ internal data class StoriesTexts(
     val pollTexts: PollTexts get() = PollTexts(pollReanswerText, pollErrorText, pollSubmitText)
 
     companion object {
-        /** Тексты по умолчанию — из ресурсов SDK (английские, с переводом в `values-ru`). */
+        /**
+         * Тексты по умолчанию — из ресурсов SDK (английские, с переводом в `values-ru`). Три текста опросов —
+         * постоянные английские веб-SDK ([PollTexts.DEFAULTS]) при любом языке, как в веб-SDK.
+         */
         fun defaults(context: Context) = StoriesTexts(
             promoCaption = context.getString(R.string.personalization_stories_promo_caption),
             promoCopiedText = context.getString(R.string.personalization_stories_promo_copied),
@@ -49,9 +52,9 @@ internal data class StoriesTexts(
             soundOnLabel = context.getString(R.string.personalization_stories_sound_on),
             soundOffLabel = context.getString(R.string.personalization_stories_sound_off),
             shareLabel = context.getString(R.string.personalization_stories_share),
-            pollReanswerText = context.getString(R.string.personalization_stories_poll_reanswer),
-            pollErrorText = context.getString(R.string.personalization_stories_poll_error),
-            pollSubmitText = context.getString(R.string.personalization_stories_poll_submit)
+            pollReanswerText = PollTexts.DEFAULT_REANSWER,
+            pollErrorText = PollTexts.DEFAULT_ERROR,
+            pollSubmitText = PollTexts.DEFAULT_SUBMIT
         )
     }
 }

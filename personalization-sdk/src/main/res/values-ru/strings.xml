@@ -25,9 +25,10 @@
     <string name="personalization_stories_share">Поделиться</string>
     <string name="personalization_stories_sound_on">Звук включён</string>
     <string name="personalization_stories_sound_off">Звук выключен</string>
-    <string name="personalization_stories_poll_reanswer">Ответить заново</string>
-    <string name="personalization_stories_poll_error">Не удалось отправить ответ. Попробуйте еще раз</string>
-    <string name="personalization_stories_poll_submit">Отправить</string>
+    <!-- Shipped since 2.47.0; the poll card now uses the English texts of the web SDK, an app may still reference them. -->
+    <string name="personalization_stories_poll_reanswer" tools:ignore="UnusedResources">Ответить заново</string>
+    <string name="personalization_stories_poll_error" tools:ignore="UnusedResources">Не удалось отправить ответ. Попробуйте еще раз</string>
+    <string name="personalization_stories_poll_submit" tools:ignore="UnusedResources">Отправить</string>
     <!-- Shipped in 2.47.0–2.51.0; the poll card no longer uses them, an app may still reference them. -->
     <string name="personalization_stories_poll_results" tools:ignore="UnusedResources">Результаты</string>
     <string name="personalization_stories_poll_thanks" tools:ignore="UnusedResources">Спасибо!</string>

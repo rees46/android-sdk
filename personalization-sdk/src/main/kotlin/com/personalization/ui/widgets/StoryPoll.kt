@@ -333,10 +333,15 @@ internal data class PollTexts(val reanswer: CharSequence, val error: CharSequenc
     )
 
     companion object {
-        /** Умолчания без ресурсов — как в веб-SDK. */
+        /**
+         * Встроенные тексты — `DEFAULT_POLL_TEXTS` веб-SDK: английские при любом языке устройства. Их заменяют
+         * тексты хоста и `labels` опроса, кнопку — ещё и `submit_label`.
+         */
         const val DEFAULT_REANSWER = "Answer again"
         const val DEFAULT_ERROR = "Failed to send the answer. Please try again"
         const val DEFAULT_SUBMIT = "Send"
+
+        val DEFAULTS = PollTexts(DEFAULT_REANSWER, DEFAULT_ERROR, DEFAULT_SUBMIT)
     }
 }
 
