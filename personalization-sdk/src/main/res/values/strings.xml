@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="notification_channel_id" translatable="false">notification_channel</string>
     <string name="notification_channel_name" translatable="false">notification_channel</string>
 
@@ -40,5 +40,13 @@
     <string name="personalization_stories_poll_reanswer">Answer again</string>
     <string name="personalization_stories_poll_error">Failed to send the answer. Please try again</string>
     <string name="personalization_stories_poll_submit">Send</string>
+    <!-- Shipped in 2.47.0–2.51.0; the poll card no longer uses them, an app may still reference them. -->
+    <string name="personalization_stories_poll_results" tools:ignore="UnusedResources">Results</string>
+    <string name="personalization_stories_poll_thanks" tools:ignore="UnusedResources">Thanks!</string>
+    <string name="personalization_stories_poll_vote_counted" tools:ignore="UnusedResources">Vote counted</string>
+    <plurals name="personalization_stories_poll_votes" tools:ignore="UnusedResources">
+        <item quantity="one">%s vote</item>
+        <item quantity="other">%s votes</item>
+    </plurals>
 
 </resources>
