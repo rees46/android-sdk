@@ -216,6 +216,13 @@ internal object StoriesMapping {
 
     fun isVideo(slide: Slide, v3: Boolean): Boolean = if (v3) slide.type == TYPE_VIDEO else isVideo(slide)
 
+    /**
+     * API v3: слайд показывается, как `show()` веб-SDK — `image`, `video` или слайд с элементом `product`;
+     * остальные пропускаются ([StoriesViewerState.SlideShape.skipped]).
+     */
+    fun isShownV3(slide: Slide): Boolean =
+        slide.type == TYPE_IMAGE || slide.type == TYPE_VIDEO || slide.getElements().any { it is ProductElement }
+
     /** API v3 (R2): цвет слайда — его `background_color`; нет его или это не цвет — `null`. */
     fun ownColor(slide: Slide): Int? = parseColor(slide.ownBackgroundColor)
 

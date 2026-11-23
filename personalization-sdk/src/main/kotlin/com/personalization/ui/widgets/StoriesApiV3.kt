@@ -44,7 +44,6 @@ internal object StoriesApiV3 {
     var runner: (Runnable) -> Unit = { Thread(it).start() }
 
     private const val PATH = "/api/v3/storefront/stories/"
-    private const val PRODUCT = "product"
     private const val CONNECT_TIMEOUT_MS = 5_000
     private const val READ_TIMEOUT_MS = 10_000
     private val JSON = "application/json".toMediaType()
@@ -116,50 +115,15 @@ internal object StoriesApiV3 {
     /**
      * Ответ GET: `{"status":"success","payload":{…}}` → сторис из `payload` тем же разбором,
      * что старая лента. JSON `null` (в v3 у товарных слайдов `background` и `preview`) убирается
-     * до моделей: иначе `optString` отдал бы строку `"null"`. Слайды, которые веб-SDK пропускает,
-     * убираются ([shownSlides]).
+     * до моделей: иначе `optString` отдал бы строку `"null"`. Слайды, которые веб-SDK пропускает, и
+     * `start_position` остаются как пришли: их проходит просмотр ([StoriesViewerState]).
      */
     fun parse(body: String): List<Story> {
         val json = envelope(body)
         val status = json.optString("status")
         require(status == "success") { "status $status" }
         val payload = json.optJSONObject("payload") ?: throw IllegalArgumentException("no payload")
-        return StoriesLoader.parse(shownSlides(withoutNulls(payload) as JSONObject))
-    }
-
-    /**
-     * Только слайды, которые показывает веб-SDK (`show()` в stories.js): `image`, `video` и слайд с
-     * элементом `product`. Остальные он пропускает — сразу листает дальше, не отправляя `view`; здесь
-     * их нет вовсе. `start_position` встаёт на первый показанный слайд с той же позиции или дальше;
-     * дальше таких нет — на начало, как у веба после пропуска. Сторис без показанных слайдов в ленту
-     * не попадает ([StoriesLoader.parse]).
-     */
-    fun shownSlides(payload: JSONObject): JSONObject {
-        val stories = payload.optJSONArray("stories") ?: return payload
-        for (i in 0 until stories.length()) {
-            val story = stories.optJSONObject(i) ?: continue
-            val slides = story.optJSONArray("slides") ?: continue
-            val position = story.optInt("start_position", 0)
-            val kept = JSONArray()
-            var start = -1
-            for (index in 0 until slides.length()) {
-                val slide = slides.optJSONObject(index) ?: continue
-                if (!isShown(slide)) continue
-                if (start < 0 && index >= position) start = kept.length()
-                kept.put(slide)
-            }
-            story.put("slides", kept)
-            if (story.has("start_position")) story.put("start_position", start.coerceAtLeast(0))
-        }
-        return payload
-    }
-
-    /** Веб-SDK показывает слайд: медиа по `type` или элемент `product`. */
-    fun isShown(slide: JSONObject): Boolean {
-        val type = slide.optString("type")
-        if (type == StoriesMapping.TYPE_IMAGE || type == StoriesMapping.TYPE_VIDEO) return true
-        val elements = slide.optJSONArray("elements") ?: return false
-        return (0 until elements.length()).any { elements.optJSONObject(it)?.optString("type") == PRODUCT }
+        return StoriesLoader.parse(withoutNulls(payload) as JSONObject)
     }
 
     /**

@@ -221,6 +221,50 @@ class StoriesShareFlowTest {
     }
 
     @Test
+    fun `on api v3 a story with nothing to show stays in the bar, opening it shows the next one and views it`() {
+        answer = { StoriesApiV3.Response(200, SKIPPING) }
+        val widget = widget(apiV3Domain = "app.rees46.ru")
+        assertEquals(listOf(60, 61), widget.stories.map { it.id })
+        assertEquals(2, widget.bar.items.size)
+
+        widget.open(0)
+        idle()
+        val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
+        assertTrue(viewer.isShowing)
+        // Story 61 opens at its first shown slide; the skipped slide keeps its segment, filled.
+        val shown = all(viewer.window!!.decorView).filterIsInstance<PersonalizationStoryNavigation>().single { it.progress.count == 2 }
+        assertEquals(1, shown.progress.current)
+        assertEquals(listOf("view:611"), events())
+        viewer.dismiss()
+        idle()
+        assertTrue(widget.stories[0].isViewed)
+        assertEquals(com.personalization.ui.components.PersonalizationStoryCover.State.VIEWED, widget.bar.items[0].state)
+    }
+
+    @Test
+    fun `on api v3 a viewer with nothing to show closes at once, viewed, and never paints the screen black`() {
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":60,"name":"Text","slides":[
+            {"id":600,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]}]}}"""
+        )
+        var closed = 0
+        val viewer = PersonalizationStoriesViewer(activity, stories).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            setOnDismissListener { closed++ }
+        }
+        viewer.show()
+        assertFalse((viewer.window!!.decorView.background as? android.graphics.drawable.ColorDrawable)?.color == android.graphics.Color.BLACK)
+        idle()
+        assertFalse(viewer.isShowing)
+        assertEquals(1, closed)
+        assertTrue(stories[0].isViewed)
+        assertTrue(events().isEmpty())
+    }
+
+    @Test
     fun `on api v3 a button without a link sends click and opens nothing, a promo code copy sends nothing`() {
         val clicked = mutableListOf<String>()
         val stories = StoriesApiV3.parse(
@@ -465,6 +509,13 @@ class StoriesShareFlowTest {
              "elements":[{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽"}}]},
             {"id":"39_1","type":"","background":null,"preview":null,
              "elements":[{"type":"product","item":{"id":"p2","name":"Boots","price_formatted":"200 ₽"}}]}]}]}}"""
+
+        /** Story 60 has nothing to show; story 61 starts on a skipped slide. */
+        const val SKIPPING = """{"status":"success","payload":{"id":1,"stories":[
+            {"id":60,"name":"Text","slides":[{"id":600,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]},
+            {"id":61,"name":"Media","start_position":0,"slides":[
+            {"id":610,"type":"","background_color":"#123456","elements":[]},
+            {"id":611,"type":"image","background":"https://cdn.test/a.jpg","elements":[]}]}]}}"""
 
         const val PRODUCTS = """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"Products",
             "share_url":"https://shop.test/?r46_story=39","slides":[{"id":"39_0","type":"","background":null,"preview":null,

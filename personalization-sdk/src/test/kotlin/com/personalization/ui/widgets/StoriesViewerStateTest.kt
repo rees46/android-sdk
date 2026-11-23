@@ -87,6 +87,127 @@ class StoriesViewerStateTest {
         assertEquals(setOf(0, 1, 2), state.leftForward)
     }
 
+    // --- API v3: slides the web SDK skips (no image, no video, no product element) ---------------------
+
+    @Test
+    fun `on api v3 a skipped slide is passed forward and stepped over backward, its segment stays`() {
+        // Slides 0 and 3 are shown, 1 and 2 are skipped.
+        val state = v3(skipping(1, "SKKS"), skipping(2, "S"))
+        state.enter()
+        assertEquals(0, state.slideIndex)
+        assertEquals(Move.Slide, state.next())
+        assertEquals("the progress keeps all four segments, the skipped ones filled", 3, state.slideIndex)
+        assertEquals(4, state.story!!.slides.size)
+        assertEquals(3, state.positionOf(0))
+
+        assertEquals(Move.Slide, state.previous())
+        assertEquals("back steps over the skipped slides", 0, state.slideIndex)
+        assertEquals(Move.Close, state.previous())
+        assertTrue(state.leftForward.isEmpty())
+    }
+
+    @Test
+    fun `on api v3 start_position on a skipped slide opens the next shown one`() {
+        val state = v3(skipping(1, "SKS", startPosition = 1))
+        assertEquals(2, state.slideIndex)
+        assertEquals(2, state.startSlideOf(0))
+        assertFalse(state.closedAtStart)
+    }
+
+    @Test
+    fun `on api v3 no shown slide after start_position finishes the story, viewed, and the next one opens`() {
+        val state = v3(skipping(1, "SK", startPosition = 1), skipping(2, "KS"), skipping(3, "S"))
+        assertEquals(1, state.storyIndex)
+        assertEquals(1, state.slideIndex)
+        assertEquals(setOf(0), state.leftForward)
+        assertEquals("played through, it opens from the start next time", 0, state.positionOf(0))
+
+        // The last story played through, the next shown slide is in no story: the viewer closes.
+        val last = v3(skipping(1, "S"), skipping(2, "SK", startPosition = 1), start = 1)
+        assertTrue(last.closedAtStart)
+        assertEquals(setOf(1), last.leftForward)
+    }
+
+    @Test
+    fun `on api v3 a story with only skipped slides is passed forward and viewed, the last one closes`() {
+        val state = v3(skipping(1, "S"), skipping(2, "KK"), skipping(3, "K"), skipping(4, "KS"))
+        state.enter()
+        assertEquals(Move.Story(3), state.next())
+        assertEquals(setOf(0, 1, 2), state.leftForward)
+        state.selectStory(3)
+        state.enter()
+        assertEquals(1, state.slideIndex)
+        assertEquals(Move.Close, state.next())
+
+        // Opened on such a story: it is viewed, the viewer starts on the next one.
+        val opened = v3(skipping(1, "K"), skipping(2, "S"))
+        assertEquals(1, opened.storyIndex)
+        assertEquals(setOf(0), opened.leftForward)
+        // Nothing to show at all: the viewer closes without showing anything.
+        val nothing = v3(skipping(1, "KK"), skipping(2, "K"))
+        assertTrue(nothing.closedAtStart)
+        assertEquals(setOf(0, 1), nothing.leftForward)
+    }
+
+    @Test
+    fun `on api v3 back from a story steps over the stories with nothing to show, none before closes`() {
+        val state = v3(skipping(1, "SS"), skipping(2, "K"), skipping(3, "S"), start = 2)
+        state.enter()
+        assertEquals(Move.Story(0), state.previous())
+        assertTrue(state.leftForward.isEmpty())
+
+        val first = v3(skipping(1, "K"), skipping(2, "S"), start = 1)
+        first.enter()
+        assertEquals(Move.Close, first.previous())
+    }
+
+    @Test
+    fun `on api v3 the pager settling on a story with nothing to show passes it on`() {
+        val state = v3(skipping(1, "S"), skipping(2, "K"), skipping(3, "S"), skipping(4, "K"))
+        state.enter()
+        assertEquals(null, state.passThrough())
+        // A swipe forward onto it: viewed, on to the next story.
+        state.selectStory(1)
+        assertEquals(Move.Story(2), state.passThrough())
+        assertEquals(setOf(0, 1), state.leftForward)
+        state.selectStory(2)
+        state.enter()
+        // A swipe back onto it: stepped over backward, not viewed again.
+        val back = v3(skipping(1, "S"), skipping(2, "K"), skipping(3, "S"), start = 2)
+        back.enter()
+        back.selectStory(1)
+        assertEquals(Move.Story(0), back.passThrough())
+        assertTrue(back.leftForward.isEmpty())
+        // The host opens it: as the web SDK, viewed and on to the next one, here none — close.
+        state.selectStory(2)
+        assertEquals(Move.Story(3), state.jumpTo(3))
+        state.selectStory(3)
+        assertEquals(Move.Close, state.passThrough())
+        assertTrue(3 in state.leftForward)
+    }
+
+    @Test
+    fun `on api v3 the link's slide sets only the first open, a skipped one hands over to the next shown`() {
+        val state = StoriesViewerState(listOf(skipping(1, "SKSS")), seen, 0, startSlide = 1, feedPositions = true)
+        assertEquals(2, state.slideIndex)
+        state.enter()
+        state.next()
+        assertEquals("the position follows the session from there", 3, state.positionOf(0))
+
+        val none = StoriesViewerState(listOf(skipping(1, "SK")), seen, 0, startSlide = 1, feedPositions = true)
+        assertTrue(none.closedAtStart)
+        assertEquals(setOf(0), none.leftForward)
+    }
+
+    @Test
+    fun `on api v3 the preload looks past the skipped slides and stories`() {
+        val state = v3(skipping(1, "SKS"), skipping(2, "K"), skipping(3, "KS"))
+        state.enter()
+        assertEquals(0 to 2, state.upcoming())
+        state.next()
+        assertEquals(2 to 1, state.upcoming())
+    }
+
     @Test
     fun `the start position is clamped to the slides`() {
         assertEquals(2, state(story(1, slides = 3, startPosition = 9)).slideIndex)
@@ -376,6 +497,12 @@ class StoriesViewerStateTest {
         viewed: Boolean = false,
         durationMs: Long = StoriesMapping.DEFAULT_DURATION_MS
     ) = StoryShape(id, List(slides) { SlideShape("${id}_$it", durationMs) }, viewed, startPosition)
+
+    private fun v3(vararg stories: StoryShape, start: Int = 0) = StoriesViewerState(stories.toList(), seen, start, feedPositions = true)
+
+    /** A story whose slides are shown (`S`) or skipped (`K`), as [pattern] says. */
+    private fun skipping(id: Int, pattern: String, startPosition: Int = 0) =
+        StoryShape(id, pattern.mapIndexed { index, kind -> SlideShape("${id}_$index", StoriesMapping.DEFAULT_DURATION_MS, skipped = kind == 'K') }, false, startPosition)
 
     private class MemorySeen : SeenSlides {
         private val map = HashMap<Int, MutableSet<String>>()

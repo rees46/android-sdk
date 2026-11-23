@@ -257,7 +257,9 @@ class PersonalizationStoriesViewer(
         state.setPaused(Pause.HOST, hostPaused)
         created = true
         OpenStoriesViewers.add(this)
-        setupWindow()
+        // API v3: показывать нечего — окно остаётся прозрачным и закрывается сразу, без чёрного экрана.
+        val nothingToShow = state.closedAtStart
+        if (!nothingToShow) setupWindow()
 
         root = StoryDismissLayout(hostContext).apply {
             canDrag = { !state.sheetOpen }
@@ -268,7 +270,7 @@ class PersonalizationStoriesViewer(
             onDismiss = { dismiss() }
         }
         pager = ViewPager2(hostContext).apply {
-            adapter = StoriesAdapter()
+            if (!nothingToShow) adapter = StoriesAdapter()
             offscreenPageLimit = 1
             registerOnPageChangeCallback(pageCallback)
         }
@@ -288,7 +290,7 @@ class PersonalizationStoriesViewer(
         audioFocus = StoriesAudioFocus(hostContext) { silence() }
         observeHost()
 
-        if (stories.isEmpty()) {
+        if (stories.isEmpty() || nothingToShow) {
             handler.post { dismiss() }
             return
         }
@@ -417,7 +419,8 @@ class PersonalizationStoriesViewer(
         id = story.id,
         slides = List(story.slidesCount) { index ->
             val slide = story.getSlide(index)
-            StoriesViewerState.SlideShape(slide.id, StoriesMapping.durationMs(slide))
+            // API v3, как веб-SDK: слайд без медиа и без товара пропускается.
+            StoriesViewerState.SlideShape(slide.id, StoriesMapping.durationMs(slide), skipped = v3 && !StoriesMapping.isShownV3(slide))
         },
         serverViewed = story.isViewed,
         startPosition = story.startPosition
@@ -461,6 +464,11 @@ class PersonalizationStoriesViewer(
         if (!created || dismissed) return
         // Ушедшие сторис откроются по правилу A4 — их страницы показывают стартовый слайд.
         pages.forEach { (index, page) -> if (index != state.storyIndex) page.showSlide(slideFor(index)) }
+        // API v3: у сторис нет слайда для показа — просмотр проходит её, как веб-SDK.
+        state.passThrough()?.let { move ->
+            apply(move)
+            return
+        }
         if (state.enter()) onSlideStarted()
         sync()
     }
@@ -997,15 +1005,10 @@ class PersonalizationStoriesViewer(
         if (wanted) focus.request() else focus.abandon()
     }
 
-    /** Следующий слайд — заранее (C6): картинка или превью и начало видео. */
+    /** Следующий слайд — заранее (C6): картинка или превью и начало видео. Пропущенные — мимо. */
     private fun preloadNext() {
-        val story = stories.getOrNull(state.storyIndex) ?: return
-        val next = when {
-            state.slideIndex + 1 < story.slidesCount -> story.getSlide(state.slideIndex + 1)
-            state.storyIndex + 1 < stories.size ->
-                stories[state.storyIndex + 1].getSlide(state.startSlideOf(state.storyIndex + 1))
-            else -> return
-        }
+        val (storyIndex, slideIndex) = state.upcoming() ?: return
+        val next = stories.getOrNull(storyIndex)?.takeIf { slideIndex in 0 until it.slidesCount }?.getSlide(slideIndex) ?: return
         if (StoriesMapping.isVideo(next, v3)) {
             StoriesMediaCache.preloadVideo(hostContext, next.background)
             preloadImage(next.preview)
