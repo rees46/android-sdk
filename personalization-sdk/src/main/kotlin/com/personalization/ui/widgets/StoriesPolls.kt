@@ -62,7 +62,7 @@ data class StoriesPollAnswer(
     val id: Long? = null,
     val comment: String? = null
 ) : Serializable {
-    /** Ответ есть: непустые варианты, непустой текст или любая оценка — как `hasAnswer` веб-SDK. */
+    /** Ответ есть: непустые варианты, непустой текст или оценка-число — как `hasAnswer` веб-SDK. */
     val isAnswered: Boolean
         get() = !optionIds.isNullOrEmpty() || !text.isNullOrEmpty() || rate != null
 }

@@ -178,9 +178,14 @@ class StoryPollTest {
     fun `any number of rate is an answer, a fractional one finds its band`() {
         fun answer(rate: String) = StoryPoll.answer(JSONObject("""{"rate":$rate}"""))
         assertEquals(6.5, answer("6.5").rate)
-        assertEquals(3.0, answer("\"3\"").rate)
         assertTrue(answer("6.5").isAnswered)
+        assertTrue(answer("0").isAnswered)
+        // As hasAnswer of the web SDK: a rate is a number, a string is none.
+        assertNull(answer("\"3\"").rate)
+        assertFalse(answer("\"3\"").isAnswered)
         assertFalse(answer("\"x\"").isAnswered)
+        assertFalse(StoryPoll.answer(JSONObject("""{"option_ids":[],"text":""}""")).isAnswered)
+        assertTrue(StoryPoll.answer(JSONObject("""{"option_ids":[3]}""")).isAnswered)
         val bands = listOf(StoryPoll.Band(0.0, 6.0, "A"), StoryPoll.Band(6.0, 7.0, "B"))
         assertEquals("B", StoryPoll.bandText(bands, 6.5))
         assertNull(StoryPoll.bandText(bands.take(1), 6.5))

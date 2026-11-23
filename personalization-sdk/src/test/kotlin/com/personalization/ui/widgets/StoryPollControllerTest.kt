@@ -429,6 +429,20 @@ class StoryPollControllerTest {
     }
 
     @Test
+    fun `a freshly loaded feed's answer wins over one sent in this process, which wins over the saved one`() {
+        val cached = miniPoll("single_choice")
+        card(cached).choose(1)
+        transport.succeed(null, null)
+        // The device record goes stale; the slide built again from the same feed keeps the sent answer.
+        answers.write(KEY, StoriesPollAnswer(optionIds = listOf(3)), null)
+        assertEquals(listOf(1), card(cached).answer!!.optionIds)
+        // A feed loaded again with its own answer wins over both.
+        assertEquals(listOf(2), card(miniPoll("single_choice", element = ANSWERED)).answer!!.optionIds)
+        // A feed loaded again without one: the saved answer.
+        assertEquals(listOf(3), card(miniPoll("single_choice")).answer!!.optionIds)
+    }
+
+    @Test
     fun `without a did nothing is read or written`() {
         answers.write(KEY, StoriesPollAnswer(optionIds = listOf(3)), null)
         val card = card(miniPoll("single_choice"), did = "")
@@ -458,10 +472,19 @@ class StoryPollControllerTest {
         preferences.edit().putString(KEY, """{"answer":{"rate":5}}""").commit()
         assertNull(answers.read(KEY))
         assertFalse(preferences.contains(KEY))
+        // A record that does not parse is deleted too.
         preferences.edit().putString(KEY, """{"answer":null,"saved_at":$now}""").commit()
         assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        preferences.edit().putString(KEY, """{"answer":"Книга","saved_at":$now}""").commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
         preferences.edit().putString(KEY, "not json").commit()
         assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        preferences.edit().putInt(KEY, 5).commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
     }
 
     @Test

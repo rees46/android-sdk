@@ -121,23 +121,26 @@ internal class StoryPollAnswers internal constructor(
         return listOf(PREFIX, did, pollType, code, storyId.toString(), slideId).joinToString("_")
     }
 
-    /** Сохранённый ответ; нет, не разобрался — `null`, устарел или без даты — удаляется. */
+    /** Сохранённый ответ; нет — `null`; не разобрался, устарел или без даты — удаляется и `null`. */
     @Synchronized
     fun read(key: String?): Entry? {
         if (key == null) return null
-        return try {
-            val raw = preferences.getString(key, null) ?: return null
+        val raw = try {
+            preferences.getString(key, null)
+        } catch (_: ClassCastException) {
+            ""
+        } ?: return null
+        val entry = try {
             val json = JSONObject(raw)
-            val answer = json.optJSONObject("answer") ?: return null
+            val answer = json.optJSONObject("answer")
             val savedAt = json.opt("saved_at")
-            if (savedAt !is Number || now() - savedAt.toLong() > TTL_MS) {
-                preferences.edit().remove(key).apply()
-                return null
-            }
-            Entry(StoryPoll.answer(answer), json.optJSONObject("results")?.let(StoryPoll::results))
+            if (answer == null || savedAt !is Number || now() - savedAt.toLong() > TTL_MS) null
+            else Entry(StoryPoll.answer(answer), json.optJSONObject("results")?.let(StoryPoll::results))
         } catch (_: Exception) {
             null
         }
+        if (entry == null) preferences.edit().remove(key).apply()
+        return entry
     }
 
     @Synchronized

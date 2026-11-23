@@ -166,11 +166,14 @@ internal class StoryPoll(
             return null
         }
 
-        /** `answer` ленты или ответа сервера: `{id, option_ids, text, rate}`. */
+        /**
+         * `answer` ленты или ответа сервера: `{id, option_ids, text, rate}`. Оценка — только число JSON, как
+         * `typeof rate === 'number'` в `hasAnswer` веб-SDK: строка — не оценка.
+         */
         fun answer(json: JSONObject): StoriesPollAnswer = StoriesPollAnswer(
             optionIds = (json.value("option_ids") as? JSONArray)?.let { ids -> (0 until ids.length()).mapNotNull { int(ids.opt(it)) } },
             text = json.value("text") as? String,
-            rate = number(json.value("rate")),
+            rate = (json.value("rate") as? Number)?.toDouble()?.takeIf { !it.isNaN() && !it.isInfinite() },
             id = number(json.value("id"))?.toLong(),
             comment = json.value("comment") as? String
         )
