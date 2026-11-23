@@ -408,6 +408,12 @@ class StoriesMappingTest {
         assertNull("no colour — none, the legacy #FFFFFF is not applied", color("text_background_color_opacity" to "50%"))
         assertNull(color())
         assertNull(color("text_background_color" to "white", "text_background_color_opacity" to "50%"))
+        // A colour with its own alpha: a valid opacity replaces it, without one the colour keeps it.
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "#FF573340", "text_background_color_opacity" to "50%"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "rgba(255, 87, 51, 0.25)", "text_background_color_opacity" to 100))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340"))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340", "text_background_color_opacity" to 0))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340", "text_background_color_opacity" to "150"))
     }
 
     @Test

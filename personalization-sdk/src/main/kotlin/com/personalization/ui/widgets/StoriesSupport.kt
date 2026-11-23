@@ -321,14 +321,15 @@ internal object StoriesMapping {
 
     /**
      * Подложка текстового блока на API v3, как `calculateOpacity` веб-SDK: цвет ([StoriesColor]) с прозрачностью
-     * [opacityPercent]; прозрачности нет или она не проценты 0…100 — цвет как есть, непрозрачный; 0 % или нет
-     * цвета — без фона. Умолчаний старой ленты (`#FFFFFF`, `0%`) нет.
+     * [opacityPercent], которая заменяет прозрачность самого цвета (`#RRGGBBAA`, `rgba()`); прозрачности нет или она
+     * не проценты 0…100 — цвет как есть, со своей прозрачностью; 0 % или нет цвета — без фона. Умолчаний старой
+     * ленты (`#FFFFFF`, `0%`) нет.
      */
     fun textBlockColorV3(element: TextBlockElement): Int? {
         val color = StoriesColor.parse(element.ownBackgroundColor) ?: return null
         val raw = element.ownBackgroundOpacity?.takeIf { it.isNotEmpty() } ?: return color
         val percent = opacityPercent(raw) ?: return color
-        val alpha = Math.round(Color.alpha(color) * percent / 100f)
+        val alpha = Math.round(255 * percent / 100f)
         return if (alpha <= 0) null else ColorUtils.setAlphaComponent(color, alpha)
     }
 
