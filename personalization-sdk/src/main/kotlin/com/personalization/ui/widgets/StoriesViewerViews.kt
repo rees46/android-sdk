@@ -234,6 +234,14 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
     var onDragChange: ((Boolean) -> Unit)? = null
     var onDismiss: (() -> Unit)? = null
 
+    /**
+     * Свайп к предыдущей сторис там, где её нет (API v3, первая сторис): пейджеру листать некуда, жест берёт
+     * этот слой, и при длинном или быстром свайпе зовёт [onSwipeBack].
+     */
+    var canSwipeBack: () -> Boolean = { false }
+    var onSwipeBack: (() -> Unit)? = null
+    private var swipingBack = false
+
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val density = resources.displayMetrics.density
     private var velocity: VelocityTracker? = null
@@ -247,6 +255,7 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                 downX = event.rawX
                 downY = event.rawY
                 dragging = false
+                swipingBack = false
                 velocity?.recycle()
                 velocity = VelocityTracker.obtain()
                 track(event)
@@ -260,6 +269,12 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                     onDragChange?.invoke(true)
                     return true
                 }
+                // К предыдущей странице: вправо, в RTL — влево.
+                val back = if (layoutDirection == View.LAYOUT_DIRECTION_RTL) -dx else dx
+                if (canSwipeBack() && back > touchSlop && back > abs(dy) * 1.5f) {
+                    swipingBack = true
+                    return true
+                }
             }
         }
         return false
@@ -267,6 +282,24 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (swipingBack) {
+            track(event)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_UP -> {
+                    swipingBack = false
+                    val tracker = velocity
+                    tracker?.computeCurrentVelocity(1000)
+                    val back = if (layoutDirection == View.LAYOUT_DIRECTION_RTL) downX - event.rawX else event.rawX - downX
+                    val speed = (tracker?.xVelocity ?: 0f).let { if (layoutDirection == View.LAYOUT_DIRECTION_RTL) -it else it } / density
+                    velocity?.recycle()
+                    velocity = null
+                    // Как свайп веб-SDK (больше 100 px) — или быстрый.
+                    if (back / density > SWIPE_BACK_DP || speed > DISMISS_VELOCITY_DP) onSwipeBack?.invoke()
+                }
+                MotionEvent.ACTION_CANCEL -> swipingBack = false
+            }
+            return true
+        }
         if (!dragging) return super.onTouchEvent(event)
         track(event)
         when (event.actionMasked) {
@@ -302,6 +335,7 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
 
     private companion object {
         const val DISMISS_DISTANCE_DP = 120f
+        const val SWIPE_BACK_DP = 100f
         const val DISMISS_VELOCITY_DP = 800f
         const val ANIMATION_MS = 200L
     }

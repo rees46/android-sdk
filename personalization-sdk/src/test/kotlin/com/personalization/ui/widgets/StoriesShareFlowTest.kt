@@ -242,6 +242,52 @@ class StoriesShareFlowTest {
     }
 
     @Test
+    fun `a link to a story with nothing to show sends shared_open and shows nothing`() {
+        answer = {
+            StoriesApiV3.Response(200, """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"Text","start_position":0,
+                "slides":[{"id":37,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]}]}}""")
+        }
+        var closed = 0
+        assertTrue(PersonalizationStories.handleLink(activity, LINK, sdk = sdk, onClose = { closed++ }, imageLoader = { _, _ -> }))
+        idle()
+        assertEquals(listOf("shared_open:37"), events())
+        assertTrue(ShadowDialog.getShownDialogs().none { it.isShowing })
+        assertEquals(1, closed)
+    }
+
+    @Test
+    fun `on api v3 a back swipe on the first story closes the viewer, as the web SDK`() {
+        fun swipeRight(viewer: PersonalizationStoriesViewer) {
+            val root = viewer.window!!.decorView
+            val y = root.height / 2f
+            val width = root.width.toFloat()
+            val now = SystemClock.uptimeMillis()
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, width * 0.1f, y, 0))
+            listOf(0.2f, 0.4f, 0.6f, 0.9f).forEachIndexed { step, x ->
+                root.dispatchTouchEvent(MotionEvent.obtain(now, now + 100L * (step + 1), MotionEvent.ACTION_MOVE, width * x, y, 0))
+            }
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + 600, MotionEvent.ACTION_UP, width * 0.9f, y, 0))
+            idle()
+        }
+        val first = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        assertTrue(first.window!!.decorView.width * 0.8f / first.context.resources.displayMetrics.density > 100f)
+        swipeRight(first)
+        assertFalse(first.isShowing)
+        assertTrue("a swipe is no tap: nothing was paged", events().none { it.startsWith("view:36") })
+
+        // The legacy viewer keeps its behaviour: nothing to page back to, it stays.
+        val legacy = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipeRight(legacy)
+        assertTrue(legacy.isShowing)
+    }
+
+    @Test
     fun `on api v3 a viewer with nothing to show closes at once, viewed, and never paints the screen black`() {
         val stories = StoriesApiV3.parse(
             """{"status":"success","payload":{"id":1,"stories":[{"id":60,"name":"Text","slides":[

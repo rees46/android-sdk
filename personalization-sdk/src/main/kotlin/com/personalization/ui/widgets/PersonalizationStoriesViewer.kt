@@ -269,6 +269,9 @@ class PersonalizationStoriesViewer(
                 updateDrag()
             }
             onDismiss = { dismiss() }
+            // API v3, как веб-SDK: свайп назад на первой сторис закрывает просмотр, как тап назад на её первом слайде.
+            canSwipeBack = { v3 && created && !dismissed && !state.sheetOpen && state.storyIndex == 0 && pager.currentItem == 0 }
+            onSwipeBack = { dismiss() }
         }
         pager = ViewPager2(hostContext).apply {
             if (!nothingToShow) adapter = StoriesAdapter()
