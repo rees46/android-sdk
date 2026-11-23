@@ -237,7 +237,8 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
     /**
      * Свайпы API v3, как в веб-SDK, которые берёт этот слой, а не пейджер: к предыдущей сторис там, где её нет
      * (первая сторис), — [onSwipeBack]; к следующей там, где её нет (последняя), — [onSwipeForward]; вверх —
-     * [onSwipeUp]. Срабатывают при длинном или быстром свайпе. Вниз — перетаскивание [onDismiss], как было.
+     * [onSwipeUp]. Срабатывают только по расстоянию, как в веб-SDK: длиннее 100 dp. Вниз — перетаскивание
+     * [onDismiss], как было.
      */
     var canSwipeBack: () -> Boolean = { false }
     var onSwipeBack: (() -> Unit)? = null
@@ -308,23 +309,20 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
             when (event.actionMasked) {
                 MotionEvent.ACTION_UP -> {
                     swipe = null
-                    val tracker = velocity
-                    tracker?.computeCurrentVelocity(1000)
                     val rtl = layoutDirection == View.LAYOUT_DIRECTION_RTL
                     val dx = event.rawX - downX
                     val dy = event.rawY - downY
                     val back = if (rtl) -dx else dx
-                    val backSpeed = (tracker?.xVelocity ?: 0f).let { if (rtl) -it else it }
-                    val (distance, speed) = when (taken) {
-                        Swipe.BACK -> back to backSpeed
-                        Swipe.FORWARD -> -back to -backSpeed
-                        // Как веб-SDK: вертикальнее, чем вбок, и только по расстоянию.
-                        Swipe.UP -> (if (abs(dy) > abs(dx)) -dy else 0f) to 0f
+                    // Как веб-SDK: только по расстоянию, вбок — горизонтальнее, чем вертикально, вверх — наоборот.
+                    val distance = when (taken) {
+                        Swipe.BACK -> if (abs(dx) > abs(dy)) back else 0f
+                        Swipe.FORWARD -> if (abs(dx) > abs(dy)) -back else 0f
+                        Swipe.UP -> if (abs(dy) > abs(dx)) -dy else 0f
                     }
                     velocity?.recycle()
                     velocity = null
-                    // Как свайп веб-SDK (больше 100 px) — или быстрый.
-                    if (distance / density > SWIPE_DP || speed / density > DISMISS_VELOCITY_DP) {
+                    // Как свайп веб-SDK: больше 100 px; быстрый короткий не в счёт.
+                    if (distance / density > SWIPE_DP) {
                         when (taken) {
                             Swipe.BACK -> onSwipeBack?.invoke()
                             Swipe.FORWARD -> onSwipeForward?.invoke()

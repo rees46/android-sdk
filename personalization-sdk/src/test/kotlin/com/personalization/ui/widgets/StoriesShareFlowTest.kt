@@ -384,6 +384,34 @@ class StoriesShareFlowTest {
         viewer().also { swipeVertically(it, -110f, 1000); assertFalse(it.isShowing) }
     }
 
+    /** A horizontal swipe of [dxDp] (right positive) from the middle of the viewer, taking [durationMs]. */
+    private fun swipeHorizontally(viewer: PersonalizationStoriesViewer, dxDp: Float, durationMs: Long) {
+        val root = viewer.window!!.decorView
+        val density = root.resources.displayMetrics.density
+        val x = root.width / 2f
+        val y = root.height / 2f
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        for (step in 1..4) {
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs * step / 4, MotionEvent.ACTION_MOVE, x + dxDp * density * step / 4, y, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs, MotionEvent.ACTION_UP, x + dxDp * density, y, 0))
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500))
+    }
+
+    @Test
+    fun `on api v3 the swipes past the first and the last story close by distance only, longer than 100 dp`() {
+        // The campaign has one story: it is the first and the last.
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        v3Viewer(stories).also { swipeHorizontally(it, 60f, 40); assertTrue("a short fling back stays", it.isShowing) }
+        v3Viewer(stories).also { swipeHorizontally(it, -60f, 40); assertTrue("a short fling forward stays", it.isShowing) }
+        assertFalse(stories[0].isViewed)
+        v3Viewer(stories).also { swipeHorizontally(it, 110f, 1000); assertFalse("110 dp back closes", it.isShowing) }
+        assertFalse(stories[0].isViewed)
+        v3Viewer(stories).also { swipeHorizontally(it, -110f, 1000); assertFalse("110 dp forward closes", it.isShowing) }
+        assertTrue(stories[0].isViewed)
+    }
+
     @Test
     fun `the legacy viewer keeps its vertical rule, down 120 dp or a fling`() {
         legacyViewer().also { swipeVertically(it, 60f, 40); assertFalse("a fling down closes", it.isShowing) }
