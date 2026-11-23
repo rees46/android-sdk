@@ -429,6 +429,7 @@ internal class PollTextField(context: Context, private val limit: Int?) : EditTe
  * (+16), но не выше верха: места мало — она ниже и прокручивается внутри, поле в фокусе остаётся
  * видно. Слайд под ней не сжимается.
  */
+@SuppressLint("ViewConstructor")
 internal class StoryPollLayer(
     context: Context,
     /** Верх видимого ряда низа слайда высотой в аргумент, от верха слайда; ряда нет — `null`. */
