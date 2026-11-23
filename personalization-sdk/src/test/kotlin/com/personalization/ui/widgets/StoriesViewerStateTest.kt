@@ -217,6 +217,17 @@ class StoriesViewerStateTest {
     }
 
     @Test
+    fun `on api v3 leaving the last story by a forward swipe views it and closes, its position stays`() {
+        val state = v3(skipping(1, "SS"), skipping(2, "SSS"), start = 1)
+        state.enter()
+        state.next()
+        assertEquals(Move.Close, state.leaveLast())
+        assertEquals(setOf(1), state.leftForward)
+        assertEquals(1, state.positionOf(1))
+        assertFalse(state.isRunning)
+    }
+
+    @Test
     fun `the start position is clamped to the slides`() {
         assertEquals(2, state(story(1, slides = 3, startPosition = 9)).slideIndex)
     }

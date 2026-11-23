@@ -287,6 +287,69 @@ class StoriesShareFlowTest {
         assertTrue(legacy.isShowing)
     }
 
+    /** A swipe over the viewer from the fractions ([fromX], [fromY]) to ([toX], [toY]) of its size. */
+    private fun swipe(viewer: PersonalizationStoriesViewer, fromX: Float, fromY: Float, toX: Float, toY: Float) {
+        val root = viewer.window!!.decorView
+        val w = root.width.toFloat()
+        val h = root.height.toFloat()
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, w * fromX, h * fromY, 0))
+        listOf(0.25f, 0.5f, 0.75f, 1f).forEachIndexed { step, part ->
+            val x = w * (fromX + (toX - fromX) * part)
+            val y = h * (fromY + (toY - fromY) * part)
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + 100L * (step + 1), MotionEvent.ACTION_MOVE, x, y, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + 600, MotionEvent.ACTION_UP, w * toX, h * toY, 0))
+        idle()
+    }
+
+    @Test
+    fun `on api v3 a forward swipe on the last story views it and closes the viewer, as the web SDK`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        val viewer = v3Viewer(stories)
+        swipe(viewer, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertFalse(viewer.isShowing)
+        assertTrue(stories[0].isViewed)
+        assertEquals("the swipe keeps its position, as JS next of the block", 1, stories[0].startPosition)
+
+        // The legacy viewer keeps its behaviour: nothing to page to, it stays.
+        val legacyStories = StoriesApiV3.parse(CAMPAIGN)
+        val legacy = PersonalizationStoriesViewer(activity, legacyStories).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipe(legacy, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertTrue(legacy.isShowing)
+        assertFalse(legacyStories[0].isViewed)
+    }
+
+    @Test
+    fun `on api v3 a forward swipe on a story before the last goes to the next one, the viewer stays`() {
+        val viewer = v3Viewer(StoriesApiV3.parse(SKIPPING.replace(""""type":"","elements":[{"type":"text_block","text_input":"Hi"}]""", """"type":"image","background":"https://cdn.test/b.jpg","elements":[]""")))
+        swipe(viewer, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertTrue(viewer.isShowing)
+    }
+
+    @Test
+    fun `on api v3 a swipe up closes the viewer, as the web SDK, the legacy viewer stays`() {
+        val viewer = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        swipe(viewer, 0.5f, 0.8f, 0.5f, 0.2f)
+        assertFalse(viewer.isShowing)
+
+        val legacy = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipe(legacy, 0.5f, 0.8f, 0.5f, 0.2f)
+        assertTrue(legacy.isShowing)
+    }
+
     @Test
     fun `on api v3 a viewer with nothing to show closes at once, viewed, and never paints the screen black`() {
         val stories = StoriesApiV3.parse(

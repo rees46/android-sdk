@@ -235,12 +235,22 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
     var onDismiss: (() -> Unit)? = null
 
     /**
-     * Свайп к предыдущей сторис там, где её нет (API v3, первая сторис): пейджеру листать некуда, жест берёт
-     * этот слой, и при длинном или быстром свайпе зовёт [onSwipeBack].
+     * Свайпы API v3, как в веб-SDK, которые берёт этот слой, а не пейджер: к предыдущей сторис там, где её нет
+     * (первая сторис), — [onSwipeBack]; к следующей там, где её нет (последняя), — [onSwipeForward]; вверх —
+     * [onSwipeUp]. Срабатывают при длинном или быстром свайпе. Вниз — перетаскивание [onDismiss], как было.
      */
     var canSwipeBack: () -> Boolean = { false }
     var onSwipeBack: (() -> Unit)? = null
-    private var swipingBack = false
+    var canSwipeForward: () -> Boolean = { false }
+    var onSwipeForward: (() -> Unit)? = null
+    var canSwipeUp: () -> Boolean = { false }
+    var onSwipeUp: (() -> Unit)? = null
+
+    private enum class Swipe { BACK, FORWARD, UP }
+    private var swipe: Swipe? = null
+
+    /** Палец лёг на то, что само листается вверх (карточка опроса, поле): свайп вверх остаётся ему. */
+    private var downOverScrollable = false
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val density = resources.displayMetrics.density
@@ -255,7 +265,8 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                 downX = event.rawX
                 downY = event.rawY
                 dragging = false
-                swipingBack = false
+                swipe = null
+                downOverScrollable = scrollsUp(this, event.rawX, event.rawY)
                 velocity?.recycle()
                 velocity = VelocityTracker.obtain()
                 track(event)
@@ -271,10 +282,13 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
                 }
                 // К предыдущей странице: вправо, в RTL — влево.
                 val back = if (layoutDirection == View.LAYOUT_DIRECTION_RTL) -dx else dx
-                if (canSwipeBack() && back > touchSlop && back > abs(dy) * 1.5f) {
-                    swipingBack = true
-                    return true
+                swipe = when {
+                    canSwipeBack() && back > touchSlop && back > abs(dy) * 1.5f -> Swipe.BACK
+                    canSwipeForward() && -back > touchSlop && -back > abs(dy) * 1.5f -> Swipe.FORWARD
+                    canSwipeUp() && !downOverScrollable && -dy > touchSlop && -dy > abs(dx) * 1.5f -> Swipe.UP
+                    else -> null
                 }
+                if (swipe != null) return true
             }
         }
         return false
@@ -282,21 +296,37 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (swipingBack) {
+        val taken = swipe
+        if (taken != null) {
             track(event)
             when (event.actionMasked) {
                 MotionEvent.ACTION_UP -> {
-                    swipingBack = false
+                    swipe = null
                     val tracker = velocity
                     tracker?.computeCurrentVelocity(1000)
-                    val back = if (layoutDirection == View.LAYOUT_DIRECTION_RTL) downX - event.rawX else event.rawX - downX
-                    val speed = (tracker?.xVelocity ?: 0f).let { if (layoutDirection == View.LAYOUT_DIRECTION_RTL) -it else it } / density
+                    val rtl = layoutDirection == View.LAYOUT_DIRECTION_RTL
+                    val dx = event.rawX - downX
+                    val dy = event.rawY - downY
+                    val back = if (rtl) -dx else dx
+                    val backSpeed = (tracker?.xVelocity ?: 0f).let { if (rtl) -it else it }
+                    val (distance, speed) = when (taken) {
+                        Swipe.BACK -> back to backSpeed
+                        Swipe.FORWARD -> -back to -backSpeed
+                        // Как веб-SDK: вертикальнее, чем вбок.
+                        Swipe.UP -> (if (abs(dy) > abs(dx)) -dy else 0f) to -(tracker?.yVelocity ?: 0f)
+                    }
                     velocity?.recycle()
                     velocity = null
                     // Как свайп веб-SDK (больше 100 px) — или быстрый.
-                    if (back / density > SWIPE_BACK_DP || speed > DISMISS_VELOCITY_DP) onSwipeBack?.invoke()
+                    if (distance / density > SWIPE_DP || speed / density > DISMISS_VELOCITY_DP) {
+                        when (taken) {
+                            Swipe.BACK -> onSwipeBack?.invoke()
+                            Swipe.FORWARD -> onSwipeForward?.invoke()
+                            Swipe.UP -> onSwipeUp?.invoke()
+                        }
+                    }
                 }
-                MotionEvent.ACTION_CANCEL -> swipingBack = false
+                MotionEvent.ACTION_CANCEL -> swipe = null
             }
             return true
         }
@@ -325,6 +355,19 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
         return true
     }
 
+    /** Под точкой экрана есть вьюха, которой есть куда листаться вниз по содержимому (палец — вверх). */
+    private fun scrollsUp(view: View, x: Float, y: Float): Boolean {
+        if (view.visibility != View.VISIBLE) return false
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        if (x < location[0] || x > location[0] + view.width || y < location[1] || y > location[1] + view.height) return false
+        if (view !== this && view.canScrollVertically(1)) return true
+        if (view is android.view.ViewGroup) {
+            for (index in 0 until view.childCount) if (scrollsUp(view.getChildAt(index), x, y)) return true
+        }
+        return false
+    }
+
     /** Скорость — по координатам экрана: сама вьюха едет за пальцем. */
     private fun track(event: MotionEvent) {
         val copy = MotionEvent.obtain(event)
@@ -335,7 +378,7 @@ internal class StoryDismissLayout(context: Context) : FrameLayout(context) {
 
     private companion object {
         const val DISMISS_DISTANCE_DP = 120f
-        const val SWIPE_BACK_DP = 100f
+        const val SWIPE_DP = 100f
         const val DISMISS_VELOCITY_DP = 800f
         const val ANIMATION_MS = 200L
     }

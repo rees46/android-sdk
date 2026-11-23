@@ -269,9 +269,14 @@ class PersonalizationStoriesViewer(
                 updateDrag()
             }
             onDismiss = { dismiss() }
-            // API v3, как веб-SDK: свайп назад на первой сторис закрывает просмотр, как тап назад на её первом слайде.
-            canSwipeBack = { v3 && created && !dismissed && !state.sheetOpen && state.storyIndex == 0 && pager.currentItem == 0 }
+            // API v3, как веб-SDK: свайп назад на первой сторис закрывает просмотр, как тап назад на её первом слайде;
+            // вперёд на последней — она просмотрена, просмотр закрывается, как событие `next`; вверх — закрывает.
+            canSwipeBack = { swipeable() && state.storyIndex == 0 && pager.currentItem == 0 }
             onSwipeBack = { dismiss() }
+            canSwipeForward = { swipeable() && state.storyIndex == stories.lastIndex && pager.currentItem == stories.lastIndex }
+            onSwipeForward = { apply(state.leaveLast()) }
+            canSwipeUp = { swipeable() }
+            onSwipeUp = { dismiss() }
         }
         pager = ViewPager2(hostContext).apply {
             if (!nothingToShow) adapter = StoriesAdapter()
@@ -658,6 +663,9 @@ class PersonalizationStoriesViewer(
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS
+
+    /** Свайпы веб-SDK слою просмотра: только API v3 и не при открытой шторке товаров. */
+    private fun swipeable(): Boolean = v3 && created && !dismissed && !state.sheetOpen
 
     /** Сторис пришли с API v3: слайды, события и просмотренность — по правилам веб-SDK. */
     private val v3: Boolean get() = apiV3Domain != null

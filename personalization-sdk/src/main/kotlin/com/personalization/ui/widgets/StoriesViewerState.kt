@@ -302,6 +302,15 @@ internal class StoriesViewerState(
         return if (arrivedBackward) passBackward(storyIndex) else passForward(storyIndex)
     }
 
+    /**
+     * API v3: свайп вперёд на последней сторис, как событие `next` веб-SDK: она просмотрена, просмотр закрывается.
+     * Её `start_position` остаётся, как при свайпе к следующей.
+     */
+    fun leaveLast(): Move {
+        if (feedPositions) forward += storyIndex
+        return away(Move.Close)
+    }
+
     /** API v3: у сторис [index] есть слайд для показа с её `start_position`. */
     fun hasShown(index: Int): Boolean {
         val shape = stories.getOrNull(index) ?: return false
