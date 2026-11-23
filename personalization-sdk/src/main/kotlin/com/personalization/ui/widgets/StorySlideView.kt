@@ -26,7 +26,6 @@ import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryNavigation
 import com.personalization.ui.components.PersonalizationStoryUsedProducts
-import com.personalization.ui.components.StorySupport
 
 /** Что слайд просит у просмотра: загрузку картинок, навигацию, клики. */
 internal interface StorySlideHost {
@@ -101,15 +100,18 @@ internal class StorySlideView(
     val shareUrl: String? = null,
     /** Id сторис — для ответов на опросы. */
     private val storyId: Int = 0
-) : FrameLayout(if (StoriesMapping.isDark(slide, host.v3)) StorySupport.darkContext(baseContext) else baseContext) {
+) : FrameLayout(StoriesMapping.slideContext(baseContext, slide, host.v3)) {
 
     enum class ImageState { LOADING, READY, FAILED }
 
     val isMedia = StoriesMapping.isMedia(slide, host.v3)
     val isVideo = StoriesMapping.isVideo(slide, host.v3)
 
-    /** Слайд в тёмных токенах: медиа или тёмный `background_color` (API v3) — значки панелей светлые. */
-    val isDark = StoriesMapping.isDark(slide, host.v3)
+    /** Слайд в тёмных токенах: медиа или `background_color`, на котором светлый текст контрастнее (API v3) — значки панелей светлые. */
+    val isDark = StoriesMapping.isDark(baseContext, slide, host.v3)
+
+    /** API v3: свой цвет слайда, на котором тёмный текст контрастнее, — светлые токены и в ночной теме хоста. */
+    val lightScheme = !isDark && host.v3 && StoriesMapping.ownColor(slide) != null
     val navigation = PersonalizationStoryNavigation(context)
     var playerView: PlayerView? = null
         private set

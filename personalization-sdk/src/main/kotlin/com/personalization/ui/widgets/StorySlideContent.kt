@@ -137,7 +137,7 @@ internal object StoryTextBlocks {
                     italic = element.isItalic
                     fontFamily = element.fontType.takeIf { it.isNotEmpty() }
                 }
-                textColorOverride = StoriesMapping.parseColor(element.textColor)
+                textColorOverride = if (host.v3) StoriesColor.parse(element.textColor) else StoriesMapping.parseColor(element.textColor)
                 align = StoriesMapping.textAlign(element)
             }
             StoriesMapping.textPromocode(element)?.let { code ->

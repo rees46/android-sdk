@@ -422,8 +422,44 @@ class StoriesMappingTest {
         assertEquals(card, StoriesMapping.slideColor(typeless, true, card))
         assertEquals(Color.RED, StoriesMapping.slideColor(slide("type" to "", "background_color" to "#FF0000"), true, card))
         assertNull(StoriesMapping.ownColor(slide("type" to "")))
-        assertTrue(StoriesMapping.isDark(slide("type" to "", "background_color" to "#202020"), true))
-        assertFalse(StoriesMapping.isDark(slide("type" to "", "background_color" to "#202020"), false))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assertTrue(StoriesMapping.isDark(context, slide("type" to "", "background_color" to "#202020"), true))
+        assertFalse(StoriesMapping.isDark(context, slide("type" to "", "background_color" to "#202020"), false))
+    }
+
+    @Test
+    fun `on api v3 a coloured slide takes the kit's light or dark text, whichever contrasts more`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        fun dark(color: String) = StoriesMapping.isDark(context, slide("type" to "", "background_color" to color), true)
+        // Mid greys were dark by luminance 0.5; by WCAG contrast the dark text reads better on them.
+        assertFalse(dark("#808080"))
+        assertFalse(dark("#B0B0B0"))
+        assertFalse(dark("#FFFFFF"))
+        assertFalse(dark("#FFEB3B"))
+        assertTrue(dark("#D32F2F"))
+        assertTrue(dark("#202020"))
+        assertTrue("half transparent white over the black window", dark("rgba(255, 255, 255, 0.2)"))
+        assertTrue(StoriesMapping.prefersLightText(Color.BLACK, Color.WHITE, Color.BLACK))
+        assertFalse(StoriesMapping.prefersLightText(Color.WHITE, Color.WHITE, Color.BLACK))
+        // A light colour keeps the light tokens even in a dark host theme; no colour — the host theme.
+        val light = StoriesMapping.slideContext(StorySupportTestContexts.night(context), slide("type" to "", "background_color" to "#FFFFFF"), true)
+        assertEquals(Color.BLACK, com.personalization.ui.PersonalizationTheme.color(light, com.personalization.R.color.personalization_text_primary))
+        val host = StorySupportTestContexts.night(context)
+        assertTrue(StoriesMapping.slideContext(host, slide("type" to ""), true) === host)
+    }
+
+    @Test
+    fun `on api v3 colours are parsed by one rule - #RGB, #RRGGBB, #RRGGBBAA, rgb and rgba`() {
+        assertEquals(0xFFFF5533.toInt(), StoriesColor.parse("#f53"))
+        assertEquals(0xFFFF5733.toInt(), StoriesColor.parse(" #FF5733 "))
+        assertEquals("the alpha comes last, as in CSS", 0x80FF5733.toInt(), StoriesColor.parse("#FF573380"))
+        assertEquals(0xFFFF5733.toInt(), StoriesColor.parse("rgb(255, 87, 51)"))
+        assertEquals(Color.argb(128, 255, 87, 51), StoriesColor.parse("rgba(255,87,51,0.5)"))
+        assertEquals(Color.argb(128, 255, 0, 0), StoriesColor.parse("rgb(100% 0% 0% / 50%)"))
+        assertEquals("out of range is clamped", Color.argb(255, 255, 0, 0), StoriesColor.parse("rgba(300, -5, 0, 2)"))
+        listOf(null, "", "red", "#12", "#12345", "#1234", "rgb(1, 2)", "rgb(a, b, c)", "hsl(0, 0%, 0%)", "transparent").forEach {
+            assertNull(it, StoriesColor.parse(it))
+        }
     }
 
     @Test
@@ -510,4 +546,14 @@ class StoriesMappingTest {
             .put("text_background_color", color)
             .put("text_background_color_opacity", opacity)
     )
+}
+
+/** A night version of a context, as the host's dark theme gives it. */
+private object StorySupportTestContexts {
+    fun night(base: Context): Context {
+        val configuration = android.content.res.Configuration(base.resources.configuration).apply {
+            uiMode = (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        return base.createConfigurationContext(configuration)
+    }
 }

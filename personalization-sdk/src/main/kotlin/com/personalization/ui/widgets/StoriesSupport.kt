@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
 import com.personalization.PreferencesPartition
+import com.personalization.R
 import com.personalization.Product
 import com.personalization.SDK
 import com.personalization.api.OnApiCallbackListener
@@ -14,11 +15,13 @@ import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.stories.models.elements.ProductElement
 import com.personalization.stories.models.elements.ProductsElement
 import com.personalization.stories.models.elements.TextBlockElement
+import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationProduct
 import com.personalization.ui.components.PersonalizationStoryCover
 import com.personalization.ui.components.PersonalizationStoryItem
 import com.personalization.ui.components.PersonalizationStoryPrice
 import com.personalization.ui.components.PersonalizationStoryTextBlock
+import com.personalization.ui.components.StorySupport
 import androidx.core.graphics.ColorUtils
 import java.math.BigDecimal
 import org.json.JSONObject
@@ -34,9 +37,6 @@ internal object StoriesMapping {
 
     const val TYPE_IMAGE = "image"
     const val TYPE_VIDEO = "video"
-
-    /** Цвет темнее этой яркости — слайд рисуется тёмными токенами. */
-    private const val DARK_LUMINANCE = 0.5
 
     /** Скрим медиа-слайда без текста и товара — 50%, всех остальных — 30% (C3). */
     const val SCRIM_STRONG = 128
@@ -223,15 +223,40 @@ internal object StoriesMapping {
     fun isShownV3(slide: Slide): Boolean =
         slide.type == TYPE_IMAGE || slide.type == TYPE_VIDEO || slide.getElements().any { it is ProductElement }
 
-    /** API v3 (R2): цвет слайда — его `background_color`; нет его или это не цвет — `null`. */
-    fun ownColor(slide: Slide): Int? = parseColor(slide.ownBackgroundColor)
+    /** API v3 (R2): цвет слайда — его `background_color` ([StoriesColor]); нет его или это не цвет — `null`. */
+    fun ownColor(slide: Slide): Int? = StoriesColor.parse(slide.ownBackgroundColor)
 
     /**
-     * Слайд рисуется тёмными токенами: медиа, а на API v3 ещё и слайд, закрашенный тёмным
-     * `background_color` (светлый текст и значки на нём читаются).
+     * Слайд рисуется тёмными токенами: медиа, а на API v3 ещё и слайд, на чьём `background_color` светлый
+     * текст кита контрастнее тёмного ([prefersLightText]).
      */
-    fun isDark(slide: Slide, v3: Boolean): Boolean =
-        isMedia(slide, v3) || (v3 && ownColor(slide)?.let { ColorUtils.calculateLuminance(it) < DARK_LUMINANCE } == true)
+    fun isDark(context: Context, slide: Slide, v3: Boolean): Boolean {
+        if (isMedia(slide, v3)) return true
+        if (!v3) return false
+        val color = ownColor(slide) ?: return false
+        val light = PersonalizationTheme.color(StorySupport.darkContext(context), R.color.personalization_text_primary)
+        val dark = PersonalizationTheme.color(PollUi.lightContext(context), R.color.personalization_text_primary)
+        return prefersLightText(color, light, dark)
+    }
+
+    /**
+     * На цвете [background] светлый текст [light] контрастнее тёмного [dark] — по контрасту WCAG.
+     * Полупрозрачный цвет — поверх чёрного окна просмотра, как его видно.
+     */
+    fun prefersLightText(background: Int, light: Int, dark: Int): Boolean {
+        val opaque = ColorUtils.compositeColors(background, Color.BLACK)
+        return ColorUtils.calculateContrast(light, opaque) > ColorUtils.calculateContrast(dark, opaque)
+    }
+
+    /**
+     * Контекст слайда: тёмные токены ([isDark]); на API v3 у слайда со своим светлым цветом — светлые и в
+     * ночной теме хоста; иначе — тема хоста.
+     */
+    fun slideContext(context: Context, slide: Slide, v3: Boolean): Context = when {
+        isDark(context, slide, v3) -> StorySupport.darkContext(context)
+        v3 && ownColor(slide) != null -> PollUi.lightContext(context)
+        else -> context
+    }
 
     /** Цвет слайда (R2): на API v3 — `background_color`, без него у медиа чёрный, иначе [card]; на старой ленте — как было. */
     fun slideColor(slide: Slide, v3: Boolean, card: Int): Int = when {
@@ -321,6 +346,52 @@ internal object StoriesMapping {
 
     fun parseColor(value: String?): Int? =
         value?.takeIf { it.isNotBlank() }?.let { runCatching { Color.parseColor(it.trim()) }.getOrNull() }
+}
+
+/**
+ * Цвета ленты API v3 — один разбор на всех платформах: `#RGB`, `#RRGGBB`, `#RRGGBBAA` (прозрачность
+ * последней, как в CSS) и `rgb()`/`rgba()` (каналы 0–255 или проценты, прозрачность 0–1 или проценты).
+ * Остальное — не цвет: `null`.
+ */
+internal object StoriesColor {
+
+    private val HEX = Regex("^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+    private val FUNCTION = Regex("^rgba?\\((.*)\\)$", RegexOption.IGNORE_CASE)
+    private val NUMBER = Regex("^[+-]?(\\d+(\\.\\d*)?|\\.\\d+)%?$")
+
+    fun parse(value: String?): Int? {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return null
+        HEX.matchEntire(text)?.let { match -> return hex(match.groupValues[1]) }
+        val arguments = FUNCTION.matchEntire(text)?.groupValues?.get(1) ?: return null
+        val parts = arguments.split(',', '/', ' ', '\t').filter { it.isNotEmpty() }
+        if (parts.size != 3 && parts.size != 4) return null
+        val red = channel(parts[0]) ?: return null
+        val green = channel(parts[1]) ?: return null
+        val blue = channel(parts[2]) ?: return null
+        val alpha = if (parts.size == 4) alpha(parts[3]) ?: return null else 255
+        return Color.argb(alpha, red, green, blue)
+    }
+
+    private fun hex(digits: String): Int = when (digits.length) {
+        3 -> Color.rgb(digits.substring(0, 1).repeat(2).toInt(16), digits.substring(1, 2).repeat(2).toInt(16), digits.substring(2, 3).repeat(2).toInt(16))
+        6 -> (0xFF000000L or digits.toLong(16)).toInt()
+        else -> ((digits.substring(6, 8).toLong(16) shl 24) or digits.substring(0, 6).toLong(16)).toInt()
+    }
+
+    /** Канал: 0–255 или проценты, зажатые в границы. */
+    private fun channel(text: String): Int? {
+        if (!NUMBER.matches(text)) return null
+        val value = if (text.endsWith("%")) text.dropLast(1).toDouble() * 2.55 else text.toDouble()
+        return Math.round(value.coerceIn(0.0, 255.0)).toInt()
+    }
+
+    /** Прозрачность: 0–1 или проценты, зажатые в границы. */
+    private fun alpha(text: String): Int? {
+        if (!NUMBER.matches(text)) return null
+        val value = if (text.endsWith("%")) text.dropLast(1).toDouble() / 100 else text.toDouble()
+        return Math.round(value.coerceIn(0.0, 1.0) * 255).toInt()
+    }
 }
 
 /**

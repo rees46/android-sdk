@@ -325,7 +325,7 @@ class PersonalizationStoriesViewer(
         val window = window ?: return
         val night = (hostContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
-        val light = !view.isDark && !night
+        val light = !view.isDark && (view.lightScheme || !night)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = light
             isAppearanceLightNavigationBars = light
