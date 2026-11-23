@@ -74,6 +74,14 @@ class StorySlideViewTest {
         assertTrue(texts.containsAll(listOf("Магазин", "Новинки")))
         assertTrue(host.images.contains("https://cdn.test/i.png"))
         val title = view.all().filterIsInstance<android.widget.TextView>().first { it.text == "Магазин" }
+        val subtitle = view.all().filterIsInstance<android.widget.TextView>().first { it.text == "Новинки" }
+        val density = view.resources.displayMetrics.density
+        val icon = (title.parent.parent as ViewGroup).getChildAt(0)
+        assertEquals("icon 40", Math.round(40 * density), icon.width)
+        assertEquals("gap 12", Math.round(12 * density), (icon.layoutParams as ViewGroup.MarginLayoutParams).marginEnd)
+        assertEquals("title body-small", 14f * view.resources.displayMetrics.scaledDensity, title.textSize, 0.01f)
+        assertEquals("subtitle caption", 12f * view.resources.displayMetrics.scaledDensity, subtitle.textSize, 0.01f)
+        assertTrue("under the navigation row", windowTop(title.parent.parent as View) >= windowTop(view.navigation) + view.navigation.height)
         (title.parent.parent as View).performClick()
         assertEquals(listOf("https://shop.test/new"), host.headers)
 

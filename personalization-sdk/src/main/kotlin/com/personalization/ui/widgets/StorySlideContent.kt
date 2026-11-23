@@ -56,8 +56,9 @@ internal object StoryProductCard {
 
 /**
  * Шапка слайда (`header`, API v3), как в веб-SDK: иконка, заголовок и подзаголовок; нажатие —
- * `click` и переход по ссылке ([StorySlideHost.onHeader]). Вид — токены кита: круглая иконка 40,
- * заголовок SM полужирным основного цвета, подзаголовок XS вторичным; пустые части не рисуются.
+ * `click` и переход по ссылке ([StorySlideHost.onHeader]). Вид — токены кита, одинаковый на всех
+ * платформах: круглая иконка 40, через 12 заголовок SM (body-small) полужирным основного цвета,
+ * подзаголовок XS (caption) вторичным; пустые части не рисуются. Стоит под рядом навигации.
  */
 internal object StoryHeader {
 
@@ -67,7 +68,7 @@ internal object StoryHeader {
         val row = LinearLayout(context)
         row.orientation = LinearLayout.HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
-        val gap = context.resources.getDimensionPixelSize(R.dimen.personalization_spacing_md)
+        val gap = context.resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
         if (header.icon.isNotBlank()) {
             val icon = AppCompatImageView(context)
             icon.scaleType = ImageView.ScaleType.CENTER_CROP
