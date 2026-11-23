@@ -155,7 +155,7 @@ class StoriesShareFlowTest {
     }
 
     @Test
-    fun `the first slide started again sends view again`() {
+    fun `on api v3 back on the first slide of the first story closes the viewer, as the web SDK`() {
         val viewer = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(PRODUCTS)).apply {
             code = "main"
             sdk = this@StoriesShareFlowTest.sdk
@@ -166,15 +166,32 @@ class StoriesShareFlowTest {
         }
         viewer.show()
         idle()
-        // A tap on the left third of the slide: the first slide of the first story starts again.
-        val pager = find(viewer.window!!.decorView, ViewPager2::class.java)!!
-        val touch = find((pager.getChildAt(0) as ViewGroup).getChildAt(0), StoryTouchLayer::class.java)!!
-        val now = SystemClock.uptimeMillis()
-        touch.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, 5f, 5f, 0))
-        touch.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, 5f, 5f, 0))
-        idle()
+        tap(viewer, right = false)
 
-        assertEquals(listOf("view:39_0", "view:39_0"), events())
+        assertFalse(viewer.isShowing)
+        assertEquals(listOf("view:39_0"), events())
+    }
+
+    @Test
+    fun `on the legacy feed back on the first slide starts it again and sends no view again`() {
+        val viewer = PersonalizationStoriesViewer(activity, listOf(com.personalization.stories.models.Story(JSONObject(
+            """{"id":5,"name":"Legacy","slides":[{"id":"51","type":"image","background":"https://cdn.test/a.jpg","elements":[]},
+            {"id":"52","type":"image","background":"https://cdn.test/b.jpg","elements":[]}]}"""
+        )))).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+        }
+        viewer.show()
+        idle()
+        tap(viewer, right = false)
+
+        assertTrue(viewer.isShowing)
+        assertEquals(0, navigation(viewer).progress.current)
+        verify(exactly = 1) { manager.trackStory("view", "main", 5, "51") }
+        assertTrue(events().isEmpty())
     }
 
     @Test

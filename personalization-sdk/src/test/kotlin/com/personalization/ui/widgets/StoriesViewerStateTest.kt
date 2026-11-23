@@ -131,6 +131,20 @@ class StoriesViewerStateTest {
     }
 
     @Test
+    fun `on api v3 previous on the first slide of the first story closes the viewer, as the web SDK`() {
+        val state = StoriesViewerState(listOf(story(1, slides = 2), story(2, slides = 2)), seen, 0, feedPositions = true)
+        state.enter()
+        assertEquals(Move.Close, state.previous())
+        assertFalse(state.isRunning)
+        assertTrue("going back views nothing", state.leftForward.isEmpty())
+
+        // From a later story it goes back a story, as before.
+        val later = StoriesViewerState(listOf(story(1, slides = 2), story(2, slides = 2)), seen, 1, feedPositions = true)
+        later.enter()
+        assertEquals(Move.Story(0), later.previous())
+    }
+
+    @Test
     fun `previous on the first slide of a later story goes back a story`() {
         val state = entered(story(1, slides = 2), story(2, slides = 2), start = 1)
         assertEquals(Move.Story(0), state.previous())

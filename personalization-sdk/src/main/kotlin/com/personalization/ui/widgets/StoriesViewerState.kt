@@ -90,7 +90,7 @@ internal class StoriesViewerState(
         /** Перейти к сторис [index]: пейджер листает, потом зовёт [selectStory] и [enter]. */
         data class Story(val index: Int) : Move()
 
-        /** Начать текущий слайд сначала — прогресс и видео с нуля (B3). */
+        /** Начать текущий слайд сначала — прогресс и видео с нуля (B3); только старая лента. */
         object Restart : Move()
 
         /** Закрыть шторку товаров, никуда не листая (B5). */
@@ -229,6 +229,8 @@ internal class StoriesViewerState(
             Move.Slide
         }
         storyIndex > 0 -> away(Move.Story(storyIndex - 1))
+        // API v3, как веб-SDK (событие `prev` на первой сторис): назад с первого слайда — просмотр закрывается.
+        feedPositions -> away(Move.Close)
         else -> {
             // Первый слайд первой сторис начинается заново (B3).
             elapsedMs = 0
