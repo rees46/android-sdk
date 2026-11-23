@@ -363,6 +363,30 @@ class StoryPollControllerTest {
     }
 
     @Test
+    fun `any non-empty option_ids is an answer, as hasAnswer of the web SDK, with no option highlighted`() {
+        val parsed = StoryPoll.answer(JSONObject("""{"option_ids":["x",null,1.5]}"""))
+        assertTrue(parsed.isAnswered)
+        assertEquals(emptyList<Int>(), parsed.optionIds)
+        assertFalse(StoryPoll.answer(JSONObject("""{"option_ids":[]}""")).isAnswered)
+
+        // From the feed: the answered state, no option chosen.
+        val card = card(miniPoll("single_choice", element = """"answer":{"option_ids":["x"]}"""))
+        assertTrue(card.answered)
+        assertTrue(card.selected.isEmpty())
+        assertEquals(emptyList<Int>(), card.answer!!.optionIds)
+
+        // The saved record keeps such an answer, and its ids that are options.
+        answers.write(KEY, StoryPoll.answer(JSONObject("""{"option_ids":["x",2]}""")), null)
+        val saved = answers.read(KEY)!!.answer
+        assertTrue(saved.isAnswered)
+        assertEquals(listOf(2), saved.optionIds)
+        assertTrue(card(miniPoll("single_choice")).answered)
+        answers.write(KEY, StoryPoll.answer(JSONObject("""{"option_ids":["x"]}""")), null)
+        assertTrue(answers.read(KEY)!!.answer.isAnswered)
+        assertTrue(card(miniPoll("single_choice")).answered)
+    }
+
+    @Test
     fun `a saved answer without options, text or rate is no answer, as hasAnswer of the web SDK`() {
         answers.write(KEY, StoriesPollAnswer(id = 77), null)
         val card = card(miniPoll("single_choice"))

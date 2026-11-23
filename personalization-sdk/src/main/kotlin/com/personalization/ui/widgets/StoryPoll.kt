@@ -170,8 +170,16 @@ internal class StoryPoll(
          * `answer` ленты или ответа сервера: `{id, option_ids, text, rate}`. Оценка — только число JSON, как
          * `typeof rate === 'number'` в `hasAnswer` веб-SDK: строка — не оценка.
          */
-        fun answer(json: JSONObject): StoriesPollAnswer = StoriesPollAnswer(
-            optionIds = (json.value("option_ids") as? JSONArray)?.let { ids -> (0 until ids.length()).mapNotNull { int(ids.opt(it)) } },
+        fun answer(json: JSONObject): StoriesPollAnswer {
+            val ids = json.value("option_ids") as? JSONArray
+            val entries = ids?.let { array -> List(array.length()) { array.opt(it) } }.orEmpty()
+            return answer(json, ids, entries)
+        }
+
+        /** [answer]: `option_ids` — целые id вариантов, остальные элементы массива — [StoriesPollAnswer.otherOptionIds]. */
+        private fun answer(json: JSONObject, ids: JSONArray?, entries: List<Any?>): StoriesPollAnswer = StoriesPollAnswer(
+            optionIds = ids?.let { entries.mapNotNull(::int) },
+            otherOptionIds = entries.filter { int(it) == null }.map { if (it == null || it === JSONObject.NULL) "null" else it.toString() },
             text = json.value("text") as? String,
             rate = (json.value("rate") as? Number)?.toDouble()?.takeIf { !it.isNaN() && !it.isInfinite() },
             id = number(json.value("id"))?.toLong(),
@@ -181,7 +189,9 @@ internal class StoryPoll(
         /** [answer] в виде ленты — для хранилища на устройстве; пустые поля не пишутся. */
         fun answerJson(answer: StoriesPollAnswer): JSONObject = JSONObject().apply {
             answer.id?.let { put("id", it) }
-            answer.optionIds?.let { put("option_ids", JSONArray(it)) }
+            if (answer.optionIds != null || answer.otherOptionIds.isNotEmpty()) {
+                put("option_ids", JSONArray(answer.optionIds.orEmpty() + answer.otherOptionIds))
+            }
             answer.text?.let { put("text", it) }
             answer.rate?.let { put("rate", it) }
             answer.comment?.let { put("comment", it) }

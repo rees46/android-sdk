@@ -60,11 +60,16 @@ data class StoriesPollAnswer(
     val text: String? = null,
     val rate: Double? = null,
     val id: Long? = null,
-    val comment: String? = null
+    val comment: String? = null,
+    /**
+     * Элементы `option_ids` ленты или ответа сервера, которые не id вариантов, — как пришли, строкой. Ни один
+     * вариант они не выделяют, но ответ с ними есть: `hasAnswer` веб-SDK смотрит только на непустой массив.
+     */
+    internal val otherOptionIds: List<String> = emptyList()
 ) : Serializable {
-    /** Ответ есть: непустые варианты, непустой текст или оценка-число — как `hasAnswer` веб-SDK. */
+    /** Ответ есть: непустой массив вариантов, непустой текст или оценка-число — как `hasAnswer` веб-SDK. */
     val isAnswered: Boolean
-        get() = !optionIds.isNullOrEmpty() || !text.isNullOrEmpty() || rate != null
+        get() = !optionIds.isNullOrEmpty() || otherOptionIds.isNotEmpty() || !text.isNullOrEmpty() || rate != null
 }
 
 /** Итоги мини-опроса: всего ответов и процент каждого варианта. */

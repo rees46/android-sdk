@@ -54,6 +54,19 @@ class StoryPollViewTest {
     }
 
     @Test
+    fun `an answer whose option_ids match no option shows the answered card with no option chosen`() {
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"poll","poll_type":"mini_poll","answer":{"option_ids":["x"]},
+             "poll":{"code":"s","kind":"single_choice","question":"Q","thanks_text":"Thanks","options":[{"id":1,"label":"A"},{"id":2,"label":"B"}]}}]}""")))
+        val card = view.pollCards.single()
+        assertTrue(card.controller.answered)
+        val rows = rows(card)
+        assertEquals(2, rows.size)
+        assertTrue(rows.none { it.selectedState || it.badge.checked })
+        assertTrue("Thanks" in texts(card))
+    }
+
+    @Test
     fun `single choice draws the question and options and sends on tap`() {
         val card = laidOut(feed[0]).pollCards.single()
         assertEquals("Что вам больше нравится?", texts(card).first())
