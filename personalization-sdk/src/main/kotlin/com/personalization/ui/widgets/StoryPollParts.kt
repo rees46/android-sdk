@@ -420,14 +420,20 @@ internal class PollTextField(context: Context, private val limit: Int?) : EditTe
 
 /**
  * Слой опросов во весь слайд. Карточка — как в веб-SDK (#277): по центру, в 16 от краёв и не шире
- * 420; верх — `y_offset` процентов слайда (между системными панелями), без него — верх слайда; если
- * карточка не влезает, она поднимается, чтобы низ был в 16 над низом слайда, но не выше верха слайда.
- * Карточка может зайти под шапку: прогресс, крестик и «Поделиться» слайд рисует поверх слоя, и они
- * нажимаются ([StorySlideView]). Не влезает и так — прокручивается внутри себя. Пока в поле фокус и
- * открыта клавиатура, карточка поднимается над ней (+16), но не выше верха слайда: места мало — она
- * ниже и прокручивается внутри, поле в фокусе остаётся видно. Слайд под ней не сжимается.
+ * 420; верх — `y_offset` процентов ВСЕЙ высоты слайда, как у текстовых блоков ([StorySlidePlacement]),
+ * но не выше верхней системной панели; без него — верх. Если карточка не влезает, она поднимается,
+ * чтобы низ был в 16 над рядом низа (звук, «Используемые товары») — [bottomRowTop], — а без него над
+ * нижней системной панелью, но не выше верхней. Карточка может зайти под шапку: прогресс, крестик и
+ * «Поделиться» слайд рисует поверх слоя, и они нажимаются ([StorySlideView]). Не влезает и так —
+ * прокручивается внутри себя. Пока в поле фокус и открыта клавиатура, карточка поднимается над ней
+ * (+16), но не выше верха: места мало — она ниже и прокручивается внутри, поле в фокусе остаётся
+ * видно. Слайд под ней не сжимается.
  */
-internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(context) {
+internal class StoryPollLayer(
+    context: Context,
+    /** Верх видимого ряда низа слайда высотой в аргумент, от верха слайда; ряда нет — `null`. */
+    private val bottomRowTop: (slideHeight: Int) -> Int? = { null }
+) : android.widget.FrameLayout(context) {
 
     val cards = ArrayList<StoryPollView>()
     private val maxCardWidth = PollUi.dp(this, PollStyle.MAX_WIDTH_DP.toFloat()).roundToInt()
@@ -442,7 +448,7 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
         addView(card, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
-    /** Системные панели сверху и снизу: слайд для `y_offset` — между ними. */
+    /** Системные панели сверху и снизу: карточка не заходит под них. */
     fun setInsets(top: Int, bottom: Int) {
         if (insetTop == top && insetBottom == bottom) return
         insetTop = top
@@ -465,10 +471,11 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
         updateLift()
     }
 
-    /** Верх слайда, выше которого карточка не встаёт: под верхней системной панелью. */
+    /** Верх, выше которого карточка не встаёт: под верхней системной панелью. */
     private fun slideTop(): Int = insetTop
 
-    private fun slideBottom(height: Int): Int = height - insetBottom
+    /** Низ, ниже которого карточка не уходит: верх ряда низа, без него — над нижней системной панелью. */
+    private fun slideBottom(height: Int): Int = bottomRowTop(height) ?: (height - insetBottom)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
@@ -495,7 +502,7 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
         val width = right - left
         val height = bottom - top
         cards.forEach { card ->
-            val y = cardTop(card.controller.poll.yOffset, slideTop(), slideBottom(height), card.measuredHeight, margin)
+            val y = cardTop(card.controller.poll.yOffset, height, slideTop(), slideBottom(height), card.measuredHeight, margin)
             val x = (width - card.measuredWidth) / 2
             card.layout(x, y, x + card.measuredWidth, y + card.measuredHeight)
         }
@@ -521,14 +528,14 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
 
     companion object {
         /**
-         * Верх карточки высотой [height], как `top: y_offset%` и `fittedTop` веб-SDK: [offset] процентов
-         * слайда [slideTop]…[slideBottom] (без него — верх слайда); низ ниже, чем [margin] над низом
-         * слайда, — карточка поднимается, но не выше верха слайда.
+         * Верх карточки высотой [height], как `top: y_offset%` и `fittedTop` веб-SDK: [offset] процентов всей
+         * высоты слайда [slideHeight] ([StorySlidePlacement.offsetY]), не выше [top]; низ ниже, чем [margin]
+         * над [bottom], — карточка поднимается, но не выше [top].
          */
-        fun cardTop(offset: Float?, slideTop: Int, slideBottom: Int, height: Int, margin: Int): Int {
-            val wanted = (slideTop + (slideBottom - slideTop) * (offset ?: 0f).coerceIn(0f, 100f) / 100f).roundToInt()
-            val max = slideBottom - height - margin
-            return if (wanted > max) maxOf(slideTop, max) else wanted
+        fun cardTop(offset: Float?, slideHeight: Int, top: Int, bottom: Int, height: Int, margin: Int): Int {
+            val wanted = maxOf(top, StorySlidePlacement.offsetY(offset, slideHeight).roundToInt())
+            val max = bottom - height - margin
+            return if (wanted > max) maxOf(top, max) else wanted
         }
     }
 }

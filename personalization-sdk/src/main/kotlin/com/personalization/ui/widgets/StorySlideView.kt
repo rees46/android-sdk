@@ -305,7 +305,7 @@ internal class StorySlideView(
     private fun buildPolls(): StoryPollLayer? {
         val polls = host.polls ?: return null
         if (slide.polls.isEmpty()) return null
-        val layer = StoryPollLayer(context)
+        val layer = StoryPollLayer(context, ::bottomRowTop)
         slide.polls.forEach { poll ->
             lateinit var controller: StoryPollController
             controller = StoryPollController(poll, storyId, slide.id, polls.transport, polls.texts, onHold = { hold ->
@@ -321,6 +321,16 @@ internal class StorySlideView(
 
     /** Карточки опросов слайда. */
     val pollCards: List<StoryPollView> get() = pollLayer?.cards.orEmpty()
+
+    /**
+     * Верх ряда низа (кнопка звука, «Используемые товары») в слайде высотой [slideHeight], пока он виден:
+     * над ним — карточка опроса. Ряд — последний в колонке, под ним только нижняя системная панель.
+     */
+    private fun bottomRowTop(slideHeight: Int): Int? {
+        val wrapper = usedHost?.takeIf { it.visibility == View.VISIBLE } ?: return null
+        val used = usedProducts ?: return null
+        return slideHeight - wrapper.paddingBottom - used.rowHeight
+    }
 
     /** Клавиатура окна: [bottom] — сколько она закрывает снизу. Слайд не сжимается — поднимается карточка. */
     fun applyIme(bottom: Int) {

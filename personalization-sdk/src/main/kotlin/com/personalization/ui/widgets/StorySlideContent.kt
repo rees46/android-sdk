@@ -184,9 +184,10 @@ internal class StoryTextBlockLayer(context: Context) : FrameLayout(context) {
 
 /**
  * Высота элемента слайда V2 по `y_offset` — одна для текстовых блоков и карточек опросов, как в
- * вебе, где оба лежат в контейнере слайда с `top: y_offset%`. Верх — `y_offset` процентов ВСЕЙ
- * высоты слайда; затем элемент сдвигается, чтобы целиком лечь в область между шапкой (прогресс,
- * «Поделиться», крестик) и кнопками или «товарами»: выше области — к её верху, ниже — к низу.
+ * вебе, где оба лежат в контейнере слайда с `top: y_offset%`: `y_offset` процентов ВСЕЙ высоты
+ * слайда ([offsetY]). Текстовый блок затем сдвигается, чтобы целиком лечь в область между шапкой
+ * (прогресс, «Поделиться», крестик) и кнопками или «товарами»: выше области — к её верху, ниже — к
+ * низу ([top]); карточку опроса ставит [StoryPollLayer.cardTop].
  */
 internal object StorySlidePlacement {
 
@@ -202,9 +203,12 @@ internal object StorySlidePlacement {
      * верха слайда высотой [slideHeight]. [offset] `null` — 0. Элемент выше области — её верх.
      */
     fun top(offset: Float?, slideHeight: Int, areaTop: Int, areaHeight: Int, height: Int): Int {
-        val wanted = slideHeight * (offset ?: 0f).coerceIn(0f, 100f) / 100f - areaTop
+        val wanted = offsetY(offset, slideHeight) - areaTop
         return wanted.coerceAtMost((areaHeight - height).toFloat()).coerceAtLeast(0f).roundToInt()
     }
+
+    /** Верх элемента по `y_offset` [offset] от верха слайда высотой [slideHeight]: проценты всей высоты, `null` — 0. */
+    fun offsetY(offset: Float?, slideHeight: Int): Float = slideHeight * (offset ?: 0f).coerceIn(0f, 100f) / 100f
 
     /** Верх [area] в слайде ([StorySlideView]) и высота слайда; [area] не на слайде — она сама. */
     fun frame(area: View): Pair<Int, Int> {

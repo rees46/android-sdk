@@ -311,7 +311,7 @@ class StoryPollViewTest {
 
     @Test
     fun `the top of a card is fitted as fittedTop of the web SDK`() {
-        fun top(offset: Float?, height: Int) = StoryPollLayer.cardTop(offset, 0, 1000, height, 16)
+        fun top(offset: Float?, height: Int) = StoryPollLayer.cardTop(offset, 1000, 0, 1000, height, 16)
         assertEquals(500, top(50f, 200))
         assertEquals("no y_offset — the top of the slide", 0, top(null, 200))
         assertEquals("a small y_offset is kept, the header does not push it down", 50, top(5f, 200))
@@ -319,8 +319,51 @@ class StoryPollViewTest {
         assertEquals("taller than the room — the top of the slide", 0, top(90f, 1100))
         assertEquals("clamped to 0 %", 0, top(-20f, 200))
         assertEquals("clamped to 100 %", 784, top(150f, 200))
-        assertEquals("between the system bars", 500, StoryPollLayer.cardTop(50f, 50, 950, 100, 16))
-        assertEquals("never above the top bar", 50, StoryPollLayer.cardTop(null, 50, 950, 100, 16))
+        assertEquals("a share of the whole slide, not of the room between the system bars", 100, StoryPollLayer.cardTop(10f, 1000, 50, 950, 100, 16))
+        assertEquals("never above the top bar", 50, StoryPollLayer.cardTop(null, 1000, 50, 950, 100, 16))
+        assertEquals("never above the top bar", 50, StoryPollLayer.cardTop(2f, 1000, 50, 950, 100, 16))
+        assertEquals("16 above the bottom row", 684, StoryPollLayer.cardTop(90f, 1000, 50, 800, 100, 16))
+    }
+
+    @Test
+    fun `a card under the system bars stands at y_offset of the whole slide, as a text block, not above the top bar`() {
+        val barred = object : StorySlideHost by host {
+            override val insets: Insets = Insets.of(0, 100, 0, 60)
+        }
+        fun slide(offset: Int) = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"text_block","text_input":"Text","y_offset":$offset},
+            {"type":"poll","poll_type":"mini_poll","y_offset":$offset,
+             "poll":{"code":"s","kind":"single_choice","options":[{"id":1,"label":"A"}]}}]}""")), 1, barred, null, 9001).also { view ->
+            activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            idle()
+        }
+        val middle = slide(50)
+        val card = middle.pollCards.single()
+        assertEquals(Math.round(middle.height * 0.5f), card.top)
+        val block = all(middle).filterIsInstance<PersonalizationStoryTextBlock>().single()
+        assertEquals("one frame for both", windowTop(card), windowTop(block))
+        assertEquals("not above the top bar", 100, slide(0).pollCards.single().top)
+    }
+
+    @Test
+    fun `a card is lifted 16 above the visible bottom row, without the row 16 above the slide's bottom`() {
+        val v3 = object : StorySlideHost by host {
+            override val v3 = true
+        }
+        val view = StorySlideView(activity, 0, 0, Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4","elements":[
+            {"type":"poll","poll_type":"mini_poll","y_offset":95,
+             "poll":{"code":"s","kind":"single_choice","options":[{"id":1,"label":"A"}]}}]}""")), 1, v3, null, 9001)
+        activity.setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        idle()
+        val density = view.resources.displayMetrics.density
+        val margin = (16 * density).toInt()
+        val row = (64 * density).toInt()
+        // The sound button is shown while the audio of the video is not known: the row is there.
+        assertEquals(view.height - row - margin, view.pollCards.single().bottom)
+
+        view.setSoundAvailable(false)
+        idle()
+        assertEquals("no sound, no products — no row", view.height - margin, view.pollCards.single().bottom)
     }
 
     @Test
