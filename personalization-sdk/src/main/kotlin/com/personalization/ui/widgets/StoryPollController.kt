@@ -8,8 +8,16 @@ import com.personalization.InternalPersonalizationV3Api
  * Два состояния: форма и отвеченное. Выбор одного и шкала отправляются по нажатию,
  * несколько вариантов и текст — кнопкой. Пока ответ отправляется, всё выключено и повторное
  * нажатие — игнор; ошибка — текст под содержимым, всё снова активно, можно повторить
- * (автоповтора нет). Успех пишется в [StoryPollStore]; ответ, пришедший после ухода карточки
- * ([detach]), — только туда: ни вьюха, ни пауза слайда его уже не видят.
+ * (автоповтора нет).
+ *
+ * Ответ при сборке: из ленты ([StoryPoll.answer]), без него — сохранённый на устройстве
+ * ([StoryPollAnswers], только с did), без него — нет ответа. Успех пишется в карточку, в элемент
+ * ленты и на устройство; ответ, пришедший после ухода карточки ([detach]), — только в ленту и на
+ * устройство: ни вьюха, ни пауза слайда его уже не видят.
+ *
+ * Шкала с вопросом в полосе оценки ([followUp]) после оценки спрашивает его: поле до 5000 знаков и
+ * кнопка; комментарий уходит вторым запросом с той же оценкой, потом показывается `success` полосы.
+ * Без комментария вопрос появляется при каждом показе.
  *
  * Слайд стоит, пока карточку держат, пишут в поле или ждут ответа: [onHold] зовётся при
  * смене `pressed || focused || sending`.
@@ -19,10 +27,13 @@ internal class StoryPollController(
     val poll: StoryPoll,
     private val storyId: Int,
     private val slideId: String,
-    private val shopId: String,
     private val transport: StoriesPollsTransport,
     hostTexts: PollTexts,
     private val onHold: (Boolean) -> Unit,
+    /** Ответы на устройстве; `null` — только лента (просмотр без SDK). */
+    private val answers: StoryPollAnswers? = null,
+    /** did устройства — часть ключа ответа; пустой — ответ не сохраняется. */
+    did: String? = null,
     /** Куда вернуть ответ транспорта: главный поток. Подменяется в тестах. */
     private val post: (() -> Unit) -> Unit = MainThread::run
 ) {
@@ -72,24 +83,39 @@ internal class StoryPollController(
     private var attached = true
     private var request = 0
 
+    private val storageKey: String? = answers?.key(did, poll.pollType, poll.code, storyId, slideId)
+
     init {
-        val stored = StoryPollStore.get(shopId, poll.pollType, poll.code)
-        answer = if (stored != null) stored.answer else poll.answer
-        results = if (stored != null) stored.results else poll.results
-        // Запись хранилища — только после успеха, а после успеха карточка всегда отвеченная.
-        render(stored != null || answer?.isAnswered == true)
+        // Ответ ленты важнее: сохранённый — для анонимных покупателей, которых лента не знает.
+        val saved = if (poll.answer != null) null else answers?.read(storageKey)
+        answer = saved?.answer ?: poll.answer
+        results = if (saved != null) saved.results else poll.results
+        render(answer?.isAnswered == true)
     }
+
+    /**
+     * Вопрос полосы оценки, на который ещё нет ответа: в отвеченном состоянии под шкалой — он, поле
+     * и кнопка, а не `success`. `null` — его нет.
+     */
+    val followUp: String? get() = if (answered) poll.followUp(answer) else null
+
+    /** Поле есть: текстовый опрос в форме или вопрос полосы. */
+    val hasInput: Boolean get() = if (answered) followUp != null else poll.type == StoryPoll.Type.TEXT
+
+    /** Лимит поля: у вопроса полосы — 5000, у текстового опроса — `max_length`. */
+    val inputLimit: Int? get() = if (answered) StoryPoll.COMMENT_MAX_LENGTH else poll.maxLength
 
     /** Кнопка формы активна: выбран вариант или в поле есть текст. */
     val canSubmit: Boolean
-        get() = !sending && !answered && when (poll.type) {
-            StoryPoll.Type.MULTIPLE_CHOICE -> selection.isNotEmpty()
-            StoryPoll.Type.TEXT -> text.isNotBlank()
+        get() = !sending && when {
+            answered -> followUp != null && text.isNotBlank()
+            poll.type == StoryPoll.Type.MULTIPLE_CHOICE -> selection.isNotEmpty()
+            poll.type == StoryPoll.Type.TEXT -> text.isNotBlank()
             else -> false
         }
 
-    /** Счётчик поля `n/limit` в единицах UTF-16; без `max_length` — `null`. */
-    val counter: String? get() = poll.maxLength?.let { "${text.length}/$it" }
+    /** Счётчик поля `n/limit` в единицах UTF-16; без лимита — `null`. */
+    val counter: String? get() = if (hasInput) inputLimit?.let { "${text.length}/$it" } else null
 
     /** Выбор одного: отправка сразу; не ушло — выделение возвращается к прежнему ответу. */
     fun choose(optionId: Int) {
@@ -114,15 +140,22 @@ internal class StoryPollController(
      * составляет слово, в поле бывает больше — считается и уходит обрезанный.
      */
     fun setText(value: String) {
-        val limited = StoryPoll.limitText(value, poll.maxLength)
+        val limited = StoryPoll.limitText(value, inputLimit)
         if (limited == text) return
         text = limited
         changed()
     }
 
-    /** Кнопка: варианты — в порядке опроса, текст — без пробелов по краям. */
+    /**
+     * Кнопка: варианты — в порядке опроса, текст — без пробелов по краям; у вопроса полосы —
+     * та же оценка с комментарием.
+     */
     fun submit() {
         if (!canSubmit) return
+        if (answered) {
+            sendComment()
+            return
+        }
         when (poll.type) {
             StoryPoll.Type.MULTIPLE_CHOICE -> {
                 val ids = poll.options.map { it.id }.filter { it in selection }
@@ -140,7 +173,7 @@ internal class StoryPollController(
         }
     }
 
-    /** Шкала: отправка сразу; не ушло — выделена прежняя оценка. */
+    /** Шкала: отправка сразу, без комментария; не ушло — выделена прежняя оценка. */
     fun rate(value: Int) {
         val kind = poll.type.scaleKind ?: return
         if (answered || sending) return
@@ -148,7 +181,20 @@ internal class StoryPollController(
         pressedRate = value.toDouble()
         changed()
         send(StoriesPollAnswer(rate = value.toDouble()), onFailure = { pressedRate = previous }) { callback ->
-            transport.review(kind, StoryPollBodies.review(poll, value), callback)
+            transport.review(kind, StoryPollBodies.review(poll, value, storyId, slideId), callback)
+        }
+    }
+
+    /** Ответ на вопрос полосы: та же оценка и комментарий без пробелов по краям. */
+    private fun sendComment() {
+        val kind = poll.type.scaleKind ?: return
+        val rate = answer?.rate ?: return
+        val comment = text.trim()
+        if (comment.isEmpty()) return
+        // Целая оценка уходит целым числом, как её отправила шкала.
+        val sentRate: Number = if (rate == Math.floor(rate) && Math.abs(rate) <= Int.MAX_VALUE) rate.toInt() else rate
+        send(StoriesPollAnswer(rate = rate, comment = comment)) { callback ->
+            transport.review(kind, StoryPollBodies.review(poll, sentRate, storyId, slideId, comment), callback)
         }
     }
 
@@ -224,9 +270,13 @@ internal class StoryPollController(
         when (result) {
             is StoriesPollsResult.Success -> {
                 val scale = poll.type.isScale
-                answer = if (scale) sent else result.answer ?: sent
+                val saved = if (scale) sent else result.answer ?: sent
+                answer = saved
                 results = if (scale) null else result.results
-                StoryPollStore.put(shopId, poll.pollType, poll.code, StoryPollStore.Entry(answer, results))
+                // Слайд из той же ленты при следующем показе соберётся с этим ответом.
+                poll.answer = saved
+                poll.results = results
+                answers?.write(storageKey, saved, results)
                 if (!attached) return
                 render(true)
             }
@@ -240,17 +290,18 @@ internal class StoryPollController(
         sync()
     }
 
-    /** Форма или отвеченное заново; в форме выделен прежний ответ. */
+    /** Форма или отвеченное заново; в форме выделен прежний ответ, поле пустое. */
     private fun render(answered: Boolean) {
         this.answered = answered
         error = false
         renderCount++
         selection.clear()
+        // Поле — и текстового опроса, и вопроса полосы — каждый раз пустое.
+        text = ""
         if (!answered) {
             val previous = previousIds()
             selection.addAll(poll.options.map { it.id }.filter { it in previous })
             pressedRate = answer?.rate
-            text = ""
         }
         changed()
     }
@@ -267,6 +318,14 @@ internal class StoryPollController(
     }
 }
 
-/** Что опросам слайда нужно от просмотра: транспорт, магазин (ключ хранилища) и тексты хоста. */
+/**
+ * Что опросам слайда нужно от просмотра: транспорт, тексты хоста, ответы на устройстве магазина и did
+ * (ключ ответа); без SDK — без них.
+ */
 @OptIn(InternalPersonalizationV3Api::class)
-internal class StoryPollsContext(val transport: StoriesPollsTransport, val shopId: String, val texts: PollTexts)
+internal class StoryPollsContext(
+    val transport: StoriesPollsTransport,
+    val texts: PollTexts,
+    val answers: StoryPollAnswers? = null,
+    val did: String? = null
+)

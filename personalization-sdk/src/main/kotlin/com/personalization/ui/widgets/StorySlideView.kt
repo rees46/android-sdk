@@ -21,11 +21,11 @@ import com.personalization.Product
 import com.personalization.R
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.ui.PersonalizationTheme
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryNavigation
 import com.personalization.ui.components.PersonalizationStoryUsedProducts
-import com.personalization.ui.components.StorySupport
 
 /** Что слайд просит у просмотра: загрузку картинок, навигацию, клики. */
 internal interface StorySlideHost {
@@ -68,14 +68,24 @@ internal interface StorySlideHost {
 
     /** Опрос слайда [view] держит его: карточку трогают, пишут в поле или ждут ответа. */
     fun onPollHold(view: StorySlideView, hold: Boolean) = Unit
+
+    /**
+     * Сторис с API v3: слайд рисуется по правилам веб-SDK — медиа по `type`, цвет `background_color`,
+     * шапка `header`, текстовые блоки по общему правилу; кнопка без ссылки ничего не открывает. На
+     * старой ленте — как было.
+     */
+    val v3: Boolean get() = false
+
+    /** Нажата шапка слайда (`header`, API v3). */
+    fun onHeader(header: HeaderElement) = Unit
 }
 
 /**
  * Вёрстка одного слайда (Card/Story). Медиа-слайд строится в тёмном контексте (C1),
  * слайд без медиа — в теме хоста на Background/Card (C2). Слои снизу вверх: поля вокруг
  * медиа, фото/видео целиком (fit), скрим (C3), слой касаний, органы управления с отступами
- * от системных панелей и выреза, кнопка «Повторить» (C5). Медиа идёт под панели, органы
- * управления — нет.
+ * от системных панелей и выреза, опросы, навигация (прогресс, крестик, «Поделиться» — поверх
+ * опросов, как в веб-SDK), кнопка «Повторить» (C5). Медиа идёт под панели, органы управления — нет.
  */
 @androidx.annotation.OptIn(markerClass = [UnstableApi::class])
 @SuppressLint("ViewConstructor")
@@ -90,12 +100,18 @@ internal class StorySlideView(
     val shareUrl: String? = null,
     /** Id сторис — для ответов на опросы. */
     private val storyId: Int = 0
-) : FrameLayout(if (StoriesMapping.isMedia(slide)) StorySupport.darkContext(baseContext) else baseContext) {
+) : FrameLayout(StoriesMapping.slideContext(baseContext, slide, host.v3)) {
 
     enum class ImageState { LOADING, READY, FAILED }
 
-    val isMedia = StoriesMapping.isMedia(slide)
-    val isVideo = StoriesMapping.isVideo(slide)
+    val isMedia = StoriesMapping.isMedia(slide, host.v3)
+    val isVideo = StoriesMapping.isVideo(slide, host.v3)
+
+    /** Слайд в тёмных токенах: медиа или `background_color`, на котором светлый текст контрастнее (API v3) — значки панелей светлые. */
+    val isDark = StoriesMapping.isDark(baseContext, slide, host.v3)
+
+    /** API v3: свой цвет слайда, на котором тёмный текст контрастнее, — светлые токены и в ночной теме хоста. */
+    val lightScheme = !isDark && host.v3 && StoriesMapping.ownColor(slide) != null
     val navigation = PersonalizationStoryNavigation(context)
     var playerView: PlayerView? = null
         private set
@@ -124,6 +140,9 @@ internal class StorySlideView(
 
     private val poster = StoryImageView(context)
     private val column = LinearLayout(context)
+
+    /** Ряд навигации поверх опросов: карточка может зайти под него, а он виден и нажимается (P8). */
+    private val navigationBar = FrameLayout(context)
     private val retry = PersonalizationButton(context)
     private var usedProducts: PersonalizationStoryUsedProducts? = null
     private var usedHost: View? = null
@@ -132,15 +151,14 @@ internal class StorySlideView(
     private val pollHolds = HashSet<StoryPollController>()
     private var keyboardTapPending = false
     private val padding = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
-    private val pollInset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_lg)
+
+    /** Последние отступы системных панелей — ряд низа может пропасть позже ([setSoundAvailable]). */
+    private var appliedInsets: Insets = Insets.NONE
 
     init {
-        setBackgroundColor(
-            if (isMedia) StoriesMapping.letterboxColor(slide)
-            else PersonalizationTheme.color(context, R.color.personalization_background_card)
-        )
+        setBackgroundColor(StoriesMapping.slideColor(slide, host.v3, PersonalizationTheme.color(context, R.color.personalization_background_card)))
         if (isMedia) addMedia()
-        addView(View(context).apply { background = scrim(StoriesMapping.scrimAlpha(slide)) }, matchParent())
+        addView(View(context).apply { background = scrim(StoriesMapping.scrimAlpha(slide, host.v3)) }, matchParent())
         addView(StoryTouchLayer(context, host::onTap, host::onHold), matchParent())
 
         column.orientation = LinearLayout.VERTICAL
@@ -150,10 +168,24 @@ internal class StorySlideView(
         navigation.onShare = shareUrl?.let { url -> { host.onShare(url) } }
         navigation.progress.count = slideCount
         navigation.progress.current = slideIndex
-        // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16).
-        column.addView(navigation, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        // Навигация в том же отступе 16, что и контент слайда (Figma: content padding 16). Сама она —
+        // в ряду поверх опросов, а в колонке — её место той же высоты: шапка и контент стоят как прежде.
+        navigationBar.addView(navigation, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply {
+            marginStart = padding
+            marginEnd = padding
+            topMargin = padding
+        })
+        val slot = NavigationSlot(context, navigation)
+        navigation.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ -> if (bottom - top != slot.height) slot.requestLayout() }
+        column.addView(slot, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        if (host.v3) StoriesMapping.header(slide)?.let { header ->
+            column.addView(StoryHeader.build(context, header, host), columnParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
         buildContent()
         addView(column, matchParent())
+        // Опросы — над содержимым слайда и его кнопками, как в веб-SDK; навигация — над ними.
+        buildPolls()?.let { layer -> addView(layer, matchParent()) }
+        addView(navigationBar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP))
 
         retry.text = host.texts.retryText
         retry.buttonView = PersonalizationButton.ButtonView.PRIMARY
@@ -257,53 +289,50 @@ internal class StorySlideView(
         } else {
             StoryTextBlocks.build(context, slide, host)
         }
-        val area = withPolls(middle)
-        column.addView(area, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f).apply {
-            // Карточки опросов — в 12 от краёв слайда, середина под ними — как была, в 16.
-            if (area !== middle) {
-                marginStart = pollInset
-                marginEnd = pollInset
-            }
-        })
+        column.addView(middle, columnParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
         val buttons = StoriesMapping.buttons(slide)
         buttons.forEach { element -> addButton(element.title) { host.onButton(element, product) } }
-        // Без своих кнопок товар открывает кнопка хоста — «More info» (C11).
-        if (buttons.isEmpty() && product != null) addButton(host.texts.productButtonText) { host.onProduct(product) }
+        // Без своих кнопок товар открывает кнопка хоста — «More info» (C11); на API v3 её нет, как в веб-SDK.
+        if (buttons.isEmpty() && product != null && !host.v3) addButton(host.texts.productButtonText) { host.onProduct(product) }
 
         val products = StoriesMapping.products(slide)?.let { element -> element to element.getProducts() }
         if (products != null || isVideo) addUsedProducts(products?.first, products?.second.orEmpty())
     }
 
     /**
-     * Опросы — поверх середины слайда, и на товарном тоже: между шапкой и кнопками. Без
-     * транспорта (не API v3) их нет.
+     * Опросы — слой во весь слайд, карточки по `y_offset` слайда, как в веб-SDK ([StoryPollLayer]); под
+     * навигацией. Без транспорта (не API v3) их нет.
      */
-    private fun withPolls(middle: View): View {
-        val polls = host.polls ?: return middle
-        if (slide.polls.isEmpty()) return middle
-        val layer = StoryPollLayer(context)
+    private fun buildPolls(): StoryPollLayer? {
+        val polls = host.polls ?: return null
+        if (slide.polls.isEmpty()) return null
+        val layer = StoryPollLayer(context, ::bottomRowTop)
         slide.polls.forEach { poll ->
             lateinit var controller: StoryPollController
-            controller = StoryPollController(poll, storyId, slide.id, polls.shopId, polls.transport, polls.texts, onHold = { hold ->
+            controller = StoryPollController(poll, storyId, slide.id, polls.transport, polls.texts, onHold = { hold ->
                 val before = pollHolds.isNotEmpty()
                 if (hold) pollHolds.add(controller) else pollHolds.remove(controller)
                 if (before != pollHolds.isNotEmpty()) host.onPollHold(this, pollHolds.isNotEmpty())
-            })
+            }, answers = polls.answers, did = polls.did)
             layer.add(StoryPollView(context, controller))
         }
         pollLayer = layer
-        return FrameLayout(context).apply {
-            addView(middle, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
-                marginStart = padding - pollInset
-                marginEnd = padding - pollInset
-            })
-            addView(layer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        }
+        return layer
     }
 
     /** Карточки опросов слайда. */
     val pollCards: List<StoryPollView> get() = pollLayer?.cards.orEmpty()
+
+    /**
+     * Верх ряда низа (кнопка звука, «Используемые товары») в слайде высотой [slideHeight], пока он виден:
+     * над ним — карточка опроса. Ряд — последний в колонке, под ним только нижняя системная панель.
+     */
+    private fun bottomRowTop(slideHeight: Int): Int? {
+        val wrapper = usedHost?.takeIf { it.visibility == View.VISIBLE } ?: return null
+        val used = usedProducts ?: return null
+        return slideHeight - wrapper.paddingBottom - used.rowHeight
+    }
 
     /** Клавиатура окна: [bottom] — сколько она закрывает снизу. Слайд не сжимается — поднимается карточка. */
     fun applyIme(bottom: Int) {
@@ -336,6 +365,7 @@ internal class StorySlideView(
             imageLoader = { view, item -> item.imageUrl?.let { host.loadImage(view, it) } }
             onProductClick = { item -> products.firstOrNull { it.id == item.id }?.let(host::onCarouselProduct) }
             onExpandedChange = { open -> host.onSheet(open) }
+            // На API v3 кнопку звука спрячет [setSoundAvailable], если у ролика точно нет звуковой дорожки.
             showSoundButton = isVideo
             soundOnDescription = host.texts.soundOnLabel
             soundOffDescription = host.texts.soundOffLabel
@@ -361,9 +391,12 @@ internal class StorySlideView(
      * edge-to-edge). Шторка товаров уходит под панель навигации своим фоном.
      */
     fun applyInsets(insets: Insets) {
-        val used = usedHost
+        appliedInsets = insets
+        val used = usedHost?.takeIf { it.visibility == View.VISIBLE }
         column.setPadding(insets.left, insets.top, insets.right, if (used == null) insets.bottom + padding else 0)
+        navigationBar.setPadding(insets.left, insets.top, insets.right, 0)
         used?.setPadding(0, 0, 0, insets.bottom)
+        pollLayer?.setInsets(insets.top, insets.bottom)
     }
 
     fun setProgress(progress: Float) {
@@ -372,6 +405,22 @@ internal class StorySlideView(
 
     fun setMuted(muted: Boolean) {
         usedProducts?.muted = muted
+    }
+
+    /**
+     * API v3: есть ли у видео звуковая дорожка. Точно нет — кнопки звука нет; без товаров пустой ряд низа
+     * тогда убирается и места не занимает.
+     */
+    fun setSoundAvailable(available: Boolean) {
+        if (!host.v3 || !isVideo) return
+        val used = usedProducts ?: return
+        used.showSoundButton = available
+        val wrapper = usedHost ?: return
+        val visibility = if (available || used.products.isNotEmpty()) View.VISIBLE else View.GONE
+        if (wrapper.visibility == visibility) return
+        wrapper.visibility = visibility
+        applyInsets(appliedInsets)
+        pollLayer?.requestLayout()
     }
 
     fun closeSheet() {
@@ -384,6 +433,29 @@ internal class StorySlideView(
 
     fun showRetry(show: Boolean) {
         retry.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * TalkBack начинает слайд с навигации — крестика и «Поделиться», — как когда она стояла в колонке
+     * первой: её ряд лежит поверх опросов, и по месту на экране чтец поставил бы его после содержимого.
+     */
+    override fun addChildrenForAccessibility(outChildren: ArrayList<View>) {
+        val start = outChildren.size
+        super.addChildrenForAccessibility(outChildren)
+        val added = outChildren.subList(start, outChildren.size)
+        val first = added.filter { isInNavigation(it) }
+        if (first.isEmpty()) return
+        added.removeAll(first.toSet())
+        added.addAll(0, first)
+    }
+
+    private fun isInNavigation(view: View): Boolean {
+        var node: View? = view
+        while (node != null && node !== this) {
+            if (node === navigationBar) return true
+            node = node.parent as? View
+        }
+        return false
     }
 
     /**
@@ -462,5 +534,17 @@ internal class StoryImageView(context: Context) : AppCompatImageView(context) {
     override fun setImageDrawable(drawable: Drawable?) {
         super.setImageDrawable(drawable)
         if (drawable != null) onDrawable?.invoke()
+    }
+}
+
+/**
+ * Место навигации в колонке слайда: высотой с саму навигацию, которая лежит в ряду поверх опросов
+ * ([StorySlideView]). Ширина та же — отступы колонки и ряда совпадают.
+ */
+@SuppressLint("ViewConstructor")
+private class NavigationSlot(context: Context, private val navigation: View) : View(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        navigation.measure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), navigation.measuredHeight)
     }
 }

@@ -147,6 +147,9 @@ class PersonalizationStoryUsedProducts @JvmOverloads constructor(
         sound.isSelected = !muted
     }
 
+    /** Высота строки с кнопками (без карусели): над ней слайд ставит карточку опроса. */
+    internal val rowHeight: Int get() = dp(ROW_DP)
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private companion object {

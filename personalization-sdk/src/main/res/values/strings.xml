@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="notification_channel_id" translatable="false">notification_channel</string>
     <string name="notification_channel_name" translatable="false">notification_channel</string>
 
@@ -37,13 +37,15 @@
     <string name="personalization_stories_share">Share</string>
     <string name="personalization_stories_sound_on">Sound on</string>
     <string name="personalization_stories_sound_off">Sound off</string>
-    <string name="personalization_stories_poll_reanswer">Answer again</string>
-    <string name="personalization_stories_poll_error">Failed to send the answer. Please try again</string>
-    <string name="personalization_stories_poll_submit">Send</string>
-    <string name="personalization_stories_poll_results">Results</string>
-    <string name="personalization_stories_poll_thanks">Thanks!</string>
-    <string name="personalization_stories_poll_vote_counted">Vote counted</string>
-    <plurals name="personalization_stories_poll_votes">
+    <!-- Shipped since 2.47.0; the poll card now uses the English texts of the web SDK, an app may still reference them. -->
+    <string name="personalization_stories_poll_reanswer" tools:ignore="UnusedResources">Answer again</string>
+    <string name="personalization_stories_poll_error" tools:ignore="UnusedResources">Failed to send the answer. Please try again</string>
+    <string name="personalization_stories_poll_submit" tools:ignore="UnusedResources">Send</string>
+    <!-- Shipped in 2.47.0–2.51.0; the poll card no longer uses them, an app may still reference them. -->
+    <string name="personalization_stories_poll_results" tools:ignore="UnusedResources">Results</string>
+    <string name="personalization_stories_poll_thanks" tools:ignore="UnusedResources">Thanks!</string>
+    <string name="personalization_stories_poll_vote_counted" tools:ignore="UnusedResources">Vote counted</string>
+    <plurals name="personalization_stories_poll_votes" tools:ignore="UnusedResources">
         <item quantity="one">%s vote</item>
         <item quantity="other">%s votes</item>
     </plurals>

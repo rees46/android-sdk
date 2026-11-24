@@ -1,7 +1,10 @@
 package com.personalization.ui.widgets
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import androidx.test.core.app.ApplicationProvider
+import com.personalization.R
 import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -106,6 +109,41 @@ class StoriesViewerSupportTest {
         assertFalse(sound.silence())
         assertFalse(sound.silenced)
         assertTrue(StoriesSound.chosenMuted)
+    }
+
+    @Test
+    fun `the poll texts the library shipped before stay in it`() {
+        val resources = ApplicationProvider.getApplicationContext<Context>().resources
+        assertEquals("Results", resources.getString(R.string.personalization_stories_poll_results))
+        assertEquals("Thanks!", resources.getString(R.string.personalization_stories_poll_thanks))
+        assertEquals("Vote counted", resources.getString(R.string.personalization_stories_poll_vote_counted))
+        assertEquals("1 vote", resources.getQuantityString(R.plurals.personalization_stories_poll_votes, 1, "1"))
+        assertEquals("5 votes", resources.getQuantityString(R.plurals.personalization_stories_poll_votes, 5, "5"))
+    }
+
+    @Test
+    @Config(qualifiers = "ru")
+    fun `the poll texts the library shipped before stay in russian too`() {
+        val resources = ApplicationProvider.getApplicationContext<Context>().resources
+        assertEquals("Результаты", resources.getString(R.string.personalization_stories_poll_results))
+        assertEquals("Спасибо!", resources.getString(R.string.personalization_stories_poll_thanks))
+        assertEquals("Голос учтён", resources.getString(R.string.personalization_stories_poll_vote_counted))
+        assertEquals("2 голоса", resources.getQuantityString(R.plurals.personalization_stories_poll_votes, 2, "2"))
+        assertEquals("5 голосов", resources.getQuantityString(R.plurals.personalization_stories_poll_votes, 5, "5"))
+    }
+
+    @Test
+    @Config(qualifiers = "ru")
+    fun `the built-in poll texts are the english ones of the web SDK in any language, the rest stays localized`() {
+        val texts = StoriesTexts.defaults(ApplicationProvider.getApplicationContext())
+        assertEquals(PollTexts("Answer again", "Failed to send the answer. Please try again", "Send"), texts.pollTexts)
+        assertEquals(PollTexts.DEFAULTS, texts.pollTexts)
+        assertEquals("Поделиться", texts.shareLabel)
+        // The host's texts, then the poll's labels, replace them; an empty host text keeps the built-in one.
+        val host = PollTexts("Ещё раз", "", "Готово").or(PollTexts.DEFAULTS)
+        assertEquals(PollTexts("Ещё раз", "Failed to send the answer. Please try again", "Готово"), host)
+        assertEquals(PollTexts("Ответить заново", "Failed to send the answer. Please try again", "Готово"),
+            host.with(StoryPoll.Labels(reanswer = "Ответить заново")))
     }
 
     @After

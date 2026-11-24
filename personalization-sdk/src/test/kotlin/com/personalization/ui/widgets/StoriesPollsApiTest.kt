@@ -5,6 +5,7 @@ import com.personalization.LogLevel
 import android.os.Looper
 import android.util.Log
 import com.personalization.SDK
+import com.personalization.core.BridgeApi
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -26,6 +27,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
 
 /** The HTTP transport of polls: requests of `polls.test.ts` and every kind of failure. */
+@OptIn(BridgeApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class StoriesPollsApiTest {
@@ -39,7 +41,10 @@ class StoriesPollsApiTest {
     @Before
     fun setUp() {
         every { sdk.getDid() } returns "did1"
-        every { sdk.getSid() } returns "sid1"
+        every { sdk.sessionId } returns "sid1"
+        every { sdk.segments.getAbGroup() } returns "B"
+        every { sdk.requestStream } returns "android"
+        every { sdk.popupsV3 } returns null
         every { sdk.getUserSettingsValueUseCase.getShopId() } returns "shop1"
         StoriesApiV3.runner = { it.run() }
         // The debug log is what these tests read; the default level hides it.
@@ -66,13 +71,18 @@ class StoriesPollsApiTest {
         assertEquals("POST", method)
         assertEquals("https://app.test/api/v3/polls/mini_polls/gift%20recipient/answers", url)
         val json = JSONObject(body!!)
-        assertEquals(listOf("shop_id", "did", "sid", "option_ids", "story_id", "slide_id"), json.keys().asSequence().toList())
+        assertEquals(
+            listOf("shop_id", "did", "sid", "stream", "option_ids", "source_type", "source_id", "source_item_id"),
+            json.keys().asSequence().toList()
+        )
         assertEquals("shop1", json.getString("shop_id"))
         assertEquals("did1", json.getString("did"))
         assertEquals("sid1", json.getString("sid"))
+        assertEquals("android", json.getString("stream"))
         assertEquals(2, json.getJSONArray("option_ids").getInt(0))
-        assertEquals(5, json.get("story_id"))
-        assertEquals("101", json.get("slide_id"))
+        assertEquals("stories", json.get("source_type"))
+        assertEquals("5", json.get("source_id"))
+        assertEquals("101", json.get("source_item_id"))
     }
 
     @Test
@@ -81,18 +91,27 @@ class StoriesPollsApiTest {
         review("csat", mapOf("channel" to "stories", "campaign" to "support", "rate" to 4))
 
         assertEquals("https://app.test/api/v3/polls/nps/reviews", requests[0].second)
-        assertEquals("""{"shop_id":"shop1","did":"did1","sid":"sid1","channel":"stories","category":"delivery","rate":9}""", requests[0].third)
+        assertEquals("""{"shop_id":"shop1","did":"did1","sid":"sid1","stream":"android","channel":"stories","category":"delivery","rate":9}""", requests[0].third)
         assertEquals("https://app.test/api/v3/polls/csat/reviews", requests[1].second)
         assertEquals("support", JSONObject(requests[1].third!!).getString("campaign"))
     }
 
     @Test
     fun `the session always goes, without one as an empty string`() {
-        every { sdk.getSid() } returns ""
+        every { sdk.sessionId } returns null
         answer()
-        every { sdk.getSid() } throws IllegalStateException("not ready")
+        every { sdk.sessionId } throws IllegalStateException("not ready")
         review("nps", mapOf("rate" to 1))
         assertEquals(listOf("", ""), requests.map { JSONObject(it.third!!).getString("sid") })
+    }
+
+    @Test
+    fun `the answers send no segment, and testmode only in the test mode of popups v3`() {
+        answer()
+        assertTrue(JSONObject(requests[0].third!!).let { !it.has("segment") && !it.has("testmode") })
+        every { sdk.popupsV3 } returns mockk(relaxed = true) { every { testMode } returns true }
+        review("ces", mapOf("rate" to 5))
+        assertEquals(true, JSONObject(requests[1].third!!).get("testmode"))
     }
 
     @Test

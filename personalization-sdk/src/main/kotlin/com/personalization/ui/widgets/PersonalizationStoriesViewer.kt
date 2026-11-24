@@ -179,7 +179,8 @@ class PersonalizationStoriesViewer(
     private var player: ExoPlayer? = null
     private var playerSlide: StorySlideView? = null
     private var audioFocus: StoriesAudioFocus? = null
-    private val sound = StoriesSound()
+    /** Звук: на старой ленте — выбор процесса, на API v3 — своё состояние просмотра ([StoriesSound.v3]). */
+    private var sound = StoriesSound()
     private var insets: Insets = Insets.NONE
     private var imeBottom = 0
     private var pollsContext: StoryPollsContext? = null
@@ -250,12 +251,16 @@ class PersonalizationStoriesViewer(
             pollReanswerText, pollErrorText, pollSubmitText
         )
         pollsContext = pollsContext()
-        val seen = StoriesSeenStore.forSdk(hostContext, sdk, shopId)
-        state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide)
+        if (v3) sound = StoriesSound.v3(hostContext, soundShopKey())
+        // API v3, как веб-SDK: сторис открывается с `start_position` ленты, своих отметок увиденного нет (R8).
+        val seen = if (v3) NoSeenSlides else StoriesSeenStore.forSdk(hostContext, sdk, shopId)
+        state = StoriesViewerState(stories.map(::shape), seen, startIndex, startSlide, feedPositions = v3)
         state.setPaused(Pause.HOST, hostPaused)
         created = true
         OpenStoriesViewers.add(this)
-        setupWindow()
+        // API v3: показывать нечего — окно остаётся прозрачным и закрывается сразу, без чёрного экрана.
+        val nothingToShow = state.closedAtStart
+        if (!nothingToShow) setupWindow()
 
         root = StoryDismissLayout(hostContext).apply {
             canDrag = { !state.sheetOpen }
@@ -264,9 +269,18 @@ class PersonalizationStoriesViewer(
                 updateDrag()
             }
             onDismiss = { dismiss() }
+            // API v3, как веб-SDK: свайп назад на первой сторис закрывает просмотр, как тап назад на её первом слайде;
+            // вперёд на последней — она просмотрена, просмотр закрывается, как событие `next`; вверх — закрывает.
+            canSwipeBack = { swipeable() && state.storyIndex == 0 && pager.currentItem == 0 }
+            onSwipeBack = { dismiss() }
+            canSwipeForward = { swipeable() && state.storyIndex == stories.lastIndex && pager.currentItem == stories.lastIndex }
+            onSwipeForward = { apply(state.leaveLast()) }
+            canSwipeUp = { swipeable() }
+            onSwipeUp = { dismiss() }
+            verticalAsWeb = { v3 }
         }
         pager = ViewPager2(hostContext).apply {
-            adapter = StoriesAdapter()
+            if (!nothingToShow) adapter = StoriesAdapter()
             offscreenPageLimit = 1
             registerOnPageChangeCallback(pageCallback)
         }
@@ -286,7 +300,7 @@ class PersonalizationStoriesViewer(
         audioFocus = StoriesAudioFocus(hostContext) { silence() }
         observeHost()
 
-        if (stories.isEmpty()) {
+        if (stories.isEmpty() || nothingToShow) {
             handler.post { dismiss() }
             return
         }
@@ -320,7 +334,7 @@ class PersonalizationStoriesViewer(
         val window = window ?: return
         val night = (hostContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
-        val light = !view.isMedia && !night
+        val light = !view.isDark && (view.lightScheme || !night)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = light
             isAppearanceLightNavigationBars = light
@@ -384,15 +398,19 @@ class PersonalizationStoriesViewer(
         apply(state.back())
     }
 
-    /** Кнопка громкости вверх включает звук (C7); громкость меняет система, как обычно. */
+    /**
+     * Кнопка громкости вверх включает звук (C7); громкость меняет система, как обычно. На API v3 это не
+     * выбор кнопки звука: на устройстве он не сохраняется.
+     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && sound.muted) setMuted(false)
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP && sound.muted) setMuted(false, button = false)
         return super.onKeyDown(keyCode, event)
     }
 
     override fun dismiss() {
         if (created && !dismissed) {
             currentSlideView()?.hidePollKeyboard()
+            syncFeed()
             dismissed = true
             OpenStoriesViewers.remove(this)
             frameClock.stop()
@@ -414,7 +432,8 @@ class PersonalizationStoriesViewer(
         id = story.id,
         slides = List(story.slidesCount) { index ->
             val slide = story.getSlide(index)
-            StoriesViewerState.SlideShape(slide.id, StoriesMapping.durationMs(slide))
+            // API v3, как веб-SDK: слайд без медиа и без товара пропускается.
+            StoriesViewerState.SlideShape(slide.id, StoriesMapping.durationMs(slide), skipped = v3 && !StoriesMapping.isShownV3(slide))
         },
         serverViewed = story.isViewed,
         startPosition = story.startPosition
@@ -458,6 +477,11 @@ class PersonalizationStoriesViewer(
         if (!created || dismissed) return
         // Ушедшие сторис откроются по правилу A4 — их страницы показывают стартовый слайд.
         pages.forEach { (index, page) -> if (index != state.storyIndex) page.showSlide(slideFor(index)) }
+        // API v3: у сторис нет слайда для показа — просмотр проходит её, как веб-SDK.
+        state.passThrough()?.let { move ->
+            apply(move)
+            return
+        }
         if (state.enter()) onSlideStarted()
         sync()
     }
@@ -502,12 +526,25 @@ class PersonalizationStoriesViewer(
     /** Привести часы, плеер, пейджер и фокус звука к состоянию. */
     private fun sync() {
         if (!created || dismissed) return
+        syncFeed()
         if (state.isRunning) frameClock.start() else frameClock.stop()
         player?.playWhenReady = playerSlide != null && state.playerShouldPlay
         currentSlideView()?.setAnimationRunning(state.isRunning)
         pager.isUserInputEnabled = !state.sheetOpen
         currentSlideView()?.setProgress(state.progress)
         updateAudioFocus()
+    }
+
+    /**
+     * API v3 (R8), как веб-SDK меняет ленту: `start_position` и просмотренность — в сами сторис, их
+     * видят обложки ленты и следующий просмотр этой сессии.
+     */
+    private fun syncFeed() {
+        if (!v3) return
+        stories.forEachIndexed { index, story ->
+            story.startPosition = state.positionOf(index)
+            if (index in state.leftForward) story.isViewed = true
+        }
     }
 
     private fun onFrame(deltaMs: Long) {
@@ -526,6 +563,7 @@ class PersonalizationStoriesViewer(
 
     private val slideHost = object : StorySlideHost {
         override val texts: StoriesTexts get() = this@PersonalizationStoriesViewer.texts
+        override val v3: Boolean get() = this@PersonalizationStoriesViewer.v3
         override val muted: Boolean get() = sound.muted
         override val sheetOpen: Boolean get() = created && state.sheetOpen
         override val insets: Insets get() = this@PersonalizationStoriesViewer.insets
@@ -561,13 +599,16 @@ class PersonalizationStoriesViewer(
             track("click")
             val link = button.link
             when {
-                link.isNotEmpty() -> {
-                    dismiss()
-                    if (clicks.onClick(link)) openUrl(link)
-                }
-                // Кнопка без ссылки открывает товар слайда (C11).
-                product != null -> openProduct(product)
+                link.isNotEmpty() -> openLink(link)
+                // Кнопка без ссылки открывает товар слайда (C11); на API v3 — ничего, как в веб-SDK.
+                product != null && !v3 -> openProduct(product)
             }
+        }
+
+        /** Шапка (API v3), как в веб-SDK: `click`, потом ссылка; без ссылки — только `click`. */
+        override fun onHeader(header: com.personalization.stories.models.elements.HeaderElement) {
+            track("click")
+            if (header.link.isNotEmpty()) openLink(header.link)
         }
 
         override fun onProduct(product: com.personalization.Product) {
@@ -586,9 +627,12 @@ class PersonalizationStoriesViewer(
             }
         }
 
-        override fun onPromoCopied() = track("click")
+        /** Копия промокода: на старой ленте — `click`; на API v3 событий нет, как в веб-SDK. */
+        override fun onPromoCopied() {
+            if (!v3) track("click")
+        }
 
-        override fun onSoundToggle() = setMuted(!sound.muted)
+        override fun onSoundToggle() = setMuted(!sound.muted, button = true)
 
         override fun onRetry(view: StorySlideView) = retry(view)
 
@@ -606,17 +650,32 @@ class PersonalizationStoriesViewer(
     }
 
     /**
-     * Опросы: свой транспорт, иначе HTTP на хост API v3 сторис с SDK. Ключ хранилища ответов —
-     * магазин SDK, без него — [shopId]. Пустой текст хоста — умолчание SDK.
+     * Опросы: свой транспорт, иначе HTTP на хост API v3 сторис с SDK. Ответы хранятся на устройстве
+     * магазина SDK (как увиденные слайды) под did; без SDK — только в ленте. Пустой текст хоста —
+     * умолчание SDK.
      */
     private fun pollsContext(): StoryPollsContext? {
         val sdk = sdk
         val transport = pollsTransport ?: apiV3Domain?.let { domain -> sdk?.let { StoriesPollsApi(it, domain) } } ?: return null
-        val shop = sdk?.let { runCatching { StoriesApiV3.shopId(it) }.getOrNull() } ?: shopId
-        return StoryPollsContext(transport, shop.orEmpty(), texts.pollTexts.or(StoriesTexts.defaults(hostContext).pollTexts))
+        val answers = sdk?.let { runCatching { StoryPollAnswers.forSdk(hostContext, it, shopId) }.getOrNull() }
+        @Suppress("DEPRECATION")
+        val did = sdk?.let { runCatching { it.getDid() }.getOrNull() }
+        return StoryPollsContext(transport, texts.pollTexts.or(PollTexts.DEFAULTS), answers, did)
     }
 
     private val clicks: OnClickListener get() = onClickListener ?: DEFAULT_CLICKS
+
+    /** Свайпы веб-SDK слою просмотра: только API v3 и не при открытой шторке товаров. */
+    private fun swipeable(): Boolean = v3 && created && !dismissed && !state.sheetOpen
+
+    /** Сторис пришли с API v3: слайды, события и просмотренность — по правилам веб-SDK. */
+    private val v3: Boolean get() = apiV3Domain != null
+
+    /** Ссылка кнопки или шапки: просмотр закрывается, ссылку открывает хост или SDK. */
+    private fun openLink(link: String) {
+        dismiss()
+        if (clicks.onClick(link)) openUrl(link)
+    }
 
     private fun openProduct(product: com.personalization.Product) {
         dismiss()
@@ -909,6 +968,15 @@ class PersonalizationStoriesViewer(
             playerSlide?.hidePoster()
         }
 
+        /**
+         * API v3: кнопка звука прячется, только когда плеер знает дорожки ролика и звуковой среди них нет;
+         * пока дорожки неизвестны, она видна (веб-SDK прячет её, пока звук не найден).
+         */
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            if (tracks.isEmpty) return
+            playerSlide?.setSoundAvailable(tracks.containsType(androidx.media3.common.C.TRACK_TYPE_AUDIO))
+        }
+
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             logError("PersonalizationStoriesViewer: video failed", error)
             playerSlide?.let(::onMediaFailed)
@@ -923,11 +991,18 @@ class PersonalizationStoriesViewer(
         }
     }
 
-    /** Звук включил или выключил пользователь: выбор запоминается на весь процесс (C7). */
-    private fun setMuted(value: Boolean) {
+    /**
+     * Звук включил или выключил пользователь: на старой ленте выбор запоминается на весь процесс (C7), на
+     * API v3 — в этом просмотре, а выбор кнопки ([button]) — ещё и на устройстве для магазина, как в веб-SDK.
+     */
+    private fun setMuted(value: Boolean, button: Boolean) {
         sound.choose(value)
+        if (v3 && button) StoriesSound.save(hostContext, soundShopKey(), value)
         applySound()
     }
+
+    /** Магазин, чей выбор звука помнится на API v3: тот же ключ, что у хранилищ ответов и увиденного. */
+    private fun soundShopKey(): String? = sdk?.let { storageKey(it, shopId) } ?: shopId
 
     /** Звонок, другой плеер, выдернутые наушники: глушится только это воспроизведение (F6). */
     private fun silence() {
@@ -953,19 +1028,14 @@ class PersonalizationStoriesViewer(
         if (wanted) focus.request() else focus.abandon()
     }
 
-    /** Следующий слайд — заранее (C6): картинка или превью и начало видео. */
+    /** Следующий слайд — заранее (C6): картинка или превью и начало видео. Пропущенные — мимо. */
     private fun preloadNext() {
-        val story = stories.getOrNull(state.storyIndex) ?: return
-        val next = when {
-            state.slideIndex + 1 < story.slidesCount -> story.getSlide(state.slideIndex + 1)
-            state.storyIndex + 1 < stories.size ->
-                stories[state.storyIndex + 1].getSlide(state.startSlideOf(state.storyIndex + 1))
-            else -> return
-        }
-        if (StoriesMapping.isVideo(next)) {
+        val (storyIndex, slideIndex) = state.upcoming() ?: return
+        val next = stories.getOrNull(storyIndex)?.takeIf { slideIndex in 0 until it.slidesCount }?.getSlide(slideIndex) ?: return
+        if (StoriesMapping.isVideo(next, v3)) {
             StoriesMediaCache.preloadVideo(hostContext, next.background)
             preloadImage(next.preview)
-        } else if (StoriesMapping.isMedia(next)) {
+        } else if (StoriesMapping.isMedia(next, v3)) {
             preloadImage(next.background)
         }
     }

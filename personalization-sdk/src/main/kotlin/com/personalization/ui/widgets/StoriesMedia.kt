@@ -18,6 +18,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
+import com.personalization.PreferencesPartition
 import com.personalization.SDK
 import java.io.File
 import java.util.concurrent.Executors
@@ -85,24 +86,42 @@ internal object StoriesMediaCache {
 }
 
 /**
- * Звук просмотра сторис (C7, F6). Выбор пользователя ([chosenMuted]) живёт до конца процесса:
- * первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
- * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся,
- * и следующий просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или
- * громкостью вверх ([choose]).
+ * Звук просмотра сторис (C7, F6). На старой ленте выбор пользователя ([chosenMuted]) живёт до конца
+ * процесса: первый просмотр без звука, дальше — как выбрали. Потеря аудиофокуса (звонок, другой плеер)
+ * и выдернутые наушники только глушат текущее воспроизведение ([silence]): выбор остаётся, и следующий
+ * просмотр откроется с ним. Сам пользователь звук возвращает кнопкой или громкостью вверх ([choose]).
+ *
+ * У сторис API v3 состояние своё ([v3]), как в веб-SDK: открывается с выбора кнопки звука, сохранённого
+ * на устройстве для магазина ([save]), как `localStorage` сайта; без него — без звука. Общий выбор старой
+ * ленты оно не трогает.
  */
-internal class StoriesSound {
+internal class StoriesSound private constructor(
+    /** Своё состояние (API v3), а не выбор процесса старой ленты. */
+    private val own: Boolean,
+    initialMuted: Boolean
+) {
+
+    /** Старая лента: выбор процесса. */
+    constructor() : this(false, true)
+
+    private var ownMuted = initialMuted
+
+    private var chosen: Boolean
+        get() = if (own) ownMuted else chosenMuted
+        set(value) {
+            if (own) ownMuted = value else chosenMuted = value
+        }
 
     /** Звук заглушён системой в этом просмотре. */
     var silenced = false
         private set
 
     /** Звука сейчас нет: так выбрал пользователь или заглушила система. */
-    val muted: Boolean get() = chosenMuted || silenced
+    val muted: Boolean get() = chosen || silenced
 
     /** Выбор пользователя: он запоминается, заглушение снимается. */
     fun choose(muted: Boolean) {
-        chosenMuted = muted
+        chosen = muted
         silenced = false
     }
 
@@ -114,10 +133,29 @@ internal class StoriesSound {
     }
 
     companion object {
-        /** Выбор пользователя на весь процесс; первый просмотр — без звука. */
+        /** Выбор пользователя старой ленты на весь процесс; первый просмотр — без звука. */
         @Volatile
         var chosenMuted = true
             internal set
+
+        private const val FILE_SUFFIX = "_stories_sound"
+        private const val KEY_MUTED = "muted"
+
+        private fun preferences(context: Context, shopKey: String) =
+            context.applicationContext.getSharedPreferences(PreferencesPartition.keyFor(shopKey) + FILE_SUFFIX, Context.MODE_PRIVATE)
+
+        /**
+         * Звук просмотра API v3 для магазина [shopKey]: с выбором кнопки, сохранённым на устройстве ([save]);
+         * не сохраняли или магазин неизвестен — без звука, как веб-SDK без `<label>-stories-mute`.
+         */
+        fun v3(context: Context, shopKey: String?): StoriesSound =
+            StoriesSound(own = true, initialMuted = shopKey?.let { preferences(context, it).getBoolean(KEY_MUTED, true) } ?: true)
+
+        /** Запомнить выбор кнопки звука для магазина [shopKey], как `localStorage` сайта в веб-SDK. */
+        fun save(context: Context, shopKey: String?, muted: Boolean) {
+            if (shopKey == null) return
+            preferences(context, shopKey).edit().putBoolean(KEY_MUTED, muted).apply()
+        }
     }
 }
 

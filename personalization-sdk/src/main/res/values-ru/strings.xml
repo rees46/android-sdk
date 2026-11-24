@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="failed_load_text">Не удалось загрузить данные. Проверьте подключение и повторите попытку.</string>
     <string name="notification_button_forward">Вперёд</string>
     <string name="notification_button_back">Назад</string>
@@ -25,13 +25,15 @@
     <string name="personalization_stories_share">Поделиться</string>
     <string name="personalization_stories_sound_on">Звук включён</string>
     <string name="personalization_stories_sound_off">Звук выключен</string>
-    <string name="personalization_stories_poll_reanswer">Ответить заново</string>
-    <string name="personalization_stories_poll_error">Не удалось отправить ответ. Попробуйте еще раз</string>
-    <string name="personalization_stories_poll_submit">Отправить</string>
-    <string name="personalization_stories_poll_results">Результаты</string>
-    <string name="personalization_stories_poll_thanks">Спасибо!</string>
-    <string name="personalization_stories_poll_vote_counted">Голос учтён</string>
-    <plurals name="personalization_stories_poll_votes">
+    <!-- Shipped since 2.47.0; the poll card now uses the English texts of the web SDK, an app may still reference them. -->
+    <string name="personalization_stories_poll_reanswer" tools:ignore="UnusedResources">Ответить заново</string>
+    <string name="personalization_stories_poll_error" tools:ignore="UnusedResources">Не удалось отправить ответ. Попробуйте еще раз</string>
+    <string name="personalization_stories_poll_submit" tools:ignore="UnusedResources">Отправить</string>
+    <!-- Shipped in 2.47.0–2.51.0; the poll card no longer uses them, an app may still reference them. -->
+    <string name="personalization_stories_poll_results" tools:ignore="UnusedResources">Результаты</string>
+    <string name="personalization_stories_poll_thanks" tools:ignore="UnusedResources">Спасибо!</string>
+    <string name="personalization_stories_poll_vote_counted" tools:ignore="UnusedResources">Голос учтён</string>
+    <plurals name="personalization_stories_poll_votes" tools:ignore="UnusedResources">
         <item quantity="one">%s голос</item>
         <item quantity="few">%s голоса</item>
         <item quantity="many">%s голосов</item>

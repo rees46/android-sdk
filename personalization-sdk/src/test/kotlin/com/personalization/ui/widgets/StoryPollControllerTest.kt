@@ -1,6 +1,8 @@
 package com.personalization.ui.widgets
 
+import android.content.Context
 import org.json.JSONObject
+import org.robolectric.RuntimeEnvironment
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,12 +22,21 @@ class StoryPollControllerTest {
 
     private val transport = FakePollsTransport()
     private val holds = mutableListOf<Boolean>()
+    private var now = 1_000_000_000_000L
+    private lateinit var preferences: android.content.SharedPreferences
+    private lateinit var answers: StoryPollAnswers
 
     @Before
-    fun setUp() = StoryPollStore.clear()
+    fun setUp() {
+        preferences = RuntimeEnvironment.getApplication().getSharedPreferences("polls-test", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        answers = StoryPollAnswers(preferences) { now }
+    }
 
     @After
-    fun tearDown() = StoryPollStore.clear()
+    fun tearDown() {
+        preferences.edit().clear().commit()
+    }
 
     @Test
     fun `single choice is sent on tap and shows thanks and results`() {
@@ -33,7 +44,7 @@ class StoryPollControllerTest {
         assertFalse(card.answered)
 
         card.choose(2)
-        assertEquals(listOf("answer gift_recipient {option_ids=[2], story_id=5, slide_id=101}"), transport.calls)
+        assertEquals(listOf("answer gift_recipient {option_ids=[2], source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
         assertTrue(card.sending)
         assertEquals(setOf(2), card.selected)
 
@@ -93,7 +104,7 @@ class StoryPollControllerTest {
         card.toggle(3)
 
         card.submit()
-        assertEquals(listOf("answer gift_recipient {option_ids=[1, 3], story_id=5, slide_id=101}"), transport.calls)
+        assertEquals(listOf("answer gift_recipient {option_ids=[1, 3], source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
         transport.succeed(StoriesPollAnswer(optionIds = listOf(1, 3)), null)
         assertEquals(listOf(1, 3), card.answer!!.optionIds)
     }
@@ -126,7 +137,7 @@ class StoryPollControllerTest {
         assertEquals("10/10", card.counter)
 
         card.submit()
-        assertEquals(listOf("answer gift_recipient {text=Мастер и, story_id=5, slide_id=101}"), transport.calls)
+        assertEquals(listOf("answer gift_recipient {text=Мастер и, source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
         transport.succeed(StoriesPollAnswer(text = "Мастер и"), null)
         assertTrue(card.answered)
         assertEquals("Мастер и", card.answer!!.text)
@@ -153,7 +164,7 @@ class StoryPollControllerTest {
     fun `nps sends the rate on tap with its category and the default channel`() {
         val card = card(scalePoll("nps", poll = """"channel":null"""))
         card.rate(9)
-        assertEquals(listOf("review nps {channel=stories, category=delivery, rate=9}"), transport.calls)
+        assertEquals(listOf("review nps {channel=stories, category=delivery, rate=9, source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
         assertEquals(9.0, card.pressedRate)
         transport.succeed(null, results(1 to 100.0))
         assertTrue(card.answered)
@@ -163,11 +174,94 @@ class StoryPollControllerTest {
     }
 
     @Test
+    fun `the answer names its source as strings, without a story id there is none`() {
+        card(miniPoll("single_choice"), storyId = 0).choose(1)
+        card(miniPoll("single_choice"), slideId = "").choose(1)
+        card(scalePoll("ces"), slideId = "12_0").rate(2)
+        assertEquals(
+            listOf(
+                "answer gift_recipient {option_ids=[1]}",
+                "answer gift_recipient {option_ids=[1], source_type=stories, source_id=5}",
+                "review ces {channel=stories, campaign=delivery, rate=2, source_type=stories, source_id=5, source_item_id=12_0}"
+            ),
+            transport.calls
+        )
+    }
+
+    @Test
+    fun `a rate whose band has a question asks it, the comment goes with the same rate, then the success`() {
+        val card = card(scalePoll("nps", poll = FOLLOW_UP))
+        card.rate(3)
+        transport.succeed(null, null)
+        assertTrue(card.answered)
+        assertEquals("Что нам улучшить?", card.followUp)
+        assertTrue(card.hasInput)
+        assertEquals("0/5000", card.counter)
+        assertFalse(card.canSubmit)
+        card.setText("   ")
+        assertFalse(card.canSubmit)
+        card.setText("  Долго везли  ")
+        assertTrue(card.canSubmit)
+
+        card.submit()
+        assertEquals(
+            "review nps {channel=stories, category=delivery, rate=3, comment=Долго везли, source_type=stories, source_id=5, source_item_id=101}",
+            transport.calls.last()
+        )
+        assertTrue(card.sending)
+        transport.succeed(null, null)
+        assertEquals(StoriesPollAnswer(rate = 3.0, comment = "Долго везли"), card.answer)
+        assertNull(card.followUp)
+        assertFalse(card.hasInput)
+        assertEquals("Спасибо, мы станем лучше", card.poll.bandText(card.answer!!.rate))
+        assertEquals("Долго везли", answers.read(KEY_NPS)!!.answer.comment)
+    }
+
+    @Test
+    fun `the question comes back until it is answered, a re-answer sends no comment`() {
+        val feed = card(scalePoll("nps", element = """"answer":{"rate":7},"allow_reanswer":true""", poll = FOLLOW_UP))
+        assertEquals("Чего не хватило?", feed.followUp)
+        assertNull(card(scalePoll("nps", element = """"answer":{"rate":7,"comment":"Всё ок"}""", poll = FOLLOW_UP)).followUp)
+
+        feed.reanswer()
+        assertNull(feed.followUp)
+        feed.rate(10)
+        assertEquals("review nps {channel=stories, category=delivery, rate=10, source_type=stories, source_id=5, source_item_id=101}", transport.calls.last())
+        transport.succeed(null, null)
+        // The band of 10 asks nothing: its success at once.
+        assertNull(feed.followUp)
+
+        // Left without a comment: the saved rate asks again on the next show.
+        val skipped = card(scalePoll("nps", poll = FOLLOW_UP), slideId = "102")
+        skipped.rate(0)
+        transport.succeed(null, null)
+        assertEquals("Что нам улучшить?", card(scalePoll("nps", poll = FOLLOW_UP), slideId = "102").followUp)
+    }
+
+    @Test
+    fun `a failed comment keeps the text and the question, a blank question asks nothing`() {
+        val card = card(scalePoll("csat", element = """"answer":{"rate":1}""", poll = FOLLOW_UP))
+        card.setText("Плохо")
+        card.submit()
+        transport.fail(500)
+        assertTrue(card.error)
+        assertEquals("Плохо", card.text)
+        assertEquals("Что нам улучшить?", card.followUp)
+        card.setText("x".repeat(6000))
+        assertEquals(5000, card.text.length)
+
+        val blank = card(scalePoll("nps", element = """"answer":{"rate":5}""", poll = """"bands":[{"from":0,"to":10,"question":"  ","success":"Ок"}]"""))
+        assertNull(blank.followUp)
+        assertFalse(blank.hasInput)
+        assertNull(blank.counter)
+    }
+
+    @Test
     fun `csat and ces send a campaign`() {
         card(scalePoll("csat")).rate(1)
         card(scalePoll("ces", poll = """"channel":"popup"""")).rate(7)
         assertEquals(
-            listOf("review csat {channel=stories, campaign=delivery, rate=1}", "review ces {channel=popup, campaign=delivery, rate=7}"),
+            listOf("review csat {channel=stories, campaign=delivery, rate=1, source_type=stories, source_id=5, source_item_id=101}", "review ces {channel=popup, campaign=delivery, rate=7, source_type=stories, source_id=5, source_item_id=101}"),
             transport.calls
         )
     }
@@ -203,7 +297,7 @@ class StoryPollControllerTest {
         assertEquals(setOf(1), card.selected)
         transport.succeed(StoriesPollAnswer(optionIds = listOf(1)), null)
         assertTrue(card.answered)
-        assertEquals(StoryPollStore.Entry(StoriesPollAnswer(optionIds = listOf(1)), null), StoryPollStore.get("shop1", "mini_poll", "gift_recipient"))
+        assertEquals(StoryPollAnswers.Entry(StoriesPollAnswer(optionIds = listOf(1)), null), answers.read(KEY))
     }
 
     @Test
@@ -224,7 +318,7 @@ class StoryPollControllerTest {
         assertTrue(card.canSubmit)
         card.toggle(1)
         card.submit()
-        assertEquals(listOf("answer gift_recipient {option_ids=[3], story_id=5, slide_id=101}"), transport.calls)
+        assertEquals(listOf("answer gift_recipient {option_ids=[3], source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
     }
 
     @Test
@@ -248,7 +342,7 @@ class StoryPollControllerTest {
         transport.succeed(StoriesPollAnswer(optionIds = listOf(2), id = 77), null)
         assertEquals(listOf(2), card.answer!!.optionIds)
         assertNull(card.results)
-        assertEquals(StoryPollStore.Entry(StoriesPollAnswer(optionIds = listOf(2), id = 77), null), StoryPollStore.get("shop1", "mini_poll", "gift_recipient"))
+        assertEquals(StoryPollAnswers.Entry(StoriesPollAnswer(optionIds = listOf(2), id = 77), null), answers.read(KEY))
     }
 
     @Test
@@ -269,13 +363,36 @@ class StoryPollControllerTest {
     }
 
     @Test
-    fun `a card from the store is answered even if its answer highlights nothing`() {
-        StoryPollStore.put("shop1", "mini_poll", "gift_recipient", StoryPollStore.Entry(StoriesPollAnswer(id = 77), null))
-        val card = card(miniPoll("single_choice"))
+    fun `any non-empty option_ids is an answer, as hasAnswer of the web SDK, with no option highlighted`() {
+        val parsed = StoryPoll.answer(JSONObject("""{"option_ids":["x",null,1.5]}"""))
+        assertTrue(parsed.isAnswered)
+        assertEquals(emptyList<Int>(), parsed.optionIds)
+        assertFalse(StoryPoll.answer(JSONObject("""{"option_ids":[]}""")).isAnswered)
+
+        // From the feed: the answered state, no option chosen.
+        val card = card(miniPoll("single_choice", element = """"answer":{"option_ids":["x"]}"""))
         assertTrue(card.answered)
         assertTrue(card.selected.isEmpty())
+        assertEquals(emptyList<Int>(), card.answer!!.optionIds)
+
+        // The saved record keeps such an answer, and its ids that are options.
+        answers.write(KEY, StoryPoll.answer(JSONObject("""{"option_ids":["x",2]}""")), null)
+        val saved = answers.read(KEY)!!.answer
+        assertTrue(saved.isAnswered)
+        assertEquals(listOf(2), saved.optionIds)
+        assertTrue(card(miniPoll("single_choice")).answered)
+        answers.write(KEY, StoryPoll.answer(JSONObject("""{"option_ids":["x"]}""")), null)
+        assertTrue(answers.read(KEY)!!.answer.isAnswered)
+        assertTrue(card(miniPoll("single_choice")).answered)
+    }
+
+    @Test
+    fun `a saved answer without options, text or rate is no answer, as hasAnswer of the web SDK`() {
+        answers.write(KEY, StoriesPollAnswer(id = 77), null)
+        val card = card(miniPoll("single_choice"))
+        assertFalse(card.answered)
         card.choose(1)
-        assertTrue("no form to tap", transport.calls.isEmpty())
+        assertEquals(1, transport.calls.size)
     }
 
     @Test
@@ -286,7 +403,7 @@ class StoryPollControllerTest {
         card.reanswer()
         assertEquals(6.5, card.pressedRate)
         card.rate(7)
-        assertEquals("review nps {channel=stories, category=delivery, rate=7}", transport.calls.single())
+        assertEquals("review nps {channel=stories, category=delivery, rate=7, source_type=stories, source_id=5, source_item_id=101}", transport.calls.single())
         transport.fail(500)
         assertEquals(6.5, card.pressedRate)
     }
@@ -295,16 +412,16 @@ class StoryPollControllerTest {
     fun `a poll without a code is sent to the empty code and shows the error of the server`() {
         val card = card(miniPoll("single_choice", poll = """"code":null"""))
         card.choose(1)
-        assertEquals(listOf("answer  {option_ids=[1], story_id=5, slide_id=101}"), transport.calls)
+        assertEquals(listOf("answer  {option_ids=[1], source_type=stories, source_id=5, source_item_id=101}"), transport.calls)
         transport.fail(404)
         assertTrue(card.error)
         card.choose(1)
         transport.succeed(null, null)
         assertTrue(card.answered)
-        assertEquals(listOf(1), StoryPollStore.get("shop1", "mini_poll", "")!!.answer!!.optionIds)
+        assertEquals(listOf(1), answers.read("stories_poll_did1_mini_poll__5_101")!!.answer.optionIds)
 
         card(scalePoll("csat", poll = """"code":null""")).rate(4)
-        assertEquals("review csat {channel=stories, campaign=, rate=4}", transport.calls.last())
+        assertEquals("review csat {channel=stories, campaign=, rate=4, source_type=stories, source_id=5, source_item_id=101}", transport.calls.last())
     }
 
     @Test
@@ -318,14 +435,96 @@ class StoryPollControllerTest {
     }
 
     @Test
-    fun `the session store wins over the feed`() {
-        StoryPollStore.put("shop1", "mini_poll", "gift_recipient", StoryPollStore.Entry(StoriesPollAnswer(optionIds = listOf(3)), results(3 to 100.0)))
-        val card = card(miniPoll("single_choice", element = ANSWERED))
-        assertEquals(listOf(3), card.answer!!.optionIds)
-        assertEquals(100, card.results!!.percentOf(3))
-        // Another shop, another poll type — another key.
-        assertFalse(card(miniPoll("single_choice"), shop = "shop2").answered)
+    fun `the answer of the feed wins over the saved one, the saved one over nothing`() {
+        answers.write(KEY, StoriesPollAnswer(optionIds = listOf(3)), results(3 to 100.0))
+        val fromFeed = card(miniPoll("single_choice", element = ANSWERED))
+        assertEquals(listOf(2), fromFeed.answer!!.optionIds)
+        assertEquals(40, fromFeed.results!!.percentOf(1))
+
+        val saved = card(miniPoll("single_choice"))
+        assertTrue(saved.answered)
+        assertEquals(listOf(3), saved.answer!!.optionIds)
+        assertEquals(100, saved.results!!.percentOf(3))
+        // Another device, slide, story or poll type — another key.
+        assertFalse(card(miniPoll("single_choice"), did = "did2").answered)
+        assertFalse(card(miniPoll("single_choice"), slideId = "102").answered)
+        assertFalse(card(miniPoll("single_choice"), storyId = 6).answered)
         assertFalse(card(scalePoll("nps", poll = """"code":"gift_recipient"""")).answered)
+    }
+
+    @Test
+    fun `a freshly loaded feed's answer wins over one sent in this process, which wins over the saved one`() {
+        val cached = miniPoll("single_choice")
+        card(cached).choose(1)
+        transport.succeed(null, null)
+        // The device record goes stale; the slide built again from the same feed keeps the sent answer.
+        answers.write(KEY, StoriesPollAnswer(optionIds = listOf(3)), null)
+        assertEquals(listOf(1), card(cached).answer!!.optionIds)
+        // A feed loaded again with its own answer wins over both.
+        assertEquals(listOf(2), card(miniPoll("single_choice", element = ANSWERED)).answer!!.optionIds)
+        // A feed loaded again without one: the saved answer.
+        assertEquals(listOf(3), card(miniPoll("single_choice")).answer!!.optionIds)
+    }
+
+    @Test
+    fun `without a did nothing is read or written`() {
+        answers.write(KEY, StoriesPollAnswer(optionIds = listOf(3)), null)
+        val card = card(miniPoll("single_choice"), did = "")
+        assertFalse(card.answered)
+        card.choose(1)
+        transport.succeed(null, null)
+        assertTrue(card.answered)
+        assertEquals(setOf(KEY), preferences.all.keys)
+        assertEquals(listOf(3), answers.read(KEY)!!.answer.optionIds)
+        assertNull(answers.key(null, "mini_poll", "c", 5, "101"))
+    }
+
+    @Test
+    fun `a saved answer lives 90 days, an expired or undated one is deleted on read`() {
+        assertEquals("stories_poll_did1_mini_poll_gift_recipient_5_101", KEY)
+        answers.write(KEY, StoriesPollAnswer(text = "Книга"), null)
+        assertEquals(
+            """{"answer":{"text":"Книга"},"results":null,"saved_at":$now}""",
+            preferences.getString(KEY, null)
+        )
+        now += StoryPollAnswers.TTL_MS
+        assertEquals("Книга", answers.read(KEY)!!.answer.text)
+        now += 1
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+
+        preferences.edit().putString(KEY, """{"answer":{"rate":5}}""").commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        // A record that does not parse is deleted too.
+        preferences.edit().putString(KEY, """{"answer":null,"saved_at":$now}""").commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        preferences.edit().putString(KEY, """{"answer":"Книга","saved_at":$now}""").commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        preferences.edit().putString(KEY, "not json").commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+        preferences.edit().putInt(KEY, 5).commit()
+        assertNull(answers.read(KEY))
+        assertFalse(preferences.contains(KEY))
+    }
+
+    @Test
+    fun `a sent answer updates the card, the feed element and the device`() {
+        val poll = miniPoll("single_choice")
+        val card = card(poll)
+        card.choose(2)
+        transport.succeed(StoriesPollAnswer(optionIds = listOf(2), id = 77), results(1 to 40.0, 2 to 60.0))
+
+        assertEquals(StoriesPollAnswer(optionIds = listOf(2), id = 77), poll.answer)
+        assertEquals(60, poll.results!!.percentOf(2))
+        val saved = answers.read(KEY)!!
+        assertEquals(StoriesPollAnswer(optionIds = listOf(2), id = 77), saved.answer)
+        assertEquals(60, saved.results!!.percentOf(2))
+        // The slide built again from the same feed shows the answer, even without the device store.
+        assertTrue(StoryPollController(poll, 5, "101", transport, TEXTS, onHold = {}, post = { it() }).answered)
     }
 
     @Test
@@ -374,7 +573,7 @@ class StoryPollControllerTest {
     }
 
     @Test
-    fun `an answer after the card left goes only to the store`() {
+    fun `an answer after the card left goes only to the feed and the device`() {
         val card = card(miniPoll("single_choice"))
         card.choose(2)
         assertEquals(listOf(true), holds)
@@ -383,7 +582,7 @@ class StoryPollControllerTest {
         transport.succeed(StoriesPollAnswer(optionIds = listOf(2)), results(2 to 100.0))
         assertEquals(listOf(true), holds)
         assertFalse(card.answered)
-        assertEquals(listOf(2), StoryPollStore.get("shop1", "mini_poll", "gift_recipient")!!.answer!!.optionIds)
+        assertEquals(listOf(2), answers.read(KEY)!!.answer.optionIds)
         // The slide is built again — the card shows the answer.
         assertTrue(card(miniPoll("single_choice")).answered)
     }
@@ -410,7 +609,7 @@ class StoryPollControllerTest {
 
     @Test
     fun `a transport that throws is an error`() {
-        val card = StoryPollController(miniPoll("single_choice"), 5, "101", "shop1", object : StoriesPollsTransport {
+        val card = StoryPollController(miniPoll("single_choice"), 5, "101", object : StoriesPollsTransport {
             override fun answerMiniPoll(code: String, body: Map<String, Any>, callback: (StoriesPollsResult) -> Unit) = error("offline")
             override fun review(kind: String, body: Map<String, Any>, callback: (StoriesPollsResult) -> Unit) = Unit
         }, TEXTS, onHold = { holds += it }, post = { it() })
@@ -420,13 +619,20 @@ class StoryPollControllerTest {
         assertEquals(listOf(true, false), holds)
     }
 
-    private fun card(poll: StoryPoll, texts: PollTexts = TEXTS, shop: String = "shop1") =
-        StoryPollController(poll, 5, "101", shop, transport, texts, onHold = { holds += it }, post = { it() })
+    private fun card(poll: StoryPoll, texts: PollTexts = TEXTS, did: String = "did1", storyId: Int = 5, slideId: String = "101") =
+        StoryPollController(poll, storyId, slideId, transport, texts, onHold = { holds += it }, answers = answers, did = did, post = { it() })
 
     private fun results(vararg options: Pair<Int, Double>) =
         StoriesPollResults(options.size, options.map { StoriesPollResults.Option(it.first, it.second) })
 
     internal companion object {
+        const val KEY = "stories_poll_did1_mini_poll_gift_recipient_5_101"
+        const val KEY_NPS = "stories_poll_did1_nps_delivery_5_101"
+
+        /** Bands with follow-up questions, as `create-poll.test.ts` of the web SDK; 9..10 asks nothing. */
+        const val FOLLOW_UP = """"bands":[{"from":0,"to":6,"question":"Что нам улучшить?","success":"Спасибо, мы станем лучше"},
+            {"from":7,"to":8,"question":" Чего не хватило? ","success":"Спасибо!"},{"from":9,"to":10,"question":null,"success":"Спасибо, рады стараться!"}]"""
+
         val TEXTS = PollTexts("Answer again", "Failed to send the answer. Please try again", "Send")
 
         const val ANSWERED = """"answer":{"option_ids":[2],"text":null},"results":{"total":120,"options":[{"id":1,"percent":40},{"id":2,"percent":60}]}"""

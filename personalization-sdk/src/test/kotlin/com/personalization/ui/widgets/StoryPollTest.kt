@@ -3,7 +3,6 @@ package com.personalization.ui.widgets
 import com.personalization.logs.SdkLogs
 import com.personalization.LogLevel
 import android.app.Activity
-import android.graphics.Color
 import android.util.Log
 import com.personalization.Fixtures
 import com.personalization.stories.models.Slide
@@ -153,7 +152,7 @@ class StoryPollTest {
         }
         assertEquals(listOf(11, 5, 7), polls.drop(3).map { it.scale.size })
         // The card goes to the empty code, like the web SDK.
-        assertEquals(mapOf("channel" to "stories", "category" to "", "rate" to 9), StoryPollBodies.review(polls[3], 9))
+        assertEquals(mapOf("channel" to "stories", "category" to "", "rate" to 9), StoryPollBodies.review(polls[3], 9, 0, ""))
         assertEquals("https://app.test/api/v3/polls/mini_polls//answers", StoriesPollsApi.miniPollUrl("app.test", polls[0].code))
     }
 
@@ -164,7 +163,7 @@ class StoryPollTest {
         assertEquals(StoryPoll.Labels(reanswer = " ", submit = "  "), scale.labels)
         assertEquals(" ", scale.question)
         assertEquals(" ", scale.bandText(3.0))
-        assertEquals(mapOf("channel" to " ", "campaign" to "c", "rate" to 3), StoryPollBodies.review(scale, 3))
+        assertEquals(mapOf("channel" to " ", "campaign" to "c", "rate" to 3), StoryPollBodies.review(scale, 3, 0, ""))
         val text = StoryPoll.parse(JSONObject("""{"type":"poll","poll_type":"mini_poll",
             "poll":{"code":"t","kind":"text","placeholder":" ","submit_label":" ","thanks_text":" "}}"""))!!
         assertEquals(listOf(" ", " ", " "), listOf(text.placeholder, text.submitLabel, text.thanksText))
@@ -179,9 +178,14 @@ class StoryPollTest {
     fun `any number of rate is an answer, a fractional one finds its band`() {
         fun answer(rate: String) = StoryPoll.answer(JSONObject("""{"rate":$rate}"""))
         assertEquals(6.5, answer("6.5").rate)
-        assertEquals(3.0, answer("\"3\"").rate)
         assertTrue(answer("6.5").isAnswered)
+        assertTrue(answer("0").isAnswered)
+        // As hasAnswer of the web SDK: a rate is a number, a string is none.
+        assertNull(answer("\"3\"").rate)
+        assertFalse(answer("\"3\"").isAnswered)
         assertFalse(answer("\"x\"").isAnswered)
+        assertFalse(StoryPoll.answer(JSONObject("""{"option_ids":[],"text":""}""")).isAnswered)
+        assertTrue(StoryPoll.answer(JSONObject("""{"option_ids":[3]}""")).isAnswered)
         val bands = listOf(StoryPoll.Band(0.0, 6.0, "A"), StoryPoll.Band(6.0, 7.0, "B"))
         assertEquals("B", StoryPoll.bandText(bands, 6.5))
         assertNull(StoryPoll.bandText(bands.take(1), 6.5))
@@ -292,22 +296,47 @@ class StoryPollTest {
     }
 
     @Test
-    fun `nps cells are red, orange, yellow and green, other scales split in thirds`() {
-        fun nps(value: Int) = StoryPoll.scaleColor(StoryPoll.Type.NPS, value, 0, 10)
-        assertEquals(Color.parseColor("#FCA5A5"), nps(0))
-        assertEquals(Color.parseColor("#FCA5A5"), nps(2))
-        assertEquals(Color.parseColor("#FDBA74"), nps(3))
-        assertEquals(Color.parseColor("#FDBA74"), nps(5))
-        assertEquals(Color.parseColor("#FCD34D"), nps(6))
-        assertEquals(Color.parseColor("#FDE68A"), nps(8))
-        assertEquals(Color.parseColor("#86EFAC"), nps(9))
-        fun csat(value: Int) = StoryPoll.scaleColor(StoryPoll.Type.CSAT, value, 1, 5)
-        assertEquals(Color.parseColor("#FCA5A5"), csat(2))
-        assertEquals(Color.parseColor("#FDE68A"), csat(3))
-        assertEquals(Color.parseColor("#86EFAC"), csat(4))
+    fun `nps cells are detractors 0-6, passives 7-8 and promoters 9-10 as scaleColor of the web SDK, other scales split by position`() {
+        fun nps(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.NPS, value, 0, 10)
+        assertEquals(List(7) { StoryPoll.Tone.NEGATIVE }, (0..6).map(::nps))
+        assertEquals(List(2) { StoryPoll.Tone.NEUTRAL }, (7..8).map(::nps))
+        assertEquals(List(2) { StoryPoll.Tone.POSITIVE }, (9..10).map(::nps))
+        // CES 1..7: positions 0, 1/6, 2/6 < 0.34; 3/6, 4/6 < 0.68; 5/6, 1 — good.
+        fun ces(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.CES, value, 1, 7)
+        assertEquals(
+            listOf(StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.POSITIVE, StoryPoll.Tone.POSITIVE),
+            (1..7).map(::ces)
+        )
+        fun csat(value: Int) = StoryPoll.scaleTone(StoryPoll.Type.CSAT, value, 1, 5)
+        assertEquals(listOf(StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEGATIVE, StoryPoll.Tone.NEUTRAL, StoryPoll.Tone.POSITIVE, StoryPoll.Tone.POSITIVE), (1..5).map(::csat))
         // NPS with its own range is split in thirds too.
-        assertEquals(Color.parseColor("#86EFAC"), StoryPoll.scaleColor(StoryPoll.Type.NPS, 5, 1, 5))
-        assertEquals(Color.parseColor("#86EFAC"), StoryPoll.scaleColor(StoryPoll.Type.CES, 1, 1, 1))
+        assertEquals(StoryPoll.Tone.POSITIVE, StoryPoll.scaleTone(StoryPoll.Type.NPS, 5, 1, 5))
+        assertEquals(StoryPoll.Tone.POSITIVE, StoryPoll.scaleTone(StoryPoll.Type.CES, 1, 1, 1))
+    }
+
+    @Test
+    fun `the tones are the danger and warning colours of the kit and the green of the poll`() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        assertEquals(activity.getColor(com.personalization.R.color.personalization_semantic_danger), PollUi.toneColor(activity, StoryPoll.Tone.NEGATIVE))
+        assertEquals(activity.getColor(com.personalization.R.color.personalization_semantic_warning), PollUi.toneColor(activity, StoryPoll.Tone.NEUTRAL))
+        assertEquals(PollStyle.ACCENT, PollUi.toneColor(activity, StoryPoll.Tone.POSITIVE))
+    }
+
+    @Test
+    fun `the question of a band is trimmed, a blank one is none, a comment ends it`() {
+        val bands = listOf(StoryPoll.Band(0.0, 6.0, "A", " Почему? "), StoryPoll.Band(7.0, 8.0, "B", " "), StoryPoll.Band(9.0, 10.0, "C"))
+        assertEquals("Почему?", StoryPoll.bandQuestion(bands, 3.0))
+        assertNull(StoryPoll.bandQuestion(bands, 7.0))
+        assertNull(StoryPoll.bandQuestion(bands, 9.0))
+        assertNull(StoryPoll.bandQuestion(bands, null))
+        val scale = StoryPoll.parse(JSONObject("""{"type":"poll","poll_type":"nps","poll":{"code":"n",
+            "bands":[{"from":0,"to":10,"question":"Почему?","success":"Ок"}]}}"""))!!
+        assertEquals("Почему?", scale.bands.single().question)
+        assertEquals("Почему?", scale.followUp(StoriesPollAnswer(rate = 4.0)))
+        assertEquals("Почему?", scale.followUp(StoriesPollAnswer(rate = 4.0, comment = "")))
+        assertNull(scale.followUp(StoriesPollAnswer(rate = 4.0, comment = "Так")))
+        assertNull(scale.followUp(null))
+        assertEquals("Так", StoryPoll.answer(JSONObject("""{"rate":4,"comment":"Так"}""")).comment)
     }
 
     @Test
@@ -336,24 +365,30 @@ class StoryPollTest {
 
     @Test
     @Config(qualifiers = "ru")
-    fun `russian defaults come from resources`() {
+    fun `the defaults are the english texts of the web SDK in a russian ui too`() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         assertEquals(
-            PollTexts("Ответить заново", "Не удалось отправить ответ. Попробуйте еще раз", "Отправить"),
+            PollTexts("Answer again", "Failed to send the answer. Please try again", "Send"),
             StoriesTexts.defaults(activity).pollTexts
         )
     }
 
     @Test
-    fun `request bodies keep slide_id a string and pick category or campaign`() {
+    fun `request bodies send the source as strings and pick category or campaign`() {
+        val source = mapOf("source_type" to "stories", "source_id" to "5", "source_item_id" to "101")
+        assertEquals(mapOf("option_ids" to listOf(2)) + source, StoryPollBodies.answer(5, "101", optionIds = listOf(2)))
         assertEquals(
-            mapOf("option_ids" to listOf(2), "story_id" to 5, "slide_id" to "101"),
-            StoryPollBodies.answer(5, "101", optionIds = listOf(2))
+            mapOf("text" to "a", "source_type" to "stories", "source_id" to "39", "source_item_id" to "39_0"),
+            StoryPollBodies.answer(39, "39_0", text = "a")
         )
-        assertEquals(mapOf("text" to "a", "story_id" to 39, "slide_id" to "39_0"), StoryPollBodies.answer(39, "39_0", text = "a"))
-        assertEquals(mapOf("channel" to "test", "category" to "test", "rate" to 9), StoryPollBodies.review(poll(3), 9))
-        assertEquals(mapOf("channel" to "stories", "campaign" to "demo_csat", "rate" to 1), StoryPollBodies.review(poll(4), 1))
-        assertEquals(mapOf("channel" to "stories", "campaign" to "demo_ces", "rate" to 7), StoryPollBodies.review(poll(5), 7))
+        assertEquals(mapOf("channel" to "test", "category" to "test", "rate" to 9) + source, StoryPollBodies.review(poll(3), 9, 5, "101"))
+        assertEquals(mapOf("channel" to "stories", "campaign" to "demo_csat", "rate" to 1) + source, StoryPollBodies.review(poll(4), 1, 5, "101"))
+        assertEquals(
+            mapOf("channel" to "stories", "campaign" to "demo_ces", "rate" to 7, "comment" to "Долго") + source,
+            StoryPollBodies.review(poll(5), 7, 5, "101", comment = "Долго")
+        )
+        assertEquals(mapOf("channel" to "stories", "campaign" to "demo_ces", "rate" to 7), StoryPollBodies.review(poll(5), 7, 0, "101", comment = ""))
+        assertEquals(mapOf("source_type" to "stories", "source_id" to "5"), StoryPollBodies.source(5, ""))
     }
 
     @Test

@@ -378,6 +378,126 @@ class StoriesMappingTest {
     }
 
     @Test
+    fun `on api v3 the opacity of a text block is a percent, as calculateOpacity of the web SDK`() {
+        assertEquals(40f, StoriesMapping.opacityPercent("40%"))
+        assertEquals(40f, StoriesMapping.opacityPercent(" 40 "))
+        assertEquals("a number is a percent: 0.5 is half a percent", 0.5f, StoriesMapping.opacityPercent("0.5"))
+        assertEquals(1f, StoriesMapping.opacityPercent("1"))
+        assertEquals(12.5f, StoriesMapping.opacityPercent("12.5%"))
+        assertEquals(0f, StoriesMapping.opacityPercent("0%"))
+        assertNull("out of 0…100", StoriesMapping.opacityPercent("150"))
+        assertNull(StoriesMapping.opacityPercent("-10"))
+        assertNull(StoriesMapping.opacityPercent("half"))
+        assertNull(StoriesMapping.opacityPercent(null))
+
+        fun color(vararg pairs: Pair<String, Any>) = StoriesMapping.textBlockColorV3(TextBlockElement(JSONObject().apply { pairs.forEach { put(it.first, it.second) } }))
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "50"))
+        assertEquals(0xBFFF5533.toInt(), color("text_background_color" to "#f53", "text_background_color_opacity" to "75%"))
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "rgb(255, 87, 51)", "text_background_color_opacity" to 50))
+        assertEquals(0x01000000, color("text_background_color" to "#000000", "text_background_color_opacity" to 0.4))
+        assertEquals("no opacity — the colour is opaque", 0xFFFF5733.toInt(), color("text_background_color" to "#ff5733"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to ""))
+        assertEquals("an invalid opacity leaves the colour as it is", 0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "110"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "#ff5733", "text_background_color_opacity" to "abc"))
+        assertNull("0 % — no background", color("text_background_color" to "#000000", "text_background_color_opacity" to "0%"))
+        assertNull(color("text_background_color" to "#000000", "text_background_color_opacity" to "0"))
+        // As `!opacity` of calculateOpacity: the number 0 and false are no opacity — the colour is opaque.
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to 0))
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to 0.0))
+        assertEquals(0xFF000000.toInt(), color("text_background_color" to "#000000", "text_background_color_opacity" to false))
+        assertNull("no colour — none, the legacy #FFFFFF is not applied", color("text_background_color_opacity" to "50%"))
+        assertNull(color())
+        assertNull(color("text_background_color" to "white", "text_background_color_opacity" to "50%"))
+        // A colour with its own alpha: a valid opacity replaces it, without one the colour keeps it.
+        assertEquals(0x80FF5733.toInt(), color("text_background_color" to "#FF573340", "text_background_color_opacity" to "50%"))
+        assertEquals(0xFFFF5733.toInt(), color("text_background_color" to "rgba(255, 87, 51, 0.25)", "text_background_color_opacity" to 100))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340"))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340", "text_background_color_opacity" to 0))
+        assertEquals(0x40FF5733, color("text_background_color" to "#FF573340", "text_background_color_opacity" to "150"))
+    }
+
+    @Test
+    fun `on api v3 bold and italic accept the legacy keys, the font size is the feed's own`() {
+        fun element(json: String) = TextBlockElement(JSONObject(json))
+        assertTrue(element("""{"text_bold":true}""").boldV3)
+        assertFalse("bold wins", element("""{"bold":false,"text_bold":true}""").boldV3)
+        assertTrue(element("""{"italic":"true"}""").italicV3)
+        assertTrue(element("""{"text_italic":1}""").italicV3)
+        assertFalse(element("""{}""").italicV3)
+        assertEquals(24f, element("""{"font_size":"24"}""").ownFontSize)
+        assertNull(element("""{"font_size":0}""").ownFontSize)
+        assertNull(element("""{}""").ownFontSize)
+        // The old fields stay as they were.
+        assertFalse(element("""{"text_bold":true}""").isBold)
+        assertEquals(14, element("""{}""").fontSize)
+    }
+
+    @Test
+    fun `on api v3 a slide is media by its type and painted with its own background_color`() {
+        val card = 0xFFFFFFFF.toInt()
+        val image = slide("type" to "image", "background" to "https://cdn.test/a.jpg")
+        val typeless = slide("type" to "", "background" to "https://cdn.test/a.jpg")
+        assertTrue(StoriesMapping.isMedia(image, true))
+        assertFalse(StoriesMapping.isMedia(typeless, true))
+        assertTrue(StoriesMapping.isMedia(typeless, false))
+        assertTrue(StoriesMapping.isVideo(slide("type" to "video"), true))
+        assertFalse(StoriesMapping.isVideo(slide("type" to "video"), false))
+        assertEquals(Color.BLACK, StoriesMapping.slideColor(image, true, card))
+        assertEquals(card, StoriesMapping.slideColor(typeless, true, card))
+        assertEquals(Color.RED, StoriesMapping.slideColor(slide("type" to "", "background_color" to "#FF0000"), true, card))
+        assertNull(StoriesMapping.ownColor(slide("type" to "")))
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        assertTrue(StoriesMapping.isDark(context, slide("type" to "", "background_color" to "#202020"), true))
+        assertFalse(StoriesMapping.isDark(context, slide("type" to "", "background_color" to "#202020"), false))
+    }
+
+    @Test
+    fun `on api v3 a coloured slide takes the kit's light or dark text, whichever contrasts more`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        fun dark(color: String) = StoriesMapping.isDark(context, slide("type" to "", "background_color" to color), true)
+        // Mid greys were dark by luminance 0.5; by WCAG contrast the dark text reads better on them.
+        assertFalse(dark("#808080"))
+        assertFalse(dark("#B0B0B0"))
+        assertFalse(dark("#FFFFFF"))
+        assertFalse(dark("#FFEB3B"))
+        assertTrue(dark("#D32F2F"))
+        assertTrue(dark("#202020"))
+        assertTrue("half transparent white over the black window", dark("rgba(255, 255, 255, 0.2)"))
+        assertTrue(StoriesMapping.prefersLightText(Color.BLACK, Color.WHITE, Color.BLACK))
+        assertFalse(StoriesMapping.prefersLightText(Color.WHITE, Color.WHITE, Color.BLACK))
+        // A light colour keeps the light tokens even in a dark host theme; no colour — the host theme.
+        val light = StoriesMapping.slideContext(StorySupportTestContexts.night(context), slide("type" to "", "background_color" to "#FFFFFF"), true)
+        assertEquals(Color.BLACK, com.personalization.ui.PersonalizationTheme.color(light, com.personalization.R.color.personalization_text_primary))
+        val host = StorySupportTestContexts.night(context)
+        assertTrue(StoriesMapping.slideContext(host, slide("type" to ""), true) === host)
+    }
+
+    @Test
+    fun `on api v3 colours are parsed by one rule - #RGB, #RRGGBB, #RRGGBBAA, rgb and rgba`() {
+        assertEquals(0xFFFF5533.toInt(), StoriesColor.parse("#f53"))
+        assertEquals(0xFFFF5733.toInt(), StoriesColor.parse(" #FF5733 "))
+        assertEquals("the alpha comes last, as in CSS", 0x80FF5733.toInt(), StoriesColor.parse("#FF573380"))
+        assertEquals(0xFFFF5733.toInt(), StoriesColor.parse("rgb(255, 87, 51)"))
+        assertEquals(Color.argb(128, 255, 87, 51), StoriesColor.parse("rgba(255,87,51,0.5)"))
+        assertEquals(Color.argb(128, 255, 0, 0), StoriesColor.parse("rgb(100% 0% 0% / 50%)"))
+        assertEquals("out of range is clamped", Color.argb(255, 255, 0, 0), StoriesColor.parse("rgba(300, -5, 0, 2)"))
+        listOf(null, "", "red", "#12", "#12345", "#1234", "rgb(1, 2)", "rgb(a, b, c)", "hsl(0, 0%, 0%)", "transparent").forEach {
+            assertNull(it, StoriesColor.parse(it))
+        }
+    }
+
+    @Test
+    fun `on api v3 the cover follows viewed of the feed, without slide marks`() {
+        val story = story(slides = 3)
+        assertEquals(PersonalizationStoryCover.State.DEFAULT, StoriesMapping.itemV3(story).state)
+        assertEquals(3, StoriesMapping.itemV3(story).segments)
+        assertTrue(StoriesMapping.itemV3(story).seenSegments.isEmpty())
+        story.isViewed = true
+        assertEquals(PersonalizationStoryCover.State.VIEWED, StoriesMapping.itemV3(story).state)
+        assertEquals(1, StoriesMapping.itemV3(story).segments)
+    }
+
+    @Test
     fun `text alignment maps start, centre and end`() {
         fun align(value: String) = StoriesMapping.textAlign(TextBlockElement(JSONObject().put("text_align", value)))
         assertEquals(PersonalizationStoryTextBlock.Align.START, align("left"))
@@ -450,4 +570,14 @@ class StoriesMappingTest {
             .put("text_background_color", color)
             .put("text_background_color_opacity", opacity)
     )
+}
+
+/** A night version of a context, as the host's dark theme gives it. */
+private object StorySupportTestContexts {
+    fun night(base: Context): Context {
+        val configuration = android.content.res.Configuration(base.resources.configuration).apply {
+            uiMode = (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        return base.createConfigurationContext(configuration)
+    }
 }

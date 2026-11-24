@@ -12,6 +12,7 @@ import com.bumptech.glide.load.resource.gif.GifDrawable
 import com.personalization.Product
 import com.personalization.stories.models.Slide
 import com.personalization.stories.models.elements.ButtonElement
+import com.personalization.stories.models.elements.HeaderElement
 import com.personalization.stories.models.elements.TextBlockElement
 import com.personalization.ui.components.PersonalizationButton
 import com.personalization.ui.components.PersonalizationStoryCard
@@ -37,6 +38,129 @@ class StorySlideViewTest {
 
     private val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
     private val host = FakeHost()
+
+    // --- API v3: the slide as the web SDK draws it, in the kit's look ------------------------------
+
+    @Test
+    fun `on api v3 the media is decided by type and the slide is painted with its background_color`() {
+        host.v3 = true
+        val image = laidOut(Slide(JSONObject("""{"id":"1","type":"image","background":"https://cdn.test/a.jpg","background_color":"#FF0000"}""")))
+        assertTrue(image.isMedia)
+        assertEquals(0xFFFF0000.toInt(), (image.background as android.graphics.drawable.ColorDrawable).color)
+        // A background without the type image or video is no media; the light colour keeps the kit's text.
+        val plain = laidOut(Slide(JSONObject("""{"id":"2","type":"","background":"https://cdn.test/a.jpg","background_color":"#FFF4E0"}""")))
+        assertFalse(plain.isMedia)
+        assertFalse(plain.isDark)
+        assertEquals(0xFFFFF4E0.toInt(), (plain.background as android.graphics.drawable.ColorDrawable).color)
+        assertTrue(host.slideImages.none { it.endsWith("a.jpg") && plain.isMedia })
+        // A dark colour paints the slide in the dark tokens.
+        assertTrue(laidOut(Slide(JSONObject("""{"id":"3","type":"","background_color":"#101010"}"""))).isDark)
+        // No background_color: the kit's card colour; a video is media even before its address is known.
+        val card = laidOut(Slide(JSONObject("""{"id":"4","type":""}""")))
+        assertEquals(com.personalization.ui.PersonalizationTheme.color(activity, com.personalization.R.color.personalization_background_card), (card.background as android.graphics.drawable.ColorDrawable).color)
+        assertTrue(laidOut(Slide(JSONObject("""{"id":"5","type":"video","background":""}"""))).isVideo)
+
+        // The old feed keeps its rule: a background is media, the card colour without one.
+        host.v3 = false
+        assertTrue(laidOut(Slide(JSONObject("""{"id":"2","type":"","background":"https://cdn.test/a.jpg"}"""))).isMedia)
+    }
+
+    @Test
+    fun `on api v3 the header shows its icon, title and subtitle and is tapped as a whole`() {
+        host.v3 = true
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"header","title":"Магазин","subtitle":"Новинки","icon":"https://cdn.test/i.png","link":"https://shop.test/new"}]}""")))
+        val texts = view.all().filterIsInstance<android.widget.TextView>().map { it.text.toString() }
+        assertTrue(texts.containsAll(listOf("Магазин", "Новинки")))
+        assertTrue(host.images.contains("https://cdn.test/i.png"))
+        val title = view.all().filterIsInstance<android.widget.TextView>().first { it.text == "Магазин" }
+        val subtitle = view.all().filterIsInstance<android.widget.TextView>().first { it.text == "Новинки" }
+        val density = view.resources.displayMetrics.density
+        val icon = (title.parent.parent as ViewGroup).getChildAt(0)
+        assertEquals("icon 40", Math.round(40 * density), icon.width)
+        assertEquals("gap 12", Math.round(12 * density), (icon.layoutParams as ViewGroup.MarginLayoutParams).marginEnd)
+        assertEquals("title body-small", 14f * view.resources.displayMetrics.scaledDensity, title.textSize, 0.01f)
+        assertEquals("subtitle caption", 12f * view.resources.displayMetrics.scaledDensity, subtitle.textSize, 0.01f)
+        assertTrue("under the navigation row", windowTop(title.parent.parent as View) >= windowTop(view.navigation) + view.navigation.height)
+        (title.parent.parent as View).performClick()
+        assertEquals(listOf("https://shop.test/new"), host.headers)
+
+        host.v3 = false
+        val old = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[{"type":"header","title":"Магазин"}]}""")))
+        assertTrue("the old feed draws no header", old.all().filterIsInstance<android.widget.TextView>().none { it.text == "Магазин" })
+    }
+
+    @Test
+    fun `on api v3 a product slide without its own button gets no more info button`() {
+        val slide = """{"id":"39_0","type":"","elements":[{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽"}}]}"""
+        assertTrue(laidOut(Slide(JSONObject(slide))).all().filterIsInstance<PersonalizationButton>().any { it.text == "More info" })
+        host.v3 = true
+        assertTrue(laidOut(Slide(JSONObject(slide))).all().filterIsInstance<PersonalizationButton>().none { it.text == "More info" })
+    }
+
+    @Test
+    fun `on api v3 a text block takes the kit's body size, bold and italic from either key, any opacity`() {
+        host.v3 = true
+        fun block(json: String): PersonalizationStoryTextBlock =
+            laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[{"type":"text_block","text_input":"Hi",$json}]}""")))
+                .first(PersonalizationStoryTextBlock::class.java)!!
+        val plain = block(""""font_size":null""")
+        assertEquals(16f, plain.textSizeSp)
+        assertFalse(plain.bold)
+        assertNull(plain.blockColor)
+        val legacy = block(""""text_bold":true,"text_italic":"1","font_size":"24","text_background_color":"#000000","text_background_color_opacity":0.5""")
+        assertEquals(24f, legacy.textSizeSp)
+        assertTrue(legacy.bold)
+        assertTrue(legacy.italic)
+        assertEquals("0.5 is half a percent, as on the web", 0x01000000, legacy.blockColor)
+        val own = block(""""bold":false,"text_bold":true,"text_background_color":"#FFFFFF","text_background_color_opacity":40,"font_type":"Monospaced"""")
+        assertFalse("bold wins over text_bold", own.bold)
+        assertEquals(0x66FFFFFF, own.blockColor)
+        assertEquals("monospaced", own.fontFamily)
+
+        host.v3 = false
+        assertEquals("the old feed keeps its 14", 14f, block(""""font_size":null""").textSizeSp)
+    }
+
+    @Test
+    fun `on api v3 a video shows the sound button until it is known to have no audio, then the empty row is gone`() {
+        host.v3 = true
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4"}""")))
+        val used = view.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!
+        assertTrue("shown while the audio is not known", used.showSoundButton)
+        view.setSoundAvailable(true)
+        assertTrue(used.showSoundButton)
+        view.setSoundAvailable(false)
+        assertFalse(used.showSoundButton)
+        assertFalse("a row with nothing in it takes no space", used.isShown)
+
+        // With products the row stays for the products button.
+        val withProducts = laidOut(Slide(JSONObject("""{"id":"2","type":"video","background":"https://cdn.test/v.mp4","elements":[
+            {"type":"products","products":[{"id":"p1","name":"Sneakers","price":"100","url":"https://shop.test/p1"}]}]}""")))
+        withProducts.setSoundAvailable(false)
+        val row = withProducts.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!
+        assertFalse(row.showSoundButton)
+        assertTrue(row.isShown)
+
+        host.v3 = false
+        val legacy = laidOut(Slide(JSONObject("""{"id":"1","type":"video","background":"https://cdn.test/v.mp4"}""")))
+        legacy.setSoundAvailable(false)
+        assertTrue(legacy.first(com.personalization.ui.components.PersonalizationStoryUsedProducts::class.java)!!.showSoundButton)
+    }
+
+    @Test
+    fun `talkback reads the share and the close first, then the header, the text and the buttons`() {
+        host.v3 = true
+        val view = laidOut(Slide(JSONObject("""{"id":"1","type":"","elements":[
+            {"type":"header","title":"Магазин","link":"https://shop.test/new"},
+            {"type":"text_block","text_input":"Скидки","y_offset":10},
+            {"type":"button","title":"Go","link":"https://shop.test/go"}]}""")), shareUrl = "https://shop.test/s")
+        val nodes = ArrayList<View>()
+        view.addChildrenForAccessibility(nodes)
+        assertTrue(nodes.size > 3)
+        assertEquals(setOf(view.navigation.shareButton, view.navigation.closeButton), nodes.take(2).toSet())
+        assertTrue(nodes.drop(2).none { it === view.navigation.shareButton || it === view.navigation.closeButton })
+    }
 
     @Test
     fun `the close cross still gets the touch while the sheet is open`() {
@@ -249,6 +373,12 @@ class StorySlideViewTest {
 
     private class FakeHost : StorySlideHost {
         override val texts = StoriesTexts("Promo code", "Copied", "More info", "Used products", "Hide products", "Retry", "Close", "Sound on", "Sound off", "Share")
+        override var v3 = false
+        val headers = mutableListOf<String>()
+
+        override fun onHeader(header: HeaderElement) {
+            headers += header.link
+        }
         override val muted = true
         override var sheetOpen = false
         override val insets: Insets = Insets.NONE

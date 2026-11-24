@@ -590,6 +590,13 @@ open class SDK {
     internal var logShopId: String? = null
         private set
 
+    /**
+     * The `stream` every request of this instance carries ([Rees46Config.stream]), for the clients that make
+     * their own requests (stories v3); empty before initialization.
+     */
+    internal val requestStream: String
+        get() = if (::userSettingsRepository.isInitialized) userSettingsRepository.getStream() else ""
+
     /** `popups_v3` of the last `/init` answer; null while `/init` has not answered. */
     @Volatile
     internal var popupsV3InitFlag: Boolean? = null

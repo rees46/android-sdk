@@ -6,6 +6,7 @@ import com.personalization.logs.LogCodes
 import com.personalization.logs.SdkLogs
 import com.personalization.stories.StoriesManager
 import com.personalization.stories.models.Story
+import com.personalization.core.BridgeApi
 import com.personalization.core.internal.CoreHttp
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -23,8 +24,9 @@ import org.json.JSONObject
  * Сторис V2 на API v3 (`PersonalizationStories.apiV3Domain`): лента, одна кампания по ссылке
  * и события — на `https://{apiV3Domain}/api/v3/storefront/stories/...`.
  *
- * Сеть SDK ходит только на свой хост, поэтому здесь свой маленький клиент. Нужны только
- * `shop_id` и `did` (`sid` сервер не просит); без `did` сервер отвечает 400, и запрос ждёт его
+ * Сеть SDK ходит только на свой хост, поэтому здесь свой маленький клиент. Запросы несут то же,
+ * что в веб-SDK ([Identity]): `shop_id`, `did`, `sid`, `segment` (A/B-группа устройства), `stream`
+ * и `testmode=true` в тестовом режиме попапов v3. Без `did` сервер отвечает 400, и запрос ждёт его
  * в той же очереди, что `getAsync` SDK, — до конца init.
  */
 internal object StoriesApiV3 {
@@ -50,20 +52,62 @@ internal object StoriesApiV3 {
     fun base(domain: String): String =
         "https://" + domain.trim().replace(Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://"), "").trimEnd('/')
 
-    fun feedUrl(domain: String, code: String, shopId: String, did: String): String =
-        base(domain) + PATH + segment(code) + identity(shopId, did)
+    /**
+     * Кто спрашивает — поля запросов сторис и опросов, как в веб-SDK. GET несёт их в запросе, POST — в
+     * теле. [segment] — A/B-группа устройства (`A`/`B`, без неё пусто); опросы его не шлют. [stream]
+     * пустой не уходит, `testmode` уходит только включённым.
+     */
+    data class Identity(
+        val shopId: String,
+        val did: String,
+        val sid: String = "",
+        val segment: String = "",
+        val stream: String = "",
+        val testMode: Boolean = false
+    ) {
+        /** Запрос GET: `?shop_id=…&did=…&sid=…&segment=…[&stream=…][&testmode=true]`. */
+        fun query(): String =
+            "?shop_id=" + encode(shopId) + "&did=" + encode(did) + "&sid=" + encode(sid) + "&segment=" + encode(segment) +
+                (if (stream.isNotEmpty()) "&stream=" + encode(stream) else "") +
+                (if (testMode) "&testmode=true" else "")
 
-    fun storyUrl(domain: String, link: StoriesShare.Link, shopId: String, did: String): String =
-        base(domain) + PATH + segment(link.code) + "/story/" + link.storyId + identity(shopId, did) +
+        /** Поля тела POST; [withSegment] — `false` у опросов, как в веб-SDK. */
+        fun putInto(json: JSONObject, withSegment: Boolean = true): JSONObject {
+            json.put("shop_id", shopId).put("did", did).put("sid", sid)
+            if (withSegment) json.put("segment", segment)
+            if (stream.isNotEmpty()) json.put("stream", stream)
+            if (testMode) json.put("testmode", true)
+            return json
+        }
+    }
+
+    /**
+     * Поля запроса из SDK: `sid` — сеанс нового ядра (без него пусто), `segment` — A/B-группа
+     * устройства (`segments.getAbGroup()`), `stream` — из конфигурации магазина, тестовый режим —
+     * тот же, что у попапов v3 (`popups.testMode`). Зовётся в потоке запроса, после [whenDid].
+     */
+    @OptIn(BridgeApi::class)
+    fun identity(sdk: SDK): Identity = Identity(
+        shopId = shopId(sdk),
+        did = sdk.getDid().orEmpty(),
+        sid = runCatching { sdk.sessionId }.getOrNull().orEmpty(),
+        segment = runCatching { sdk.segments.getAbGroup() }.getOrNull().orEmpty(),
+        stream = runCatching { sdk.requestStream }.getOrNull().orEmpty(),
+        testMode = runCatching { sdk.popupsV3?.testMode == true }.getOrDefault(false)
+    )
+
+    fun feedUrl(domain: String, code: String, identity: Identity): String =
+        base(domain) + PATH + segment(code) + identity.query()
+
+    fun storyUrl(domain: String, link: StoriesShare.Link, identity: Identity): String =
+        base(domain) + PATH + segment(link.code) + "/story/" + link.storyId + identity.query() +
             (link.slideId?.let { "&slide_id=" + query(it) } ?: "")
 
     fun eventsUrl(domain: String, code: String): String = base(domain) + PATH + segment(code) + "/events"
 
-    /** Тело события: `story_id` — число, как в ленте, `slide_id` — всегда строка. */
-    fun eventBody(shopId: String, did: String, event: String, storyId: Int, slideId: String): JSONObject =
-        JSONObject()
-            .put("shop_id", shopId)
-            .put("did", did)
+    /** Тело события: `story_id` — число, как в ленте, `slide_id` — всегда строка (и `12_0`). */
+    fun eventBody(identity: Identity, event: String, storyId: Int, slideId: String): JSONObject =
+        identity.putInto(JSONObject())
             .put("event", event)
             .put("story_id", storyId)
             .put("slide_id", slideId)
@@ -71,7 +115,8 @@ internal object StoriesApiV3 {
     /**
      * Ответ GET: `{"status":"success","payload":{…}}` → сторис из `payload` тем же разбором,
      * что старая лента. JSON `null` (в v3 у товарных слайдов `background` и `preview`) убирается
-     * до моделей: иначе `optString` отдал бы строку `"null"`.
+     * до моделей: иначе `optString` отдал бы строку `"null"`. Слайды, которые веб-SDK пропускает, и
+     * `start_position` остаются как пришли: их проходит просмотр ([StoriesViewerState]).
      */
     fun parse(body: String): List<Story> {
         val json = envelope(body)
@@ -109,26 +154,26 @@ internal object StoriesApiV3 {
     }
 
     fun feed(sdk: SDK, domain: String, code: String, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) =
-        load(sdk, { shopId, did -> feedUrl(domain, code, shopId, did) }, onLoaded, onFailed)
+        load(sdk, { identity -> feedUrl(domain, code, identity) }, onLoaded, onFailed)
 
     fun story(sdk: SDK, domain: String, link: StoriesShare.Link, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) =
-        load(sdk, { shopId, did -> storyUrl(domain, link, shopId, did) }, onLoaded, onFailed)
+        load(sdk, { identity -> storyUrl(domain, link, identity) }, onLoaded, onFailed)
 
     /** Событие сторис; источник трекинга ставится, как у старого `track/stories`. */
     fun track(sdk: SDK, domain: String, code: String, event: String, storyId: Int, slideId: String) {
         runCatching { sdk.storiesManager.setTrackingSourceUseCase(StoriesManager.STORIES_SOURCE_TYPE, code) }
         whenDid(sdk) {
-            val body = eventBody(shopId(sdk), sdk.getDid().orEmpty(), event, storyId, slideId)
+            val body = eventBody(identity(sdk), event, storyId, slideId)
             // A failed answer is logged by the call itself, as request_failed.
             post(eventsUrl(domain, code), body, sdk.logShopId)
         }
     }
 
     /** Ответ — на главном потоке. HTTP-ошибка или `status != success` — [onFailed]. */
-    private fun load(sdk: SDK, url: (String, String) -> String, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) {
+    private fun load(sdk: SDK, url: (Identity) -> String, onLoaded: (List<Story>) -> Unit, onFailed: (Int, String?) -> Unit) {
         whenDid(sdk) {
             val response = try {
-                call("GET", url(shopId(sdk), sdk.getDid().orEmpty()), null, sdk.logShopId)
+                call("GET", url(identity(sdk)), null, sdk.logShopId)
             } catch (throwable: Throwable) {
                 MainThread.run { onFailed(StoriesLoader.ERROR_CODE, throwable.message) }
                 return@whenDid
@@ -240,7 +285,8 @@ internal object StoriesApiV3 {
     /** Часть пути: пробел — `%20`, не `+`. */
     fun segment(value: String): String = query(value).replace("+", "%20")
 
-    private fun query(value: String): String = URLEncoder.encode(value, "UTF-8")
+    private fun query(value: String): String = encode(value)
 
-    private fun identity(shopId: String, did: String): String = "?shop_id=" + query(shopId) + "&did=" + query(did)
+    /** Значение параметра запроса. */
+    fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
 }

@@ -3,10 +3,13 @@ package com.personalization.ui.widgets
 import android.app.Activity
 import android.content.Intent
 import android.os.Looper
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.viewpager2.widget.ViewPager2
 import com.personalization.SDK
+import com.personalization.core.BridgeApi
 import com.personalization.api.OnApiCallbackListener
 import com.personalization.stories.StoriesManager
 import com.personalization.ui.components.PersonalizationStoryNavigation
@@ -28,6 +31,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
 /** handleLink, the API v3 feed and events, the "Share" button of a slide. */
+@OptIn(BridgeApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
 class StoriesShareFlowTest {
@@ -43,6 +47,10 @@ class StoriesShareFlowTest {
         every { sdk.storiesManager } returns manager
         every { sdk.getDid() } returns "did1"
         every { sdk.getUserSettingsValueUseCase.getShopId() } returns "shop1"
+        every { sdk.sessionId } returns "sid1"
+        every { sdk.segments.getAbGroup() } returns "A"
+        every { sdk.requestStream } returns "android"
+        every { sdk.popupsV3 } returns null
         StoriesApiV3.runner = { it.run() }
         StoriesApiV3.http = StoriesApiV3.Http { method, url, body ->
             requests += Triple(method, url, body)
@@ -55,6 +63,7 @@ class StoriesShareFlowTest {
     fun tearDown() {
         PersonalizationStories.apiV3Domain = null
         StoriesApiV3.runner = { Thread(it).start() }
+        StoriesSound.chosenMuted = true
         ShadowDialog.getShownDialogs().forEach { it.dismiss() }
         idle()
     }
@@ -75,7 +84,7 @@ class StoriesShareFlowTest {
     fun `the link opens its campaign at the slide of the link and reports shared_open once`() {
         assertTrue(handle(LINK))
 
-        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main/story/40?shop_id=shop1&did=did1&slide_id=37", requests[0].second)
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main/story/40?$IDENTITY&slide_id=37", requests[0].second)
         val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
         assertEquals(1, navigation(viewer).progress.current)
         assertEquals(listOf("shared_open:37", "view:37"), events().sorted())
@@ -140,9 +149,432 @@ class StoriesShareFlowTest {
         PersonalizationStories.show(context = activity, code = "main", sdk = sdk, imageLoader = { _, _ -> })
         idle()
 
-        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?shop_id=shop1&did=did1", requests[0].second)
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?$IDENTITY", requests[0].second)
         verify(exactly = 0) { manager.requestStories(any(), any<OnApiCallbackListener>()) }
         assertEquals(listOf("view:39_0"), events())
+    }
+
+    @Test
+    fun `on api v3 back on the first slide of the first story closes the viewer, as the web SDK`() {
+        val viewer = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(PRODUCTS)).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            // The slide must not run out while the test taps it.
+            pause()
+        }
+        viewer.show()
+        idle()
+        tap(viewer, right = false)
+
+        assertFalse(viewer.isShowing)
+        assertEquals(listOf("view:39_0"), events())
+    }
+
+    @Test
+    fun `on the legacy feed back on the first slide starts it again and sends no view again`() {
+        val viewer = PersonalizationStoriesViewer(activity, listOf(com.personalization.stories.models.Story(JSONObject(
+            """{"id":5,"name":"Legacy","slides":[{"id":"51","type":"image","background":"https://cdn.test/a.jpg","elements":[]},
+            {"id":"52","type":"image","background":"https://cdn.test/b.jpg","elements":[]}]}"""
+        )))).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+        }
+        viewer.show()
+        idle()
+        tap(viewer, right = false)
+
+        assertTrue(viewer.isShowing)
+        assertEquals(0, navigation(viewer).progress.current)
+        verify(exactly = 1) { manager.trackStory("view", "main", 5, "51") }
+        assertTrue(events().isEmpty())
+    }
+
+    @Test
+    fun `on api v3 a story opens at start_position and played to its end is viewed and opens from the start`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        val viewer = v3Viewer(stories)
+        // start_position 1 of the feed, nothing of the device's seen slides.
+        assertEquals(1, navigation(viewer).progress.current)
+        tap(viewer, right = true)
+
+        assertFalse(viewer.isShowing)
+        assertTrue(stories[0].isViewed)
+        assertEquals(0, stories[0].startPosition)
+        assertEquals(listOf("view:37"), events())
+    }
+
+    @Test
+    fun `on api v3 a closed story keeps its position for the session and is not viewed`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN).also { it[0].startPosition = 0 }
+        val viewer = v3Viewer(stories)
+        tap(viewer, right = true)
+        viewer.dismiss()
+        idle()
+        assertFalse(stories[0].isViewed)
+        assertEquals(1, stories[0].startPosition)
+        assertEquals(1, navigation(v3Viewer(stories)).progress.current)
+    }
+
+    @Test
+    fun `on api v3 a story with nothing to show stays in the bar, opening it shows the next one and views it`() {
+        answer = { StoriesApiV3.Response(200, SKIPPING) }
+        val widget = widget(apiV3Domain = "app.rees46.ru")
+        assertEquals(listOf(60, 61), widget.stories.map { it.id })
+        assertEquals(2, widget.bar.items.size)
+
+        widget.open(0)
+        idle()
+        val viewer = ShadowDialog.getLatestDialog() as PersonalizationStoriesViewer
+        assertTrue(viewer.isShowing)
+        // Story 61 opens at its first shown slide; the skipped slide keeps its segment, filled.
+        val shown = all(viewer.window!!.decorView).filterIsInstance<PersonalizationStoryNavigation>().single { it.progress.count == 2 }
+        assertEquals(1, shown.progress.current)
+        assertEquals(listOf("view:611"), events())
+        viewer.dismiss()
+        idle()
+        assertTrue(widget.stories[0].isViewed)
+        assertEquals(com.personalization.ui.components.PersonalizationStoryCover.State.VIEWED, widget.bar.items[0].state)
+    }
+
+    @Test
+    fun `a link to a story with nothing to show sends shared_open and shows nothing`() {
+        answer = {
+            StoriesApiV3.Response(200, """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"Text","start_position":0,
+                "slides":[{"id":37,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]}]}}""")
+        }
+        var closed = 0
+        assertTrue(PersonalizationStories.handleLink(activity, LINK, sdk = sdk, onClose = { closed++ }, imageLoader = { _, _ -> }))
+        idle()
+        assertEquals(listOf("shared_open:37"), events())
+        assertTrue(ShadowDialog.getShownDialogs().none { it.isShowing })
+        assertEquals(1, closed)
+    }
+
+    @Test
+    fun `on api v3 a back swipe on the first story closes the viewer, as the web SDK`() {
+        fun swipeRight(viewer: PersonalizationStoriesViewer) {
+            val root = viewer.window!!.decorView
+            val y = root.height / 2f
+            val width = root.width.toFloat()
+            val now = SystemClock.uptimeMillis()
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, width * 0.1f, y, 0))
+            listOf(0.2f, 0.4f, 0.6f, 0.9f).forEachIndexed { step, x ->
+                root.dispatchTouchEvent(MotionEvent.obtain(now, now + 100L * (step + 1), MotionEvent.ACTION_MOVE, width * x, y, 0))
+            }
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + 600, MotionEvent.ACTION_UP, width * 0.9f, y, 0))
+            idle()
+        }
+        val first = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        assertTrue(first.window!!.decorView.width * 0.8f / first.context.resources.displayMetrics.density > 100f)
+        swipeRight(first)
+        assertFalse(first.isShowing)
+        assertTrue("a swipe is no tap: nothing was paged", events().none { it.startsWith("view:36") })
+
+        // The legacy viewer keeps its behaviour: nothing to page back to, it stays.
+        val legacy = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipeRight(legacy)
+        assertTrue(legacy.isShowing)
+    }
+
+    /** A swipe over the viewer from the fractions ([fromX], [fromY]) to ([toX], [toY]) of its size. */
+    private fun swipe(viewer: PersonalizationStoriesViewer, fromX: Float, fromY: Float, toX: Float, toY: Float) {
+        val root = viewer.window!!.decorView
+        val w = root.width.toFloat()
+        val h = root.height.toFloat()
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, w * fromX, h * fromY, 0))
+        listOf(0.25f, 0.5f, 0.75f, 1f).forEachIndexed { step, part ->
+            val x = w * (fromX + (toX - fromX) * part)
+            val y = h * (fromY + (toY - fromY) * part)
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + 100L * (step + 1), MotionEvent.ACTION_MOVE, x, y, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + 600, MotionEvent.ACTION_UP, w * toX, h * toY, 0))
+        idle()
+    }
+
+    @Test
+    fun `on api v3 a forward swipe on the last story views it and closes the viewer, as the web SDK`() {
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        val viewer = v3Viewer(stories)
+        swipe(viewer, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertFalse(viewer.isShowing)
+        assertTrue(stories[0].isViewed)
+        assertEquals("the swipe keeps its position, as JS next of the block", 1, stories[0].startPosition)
+
+        // The legacy viewer keeps its behaviour: nothing to page to, it stays.
+        val legacyStories = StoriesApiV3.parse(CAMPAIGN)
+        val legacy = PersonalizationStoriesViewer(activity, legacyStories).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipe(legacy, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertTrue(legacy.isShowing)
+        assertFalse(legacyStories[0].isViewed)
+    }
+
+    @Test
+    fun `on api v3 a forward swipe on a story before the last goes to the next one, the viewer stays`() {
+        val viewer = v3Viewer(StoriesApiV3.parse(SKIPPING.replace(""""type":"","elements":[{"type":"text_block","text_input":"Hi"}]""", """"type":"image","background":"https://cdn.test/b.jpg","elements":[]""")))
+        swipe(viewer, 0.9f, 0.5f, 0.1f, 0.5f)
+        assertTrue(viewer.isShowing)
+    }
+
+    @Test
+    fun `on api v3 a swipe up closes the viewer, as the web SDK, the legacy viewer stays`() {
+        val viewer = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        swipe(viewer, 0.5f, 0.8f, 0.5f, 0.2f)
+        assertFalse(viewer.isShowing)
+
+        val legacy = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        swipe(legacy, 0.5f, 0.8f, 0.5f, 0.2f)
+        assertTrue(legacy.isShowing)
+    }
+
+    /** A vertical swipe of [dyDp] (down positive) from the middle of the viewer, taking [durationMs]. */
+    private fun swipeVertically(viewer: PersonalizationStoriesViewer, dyDp: Float, durationMs: Long) {
+        val root = viewer.window!!.decorView
+        val density = root.resources.displayMetrics.density
+        val x = root.width / 2f
+        val y = root.height / 2f
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        for (step in 1..4) {
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs * step / 4, MotionEvent.ACTION_MOVE, x, y + dyDp * density * step / 4, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs, MotionEvent.ACTION_UP, x, y + dyDp * density, 0))
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500))
+    }
+
+    private fun legacyViewer() = PersonalizationStoriesViewer(activity, StoriesApiV3.parse(CAMPAIGN)).apply {
+        apiV3Domain = null
+        imageLoader = { _, _ -> }
+        pause()
+        show()
+        idle()
+    }
+
+    @Test
+    fun `on api v3 a vertical swipe closes by distance only, longer than 100 dp up or down, as the web SDK`() {
+        fun viewer() = v3Viewer(StoriesApiV3.parse(CAMPAIGN))
+        // A short fast fling no longer closes, down or up.
+        viewer().also { swipeVertically(it, 60f, 40); assertTrue(it.isShowing) }
+        viewer().also { swipeVertically(it, -60f, 40); assertTrue(it.isShowing) }
+        // Slow but longer than 100 dp: closes, down and up.
+        viewer().also { swipeVertically(it, 110f, 1000); assertFalse(it.isShowing) }
+        viewer().also { swipeVertically(it, -110f, 1000); assertFalse(it.isShowing) }
+    }
+
+    /** A horizontal swipe of [dxDp] (right positive) from the middle of the viewer, taking [durationMs]. */
+    private fun swipeHorizontally(viewer: PersonalizationStoriesViewer, dxDp: Float, durationMs: Long) {
+        val root = viewer.window!!.decorView
+        val density = root.resources.displayMetrics.density
+        val x = root.width / 2f
+        val y = root.height / 2f
+        val now = SystemClock.uptimeMillis()
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0))
+        for (step in 1..4) {
+            root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs * step / 4, MotionEvent.ACTION_MOVE, x + dxDp * density * step / 4, y, 0))
+        }
+        root.dispatchTouchEvent(MotionEvent.obtain(now, now + durationMs, MotionEvent.ACTION_UP, x + dxDp * density, y, 0))
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(500))
+    }
+
+    @Test
+    fun `on api v3 the swipes past the first and the last story close by distance only, longer than 100 dp`() {
+        // The campaign has one story: it is the first and the last.
+        val stories = StoriesApiV3.parse(CAMPAIGN)
+        v3Viewer(stories).also { swipeHorizontally(it, 60f, 40); assertTrue("a short fling back stays", it.isShowing) }
+        v3Viewer(stories).also { swipeHorizontally(it, -60f, 40); assertTrue("a short fling forward stays", it.isShowing) }
+        assertFalse(stories[0].isViewed)
+        v3Viewer(stories).also { swipeHorizontally(it, 110f, 1000); assertFalse("110 dp back closes", it.isShowing) }
+        assertFalse(stories[0].isViewed)
+        v3Viewer(stories).also { swipeHorizontally(it, -110f, 1000); assertFalse("110 dp forward closes", it.isShowing) }
+        assertTrue(stories[0].isViewed)
+    }
+
+    @Test
+    fun `the legacy viewer keeps its vertical rule, down 120 dp or a fling`() {
+        legacyViewer().also { swipeVertically(it, 60f, 40); assertFalse("a fling down closes", it.isShowing) }
+        legacyViewer().also { swipeVertically(it, 110f, 1000); assertTrue("110 dp slowly is not enough", it.isShowing) }
+        legacyViewer().also { swipeVertically(it, 130f, 1000); assertFalse(it.isShowing) }
+        legacyViewer().also { swipeVertically(it, -130f, 1000); assertTrue("up does nothing", it.isShowing) }
+    }
+
+    @Test
+    fun `on api v3 a viewer with nothing to show closes at once, viewed, and never paints the screen black`() {
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":60,"name":"Text","slides":[
+            {"id":600,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]}]}}"""
+        )
+        var closed = 0
+        val viewer = PersonalizationStoriesViewer(activity, stories).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            setOnDismissListener { closed++ }
+        }
+        viewer.show()
+        assertFalse((viewer.window!!.decorView.background as? android.graphics.drawable.ColorDrawable)?.color == android.graphics.Color.BLACK)
+        idle()
+        assertFalse(viewer.isShowing)
+        assertEquals(1, closed)
+        assertTrue(stories[0].isViewed)
+        assertTrue(events().isEmpty())
+    }
+
+    @Test
+    fun `on api v3 a button without a link sends click and opens nothing, a promo code copy sends nothing`() {
+        val clicked = mutableListOf<String>()
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"P","slides":[{"id":"39_0","type":"",
+            "elements":[{"type":"button","title":"Go","link":""},{"type":"product","item":{"id":"p1","name":"Sneakers","url":"https://shop.test/p1","price_formatted":"100 ₽"}}]}]}]}}"""
+        )
+        val viewer = v3Viewer(stories, object : com.personalization.OnClickListener {
+            override fun onClick(url: String): Boolean = true.also { clicked += url }
+            override fun onClick(product: com.personalization.Product): Boolean = true.also { clicked += product.id }
+        })
+        val page = (find(viewer.window!!.decorView, ViewPager2::class.java)!!.getChildAt(0) as ViewGroup).getChildAt(0)
+        all(page).filterIsInstance<com.personalization.ui.components.PersonalizationButton>().single { it.text == "Go" }.performClick()
+        idle()
+        assertTrue(viewer.isShowing)
+        assertTrue(clicked.isEmpty())
+        assertEquals(listOf("view:39_0", "click:39_0"), events())
+
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        host.onPromoCopied()
+        idle()
+        assertEquals(listOf("view:39_0", "click:39_0"), events())
+    }
+
+    @Test
+    fun `on api v3 the header sends click and opens its link`() {
+        val opened = mutableListOf<String>()
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":40,"name":"M","slides":[{"id":36,"type":"image","background":"https://cdn.test/a.jpg",
+            "elements":[{"type":"header","title":"Shop","link":"https://shop.test/new"}]}]}]}}"""
+        )
+        val viewer = v3Viewer(stories, object : com.personalization.OnClickListener {
+            override fun onClick(url: String): Boolean = false.also { opened += url }
+            override fun onClick(product: com.personalization.Product): Boolean = false
+        })
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        host.onHeader(stories[0].getSlide(0).getElements().filterIsInstance<com.personalization.stories.models.elements.HeaderElement>().single())
+        idle()
+        assertEquals(listOf("https://shop.test/new"), opened)
+        assertFalse(viewer.isShowing)
+        assertEquals(listOf("view:36", "click:36"), events())
+    }
+
+    @Test
+    fun `on api v3 the mute choice is kept on the device per shop, as localStorage of a site`() {
+        StoriesSound.save(activity, "shop-a", false)
+        assertFalse(StoriesSound.v3(activity, "shop-a").muted)
+        // Another shop has not chosen: it opens without sound, whatever shop A chose.
+        assertTrue(StoriesSound.v3(activity, "shop-b").muted)
+        StoriesSound.save(activity, "shop-a", true)
+        assertTrue(StoriesSound.v3(activity, "shop-a").muted)
+        // No shop — without sound, and nothing is kept.
+        StoriesSound.save(activity, null, false)
+        assertTrue(StoriesSound.v3(activity, null).muted)
+    }
+
+    @Test
+    fun `on api v3 the viewer keeps its own sound, saves only the sound button and leaves the legacy choice alone`() {
+        val stories = StoriesApiV3.parse(
+            """{"status":"success","payload":{"id":1,"stories":[{"id":70,"name":"Video","slides":[
+            {"id":700,"type":"video","background":"https://cdn.test/v.mp4","elements":[]}]}]}}"""
+        )
+        // The legacy viewers chose sound on for the process.
+        StoriesSound.chosenMuted = false
+        StoriesSound.save(activity, "default", true)
+        val viewer = v3Viewer(stories)
+        val host = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(viewer) as StorySlideHost
+        assertTrue("v3 opens with the shop's saved choice, not the legacy one", host.muted)
+
+        // Volume up turns the sound on in this viewer only: nothing is saved.
+        viewer.onKeyDown(android.view.KeyEvent.KEYCODE_VOLUME_UP, android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_VOLUME_UP))
+        assertFalse(host.muted)
+        assertTrue(StoriesSound.v3(activity, "default").muted)
+
+        // The sound button is the user's choice: saved for the shop.
+        host.onSoundToggle()
+        assertTrue(host.muted)
+        host.onSoundToggle()
+        assertFalse(host.muted)
+        assertFalse(StoriesSound.v3(activity, "default").muted)
+        host.onSoundToggle()
+        assertTrue(StoriesSound.v3(activity, "default").muted)
+        assertFalse("the legacy choice of the process is untouched", StoriesSound.chosenMuted)
+        viewer.dismiss()
+        idle()
+
+        // A legacy viewer keeps the process-wide choice, as before.
+        val legacy = PersonalizationStoriesViewer(activity, stories).apply {
+            apiV3Domain = null
+            imageLoader = { _, _ -> }
+            pause()
+            show()
+            idle()
+        }
+        val legacyHost = PersonalizationStoriesViewer::class.java.getDeclaredField("slideHost").apply { isAccessible = true }.get(legacy) as StorySlideHost
+        assertFalse(legacyHost.muted)
+        legacyHost.onSoundToggle()
+        assertTrue(StoriesSound.chosenMuted)
+    }
+
+    private fun v3Viewer(stories: List<com.personalization.stories.models.Story>, clicks: com.personalization.OnClickListener? = null) =
+        PersonalizationStoriesViewer(activity, stories).apply {
+            code = "main"
+            sdk = this@StoriesShareFlowTest.sdk
+            apiV3Domain = "app.rees46.ru"
+            imageLoader = { _, _ -> }
+            onClickListener = clicks
+            // The slide must not run out while the test taps it.
+            pause()
+            show()
+            idle()
+        }
+
+    private fun tap(viewer: PersonalizationStoriesViewer, right: Boolean) {
+        val pager = find(viewer.window!!.decorView, ViewPager2::class.java)!!
+        val touch = find((pager.getChildAt(0) as ViewGroup).getChildAt(0), StoryTouchLayer::class.java)!!
+        val x = if (right) touch.width - 5f else 5f
+        val now = SystemClock.uptimeMillis()
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, 5f, 0))
+        touch.dispatchTouchEvent(MotionEvent.obtain(now, now + 50, MotionEvent.ACTION_UP, x, 5f, 0))
+        idle()
+    }
+
+    @Test
+    fun `in the test mode of popups v3 the feed and the events send testmode`() {
+        every { sdk.popupsV3 } returns mockk(relaxed = true) { every { testMode } returns true }
+        answer = { StoriesApiV3.Response(200, PRODUCTS) }
+        PersonalizationStories.show(context = activity, code = "main", sdk = sdk, imageLoader = { _, _ -> })
+        idle()
+
+        assertEquals("https://app.rees46.ru/api/v3/storefront/stories/main?$IDENTITY&testmode=true", requests[0].second)
+        assertEquals(listOf("view:39_0"), events(testMode = true))
     }
 
     @Test
@@ -171,7 +603,7 @@ class StoriesShareFlowTest {
         PersonalizationStories.apiV3Domain = "global.test"
         widget(apiV3Domain = "own.test")
 
-        assertEquals("https://own.test/api/v3/storefront/stories/main?shop_id=shop1&did=did1", requests.single().second)
+        assertEquals("https://own.test/api/v3/storefront/stories/main?$IDENTITY", requests.single().second)
         verify(exactly = 0) { manager.requestStories(any(), any<OnApiCallbackListener>()) }
     }
 
@@ -246,10 +678,14 @@ class StoriesShareFlowTest {
         PersonalizationStories.handleLink(activity, url, sdk = sdk, onError = { code, _ -> onError(code) }, imageLoader = { _, _ -> })
             .also { idle() }
 
-    private fun events(): List<String> = requests.filter { it.first == "POST" }.map {
+    private fun events(testMode: Boolean = false): List<String> = requests.filter { it.first == "POST" }.map {
         val body = JSONObject(it.third!!)
         assertEquals("shop1", body.getString("shop_id"))
         assertEquals("did1", body.getString("did"))
+        assertEquals("sid1", body.getString("sid"))
+        assertEquals("A", body.getString("segment"))
+        assertEquals("android", body.getString("stream"))
+        assertEquals(testMode, body.optBoolean("testmode"))
         assertTrue(it.second.endsWith("/api/v3/storefront/stories/main/events"))
         body.getString("event") + ":" + body.getString("slide_id")
     }
@@ -269,7 +705,11 @@ class StoriesShareFlowTest {
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
+    private fun all(view: View): List<View> =
+        if (view !is ViewGroup) listOf(view) else listOf(view) + (0 until view.childCount).flatMap { all(view.getChildAt(it)) }
+
     private companion object {
+        const val IDENTITY = "shop_id=shop1&did=did1&sid=sid1&segment=A&stream=android"
         const val LINK = "https://demo.test/?r46_stories=main&r46_story=40&r46_slide=37"
 
         const val CAMPAIGN = """{"status":"success","payload":{"id":1,"settings":{},"stories":[{"id":40,"name":"Media",
@@ -283,6 +723,13 @@ class StoriesShareFlowTest {
              "elements":[{"type":"product","item":{"id":"p1","name":"Sneakers","price_formatted":"100 ₽"}}]},
             {"id":"39_1","type":"","background":null,"preview":null,
              "elements":[{"type":"product","item":{"id":"p2","name":"Boots","price_formatted":"200 ₽"}}]}]}]}}"""
+
+        /** Story 60 has nothing to show; story 61 starts on a skipped slide. */
+        const val SKIPPING = """{"status":"success","payload":{"id":1,"stories":[
+            {"id":60,"name":"Text","slides":[{"id":600,"type":"","elements":[{"type":"text_block","text_input":"Hi"}]}]},
+            {"id":61,"name":"Media","start_position":0,"slides":[
+            {"id":610,"type":"","background_color":"#123456","elements":[]},
+            {"id":611,"type":"image","background":"https://cdn.test/a.jpg","elements":[]}]}]}}"""
 
         const val PRODUCTS = """{"status":"success","payload":{"id":1,"stories":[{"id":39,"name":"Products",
             "share_url":"https://shop.test/?r46_story=39","slides":[{"id":"39_0","type":"","background":null,"preview":null,

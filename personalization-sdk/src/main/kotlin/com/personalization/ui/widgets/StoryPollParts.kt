@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -35,16 +34,12 @@ import androidx.annotation.ColorRes
 import androidx.annotation.DimenRes
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.graphics.ColorUtils
-import androidx.core.os.ConfigurationCompat
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.widget.TextViewCompat
 import com.personalization.R
 import com.personalization.ui.PersonalizationTheme
-import java.text.NumberFormat
-import java.util.Locale
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** Общее для частей карточки опроса. */
@@ -96,12 +91,14 @@ internal object PollUi {
         return letters.reverse().toString()
     }
 
-    /** Число голосов со склонением и разрядами по языку ресурсов: «1 248 голосов»; нет голосов — `null`. */
-    fun votes(resources: Resources, total: Int): String? {
-        if (total <= 0) return null
-        val locale = ConfigurationCompat.getLocales(resources.configuration).get(0) ?: Locale.getDefault()
-        val number = NumberFormat.getIntegerInstance(locale).format(total.toLong())
-        return resources.getQuantityString(R.plurals.personalization_stories_poll_votes, total, number)
+    /**
+     * Цвет тона шкалы — семантические цвета кита: плохо — `semantic_danger`, средне — `semantic_warning`;
+     * зелёного в ките нет, хорошо — акцент опроса.
+     */
+    fun toneColor(context: Context, tone: StoryPoll.Tone): Int = when (tone) {
+        StoryPoll.Tone.NEGATIVE -> color(context, R.color.personalization_semantic_danger)
+        StoryPoll.Tone.NEUTRAL -> color(context, R.color.personalization_semantic_warning)
+        StoryPoll.Tone.POSITIVE -> PollStyle.ACCENT
     }
 
     /**
@@ -314,9 +311,9 @@ internal class PollOptionRow(context: Context, letter: String, private val resul
 }
 
 /**
- * Шкала — дорожка-капсула, цифры поровну (в RTL справа налево). Выбранная — капсула на всю
- * высоту дорожки цветом своей полосы ([fillOf]), цифра на ней белая или тёмная, что контрастнее;
- * в ответе ([muted]) остальные цифры приглушены.
+ * Шкала — ряд ячеек поровну (в RTL справа налево), как сетка веб-SDK: каждая цифра на подложке своего
+ * тона ([fillOf]) — бледной, выбранная — на полной, цифра на ней белая или тёмная, что контрастнее; в
+ * ответе ([muted]) остальные цифры приглушены.
  */
 @SuppressLint("ViewConstructor")
 internal class PollScaleRow(
@@ -329,6 +326,8 @@ internal class PollScaleRow(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val textColor = PollUi.color(context, R.color.personalization_text_primary)
+    private val radius = PersonalizationTheme.radius(context, R.dimen.personalization_radius_md)
+    private val gap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xs).toFloat()
 
     /** Выбранная оценка; дробная не выделяет ни одной цифры, как в веб-SDK. */
     var selectedValue: Double? = null
@@ -345,14 +344,17 @@ internal class PollScaleRow(
     init {
         orientation = HORIZONTAL
         setWillNotDraw(false)
-        val inset = resources.getDimensionPixelSize(R.dimen.personalization_spacing_sm)
-        setPadding(inset, 0, inset, 0)
-        background = PollUi.rounded(PollStyle.SURFACE, PersonalizationTheme.radius(context, R.dimen.personalization_radius_rounded))
     }
 
     val values: List<Int> get() = cells.keys.toList()
 
     fun cell(value: Int): TextView? = cells[value]
+
+    /** Подложка ячейки [value]: полный цвет тона у выбранной, бледный — у остальных. */
+    fun fill(value: Int): Int {
+        val color = fillOf(value)
+        return if (cells[value]?.isSelected == true) color else PollUi.alpha(color, PollStyle.TONE_ALPHA)
+    }
 
     fun addCell(value: Int, cell: TextView) {
         cells[value] = cell
@@ -362,11 +364,11 @@ internal class PollScaleRow(
     fun setCellsEnabled(enabled: Boolean) = cells.values.forEach { it.isEnabled = enabled }
 
     override fun dispatchDraw(canvas: Canvas) {
-        // Капсула выбранной — под цифрой.
-        cells.entries.firstOrNull { it.key.toDouble() == selectedValue }?.let { (rate, cell) ->
-            rect.set(cell.left.toFloat(), 0f, cell.right.toFloat(), height.toFloat())
-            val radius = min(rect.width(), rect.height()) / 2
-            paint.color = fillOf(rate)
+        // Подложки — под цифрами; приглушённая цифра приглушает и свою подложку.
+        cells.forEach { (rate, cell) ->
+            rect.set(cell.left + gap / 2, 0f, cell.right - gap / 2, height.toFloat())
+            paint.color = fill(rate)
+            paint.alpha = (Color.alpha(paint.color) * cell.alpha).toInt()
             canvas.drawRoundRect(rect, radius, radius, paint)
         }
         super.dispatchDraw(canvas)
@@ -417,23 +419,42 @@ internal class PollTextField(context: Context, private val limit: Int?) : EditTe
 }
 
 /**
- * Слой опросов слайда — над серединой между шапкой и кнопками (или «товарами»). Карточка не шире
- * 420 по центру; верх — по [StorySlidePlacement], как у текстовых блоков: `y_offset` процентов всей
- * высоты слайда, как `top` в вебе, затем сдвиг, чтобы карточка целиком влезла в слой; не влезает и
- * так — прокручивается внутри себя. Пока в поле фокус и открыта клавиатура,
- * карточка поднимается над ней (+16), но не выше слоя: места мало — она ниже и прокручивается
- * внутри, поле в фокусе остаётся видно. Слайд под ней не сжимается.
+ * Слой опросов во весь слайд. Карточка — как в веб-SDK (#277): по центру, в 16 от краёв и не шире
+ * 420; верх — `y_offset` процентов ВСЕЙ высоты слайда, как у текстовых блоков ([StorySlidePlacement]),
+ * но не выше верхней системной панели; без него — верх. Если карточка не влезает, она поднимается,
+ * чтобы низ был в 16 над рядом низа (звук, «Используемые товары») — [bottomRowTop], — а без него над
+ * нижней системной панелью, но не выше верхней. Карточка может зайти под шапку: прогресс, крестик и
+ * «Поделиться» слайд рисует поверх слоя, и они нажимаются ([StorySlideView]). Не влезает и так —
+ * прокручивается внутри себя. Пока в поле фокус и открыта клавиатура, карточка поднимается над ней
+ * (+16), но не выше верха: места мало — она ниже и прокручивается внутри, поле в фокусе остаётся
+ * видно. Слайд под ней не сжимается.
  */
-internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(context) {
+@SuppressLint("ViewConstructor")
+internal class StoryPollLayer(
+    context: Context,
+    /** Верх видимого ряда низа слайда высотой в аргумент, от верха слайда; ряда нет — `null`. */
+    private val bottomRowTop: (slideHeight: Int) -> Int? = { null }
+) : android.widget.FrameLayout(context) {
 
     val cards = ArrayList<StoryPollView>()
     private val maxCardWidth = PollUi.dp(this, PollStyle.MAX_WIDTH_DP.toFloat()).roundToInt()
+    private val margin = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
     private val keyboardGap = resources.getDimensionPixelSize(R.dimen.personalization_spacing_xl)
     private var imeBottom = 0
+    private var insetTop = 0
+    private var insetBottom = 0
 
     fun add(card: StoryPollView) {
         cards += card
         addView(card, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+
+    /** Системные панели сверху и снизу: карточка не заходит под них. */
+    fun setInsets(top: Int, bottom: Int) {
+        if (insetTop == top && insetBottom == bottom) return
+        insetTop = top
+        insetBottom = bottom
+        requestLayout()
     }
 
     /** Карточка с полем в фокусе — клавиатура открыта. */
@@ -451,41 +472,48 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
         updateLift()
     }
 
+    /** Верх, выше которого карточка не встаёт: под верхней системной панелью. */
+    private fun slideTop(): Int = insetTop
+
+    /** Низ, ниже которого карточка не уходит: верх ряда низа, без него — над нижней системной панелью. */
+    private fun slideBottom(height: Int): Int = bottomRowTop(height) ?: (height - insetBottom)
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)
-        val cardWidth = MeasureSpec.makeMeasureSpec(minOf(width, maxCardWidth), MeasureSpec.EXACTLY)
+        val cardWidth = MeasureSpec.makeMeasureSpec(minOf(width - 2 * margin, maxCardWidth).coerceAtLeast(0), MeasureSpec.EXACTLY)
+        val room = (slideBottom(height) - margin - slideTop()).coerceAtLeast(0)
         cards.forEach { card ->
-            val room = keyboardRoom(card)?.let { minOf(it, height) } ?: height
-            card.measure(cardWidth, MeasureSpec.makeMeasureSpec(room, MeasureSpec.AT_MOST))
+            val available = keyboardRoom(card)?.let { minOf(it, room) } ?: room
+            card.measure(cardWidth, MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST))
         }
         setMeasuredDimension(width, height)
     }
 
-    /** Место карточки с полем в фокусе между верхом слоя и клавиатурой; клавиатуры нет — `null`. */
+    /** Место карточки с полем в фокусе между верхом слайда и клавиатурой; клавиатуры нет — `null`. */
     private fun keyboardRoom(card: StoryPollView): Int? {
         val windowHeight = rootView?.height ?: 0
         if (imeBottom <= 0 || windowHeight <= 0 || !card.inputFocused) return null
         val location = IntArray(2)
         getLocationInWindow(location)
-        return (windowHeight - imeBottom - keyboardGap - location[1]).coerceAtLeast(keyboardGap * 3)
+        return (windowHeight - imeBottom - keyboardGap - location[1] - slideTop()).coerceAtLeast(keyboardGap * 3)
     }
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         val width = right - left
         val height = bottom - top
-        val (layerTop, slideHeight) = StorySlidePlacement.frame(this)
         cards.forEach { card ->
-            val y = StorySlidePlacement.top(card.controller.poll.yOffset, slideHeight, layerTop, height, card.measuredHeight)
+            val y = cardTop(card.controller.poll.yOffset, height, slideTop(), slideBottom(height), card.measuredHeight, margin)
             val x = (width - card.measuredWidth) / 2
             card.layout(x, y, x + card.measuredWidth, y + card.measuredHeight)
         }
         updateLift()
     }
 
-    /** Подъём карточки с полем в фокусе: низ — над клавиатурой, верх — не выше окна. */
+    /** Подъём карточки с полем в фокусе: низ — над клавиатурой, верх — не выше верха слайда. */
     fun updateLift() {
         val windowHeight = rootView?.height ?: 0
+        val limit = slideTop()
         cards.forEach { card ->
             var lift = 0f
             if (imeBottom > 0 && windowHeight > 0 && card.inputFocused) {
@@ -493,10 +521,22 @@ internal class StoryPollLayer(context: Context) : android.widget.FrameLayout(con
                 card.getLocationInWindow(location)
                 val cardTop = location[1] - card.translationY
                 val keyboardTop = windowHeight - imeBottom
-                // Не выше слоя: над ним шапка, и родитель обрезал бы карточку.
-                lift = (cardTop + card.height + keyboardGap - keyboardTop).coerceAtLeast(0f).coerceAtMost(card.top.toFloat())
+                lift = (cardTop + card.height + keyboardGap - keyboardTop).coerceAtLeast(0f).coerceAtMost((card.top - limit).coerceAtLeast(0).toFloat())
             }
             card.translationY = if (lift > 0f) -lift else 0f
+        }
+    }
+
+    companion object {
+        /**
+         * Верх карточки высотой [height], как `top: y_offset%` и `fittedTop` веб-SDK: [offset] процентов всей
+         * высоты слайда [slideHeight] ([StorySlidePlacement.offsetY]), не выше [top]; низ ниже, чем [margin]
+         * над [bottom], — карточка поднимается, но не выше [top].
+         */
+        fun cardTop(offset: Float?, slideHeight: Int, top: Int, bottom: Int, height: Int, margin: Int): Int {
+            val wanted = maxOf(top, StorySlidePlacement.offsetY(offset, slideHeight).roundToInt())
+            val max = bottom - height - margin
+            return if (wanted > max) maxOf(top, max) else wanted
         }
     }
 }
